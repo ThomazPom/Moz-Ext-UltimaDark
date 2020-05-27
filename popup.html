@@ -1,0 +1,308 @@
+<!doctype html>
+<html>
+    <head>
+
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    </head>
+    <body>
+    	<style type="text/css">
+    		body
+    		{
+    			width:345px;
+    			font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
+    			overflow-x: hidden;
+    			background: url("bg.jpg");
+				background-size: cover;
+    		}
+
+
+html, body, div, span, applet, object, iframe, h1, h2, h3, h4, h5, h6, p, blockquote, pre, a, abbr, acronym, address, big, cite, code, del, dfn, em, img, ins, kbd, q, s, samp, small, strike, strong, sub, sup, tt, var, b, u, i, center, dl, dt, dd, ol, ul, li, fieldset, form, label, legend, table, caption, tbody, tfoot, thead, tr, th, td, article, aside, canvas, details, embed, figure, figcaption, footer, header, hgroup, menu, nav, output, ruby, section, summary, time, mark, audio, video {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	font-size: 100%;
+	font: inherit;
+	vertical-align: baseline;
+}
+
+article, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, section {
+	display: block;
+}
+
+body {
+	line-height: 1;
+}
+
+ol, ul {
+	list-style: none;
+}
+
+blockquote, q {
+	quotes: none;
+}
+
+blockquote:before, blockquote:after, q:before, q:after {
+	content: '';
+	content: none;
+}
+
+table {
+	border-collapse: collapse;
+	border-spacing: 0;
+}
+
+body, html {
+	height: 100%;
+}
+
+body {
+	color: #fff;
+	margin: 0 auto;
+	font: 1em/1.3em Montserrat, Helvetica, sans-serif;
+}
+
+.clearfix {
+	clear: both;
+}
+
+.container {
+	padding-top: 20px;
+	height: 100%;
+	width: 100%;
+	text-align: center;
+	background-color: #ddd;
+}
+
+h1 {
+	margin: 40px 0;
+	font-size: 40px;
+	line-height: 40px;
+	font-weight: bold;
+	text-shadow: 0px 1px 1px #888;
+}
+
+a {
+	text-decoration: none;
+	color: #fff;
+	margin: 0 10px;
+}
+
+.btn {
+	box-sizing: border-box;
+	-moz-box-sizing: border-box;
+	-webkit-box-sizing: border-box;
+	position: relative;
+	display: inline-block;
+	overflow: hidden;
+	height: 53px;
+	border-radius: 6px;
+	-moz-border-radius: 6px;
+	-webkit-border-radius: 6px;
+	line-height: 30px;
+	font-size: 16px;
+	font-weight: bold;
+	text-shadow: 0px 1px 1px #888;
+}
+
+.btn span.icon, .btn span.title {
+	display: block;
+	position: relative;
+	line-height: 50px;
+	padding: 0 30px;
+	border-radius: 6px;
+	-moz-border-radius: 6px;
+	-webkit-border-radius: 6px;
+}
+
+.btn span.left {
+	float: left;
+	border-radius: 6px 0 0 6px;
+	-moz-border-radius: 6px 0 0 6px;
+	-webkit-border-radius: 6px 0 0 6px;
+  width: 40px;
+}
+
+.btn span.right {
+	float: right;
+	border-radius: 0 6px 6px 0;
+	-moz-border-radius: 0 6px 6px 0;
+	-webkit-border-radius: 0 6px 6px 0;
+  width: 40px;
+}
+
+.btn span.icon {
+	font-size: 23px;
+	background-color: #00967f;
+	-webkit-box-shadow: 0 3px 0 0 #007261;
+	box-shadow: 0 3px 0 0 #007261;
+	text-shadow: 0px 1px 1px #888;
+}
+
+.btn span.title {
+	width: 150px;
+	-webkit-box-shadow: 0 3px 0 0 #00ae94;
+	box-shadow: 0 3px 0 0 #00ae94;
+	background-color: #00cdae;
+}
+
+.btn span.arrow-left, .btn span.arrow-right {
+	position: absolute;
+	width: 0;
+	height: 0;
+	border-top: 25px solid transparent;
+	border-bottom: 25px solid transparent;
+	-webkit-transition: all .15s;
+	-transition: all .15s;
+	-webkit-transition-property: left, right;
+	transition-property: left, right;
+}
+
+.btn.left span.arrow-left {
+	right: 0;
+	-webkit-box-shadow: 10px 0 0 0 #00cdae, 10px 3px 0 0 #00ae94;
+	box-shadow: 10px 0 0 0 #00cdae, 10px 3px 0 0 #00ae94;
+	border-right: 10px solid #00cdae;
+}
+
+.btn.right span.arrow-left {
+	right: 0;
+	-webkit-box-shadow: 10px 0 0 0 #00967f, 10px 3px 0 0 #007261;
+	box-shadow: 10px 0 0 0 #00967f, 10px 3px 0 0 #007261;
+	border-right: 10px solid #00967f;
+}
+
+.btn.left span.arrow-right {
+	left: 0;
+	-webkit-box-shadow: -10px 0 0 0 #00967f, -10px 3px 0 0 #007261;
+	box-shadow: -10px 0 0 0 #00967f, -10px 3px 0 0 #007261;
+	border-left: 10px solid #00967f;
+}
+
+.btn.right span.arrow-right {
+	left: 0;
+	-webkit-box-shadow: -10px 0 0 0 #00cdae, -10px 3px 0 0 #00ae94;
+	box-shadow: -10px 0 0 0 #00cdae, -10px 3px 0 0 #00ae94;
+	border-left: 10px solid #00cdae;
+}
+
+.btn span.slant-left, .btn span.slant-right {
+	position: absolute;
+	width: 0;
+	height: 0;
+	border-top: 0 solid transparent;
+	border-bottom: 50px solid transparent;
+	-webkit-transition: all .15s;
+	-transition: all .15s;
+	-webkit-transition-property: left, right;
+	transition-property: left, right;
+}
+
+.btn.left span.slant-right {
+	left: 0;
+	-webkit-box-shadow: -10px 0 0 0 #00967f, -10px 3px 0 0 #007261;
+	box-shadow: -10px 0 0 0 #00967f, -10px 3px 0 0 #007261;
+	border-left: 10px solid #00967f;
+}
+
+.btn.right span.slant-right {
+	left: 0;
+	-webkit-box-shadow: -10px 0 0 0 #00cdae, -10px 3px 0 0 #00ae94;
+	box-shadow: -10px 0 0 0 #00cdae, -10px 3px 0 0 #00ae94;
+	border-left: 10px solid #00cdae;
+}
+
+.btn.left span.slant-left {
+	right: 0;
+	-webkit-box-shadow: 10px 0 0 0 #00cdae, 10px 3px 0 0 #00ae94;
+	box-shadow: 10px 0 0 0 #00cdae, 10px 3px 0 0 #00ae94;
+	border-right: 10px solid #00cdae;
+}
+
+.btn.right span.slant-left {
+	right: 0;
+	-webkit-box-shadow: 10px 0 0 0 #00967f, 10px 3px 0 0 #007261;
+	box-shadow: 10px 0 0 0 #00967f, 10px 3px 0 0 #007261;
+	border-right: 10px solid #00967f;
+}
+
+.btn:active, .btn.active {
+	height: 51px;
+}
+
+.btn:hover {}
+
+.btn:hover span.arrow-left {
+	right: 10px;
+}
+
+.btn:hover span.arrow-right {
+	left: 10px;
+}
+
+.btn:hover span.slant-left {
+	right: 10px;
+}
+
+.btn:hover span.slant-right {
+	left: 10px;
+}
+
+.btn-small {
+	height: 30px;
+	font-size: 12px;
+	line-height: 10px;
+}
+
+a.btn-small span.btn {
+	height: 30px;
+}
+.label
+{
+text-shadow: 0px 0px 6px black;
+
+background: rgba(0,0,0,.1);
+
+margin-left: auto;
+margin-right: auto;
+margin-top:10px;
+border-top-left-radius: 5px;
+
+border-top-right-radius: 5px;
+display: table;
+
+padding: 10px 20px 0px 20px;
+}
+.listextarea, .listextarea_monitorrgx
+{
+	width: 85%;
+	margin-left: 5%;
+	margin-right:  5%;
+	display: block;
+	resize: vertical;
+	word-wrap: normal ;
+	white-space: pre;
+	height: 100px
+}
+
+    	</style>
+<br>
+    	 <div class="content">
+      <a href="https://github.com/ThomazPom/Moz-Ext-UltimaDark" class="btn left">
+        <span style="color:orange" class="left icon">&lt; /&gt;</span>
+        <span class="right title"><span class="arrow-right"></span>Sources & Updates</span>
+      </a>
+  </div>
+   <div class="content">
+      <a href="https://www.paypal.me/ThomazPom" class="btn right">
+        <span  class="left title"><span class="arrow-left"></span>Donate</span>
+        <span class="right icon">🧡</span>
+      </a>
+  </div>
+  <div class="content">
+      <a href="https://addons.mozilla.org/fr/firefox/addon/UltimaDark/" class="btn left">
+        <span  class="right title"><span class="arrow-right"></span>Rate & About</span>
+        <span class="left icon">⭐</span>
+      </a>
+  </div>
+    </body>
+</html>

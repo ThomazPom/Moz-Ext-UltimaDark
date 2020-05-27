@@ -1,0 +1,149 @@
+
+
+:root {
+  --main-bgcolor: rgb(50,50,50);
+  --main-color: unset;
+
+  --secondary-color: white;
+}
+
+/******************************/
+
+
+body,html{
+	background-color:var(--main-bgcolor);
+	background:var(--main-bgcolor);
+	color: var(--secondary-color);;
+}
+::placeholder{
+
+	opacity: 1;
+	color:var(--main-color);
+}
+a{
+	color: rgb(112, 112, 255);
+}
+/*
+path {
+    fill: var(--secondary-color);
+}
+*/
+
+
+/***********/
+input {
+  background-color:var(--main-bgcolor);
+  color:var(--main-color);
+}
+textarea {
+  background-color:var(--main-bgcolor);
+  color:var(--main-color);
+}
+select {
+  border-color:var(--main-bgcolor);
+  background-color:var(--main-bgcolor);
+  color:var(--main-color);
+}
+select[size][multiple] {
+  background-color:var(--main-bgcolor);
+  color:var(--main-color);
+}
+select[size="1"] {
+  background-color:var(--main-bgcolor);
+  color:var(--main-color);
+}
+*|*::-moz-display-comboboxcontrol-frame {
+  color:var(--main-color);
+}
+option:checked {
+  background-color:var(--main-bgcolor)!important;
+  color:var(--main-color)!important;
+}
+select:focus > optgroup > option:checked {
+  background-color:var(--main-bgcolor)! important;
+  color:var(--main-color)! important;
+}
+*|*::-moz-dropdown-list {
+  background-color:var(--main-bgcolor);
+}
+{
+  color:var(--main-color);
+  background-color:var(--main-bgcolor);
+}
+optgroup:disabled {
+  background-color:var(--main-bgcolor);
+}
+input[type="image"] {
+  background-color:var(--main-bgcolor);
+}
+input[type="file"] {
+  color:var(--main-color);
+  background-color:var(--main-bgcolor);
+}
+input[type="file"] > label {
+  color:var(--main-color);
+}
+input[type="checkbox"] {
+  background-color:var(--main-bgcolor);
+  color:var(--main-color);
+}
+input[type="color"],
+input[type="submit"] {
+  background-color:var(--main-bgcolor);
+}
+input[type="submit"] {
+  color:var(--main-color);
+}
+input[type="color"]:hover,
+input[type="submit"]:hover {
+  background-color:var(--main-bgcolor);
+}
+input[type="submit"]:hover {
+  color:var(--main-color);
+}
+input[type="color"]:active:hover,
+input[type="submit"]:active:hover {
+  background-color:var(--main-bgcolor);
+}
+input[type="submit"]:active:hover {
+  color:var(--main-color);
+}
+input[type="color"]::-moz-focus-inner,
+input[type="color"]:-moz-focusring::-moz-focus-inner,
+input[type="submit"]:-moz-focusring::-moz-focus-inner {
+  border-color:var(--main-bgcolor);
+}
+input[type="color"]:disabled:active,
+input[type="color"]:disabled,
+input[type="submit"]:disabled {
+  color:var(--main-color);
+}
+output:-moz-ui-invalid {
+  color:var(--main-color);
+}
+@media print {
+  input, textarea, select, button {
+  }
+  input[type="file"] { height: 2em; }
+}
+progress {
+  border-right-color:var(--main-bgcolor);
+  border-bottom-color:var(--main-bgcolor);
+  background-color:var(--main-bgcolor);
+}
+::-moz-progress-bar {
+  background-color:var(--main-bgcolor);
+}
+input[type=range]::-moz-range-thumb {
+  background-color:var(--main-bgcolor);
+}
+input[type="number"] > div > div > div:hover {
+  background-color:var(--main-bgcolor);
+}
+input[type="time"]:-moz-read-only {
+  color:var(--main-color);
+}
+:-moz-autofill-preview {
+  color:var(--main-color);
+}
+/******************/
