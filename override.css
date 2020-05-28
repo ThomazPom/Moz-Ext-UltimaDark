@@ -20,6 +20,10 @@ body,html{
 	opacity: 1;
 	color:var(--main-color);
 }
+img,video
+{
+  border-radius: 5px;
+}
 aa{
 	color: rgb(112, 112, 255);
 }

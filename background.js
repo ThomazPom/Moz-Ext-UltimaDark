@@ -100,7 +100,7 @@ function monitorBeforeRequest(details) {
 
     if(details.type=="stylesheet")
     {
-      str=str.replace(/(["}\n;])/g,"$1 ")  
+      str=str.replace(/([}\n;])/g,"$1 ")
     }
     else
     {
@@ -143,10 +143,6 @@ function monitorBeforeRequest(details) {
         })
 
 
-      if(str.includes(".z0>.L3"))
-      {
-        console.log(str);
-      }
      var bgvals=[...str.matchAll(/(^|[^a-z0-9-])(color|background(-color|-image)?)[\s\t]*?:[\s\t]*?([^"}\n;]*?)[\s\t]*?(![\s\t]*?important)?[\s\t]*?($|["}\n;\\])/gi)]
 
       var varbasedrgx =  /(^|[^a-z0-9-])var[\s\t]*?\([\s\t]*?(--[a-z0-9-]+)[\s\t]*?\)/gi;
@@ -187,7 +183,7 @@ function monitorBeforeRequest(details) {
         }
         if(isvarbased)
         {
-          var suffix = ["background","background-color"].includes(property)?"-bg":"-fg";
+          var suffix = ["background","background-color","background-image"].includes(property)?"-bg":"-fg";
           replacestr=start+property+":"+value.replace(varbasedrgx,"var($2"+suffix+")")+important+end;
         }
 
