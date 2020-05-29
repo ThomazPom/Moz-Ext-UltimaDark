@@ -4,7 +4,52 @@ window.dark_object=
   foreground:{
     inject:function()
     {
-      console.log("LOL IM THERE");
+          ud.frontWatch=[["background-color","backgroundColor"]];
+          ud.revert_frontWatch=[["color","color"]]
+          ud.Inspector = class Inspector {
+          constructor(leType, atName,watcher=x=>{},applyOnReturn=false) {
+              var leProto = leType instanceof Function ? leType.prototype : leType
+              var originalMethod = leProto[atName]
+              var inspectMethod = function() {
+                var callresult = originalMethod.apply(this, arguments)
+                var apply_result=watcher.apply(null,applyOnReturn?[callresult]:arguments)
+                return callresult;
+            }
+            if(leProto[atName].name != "inspectMethod")
+            {
+              leProto[atName] = inspectMethod
+            }
+            console.log("Now watching",leType.name, originalMethod, "in", document.location.href)
+        }
+      }
+      console.log("UltimaDark is loaded");
+
+
+      ud.watcher=function(){
+        [...arguments].forEach(elem=>{
+            if(!(elem instanceof Element)){return}
+            if(elem instanceof HTMLStyleElement)
+            {
+                var observer2 = new MutationObserver(mutationreacord=>{
+
+                  var str=elem.innerHTML
+                  if(!str.startsWith("/*watched_ultimadark*/"))
+                  {
+                    str= str.replace(/([}\n;])/g,"$1 ")
+                    str = ud.edit_str(str,"foreground")
+                    elem.innerHTML="/*watched_ultimadark*/"+str;
+                  }
+                });
+                var innerhtml_config = { characterData: true, attributes: false, childList: true, subtree: true };
+                observer2.observe(elem, innerhtml_config);
+              //
+            }
+
+        })
+      }
+
+
+      new ud.Inspector(Document, "createElement",ud.watcher,true);
     }
 
   },
@@ -40,6 +85,7 @@ window.dark_object=
   },
   both:{
     install:function(){
+      document.o_createElement=document.createElement;
       window.ud={
         min:Math.min,
         max:Math.max,
@@ -106,6 +152,73 @@ window.dark_object=
         {
             var testresult = ud.eget_color(possiblecolor,"background","background-color")
             return testresult.filter(x=>x).length?testresult:false
+        },
+        edit_str:function(str,source="background"){
+          str = str.replace(/(^|[^a-z0-9-])(border-((top|bottom)-(left|right)-)?radius?[\s\t]*?:[\s\t]*?([5-9]|[1-9][0-9]|[1-9][0-9][0-9])[a-zA-Z\s\t%]+)($|["}\n;])/gi,
+          "$1;filter:brightness(0.95);box-shadow: 0 0 5px 1px rgba(0,0,0,0)!important;border:1px solid rgba(255,255,255,0.1)!important;$2$7") ;
+
+          var bgvals= [...str.matchAll(/(^|[^a-z0-9-])(--[a-z0-9-]+)[\s\t]*?:[\s\t]*?((#|rgba?)[^"}\n;]*?)[\s\t]*?($|["}\n;])/gi )]//OK
+          bgvals.forEach(function(bgval){
+            var replacestr = bgval[1]
+              +bgval[2]+":"+((bgval[3]))+";"
+              +bgval[2]+"-fg:"+ud.revert_rgba(...ud.eget_color(bgval[3]))+";"
+              +bgval[2]+"-bg:"+ud.rgba(...ud.eget_color(bgval[3]))
+              +bgval[5]
+            str =str.replace(new RegExp(ud.escapeRegExp(bgval[0]),"g"),replacestr)//OK
+          })
+          var bgvals=[...str.matchAll(/(^|[^a-z0-9-])(color|background(-color|-image)?)[\s\t]*?:[\s\t]*?([^"}\n;]*?)[\s\t]*?(![\s\t]*?important)?[\s\t]*?($|["}\n;\\])/gi)]
+          var varbasedrgx =  /(^|[^a-z0-9-])var[\s\t]*?\([\s\t]*?(--[a-z0-9-]+)[\s\t]*?\)/gi;
+          var o_strlen=str.length
+          bgvals.forEach(function(bgval)
+          {
+            var replacestr=o_str=bgval[0];
+            var property=bgval[2];
+            var value=bgval[4]
+            var start=bgval[1];
+            var important=bgval[5]||"";
+            var end=bgval[6];
+            if(str.source="background" && bgval.index+bgval.length==o_strlen && !value.trim().length){
+             str=str+"unset;noprop:"
+              return;
+            }
+            var isvarbased = value.match(varbasedrgx)
+            if(value.match(/gradient[\s\t]*?\(/))
+            {
+              valuebefore=value;
+                  value.match(/(rgba?\([0-9,.\s\t]+?\)|#[a-f0-9]{2,8}|[a-z-]+)/gi).forEach(x=>{
+                  var is_color_result=ud.is_color(x)
+                  if(is_color_result)
+                  {
+                      value=value.replace(x,ud.rgba(...is_color_result));
+                  }
+
+              })
+            }
+            if(isvarbased)
+            {
+              var suffix = ["background","background-color","background-image"].includes(property)?"-bg":"-fg";
+              replacestr=start+property+":"+value.replace(varbasedrgx,"var($2"+suffix+")")+important+end;
+            }
+            else if(property=="background-image")
+            {
+              replacestr=start+property+":"+value+important+end
+            }
+            else if(property=="background")
+            {
+              replacestr=start+property+":"+value+";background-color:"+(ud.rgba(...ud.eget_color(value,property,"background-color")))+important+end
+          
+            }
+            else if(property=="background-color")
+            {
+              replacestr=start+property+":"+(ud.rgba(...ud.eget_color(value,property,property)))+important+end
+            }
+            else if(["color"].includes(property))
+            {
+              replacestr=start+property+":"+(ud.revert_rgba(...ud.eget_color(value,property,property)))+important+end
+            }
+            str =str.replace(new RegExp(ud.escapeRegExp(o_str),"g"),replacestr)//OK
+          });
+          return str;
         }
       }
     }
@@ -133,81 +246,19 @@ window.dark_object=
                 str=str.replace(subval[0],subval[0].replace(/(;)/g,"$1 "))
               });
               
+                  str= str.replace(/integrity/g,"") // too wide
+                  str= str.replace(/checksum/g,"")  // too wide
+            }
 
+            str=ud.edit_str(str)
+            if(["main_frame","sub_frame"].includes(details.type) && !headFound && str.match(/<head>/))//inject foreground script
+            {
+              headFound=true;
+              str=str.replace(/(<head>)/,"$1"+ud.injectscripts_str)
             }
             //  str=str.replace(/(^|[^a-z0-9-])(color|background(-color)?)[\s\t]*?:[\s\t]*?([^"}\n;]*?)[\s\t]*?![\s\t]*?important[\s\t]*?($|["}\n;])/gi,"$1$2:$4$5");//VERYYOK
-            str= str.replace(/integrity/g,"") // too wide
-            str= str.replace(/checksum/g,"")  // too wide
-            str = str.replace(/(^|[^a-z0-9-])(border-((top|bottom)-(left|right)-)?radius?[\s\t]*?:[\s\t]*?([5-9]|[1-9][0-9]|[1-9][0-9][0-9])[a-zA-Z\s\t%]+)($|["}\n;])/gi,
-        "$1;filter:brightness(0.95);box-shadow: 0 0 5px 1px rgba(0,0,0,0)!important;border:1px solid rgba(255,255,255,0.1)!important;$2$7") ;
-
-        var bgvals= [...str.matchAll(/(^|[^a-z0-9-])(--[a-z0-9-]+)[\s\t]*?:[\s\t]*?((#|rgba?)[^"}\n;]*?)[\s\t]*?($|["}\n;])/gi )]//OK
-        bgvals.forEach(function(bgval){
-          var replacestr = bgval[1]
-            +bgval[2]+":"+((bgval[3]))+";"
-            +bgval[2]+"-fg:"+ud.revert_rgba(...ud.eget_color(bgval[3]))+";"
-            +bgval[2]+"-bg:"+ud.rgba(...ud.eget_color(bgval[3]))
-            +bgval[5]
-          str =str.replace(new RegExp(ud.escapeRegExp(bgval[0]),"g"),replacestr)//OK
-        })
-        var bgvals=[...str.matchAll(/(^|[^a-z0-9-])(color|background(-color|-image)?)[\s\t]*?:[\s\t]*?([^"}\n;]*?)[\s\t]*?(![\s\t]*?important)?[\s\t]*?($|["}\n;\\])/gi)]
-        var varbasedrgx =  /(^|[^a-z0-9-])var[\s\t]*?\([\s\t]*?(--[a-z0-9-]+)[\s\t]*?\)/gi;
-        var o_strlen=str.length
-        bgvals.forEach(function(bgval)
-      {
-        var replacestr=o_str=bgval[0];
-        var property=bgval[2];
-        var value=bgval[4]
-        var start=bgval[1];
-        var important=bgval[5]||"";
-        var end=bgval[6];
-        if(bgval.index+bgval.length==o_strlen && !value.trim().length){
-         str=str+"unset;noprop:"
-          return;
-        }
-        var isvarbased = value.match(varbasedrgx)
-        if(value.match(/gradient[\s\t]*?\(/))
-        {
-          valuebefore=value;
-              value.match(/(rgba?\([0-9,.\s\t]+?\)|#[a-f0-9]{2,8}|[a-z-]+)/gi).forEach(x=>{
-              var is_color_result=ud.is_color(x)
-              if(is_color_result)
-              {
-                  value=value.replace(x,ud.rgba(...is_color_result));
-              }
-
-          })
-        }
-        if(isvarbased)
-        {
-          var suffix = ["background","background-color","background-image"].includes(property)?"-bg":"-fg";
-          replacestr=start+property+":"+value.replace(varbasedrgx,"var($2"+suffix+")")+important+end;
-        }
-        else if(property=="background-image")
-        {
-          replacestr=start+property+":"+value+important+end
-        }
-        else if(property=="background")
-        {
-          replacestr=start+property+":"+value+";background-color:"+(ud.rgba(...ud.eget_color(value,property,"background-color")))+important+end
       
-        }
-        else if(property=="background-color")
-        {
-
-          replacestr=start+property+":"+(ud.rgba(...ud.eget_color(value,property,property)))+important+end
-        }
-        else if(["color"].includes(property))
-        {
-          replacestr=start+property+":"+(ud.revert_rgba(...ud.eget_color(value,property,property)))+important+end
-        }
-          str =str.replace(new RegExp(ud.escapeRegExp(o_str),"g"),replacestr)//OK
-        });
-        if(["main_frame","sub_frame"].includes(details.type) && !headFound && str.match(/<head>/))//inject foreground script
-        {
-          headFound=true;
-          str=str.replace(/(<head>)/,"$1"+ud.injectscripts_str)
-        }
+            
 
 
         filter.write(encoder.encode(str));
