@@ -24,20 +24,23 @@ window.dark_object=
       }
       console.log("UltimaDark is loaded");
 
-
+      ud.styleflag="/*watched_ultimadark*/"
       ud.watcher=function(){
         [...arguments].forEach(elem=>{
             if(!(elem instanceof Element)){return}
+            
             if(elem instanceof HTMLStyleElement)
             {
+              elem.setAttribute("data-ultima", "ud_style");
                 var observer2 = new MutationObserver(mutationreacord=>{
 
-                  var str=elem.innerHTML
-                  if(!str.startsWith("/*watched_ultimadark*/"))
+                  var str2=elem.innerHTML;
+                  if(!str2.endsWith(ud.styleflag))
                   {
-                    str= str.replace(/([}\n;])/g,"$1 ")
-                    str = ud.edit_str(str,"foreground")
-                    elem.innerHTML="/*watched_ultimadark*/"+str;
+                    str2= str2.replace(/((([}\n;])))/g,"$3 ") //very strange colision with str $1
+                    str2 = ud.edit_str(str2,"foreground")
+                    //console.log(str);
+                    elem.innerHTML=[str2,ud.styleflag].join("");
                   }
                 });
                 var innerhtml_config = { characterData: true, attributes: false, childList: true, subtree: true };
@@ -230,7 +233,7 @@ window.dark_object=
         let encoder = new TextEncoder();
         var headFound = false;
         filter.ondata = event => {
-            let str = decoder.decode(event.data, {stream: true});
+            var str = decoder.decode(event.data, {stream: true});
             if(details.type=="stylesheet")
             {
                 str=str.replace(/([}\n;])/g,"$1 ")
@@ -253,6 +256,7 @@ window.dark_object=
             str=ud.edit_str(str)
             if(["main_frame","sub_frame"].includes(details.type) && !headFound && str.match(/<head>/))//inject foreground script
             {
+              console.log(str);
               headFound=true;
               str=str.replace(/(<head>)/,"$1"+ud.injectscripts_str)
             }
