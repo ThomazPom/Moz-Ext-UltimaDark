@@ -1,14 +1,14 @@
-<style>
-Can be set :
-After cretion->watch innerhtml -> possible
+//<style>
+//Can be set :
+//After cretion->watch innerhtml -> possible
 //After appending->watch innerhtml
-<Elem>.style 
-Can be set :
-After creation->watch style -> possible
+//<Elem>.style 
+//Can be set :
+//After creation->watch style -> possible
 //After appending->watch style
-<Elem>.style.property 
-Can be set :
-After creation->watch style.property -> possible
+//<Elem>.style.property 
+//Can be set :
+//After creation->watch style.property -> possible
 //After appending->watch style
 
 

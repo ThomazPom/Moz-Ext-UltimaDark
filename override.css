@@ -1,5 +1,4 @@
-
-
+/*watched_ultimadark*/
 :root {
   --main-bgcolor: rgb(60,60,60);
   --main-color: unset;
@@ -24,6 +23,7 @@ img,video
 {
   border-radius: 5px;
 }
+
 aa{
 	color: rgb(112, 112, 255);
 }
@@ -38,6 +38,7 @@ path {
 input {
   background-color:var(--main-bgcolor);
   color:var(--main-color);
+  border-bottom:1px solid rgba(255,255,255,0.2) !important;
 }
 textarea {
   background-color:var(--main-bgcolor);
