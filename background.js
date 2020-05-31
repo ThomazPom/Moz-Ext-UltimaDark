@@ -27,7 +27,7 @@ window.dark_object=
       ud.watcher=function(){
         [...arguments].forEach(elem=>{
             if(!(elem instanceof Element)){return}
-            
+      
             if(elem instanceof HTMLStyleElement)
             { 
               elem.setAttribute("data-ultima", "ud_style");
@@ -82,7 +82,7 @@ window.dark_object=
       }
 
       console.log("UltimaDark is loaded");
-      
+
     }
 
   },
@@ -110,7 +110,7 @@ window.dark_object=
         function connected(p) {
           portFromCS = p;
           portFromCS.onMessage.addListener(function(m) {
-          
+    
           });
         }
         browser.runtime.onConnect.addListener(connected);
@@ -125,6 +125,7 @@ window.dark_object=
         round:Math.round,
         minbright:200,
         minbrightbg:10,
+        nonBreakScriptIdent:"§§IDENTIFIER§§",
         maxbright:60, // main bgcolor
         maxbrighttrigger:200,
         knownvariables:{},
@@ -139,10 +140,10 @@ window.dark_object=
         rgba:function(r,g,b,a){
             a= typeof a == "number"?a:1
             var maxcol = ud.max(r,g,b);
-            
+      
 //    if(maxcol<=200){return "rgba("+max(r,200)+","+max(g,200)+","+max(b,200)+","+(a)+")";}
             if(maxcol<=ud.maxbrighttrigger){
-            
+      
               return ud.rgba_val(...[r,g,b].map(x => ud.max(ud.minbrightbg,x)),a);
             }
             return ud.rgba_val(...[r,g,b].map(x => ud.rgba_mode1(x,maxcol-ud.maxbright)),a);
@@ -153,7 +154,7 @@ window.dark_object=
             a= typeof a == "number"?a:1
             var mincol = ud.min(r,g,b);
             if(mincol>=ud.minbright){return ud.rgba_val(r,g,b,a)}
-            
+      
             var delta = ud.minbright-mincol;
             r=r+delta;g=g+delta;b=b+delta;
             var multiplier = 255/ud.max(r,g,b)
@@ -204,9 +205,9 @@ window.dark_object=
             str =str.replace(new RegExp(ud.escapeRegExp(bgval[0]),"g"),replacestr)//OK
           })
           var bgvals=[...str.matchAll(ud.interventRegex)]
-           
+     
           var o_strlen=str.length
-          
+    
           bgvals.forEach(function(bgval)
           {
             var replacestr=o_str=bgval[0];
@@ -236,8 +237,7 @@ window.dark_object=
             }
              if(value.startsWith("url("))
             {
-
-              var valuedown="linear-gradient(to bottom, rgba(0,0,0,0.8), rgba(0,0,0,0.8)), "+value;// Yaaaay daker backgrounds, keeping colors
+              var valuedown="linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.3)), "+value;// Yaaaay daker backgrounds, keeping colors
               replacestr=start+property+":"+valuedown+important
               +";"
               +end
@@ -254,7 +254,7 @@ window.dark_object=
             else if(property=="background")
             {
               replacestr=start+property+":"+value+";background-color:"+(ud.rgba(...ud.eget_color(value,property,"background-color")))+important+end
-          
+    
             }
             else if(property=="background-color")
             {
@@ -265,13 +265,13 @@ window.dark_object=
 
 
               replacestr=start+property+":"+(ud.revert_rgba(...ud.eget_color(value,property,property)))+important+end
-             
+       
             }
-            
+      
             str =str.replace(new RegExp(ud.escapeRegExp(o_str),"g"),replacestr)//OK
           });
           return str;
-          
+    
 
         }
       }
@@ -279,7 +279,8 @@ window.dark_object=
         ud.variableRegex=/(^|[^a-z0-9-])(--[a-z0-9-]+)[\s\t]*?:[\s\t]*?((#|rgba?)[^"}\n;]*?)[\s\t]*?($|["}\n;])/gi,
         ud.variableBasedRegex=/(^|[^a-z0-9-])var[\s\t]*?\([\s\t]*?(--[a-z0-9-]+)[\s\t]*?\)/gi,
         ud.interventRegex=/(^|[^a-z0-9-])(color|background(-color|-image)?)[\s\t]*?:[\s\t]*?([^"}\n;]*?)[\s\t]*?(![\s\t]*?important)?[\s\t]*?($|["}\n;\\])/gi
-        ud.matchStylePart=new RegExp(["{[^}]+?((",[ud.radiusRegex,ud.variableRegex,ud.interventRegex ].map(x=>x.source).join(")|("),"))[^}]+?}"].join(""),"gi");
+    //    ud.matchStylePart=new RegExp(["{[^}]+?((",[ud.radiusRegex,ud.variableRegex,ud.interventRegex ].map(x=>x.source).join(")|("),"))[^}]+?}"].join(""),"gi");
+        ud.matchStylePart=/{[^}]+?[^}]+?}/gi
     }
   },
   misc:{
@@ -290,63 +291,53 @@ window.dark_object=
         var headFound = false;
         filter.ondata = event => {
             var str = decoder.decode(event.data, {stream: true});
-          
-            
+    
+      
             if(details.type=="stylesheet")
             {
   
- str=str.replace(/([{}}\n;])/g,"\t\n\t$1\t\n\t");
-                
-                [...str.matchAll(ud.matchStylePart)].forEach(function(stylepart){
-                  
-                  str=str.replace(stylepart[0],ud.edit_str(stylepart[0]));
-                });
+  if(str.includes(".intro-shelf .shelf-lead")){
+    console.log(str);
+  }
+                //str=str.replace(/([{}\n;])/g,"\t\n\t$1\t\n\t");
+                str=str.replace(/([{}\n;])/g,"$1 ");          
+               
             }
             else
             { 
 
               //str=str.replace(/([;{}])/g,"  $1  ");
-             
-
-              str=str.replace(/([{}}\n;])/g,"$1__IDENTIFIER__"); //woh was hard
-
+              str=str.replace(/([;{])/g,"$1"+ud.nonBreakScriptIdent);
               //str.replace(/<font([^>]*)/,"<span$1") pff ?? no
               [...str.matchAll(/(^|[^a-z0-9-])style="[^"]*?("|$)/gi)].forEach(subval=>{
+                  str=str.replace(subval[0],ud.edit_str(subval[0]))
              //     str=str.replace(subval[0],subval[0].replace(/(;)/g,"$1 "))
               });
-
-
-            [...str.matchAll(ud.matchStylePart)].forEach(function(stylepart){                  
-                  str=str.replace(stylepart[0],ud.edit_str(stylepart[0]));
-                });
-            
-
-
-
-
-              [...str.matchAll(/<style[^>]*?>.*?(<\/style[^>]*?>|$)/gi)].forEach(subval=>{
+//              [...str.matchAll(/<style[^>]*?>.*?(<\/style[^>]*?>|$)/gi)].forEach(subval=>{
              //   str=str.replace(subval[0],subval[0].replace(/(;)/g,"$1 "))
-              });
-              
+  //            });
+        
                  // str=str.replace(/<style(.*?>)/g,'<style onload="" ud-data="ud_broke_style" $1');
                   str= str.replace(/integrity/g,"") // too wide
                   str= str.replace(/checksum/g,"")  // too wide
-                
-                  str=str.replace(/(_){1,2}IDENTIFIER(_){1,2}/g,"");      
+          
             }
-
+            [...str.matchAll(ud.matchStylePart)].forEach(function(stylepart){            
+                  str=str.replace(stylepart[0],ud.edit_str(stylepart[0]));
+            });
             //    str=ud.edit_str(str);
 
 
+              str=str.replace(new RegExp(ud.nonBreakScriptIdent,"g"),"")
             if(["main_frame","sub_frame"].includes(details.type) && !headFound && str.includes("head"))//inject foreground script
             {
              // console.log(str);
               headFound=true;
-              str=str.replace("<head>","<head>"+ud.injectscripts_str)//When using regex replace, care about $1+ presents in injectedscript_str
+        //      str=str.replace("<head>","<head>"+ud.injectscripts_str)//When using regex replace, care about $1+ presents in injectedscript_str
             }
             //  str=str.replace(/(^|[^a-z0-9-])(color|background(-color)?)[\s\t]*?:[\s\t]*?([^"}\n;]*?)[\s\t]*?![\s\t]*?important[\s\t]*?($|["}\n;])/gi,"$1$2:$4$5");//VERYYOK
+
       
-            
 
 
         filter.write(encoder.encode(str));
@@ -542,7 +533,7 @@ function monitorBeforeRequest(details) {
         if(value.match(/gradient[\s\t]*?\(/))
         {
           value.match(/(rgba?\([0-9,.\s\t]+?\)|#[a-f0-9]{2,8}|[a-z-]+)/gi).forEach(x=>{
-            
+      
               var is_color_result=is_color(x)
               if(is_color_result)
               {
@@ -577,7 +568,7 @@ function monitorBeforeRequest(details) {
         else if(["color"].includes(property))
         {
           replacestr=start+property+":"+(revert_rgba(...eget_color(value,property,property)))+important+end
-         
+   
         }
 
        //   console.log("-",o_str,"-",replacestr,"-",str.includes(o_str))
