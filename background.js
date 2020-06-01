@@ -7,12 +7,14 @@ window.dark_object=
           ud.frontWatch=[["background-color","backgroundColor"]];
           ud.revert_frontWatch=[["color","color"]]
           ud.Inspector = class Inspector {
-          constructor(leType, atName,watcher=x=>{},applyOnReturn=false) {
+          constructor(leType, atName,watcher=x=>{},applyOnReturn=x=>{}) {
               var leProto = leType instanceof Function ? leType.prototype : leType
               var originalMethod = leProto[atName]
               var inspectMethod = function() {
+
+                var watcher_result=watcher.apply(null,arguments)
                 var callresult = originalMethod.apply(this, arguments)
-                var apply_result=watcher.apply(null,applyOnReturn?[callresult]:arguments)
+                var apply_result=applyOnReturn.apply(null,[callresult])
                 return callresult;
             }
             if(leProto[atName].name != "inspectMethod")
@@ -32,11 +34,11 @@ window.dark_object=
             { 
               elem.setAttribute("data-ultima", "ud_style");
                 var observer2 = new MutationObserver(mutationreacord=>{
-
+                  console.log(elem);
                   var str2=elem.innerHTML;
                   if(!str2.endsWith(ud.styleflag))
                   {
-                    str2= str2.replace(/((([}\n;])))/g,"$3 ") //very strange colision with str $1
+                    str2= str2.replace(/((([}\n;])))/g,"$3 ") // colision with $1
                     str2 = ud.edit_str(str2,"foreground")
                     //console.log(str);
                     elem.innerHTML=[str2,ud.styleflag].join("");
@@ -68,12 +70,13 @@ window.dark_object=
       }
 
      // ud.prototypeEditor( Element,    "innerHTML",     ud.frontEditor,     (elem,value)=>elem instanceof HTMLStyleElement       );
-      new ud.Inspector(Document, "createElement",ud.watcher,true);
+  //    new ud.Inspector(Document, "createElement",x=>{},x=>{console.log(x,new Error())});;
+    //  new ud.Inspector(CSSStyleSheet,"addRule",console.log,console.log);
 
       ud.frontEditor=function(elem,value){
           if(!value.endsWith(ud.styleflag))
           {
-            value=value.replace(/((([}\n;])))/g,"$3 ") //very strange colision with str $1
+            value=value.replace(/((([}\n;])))/g,"$3 ") //Collision with $str
             value = ud.edit_str(value,"foreground")
             elem.innerHTML=[value
             ,ud.styleflag
@@ -195,6 +198,8 @@ window.dark_object=
           str = str.replace(ud.radiusRegex,
           "$1;filter:brightness(0.95);box-shadow: 0 0 5px 1px rgba(0,0,0,0)!important;border:1px solid rgba(255,255,255,0.1)!important;$2$7") ;
 
+          //maskRegex=/(^|[^a-z0-9-])(background-(position(-[xy])?|clip|size|origin|repeat))[\s\t]*?:[\s\t]*?([^};\\\n]+?)[\s\t]*?($|[};\\\n])/gi;
+        //  str=str.replace(maskRegex,"$1mask-$3:$5;$2:$5$6");
           var bgvals= [...str.matchAll(ud.variableRegex)]//OK
           bgvals.forEach(function(bgval){
             var replacestr = bgval[1]
@@ -237,10 +242,8 @@ window.dark_object=
             }
              if(value.startsWith("url("))
             {
-              var valuedown="linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.3)), "+value;// Yaaaay daker backgrounds, keeping colors
-              replacestr=start+property+":"+valuedown+important
-              +";"
-              +end
+              var valuedown="linear-gradient(to bottom, rgba(0,0,0,0.4), rgba(0,0,0,0.4)), "+value;// Yaaaay daker backgrounds, keeping colors
+              replacestr=start+property+":"+valuedown+important+";background-blend-mode:darken;mix-blend-mode:screen"+end
             }
             else if(isvarbased)
             {
@@ -295,10 +298,7 @@ window.dark_object=
       
             if(details.type=="stylesheet")
             {
-  
-  if(str.includes(".intro-shelf .shelf-lead")){
-    console.log(str);
-  }
+
                 //str=str.replace(/([{}\n;])/g,"\t\n\t$1\t\n\t");
                 str=str.replace(/([{}\n;])/g,"$1 ");          
                
@@ -333,9 +333,9 @@ window.dark_object=
             {
              // console.log(str);
               headFound=true;
-        //      str=str.replace("<head>","<head>"+ud.injectscripts_str)//When using regex replace, care about $1+ presents in injectedscript_str
+              str=str.replace("<head>","<head>"+ud.injectscripts_str)//When using regex replace, care about $1+ presents in injectedscript_str
             }
-            //  str=str.replace(/(^|[^a-z0-9-])(color|background(-color)?)[\s\t]*?:[\s\t]*?([^"}\n;]*?)[\s\t]*?![\s\t]*?important[\s\t]*?($|["}\n;])/gi,"$1$2:$4$5");//VERYYOK
+              str=str.replace(/(^|[^a-z0-9-])(color|background(-color)?)[\s\t]*?:[\s\t]*?([^"}\n;]*?)[\s\t]*?![\s\t]*?important[\s\t]*?($|["}\n;])/gi,"$1$2:$4$5");//VERYYOK
 
       
 
