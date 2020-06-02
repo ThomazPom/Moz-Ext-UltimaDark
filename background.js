@@ -198,8 +198,6 @@ window.dark_object=
           str = str.replace(ud.radiusRegex,
           "$1;filter:brightness(0.95);box-shadow: 0 0 5px 1px rgba(0,0,0,0)!important;border:1px solid rgba(255,255,255,0.1)!important;$2$7") ;
 
-          //maskRegex=/(^|[^a-z0-9-])(background-(position(-[xy])?|clip|size|origin|repeat))[\s\t]*?:[\s\t]*?([^};\\\n]+?)[\s\t]*?($|[};\\\n])/gi;
-        //  str=str.replace(maskRegex,"$1mask-$3:$5;$2:$5$6");
           var bgvals= [...str.matchAll(ud.variableRegex)]//OK
           bgvals.forEach(function(bgval){
             var replacestr = bgval[1]
@@ -242,8 +240,8 @@ window.dark_object=
             }
              if(value.startsWith("url("))
             {
-              var valuedown="linear-gradient(to bottom, rgba(0,0,0,0.4), rgba(0,0,0,0.4)), "+value;// Yaaaay daker backgrounds, keeping colors
-              replacestr=start+property+":"+valuedown+important+";background-blend-mode:darken;mix-blend-mode:screen"+end
+              var valuedown=[value,value,value,value].join(",");// Yaaaay daker backgrounds, keeping colors
+              replacestr=start+property+":"+valuedown+important+";background-blend-mode:overlay,color,exclusion"+end
             }
             else if(isvarbased)
             {
@@ -265,10 +263,7 @@ window.dark_object=
             }
             else if(["color"].includes(property))
             {
-
-
               replacestr=start+property+":"+(ud.revert_rgba(...ud.eget_color(value,property,property)))+important+end
-       
             }
       
             str =str.replace(new RegExp(ud.escapeRegExp(o_str),"g"),replacestr)//OK
@@ -283,7 +278,7 @@ window.dark_object=
         ud.variableBasedRegex=/(^|[^a-z0-9-])var[\s\t]*?\([\s\t]*?(--[a-z0-9-]+)[\s\t]*?\)/gi,
         ud.interventRegex=/(^|[^a-z0-9-])(color|background(-color|-image)?)[\s\t]*?:[\s\t]*?([^"}\n;]*?)[\s\t]*?(![\s\t]*?important)?[\s\t]*?($|["}\n;\\])/gi
     //    ud.matchStylePart=new RegExp(["{[^}]+?((",[ud.radiusRegex,ud.variableRegex,ud.interventRegex ].map(x=>x.source).join(")|("),"))[^}]+?}"].join(""),"gi");
-        ud.matchStylePart=/{[^}]+?[^}]+?}/gi
+        ud.matchStylePart=/{[^}]+?[^}]+?}/gi //breaks amazon
     }
   },
   misc:{
