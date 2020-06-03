@@ -26,31 +26,66 @@ window.dark_object=
       }
 
       ud.styleflag="/*watched_ultimadark*/"
-      ud.watcher=function(){
+
+      ud.backPoperties=[["background","background-color"],["background-color"]];
+      ud.colorProperties=[["color"]];
+      ud.propertyEditor=function(aProperty,arule,howto)
+      {
+        var rulelist = ([arule,...arule.cssRules||[]]).filter(x=>x.style);
+        rulelist.forEach(function(arule){
+              var propSource = aProperty[0]
+              var propDest = aProperty[1]||propSource;
+              var value = arule.style[propSource]
+              var valueDest = arule.style[propDest]
+              if(value && !valueDest.includes(ud.styleflag))
+              {
+                  howto(propSource,propDest,value,valueDest,arule)
+              }
+        })
+      }
+      ud.styleEditor=function(astyle)
+      {
+
+                  [...document.styleSheets].filter(x=>x.ownerNode===astyle).forEach(aSheet=>{
+                      
+                      [...(aSheet.rules||aSheet.cssRules)].forEach(arule=>{
+                            ud.backPoperties.forEach(aProperty=>{
+                                ud.propertyEditor(aProperty,arule,(propSource,propDest,value,valueDest,arule)=>{      
+                                    var is_color_result = ud.is_color(value)
+                                    if(is_color_result)
+                                    {
+                                       arule.style[propDest]=ud.rgba(...is_color_result)+ud.styleflag
+                                    }
+                                })
+                            })
+                            ud.colorProperties.forEach(aProperty=>{
+                                ud.propertyEditor(aProperty,arule,(propSource,propDest,value,valueDest,arule)=>{      
+                                    var is_color_result = ud.is_color(value)
+                                    console.log(propSource,propDest,value,valueDest,arule,is_color_result)
+                                    if(is_color_result)
+                                    {
+                                       arule.style[propDest]=ud.revert_rgba(...is_color_result)+ud.styleflag
+                                    }
+                                })
+                            })
+                      })
+                  })
+      }
+
+      ud.styleWatcher=function(){
         [...arguments].forEach(elem=>{
-            if(!(elem instanceof Element)){return}
-      
-            if(elem instanceof HTMLStyleElement)
+           
+                  
+            if(elem instanceof HTMLStyleElement && elem.getAttribute("data-ultima")!="ud_style_watched")
             { 
-              elem.setAttribute("data-ultima", "ud_style");
+                  
+              elem.setAttribute("data-ultima", "ud_style_watched");
                 var observer2 = new MutationObserver(mutationreacord=>{
-                  console.log(elem);
-                  var str2=elem.innerHTML;
-                  if(!str2.endsWith(ud.styleflag))
-                  {
-                    str2= str2.replace(/((([}\n;])))/g,"$3 ") // colision with $1
-                    str2 = ud.edit_str(str2,"foreground")
-                    //console.log(str);
-                    elem.innerHTML=[str2,ud.styleflag].join("");
-                  }
+                  ud.styleEditor(elem)
                 });
                 var innerhtml_config = { characterData: true, attributes: false, childList: true, subtree: true };
                 observer2.observe(elem, innerhtml_config);
-              //
-            }
-            else if(!elem instanceof HTMLScriptElement)
-            {
-              console.log(elem);
+             
             }
 
         })
@@ -70,7 +105,7 @@ window.dark_object=
       }
 
      // ud.prototypeEditor( Element,    "innerHTML",     ud.frontEditor,     (elem,value)=>elem instanceof HTMLStyleElement       );
-  //    new ud.Inspector(Document, "createElement",x=>{},x=>{console.log(x,new Error())});;
+      new ud.Inspector(Document, "createElement",x=>{},ud.styleWatcher);;
     //  new ud.Inspector(CSSStyleSheet,"addRule",console.log,console.log);
 
       ud.frontEditor=function(elem,value){
@@ -183,13 +218,17 @@ window.dark_object=
           thespan.style=colorprop
           document.head.appendChild(thespan)
           var style = getComputedStyle(thespan)
-          var returnvalue = [...(style[whatget].matchAll(/[0-9\.]+/g))].map(x=>parseFloat(x))
+          var returnvalue = [...[...(style[whatget].matchAll(/[0-9\.]+/g))].map(x=>parseFloat(x)),1].splice(0,4)
           thespan.remove();
           ud.knownvariables[colorprop+whatget]=returnvalue;
           return returnvalue
         },
         is_color:function(possiblecolor)
         {
+              //if(possiblecolor.match(/^(rgba?\([0,.\s\t]+?\))/))
+              //{
+           //     return possiblecolor.match(/((rgb)|,)/g).map(x=>0)
+             // }
             var testresult = ud.eget_color(possiblecolor,"background","background-color")
             return testresult.filter(x=>x).length?testresult:false
         },
@@ -238,10 +277,11 @@ window.dark_object=
 
               })
             }
-             if(value.startsWith("url("))
+             if(property.startsWith("background") && value.startsWith("url(") && (!value.match(/(logo|icon)/) || value.match(/(background)/)))
             {
-              var valuedown=[value,value,value,value].join(",");// Yaaaay daker backgrounds, keeping colors
-              replacestr=start+property+":"+valuedown+important+";background-blend-mode:overlay,color,exclusion"+end
+              var valueblend=["overlay","multiply","color","exclusion"].join(",");
+              var valuedown=[value,value,value,value,value].join(",");// Yaaaay daker backgrounds, keeping colors
+              replacestr=start+property+":"+valuedown+important+";background-blend-mode:"+valueblend+end
             }
             else if(isvarbased)
             {
