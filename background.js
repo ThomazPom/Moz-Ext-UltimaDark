@@ -43,33 +43,38 @@ window.dark_object=
               }
         })
       }
+      ud.styleInEdition=[];
       ud.styleEditor=function(astyle)
       {
-
-                  [...document.styleSheets].filter(x=>x.ownerNode===astyle).forEach(aSheet=>{
-                      
-                      [...(aSheet.rules||aSheet.cssRules)].forEach(arule=>{
-                            ud.backPoperties.forEach(aProperty=>{
-                                ud.propertyEditor(aProperty,arule,(propSource,propDest,value,valueDest,arule)=>{      
-                                    var is_color_result = ud.is_color(value)
-                                    if(is_color_result)
-                                    {
-                                       arule.style[propDest]=ud.rgba(...is_color_result)+ud.styleflag
-                                    }
-                                })
+            if (ud.styleInEdition.includes(astyle)) {
+              return;
+            }
+            ud.styleInEdition.push(astyle);
+            [...document.styleSheets].filter(x=>x.ownerNode===astyle).forEach(aSheet=>{      
+                  [...(aSheet.rules||aSheet.cssRules)].forEach(arule=>{
+                        ud.backPoperties.forEach(aProperty=>{
+                            ud.propertyEditor(aProperty,arule,(propSource,propDest,value,valueDest,arule)=>{      
+                                var is_color_result = ud.is_color(value)
+                                if(is_color_result)
+                                {
+                                   arule.style[propDest]=ud.rgba(...is_color_result)+ud.styleflag
+                                }
                             })
-                            ud.colorProperties.forEach(aProperty=>{
-                                ud.propertyEditor(aProperty,arule,(propSource,propDest,value,valueDest,arule)=>{      
-                                    var is_color_result = ud.is_color(value)
-                                   // console.log(propSource,propDest,value,valueDest,arule,is_color_result)
-                                    if(is_color_result)
-                                    {
-                                       arule.style[propDest]=ud.revert_rgba(...is_color_result)+ud.styleflag
-                                    }
-                                })
+                        })
+                        ud.colorProperties.forEach(aProperty=>{
+                            ud.propertyEditor(aProperty,arule,(propSource,propDest,value,valueDest,arule)=>{      
+                                var is_color_result = ud.is_color(value)
+                               // console.log(propSource,propDest,value,valueDest,arule,is_color_result)
+                                if(is_color_result)
+                                {
+                                   arule.style[propDest]=ud.revert_rgba(...is_color_result)+ud.styleflag
+                                }
                             })
-                      })
+                        })
                   })
+              })
+              ud.styleInEdition=ud.styleInEdition.filter(x=>x!=astyle)
+
       }
 
       ud.styleWatcher=function(){
@@ -214,7 +219,7 @@ window.dark_object=
           {
             return ud.knownvariables[colorprop+whatget];
           }
-          var thespan = thespanp || document.createElement("meta")
+          var thespan = thespanp || document.o_createElement("meta")
           thespan.style=colorprop
           document.head.appendChild(thespan)
           var style = getComputedStyle(thespan)
