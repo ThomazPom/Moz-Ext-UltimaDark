@@ -133,6 +133,33 @@ window.dark_object=
 
   },
   background:{
+    setListener:function(){
+        browser.storage.local.get(null, function(res) {
+            browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.monitorBeforeRequest);
+            if(ud.regiteredCS){ud.regiteredCS.unregister()}
+
+            if(!res.is_disabled)
+            {
+                  browser.webRequest.onBeforeRequest.addListener(
+                  dark_object.misc.monitorBeforeRequest,
+                    {
+                      urls : ["<all_urls>"],
+                      types:["stylesheet","main_frame","sub_frame"]
+
+                    },
+                    ["blocking"]
+                );
+
+              browser.contentScripts.register({
+                  matches: ["<all_urls>"],
+                  css : [{file:"override.css"}],
+                  runAt: "document_start",
+                  matchAboutBlank: true,
+                  allFrames: true
+                }).then(x=>{ud.regiteredCS=x});
+            }
+        });      
+    },
     install:function(){
         ud.injectscripts=[dark_object.both.install,dark_object.foreground.inject].map(code=>{
           var script=document.createElement("script");
@@ -141,26 +168,20 @@ window.dark_object=
         })
         ud.colorRegex=new RegExp(CSS_COLOR_NAMES_RGX,"gi");
         ud.injectscripts_str=ud.injectscripts.map(x=>x.outerHTML).join("")
-        browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.monitorBeforeRequest);
-        browser.webRequest.onBeforeRequest.addListener(
-          dark_object.misc.monitorBeforeRequest,
-            {
-              urls : ["<all_urls>"],
-              types:["stylesheet","main_frame","sub_frame"]
-
-            },
-            ["blocking"]
-        );
+        
         // Listen for onHeaderReceived for the target page.
         // Set "blocking" and "responseHeaders".
         var portFromCS;
         function connected(p) {
           portFromCS = p;
           portFromCS.onMessage.addListener(function(m) {
-    
+            console.log(m);
+            browser.storage.local.set(m,dark_object.background.setListener);
+            
           });
         }
         browser.runtime.onConnect.addListener(connected);
+        dark_object.background.setListener();
     }
   },
   both:{

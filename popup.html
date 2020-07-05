@@ -54,7 +54,45 @@ table {
 body, html {
 	height: 100%;
 }
+#disable_webext{
+	display:none;	
+}
 
+#disable_webext:checked+label>span{
+    border: solid /*ori*crimson*/rgba(60,11,11,1)/*sri*/ 3px;
+    background-color: /*ori*red*/rgba(60,11,11,1)/*sri*/;
+}
+
+#disable_webext+label .text::before{
+	content:'enabled';
+}
+#disable_webext:checked+label .text::before{
+	content:'disabled';
+}
+#disable_webext+label>span{
+
+	cursor: pointer;
+    background-color: #0ebf0e;
+    border-radius: 50px;
+    color: /*ori*white*/rgba(60,60,60,1)/*sri*/;
+    padding: 1px 1px 1px 1px;
+    border: solid /*ori*green*/rgba(11,128,11,1)/*sri*/ 3px;
+    text-align:center;
+    display:inline-block;
+    width:100px;
+
+}
+#disable_webext+label>span .bawl{
+background-color:/*ori*white*/rgba(60,60,60,1)/*sri*/;
+height: 20px;
+width: 20px;
+display:inline-block;
+float:right;
+border-radius:100%;
+}
+#disable_webext:checked+label>span .bawl{
+float:left;
+}
 body {
 	color: #fff;
 	margin: 0 auto;
@@ -256,9 +294,10 @@ a {
 a.btn-small span.btn {
 	height: 30px;
 }
+
 .label
 {
-text-shadow: 0px 0px 6px black;
+text-shadow: 0px 0px 6px /*ori*black*/rgba(11,11,11,1)/*sri*/;
 
 background: rgba(0,0,0,.1);
 
@@ -271,6 +310,27 @@ border-top-right-radius: 5px;
 display: table;
 
 padding: 10px 20px 0px 20px;
+}
+
+.label-after
+{
+	display: block;
+	cursor: pointer;
+	font-size: 14px;
+	padding: 0px 20px 0px 20px;
+	text-align: center;
+	margin-top: 0px;
+	margin-left: 5%;
+	margin-right:  5%;
+	border-top-left-radius: 0px;
+	border-top-right-radius: 0px;
+	border-bottom-left-radius: 5px;
+	border-bottom-right-radius: 5px;
+}
+.label-standalone
+{
+	border-radius: 5px;
+	padding: 10px 20px 10px 20px;	
 }
 .listextarea, .listextarea_monitorrgx
 {
@@ -304,5 +364,12 @@ padding: 10px 20px 0px 20px;
         <span class="left icon">⭐</span>
       </a>
   </div>
+      <div class="label  label-standalone">   	
+		       <input id="disable_webext" type="checkbox" />
+		  <label for="disable_webext">UtimaDark is <span dataoncheck="blue"><span class="bawl"></span><span class='text'>&nbsp;</span></span>
+      </div>
+  </div>
+  
+    <script type="text/javascript" src="popup.js"></script>
     </body>
 </html>
