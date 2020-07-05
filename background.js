@@ -76,7 +76,10 @@ window.dark_object=
               ud.styleInEdition=ud.styleInEdition.filter(x=>x!=astyle)
 
       }
-
+      ud.raw_styleEditor=function(astyle)
+      {
+        astyle.innerHTML= ud.edit_str(astyle.innerHTML)
+      }
       ud.styleWatcher=function(){
         [...arguments].forEach(elem=>{
            
@@ -110,7 +113,7 @@ window.dark_object=
       }
 
      // ud.prototypeEditor( Element,    "innerHTML",     ud.frontEditor,     (elem,value)=>elem instanceof HTMLStyleElement       );
-      new ud.Inspector(Document, "createElement",x=>{},ud.styleWatcher);;
+    //  new ud.Inspector(Document, "createElement",x=>{},ud.styleWatcher);;
     //  new ud.Inspector(CSSStyleSheet,"addRule",console.log,console.log);
 
       ud.frontEditor=function(elem,value){
@@ -136,6 +139,7 @@ window.dark_object=
           script.innerHTML="("+code.toString()+")()";
           return script;
         })
+        ud.colorRegex=new RegExp(CSS_COLOR_NAMES_RGX,"gi");
         ud.injectscripts_str=ud.injectscripts.map(x=>x.outerHTML).join("")
         browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.monitorBeforeRequest);
         browser.webRequest.onBeforeRequest.addListener(
@@ -167,15 +171,17 @@ window.dark_object=
         max:Math.max,
         round:Math.round,
         minbright:200,
-        minbrightbg:10,
+        minbrightbg:11,
         nonBreakScriptIdent:"§§IDENTIFIER§§",
         maxbright:60, // main bgcolor
-        maxbrighttrigger:200,
+        maxbrighttrigger:150,
         knownvariables:{},
         rgba_val:function(r,g,b,a){
           a= typeof a == "number"?a:1
           return "rgba("+(r)+","+(g)+","+(b)+","+(a)+")"
         },
+        set_oricolor:(ori,sri)=>"/*ori*"+ori+"*/"+sri+"/*sri*/",
+        res_oricolor:x=>x.match(/\/\*ori\*(.*?)\*\//)[1],
         revert_mode2:(x,multiplier)=>ud.min(ud.round(x*multiplier),255),
         rgba_mode1:(x,delta)=>ud.max(x-delta,ud.minbrightbg),
         rgba_mode2:(x,multiplier)=>ud.max(x*multiplier,ud.minbrightbg),
@@ -236,6 +242,26 @@ window.dark_object=
              // }
             var testresult = ud.eget_color(possiblecolor,"background","background-color")
             return testresult.filter(x=>x).length?testresult:false
+        },
+        restore_color:function(str){
+          [...str.matchAll(ud.restoreColorRegex)].forEach(match=>{
+            str=str.replace(match[0],match[1]+match[2]+ud.set_oricolor(match[4],ud.revert_rgba(...ud.eget_color(match[4])))) 
+          })
+          return str;
+        },
+        edit_str_named_colors:function(str){
+
+          [...str.matchAll(ud.colorRegex)].forEach(match=>{
+            str=str.replace(match[0],match[1]+ud.set_oricolor(match[2],ud.rgba(...ud.eget_color(match[2])))+match[3]) 
+          })
+          return str;
+        },
+        edit_dynamic_colors:function(str){
+
+          [...str.matchAll(ud.dynamicColorRegex)].forEach(match=>{
+            str=str.replace(match[0],match[1]+ud.set_oricolor(match[2],ud.rgba(...ud.eget_color(match[2])))) 
+          })
+          return str;
         },
         edit_str:function(strp,source="background"){
           var str = strp;
@@ -316,14 +342,18 @@ window.dark_object=
           });
           return str;
     
-
+#aeaeaeae    aea
         }
       }
         ud.radiusRegex=/(^|[^a-z0-9-])(border-((top|bottom)-(left|right)-)?radius?[\s\t]*?:[\s\t]*?([5-9]|[1-9][0-9]|[1-9][0-9][0-9])[a-zA-Z\s\t%]+)($|["}\n;])/gi,
         ud.variableRegex=/(^|[^a-z0-9-])(--[a-z0-9-]+)[\s\t]*?:[\s\t]*?((#|rgba?)[^"}\n;]*?)[\s\t]*?($|["}\n;])/gi,
         ud.variableBasedRegex=/(^|[^a-z0-9-])var[\s\t]*?\([\s\t]*?(--[a-z0-9-]+)[\s\t]*?\)/gi,
         ud.interventRegex=/(^|[^a-z0-9-])(color|background(-color|-image)?)[\s\t]*?:[\s\t]*?[\n]*?([^;}]*?)([^;}]*?['"].*['"][^;}]*?)*?[\s\t]*?(![\s\t]*?important)?[\s\t]*?($|[;}\n\\])/gi
-        ud.matchStylePart=/{[^}]+?[^}]+?}/gi //breaks amazon
+        ud.matchStylePart=/{[^{]+}/gi //breaks amazon
+    //    ud.dynamicColorRegex=/(#[0-9a-f]{3,8}|(rgb?|hsl)a?\([%0-9, .]+?\))/gi
+        ud.dynamicColorRegex=/([:, \n])(#[0-9a-f]{3,8}|(rgb?|hsl)a?\([%0-9, .]+?\))/gi
+      
+        ud.restoreColorRegex=/(^|[^a-z0-9-])(color.{1,5})(\/\*ori\*(.*?)\*\/rgb.*?\/\*sri\*\/)/g
         //ud.matchStylePart=new RegExp(["{[^}]+?((",[ud.radiusRegex,ud.variableRegex,ud.interventRegex ].map(x=>x.source).join(")|("),"))[^}]+?}"].join(""),"gi");
         
     }
@@ -337,27 +367,34 @@ window.dark_object=
         filter.ondata = event => {
             var str = decoder.decode(event.data, {stream: true});
     
-      
             if(details.type=="stylesheet")
             {
 
-                //str=str.replace(/([{}\n;])/g,"\t\n\t$1\t\n\t");
-                str=str.replace(/([{}\n;])/g,"$1 ");  
+       str=ud.edit_str_named_colors(str)
+       str=ud.edit_dynamic_colors(str)
+               
+              str=ud.restore_color(str)
+             // //str=str.replace(/([{}\n;])/g,"\t\n\t$1\t\n\t");
+              //  str=str.replace(/([{}\n;])/g,"$1 ");  
 
-                   [...str.matchAll(ud.matchStylePart)].forEach(function(stylepart){            
-                        str=str.replace(stylepart[0],ud.edit_str(stylepart[0]));
-                  });          
+                //   [...str.matchAll(ud.matchStylePart)].forEach(function(stylepart){            
+                  //      str=str.replace(stylepart[0],ud.edit_str(stylepart[0]));
+                  //});          
             }
             else
             { 
 
+       str=ud.edit_str_named_colors(str)
+       str=ud.edit_dynamic_colors(str)  
+
+              str=ud.restore_color(str)
               //str=str.replace(/([;{}])/g,"  $1  ");
-              str=str.replace(/([;{])/g,"$1"+ud.nonBreakScriptIdent);
+             // str=str.replace(/([;{])/g,"$1"+ud.nonBreakScriptIdent);
               //str.replace(/<font([^>]*)/,"<span$1") pff ?? no
-              [...str.matchAll(/(^|[^a-z0-9-])style="[^"]*?("|$)/gi)].forEach(subval=>{
+           //   [...str.matchAll(/(^|[^a-z0-9-])style="[^"]*?("|$)/gi)].forEach(subval=>{
               //    str=str.replace(subval[0],ud.edit_str(subval[0]))
              //     str=str.replace(subval[0],subval[0].replace(/(;)/g,"$1 "))
-              });
+             // });
 //              [...str.matchAll(/<style[^>]*?>.*?(<\/style[^>]*?>|$)/gi)].forEach(subval=>{
              //   str=str.replace(subval[0],subval[0].replace(/(;)/g,"$1 "))
   //            });
@@ -365,24 +402,28 @@ window.dark_object=
                  // str=str.replace(/<style(.*?>)/g,'<style onload="" ud-data="ud_broke_style" $1');
                   str= str.replace(/integrity/g,"");// too wide
                   str= str.replace(/checksum/g,"");  // too wide
-                  [...str.matchAll(ud.matchStylePart)].forEach(function(stylepart){            
-                        str=str.replace(stylepart[0],ud.edit_str(stylepart[0]));
-                  });
+
+                  //[...str.matchAll(ud.matchStylePart)].forEach(function(stylepart){ 
+                    //  console.log(!stylepart.match(/(=>|function|return|window|length|typeof)/),stylepart)   
+                    //  if(!stylepart[0].match(/=>| if|else|function|return|window|length|typeof/))
+                     // {       
+                 //       str=str.replace(stylepart[0],ud.edit_str(stylepart[0]));
+                      //}
+                  //});
             }
             //    str=ud.edit_str(str);
 
 
-              str=str.replace(new RegExp(ud.nonBreakScriptIdent,"g"),"")
-            if(["main_frame","sub_frame"].includes(details.type) && !headFound && str.includes("head"))//inject foreground script
-            {
+           //   str=str.replace(new RegExp(ud.nonBreakScriptIdent,"g"),"")
+         //   if(["main_frame","sub_frame"].includes(details.type) && !headFound && str.includes("head"))//inject foreground script
+            //{
              // console.log(str);
-              headFound=true;
-              str=str.replace("<head>","<head>"+ud.injectscripts_str)//When using regex replace, care about $1+ presents in injectedscript_str
-            }
-              str=str.replace(/(^|[^a-z0-9-])(color|background(-color)?)[\s\t]*?:[\s\t]*?([^"}\n;]*?)[\s\t]*?![\s\t]*?important[\s\t]*?($|["}\n;])/gi,"$1$2:$4$5");//VERYYOK
+           //   headFound=true;
+       //      str=str.replace("<head>","<head>"+ud.injectscripts_str)//When using regex replace, care about $1+ presents in injectedscript_str
+            //}
+              //str=str.replace(/(^|[^a-z0-9-])(color|background(-color)?)[\s\t]*?:[\s\t]*?([^"}\n;]*?)[\s\t]*?![\s\t]*?important[\s\t]*?($|["}\n;])/gi,"$1$2:$4$5");//VERYYOK
 
       
-
 
         filter.write(encoder.encode(str));
         //must not return this closes filter//
@@ -394,5 +435,7 @@ window.dark_object=
     }
   }
 }
+const CSS_COLOR_NAMES = ["AliceBlue","AntiqueWhite","Aqua","Aquamarine","Azure","Beige","Bisque","Black","BlanchedAlmond","Blue","BlueViolet","Brown","BurlyWood","CadetBlue","Chartreuse","Chocolate","Coral","CornflowerBlue","Cornsilk","Crimson","Cyan","DarkBlue","DarkCyan","DarkGoldenRod","DarkGray","DarkGrey","DarkGreen","DarkKhaki","DarkMagenta","DarkOliveGreen","DarkOrange","DarkOrchid","DarkRed","DarkSalmon","DarkSeaGreen","DarkSlateBlue","DarkSlateGray","DarkSlateGrey","DarkTurquoise","DarkViolet","DeepPink","DeepSkyBlue","DimGray","DimGrey","DodgerBlue","FireBrick","FloralWhite","ForestGreen","Fuchsia","Gainsboro","GhostWhite","Gold","GoldenRod","Gray","Grey","Green","GreenYellow","HoneyDew","HotPink","IndianRed","Indigo","Ivory","Khaki","Lavender","LavenderBlush","LawnGreen","LemonChiffon","LightBlue","LightCoral","LightCyan","LightGoldenRodYellow","LightGray","LightGrey","LightGreen","LightPink","LightSalmon","LightSeaGreen","LightSkyBlue","LightSlateGray","LightSlateGrey","LightSteelBlue","LightYellow","Lime","LimeGreen","Linen","Magenta","Maroon","MediumAquaMarine","MediumBlue","MediumOrchid","MediumPurple","MediumSeaGreen","MediumSlateBlue","MediumSpringGreen","MediumTurquoise","MediumVioletRed","MidnightBlue","MintCream","MistyRose","Moccasin","NavajoWhite","Navy","OldLace","Olive","OliveDrab","Orange","OrangeRed","Orchid","PaleGoldenRod","PaleGreen","PaleTurquoise","PaleVioletRed","PapayaWhip","PeachPuff","Peru","Pink","Plum","PowderBlue","Purple","RebeccaPurple","Red","RosyBrown","RoyalBlue","SaddleBrown","Salmon","SandyBrown","SeaGreen","SeaShell","Sienna","Silver","SkyBlue","SlateBlue","SlateGray","SlateGrey","Snow","SpringGreen","SteelBlue","Tan","Teal","Thistle","Tomato","Turquoise","Violet","Wheat","White","WhiteSmoke","Yellow","YellowGreen",];
+const CSS_COLOR_NAMES_RGX = "([:,\\s\\n])("+(CSS_COLOR_NAMES.join("|"))+")([,;\\s\\n!\"}]|$)"
 dark_object.both.install()
 dark_object.background.install()
