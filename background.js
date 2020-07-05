@@ -341,8 +341,6 @@ window.dark_object=
             str =str.replace(new RegExp(ud.escapeRegExp(o_str),"g"),replacestr)//OK
           });
           return str;
-    
-#aeaeaeae    aea
         }
       }
         ud.radiusRegex=/(^|[^a-z0-9-])(border-((top|bottom)-(left|right)-)?radius?[\s\t]*?:[\s\t]*?([5-9]|[1-9][0-9]|[1-9][0-9][0-9])[a-zA-Z\s\t%]+)($|["}\n;])/gi,
