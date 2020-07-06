@@ -136,7 +136,7 @@ window.dark_object=
 
     defaultRegexes:{
       white_list:["<all_urls>","*://*/*","https://*.w3schools.com/*"].join('\n'),
-      black_list:["about:"].join('\n')
+      black_list:["*://example.com/*"].join('\n')
     },
 
 
