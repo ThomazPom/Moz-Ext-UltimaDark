@@ -175,7 +175,6 @@ window.dark_object=
         function connected(p) {
           portFromCS = p;
           portFromCS.onMessage.addListener(function(m) {
-            console.log(m);
             browser.storage.local.set(m,dark_object.background.setListener);
             
           });
@@ -270,6 +269,19 @@ window.dark_object=
           })
           return str;
         },
+        edit_background_image_urls  :function(str){
+
+          var valueblend=["overlay","multiply","color","exclusion"].join(","); 
+          [...str.matchAll(ud.urlBGRegex)].forEach(match=>{
+            var value=match[4]
+            if(!value.match(/(logo|icon)/) || value.match(/(background)/))
+            {
+              var valuedown=[value,value,value,value,value].join(",");// Yaaaay daker backgrounds, keeping colors
+              str=str.replace(match[0],match[1]+"background-blend-mode:"+valueblend+";"+match[2]+":"+ud.set_oricolor(value,valuedown)) 
+            }
+          })
+          return str;
+        },
         edit_str_named_colors:function(str){
 
           [...str.matchAll(ud.colorRegex)].forEach(match=>{
@@ -279,10 +291,13 @@ window.dark_object=
         },
         edit_dynamic_colors:function(str){
 
-          [...str.matchAll(ud.dynamicColorRegex)].forEach(match=>{
-            str=str.replace(match[0],match[1]+ud.set_oricolor(match[2],ud.rgba(...ud.eget_color(match[2])))) 
+          [1,2].forEach(x=>{
+              [...str.matchAll(ud.dynamicColorRegex)].forEach(match=>{
+                newcolor = ud.rgba(...ud.eget_color(match[2])).replace("rgba","colorfunc");
+                str=str.replace(match[0],match[1]+ud.set_oricolor(match[2],newcolor)+match[4]) 
+              })
           })
-          return str;
+          return str.replace(/colorfunc/g,"rgba");
         },
         edit_str:function(strp,source="background"){
           var str = strp;
@@ -370,8 +385,8 @@ window.dark_object=
         ud.interventRegex=/(^|[^a-z0-9-])(color|background(-color|-image)?)[\s\t]*?:[\s\t]*?[\n]*?([^;}]*?)([^;}]*?['"].*['"][^;}]*?)*?[\s\t]*?(![\s\t]*?important)?[\s\t]*?($|[;}\n\\])/gi
         ud.matchStylePart=/{[^{]+}/gi //breaks amazon
     //    ud.dynamicColorRegex=/(#[0-9a-f]{3,8}|(rgb?|hsl)a?\([%0-9, .]+?\))/gi
-        ud.dynamicColorRegex=/([:, \n])(#[0-9a-f]{3,8}|(rgb?|hsl)a?\([%0-9, .]+?\))/gi
-      
+        ud.dynamicColorRegex=/([:, \n])(#[0-9a-f]{3,8}|(rgb?|hsl)a?\([%0-9, .]+?\))($|["}\n;,)! ])/gi
+        ud.urlBGRegex = /(^|[^a-z0-9-])(background(-image)?)[\s\t]*?:[\s\t]*?(url\(.+?\))/g
         ud.restoreColorRegex=/(^|[^a-z0-9-])(color.{1,5})(\/\*ori\*(.*?)\*\/rgb.*?\/\*sri\*\/)/g
         //ud.matchStylePart=new RegExp(["{[^}]+?((",[ud.radiusRegex,ud.variableRegex,ud.interventRegex ].map(x=>x.source).join(")|("),"))[^}]+?}"].join(""),"gi");
         
@@ -391,6 +406,7 @@ window.dark_object=
 
        str=ud.edit_str_named_colors(str)
        str=ud.edit_dynamic_colors(str)
+       str=ud.edit_background_image_urls(str)
                
               str=ud.restore_color(str)
              // //str=str.replace(/([{}\n;])/g,"\t\n\t$1\t\n\t");
@@ -406,6 +422,7 @@ window.dark_object=
        str=ud.edit_str_named_colors(str)
        str=ud.edit_dynamic_colors(str)  
 
+       str=ud.edit_background_image_urls(str)
               str=ud.restore_color(str)
               //str=str.replace(/([;{}])/g,"  $1  ");
              // str=str.replace(/([;{])/g,"$1"+ud.nonBreakScriptIdent);
