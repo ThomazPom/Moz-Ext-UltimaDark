@@ -54,22 +54,22 @@ table {
 body, html {
 	height: 100%;
 }
-#disable_webext{
+.disable_something{
 	display:none;	
 }
 
-#disable_webext:checked+label>span{
+.disable_something:checked+label>span{
     border: solid /*ori*crimson*/rgba(60,11,11,1)/*sri*/ 3px;
     background-color: /*ori*red*/rgba(60,11,11,1)/*sri*/;
 }
 
-#disable_webext+label .text::before{
+.disable_something+label .text::before{
 	content:'enabled';
 }
-#disable_webext:checked+label .text::before{
+.disable_something:checked+label .text::before{
 	content:'disabled';
 }
-#disable_webext+label>span{
+.disable_something+label>span{
 
 	cursor: pointer;
     background-color: #0ebf0e;
@@ -82,7 +82,7 @@ body, html {
     width:100px;
 
 }
-#disable_webext+label>span .bawl{
+.disable_something+label>span .bawl{
 background-color:/*ori*white*/rgba(60,60,60,1)/*sri*/;
 height: 20px;
 width: 20px;
@@ -90,7 +90,7 @@ display:inline-block;
 float:right;
 border-radius:100%;
 }
-#disable_webext:checked+label>span .bawl{
+.disable_something:checked+label>span .bawl{
 float:left;
 }
 body {
@@ -297,6 +297,11 @@ a.btn-small span.btn {
 
 .label
 {
+user-select: none; /* supported by Chrome and Opera */
+-webkit-user-select: none; /* Safari */
+-khtml-user-select: none; /* Konqueror HTML */
+-moz-user-select: none; /* Firefox */
+-ms-user-select: none; /* Internet Explorer/Edge */
 text-shadow: 0px 0px 6px /*ori*black*/rgba(11,11,11,1)/*sri*/;
 
 background: rgba(0,0,0,.1);
@@ -332,16 +337,18 @@ padding: 10px 20px 0px 20px;
 	border-radius: 5px;
 	padding: 10px 20px 10px 20px;	
 }
-.listextarea, .listextarea_monitorrgx
+.listextarea
 {
-	width: 85%;
+	background: black;
+	width: 89%;
 	margin-left: 5%;
 	margin-right:  5%;
 	display: block;
 	resize: vertical;
 	word-wrap: normal ;
 	white-space: pre;
-	height: 100px
+	height: 100px;
+	color:white;
 }
 
     	</style>
@@ -364,12 +371,25 @@ padding: 10px 20px 0px 20px;
         <span class="left icon">⭐</span>
       </a>
   </div>
+  <span class="label">Darken these websites</span>
+      <textarea class="listextarea" id="white_list"></textarea>
+
+  <span class="label">Exclude these websites </span>
+      <textarea class="listextarea" id="black_list"></textarea>
+
+      <a class="label label-after"><span id="donotdarken">Exclude </span></a>
+      <a class="label label-standalone" href="https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Match_patterns">&gt;Match patterns reference&lt;<br/></a>
+    
       <div class="label  label-standalone">   	
-		       <input id="disable_webext" type="checkbox" />
+		       <input class="disable_something" id="disable_webext" type="checkbox" />
 		  <label for="disable_webext">UtimaDark is <span dataoncheck="blue"><span class="bawl"></span><span class='text'>&nbsp;</span></span>
       </div>
+      <div class="label  label-standalone">   	
+		       <input class="disable_something" id="disable_cache" type="checkbox" />
+		  	<label for="disable_cache">Cache system is <span dataoncheck="blue"><span class="bawl"></span><span class='text'>&nbsp;</span></span>
+      </div>
   </div>
-  
+
     <script type="text/javascript" src="popup.js"></script>
     </body>
 </html>

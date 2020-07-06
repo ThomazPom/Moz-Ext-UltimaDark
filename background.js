@@ -133,30 +133,57 @@ window.dark_object=
 
   },
   background:{
+
+    defaultRegexes:{
+      white_list:["<all_urls>","*://*/*","https://*.w3schools.com/*"].join('\n'),
+      black_list:["about:"].join('\n')
+    },
+
+
+    filterContentScript:function(x){
+      return x.match(/<all_urls>|^(https?|wss?|file|ftp|\*):\/\/(\*|\*\.[^*/]+|[^*/]+)\/.*$|^file:\/\/\/.*$|^resource:\/\/(\*|\*\.[^*/]+|[^*/]+)\/.*$|^about:$/)
+    },
     setListener:function(){
         browser.storage.local.get(null, function(res) {
-            browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.monitorBeforeRequest);
-            if(ud.regiteredCS){ud.regiteredCS.unregister()}
+            ud.userSettings = res;
 
-            if(!res.is_disabled)
+            ud.userSettings.properWhiteList = (res.white_list||dark_object.background.defaultRegexes.white_list).split("\n").filter(dark_object.background.filterContentScript)
+            ud.userSettings.properBlackList = (res.black_list||dark_object.background.defaultRegexes.black_list).split("\n").filter(dark_object.background.filterContentScript)
+
+            ud.userSettings.exclude_regex=
+            (res.black_list||dark_object.background.defaultRegexes.black_list).split("\n")
+            .map(x=>x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')  // Sanitize regex
+            .replace(/(^<all_urls>|\\\*)/g,"(.*?)") // Allow wildcards
+            .replace(/^(.*)$/g,"^$1$")).join("|") // User multi match)
+
+
+            browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.monitorBeforeRequest);
+            if(ud.regiteredCS){ud.regiteredCS.unregister();ud.regiteredCS=null}
+            if(!res.disable_webext && ud.userSettings.properWhiteList.length)
             {
+
                   browser.webRequest.onBeforeRequest.addListener(
                   dark_object.misc.monitorBeforeRequest,
                     {
-                      urls : ["<all_urls>"],
+                      urls : ud.userSettings.properWhiteList,
                       types:["stylesheet","main_frame","sub_frame"]
-
                     },
                     ["blocking"]
                 );
 
-              browser.contentScripts.register({
-                  matches: ["<all_urls>"],
+              var contentScript = {
+                  matches: ud.userSettings.properWhiteList,
+                  excludeMatches:ud.userSettings.properBlackList,
                   css : [{file:"override.css"}],
                   runAt: "document_start",
                   matchAboutBlank: true,
                   allFrames: true
-                }).then(x=>{ud.regiteredCS=x});
+                }
+              if(!ud.userSettings.properBlackList.length)
+              {
+                delete contentScript.excludeMatches;
+              }
+              browser.contentScripts.register(contentScript).then(x=>{ud.regiteredCS=x});
             }
         });      
     },
@@ -241,7 +268,7 @@ window.dark_object=
         },
         get_color:function(colorprop,whatget="background-color",thespanp=false)
         {
-          if(!thespanp && ud.knownvariables[colorprop+whatget])
+          if(!ud.userSettings.disable_cache && !thespanp && ud.knownvariables[colorprop+whatget])
           {
             return ud.knownvariables[colorprop+whatget];
           }
@@ -251,7 +278,10 @@ window.dark_object=
           var style = getComputedStyle(thespan)
           var returnvalue = [...[...(style[whatget].matchAll(/[0-9\.]+/g))].map(x=>parseFloat(x)),1].splice(0,4)
           thespan.remove();
-          ud.knownvariables[colorprop+whatget]=returnvalue;
+          if(!ud.userSettings.disable_cache)
+          {
+            ud.knownvariables[colorprop+whatget]=returnvalue;  
+          }
           return returnvalue
         },
         is_color:function(possiblecolor)
@@ -394,6 +424,11 @@ window.dark_object=
   },
   misc:{
     monitorBeforeRequest:function(details) {
+        
+        if(details.url.match(ud.userSettings.exclude_regex))
+        {
+          return{}
+        }
         let filter = browser.webRequest.filterResponseData(details.requestId);
         let decoder = new TextDecoder("utf-8");
         let encoder = new TextEncoder();
