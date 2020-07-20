@@ -156,7 +156,7 @@ window.dark_object=
             .replace(/(^<all_urls>|\\\*)/g,"(.*?)") // Allow wildcards
             .replace(/^(.*)$/g,"^$1$")).join("|") // User multi match)
 
-
+            ud.knownvariables={};
             browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.monitorBeforeRequest);
             if(ud.regiteredCS){ud.regiteredCS.unregister();ud.regiteredCS=null}
             if(!res.disable_webext && ud.userSettings.properWhiteList.length)
@@ -227,8 +227,8 @@ window.dark_object=
           a= typeof a == "number"?a:1
           return "rgba("+(r)+","+(g)+","+(b)+","+(a)+")"
         },
-        set_oricolor:(ori,sri)=>"/*ori*"+ori+"*/"+sri+"/*sri*/",
-        res_oricolor:x=>x.match(/\/\*ori\*(.*?)\*\//)[1],
+        set_oricolor:(ori,sri)=>"/*ori*"+ori+"*eri*/"+sri+"/*sri*/",
+        res_oricolor:x=>x.match(/\/\*ori\*(.*?)\*eri\*\//)[1],
         revert_mode2:(x,multiplier)=>ud.min(ud.round(x*multiplier),255),
         rgba_mode1:(x,delta)=>ud.max(x-delta,ud.minbrightbg),
         rgba_mode2:(x,multiplier)=>ud.max(x*multiplier,ud.minbrightbg),
@@ -244,7 +244,7 @@ window.dark_object=
             }
             return ud.rgba_val(...[r,g,b].map(x => ud.rgba_mode1(x,maxcol-ud.maxbright)),a);
            // return ud.rgba_val(...[r,g,b].map(x => ud.rgba_mode2(x,ud.maxbright/maxcol)),a);
-          //  return ud.rgba_val(...[r,g,b].map(x => ud.rgba_mode3(x,(ud.maxbright-ud.minbrightbg)/maxcol)),a);
+           // return ud.rgba_val(...[r,g,b].map(x => ud.rgba_mode3(x,(ud.maxbright-ud.minbrightbg)/maxcol)),a);
         },
         revert_rgba:function(r,g,b,a){
             a= typeof a == "number"?a:1
@@ -299,14 +299,33 @@ window.dark_object=
           })
           return str;
         },
+        restore_comments:function(str)
+        {
+            return str.replace(/\/\*ori.+?eri\*\/|\/\*sri\*\//g,"")
+        },
+        set_the_round_border:function(str)
+        {
+            return str.replace(ud.radiusRegex,
+          "$1;filter:brightness(0.95);box-shadow: 0 0 5px 1px rgba(0,0,0,0)!important;border:1px solid rgba(255,255,255,0.2)!important;$2$7") ;
+        },
+        no_repeat_backgrounds:function(str)
+        {
+      //    return str.replace(/\/\*(.|\n)*?[^oes][^r][^i]\*\//g,"");
+            return str.replace(/(^|[^a-z0-9-])(repeat(-[xy])?)($|["}\n;,)! ])/g,"$1no-repeat;background-color:rgba(0,0,0,0.5);noprop:$4")
+        },
+
         edit_background_image_urls  :function(str){
 
-          var valueblend=["overlay","multiply","color","exclusion"].join(","); 
+         //  var valueblend=["overlay","multiply","color","exclusion"].join(","); 
+          var valueblend=["soft-light","soft-light","color","difference"].join(","); 
+          var white= "linear-gradient(rgba(200,200,200,1),rgba(150,150,150,1))"; 
+          var white2= "linear-gradient(rgba(200,200,200,1),rgba(150,150,150,1))";
           [...str.matchAll(ud.urlBGRegex)].forEach(match=>{
             var value=match[4]
             if(!value.match(/(logo|icon)/) || value.match(/(background)/))
             {
-              var valuedown=[value,value,value,value,value].join(",");// Yaaaay daker backgrounds, keeping colors
+           //   var valuedown=[value,value,value,value,value].join(",");// Yaaaay daker backgrounds, keeping colors
+                var valuedown=[white2,white,value,value,white].join(",");// Yaaaay daker backgrounds, keeping colors
               str=str.replace(match[0],match[1]+"background-blend-mode:"+valueblend+";"+match[2]+":"+ud.set_oricolor(value,valuedown)) 
             }
           })
@@ -413,12 +432,13 @@ window.dark_object=
         ud.variableRegex=/(^|[^a-z0-9-])(--[a-z0-9-]+)[\s\t]*?:[\s\t]*?((#|rgba?)[^"}\n;]*?)[\s\t]*?($|["}\n;])/gi,
         ud.variableBasedRegex=/(^|[^a-z0-9-])var[\s\t]*?\([\s\t]*?(--[a-z0-9-]+)[\s\t]*?\)/gi,
         ud.interventRegex=/(^|[^a-z0-9-])(color|background(-color|-image)?)[\s\t]*?:[\s\t]*?[\n]*?([^;}]*?)([^;}]*?['"].*['"][^;}]*?)*?[\s\t]*?(![\s\t]*?important)?[\s\t]*?($|[;}\n\\])/gi
-        ud.matchStylePart=/{[^{]+}/gi //breaks amazon
+       // ud.matchStylePart=/{[^{]+}/gi //breaks amazon
     //    ud.dynamicColorRegex=/(#[0-9a-f]{3,8}|(rgb?|hsl)a?\([%0-9, .]+?\))/gi
         ud.dynamicColorRegex=/([:, \n])(#[0-9a-f]{3,8}|(rgb?|hsl)a?\([%0-9, .]+?\))($|["}\n;,)! ])/gi
         ud.urlBGRegex = /(^|[^a-z0-9-])(background(-image)?)[\s\t]*?:[\s\t]*?(url\(.+?\))/g
-        ud.restoreColorRegex=/(^|[^a-z0-9-])(color.{1,5})(\/\*ori\*(.*?)\*\/rgb.*?\/\*sri\*\/)/g
+        ud.restoreColorRegex=/(^|[^a-z0-9-])(color.{1,5})(\/\*ori\*(.*?)\*eri\*\/rgb.*?\/\*sri\*\/)/g
         //ud.matchStylePart=new RegExp(["{[^}]+?((",[ud.radiusRegex,ud.variableRegex,ud.interventRegex ].map(x=>x.source).join(")|("),"))[^}]+?}"].join(""),"gi");
+        ud.matchStylePart=/(^|<style.*?>)(.|\n)*?(<\/style>|$)|[^a-z0-9-]style=("(.|\n)+?("|$)|'(.|\n)+?('|$))/g
         
     }
   },
@@ -435,15 +455,20 @@ window.dark_object=
         var headFound = false;
         filter.ondata = event => {
             var str = decoder.decode(event.data, {stream: true});
-    
-            if(details.type=="stylesheet")
+
+            if(details.type=="stylesheet" )
             {
 
        str=ud.edit_str_named_colors(str)
        str=ud.edit_dynamic_colors(str)
-       str=ud.edit_background_image_urls(str)
+    //   str=ud.edit_background_image_urls(str)
                
               str=ud.restore_color(str)
+
+              str=ud.restore_comments(str)
+              str=ud.no_repeat_backgrounds(str);
+              str=ud.set_the_round_border(str);
+              str=ud.edit_background_image_urls(str);
              // //str=str.replace(/([{}\n;])/g,"\t\n\t$1\t\n\t");
               //  str=str.replace(/([{}\n;])/g,"$1 ");  
 
@@ -451,14 +476,26 @@ window.dark_object=
                   //      str=str.replace(stylepart[0],ud.edit_str(stylepart[0]));
                   //});          
             }
-            else
+            else if(details.type=="main_frame" || details.type=="sub_frame")
             { 
+              if(str.includes(".pg.t-light"))
+              {
+                console.log(str);// .match()
+              }
+              [...str.matchAll(ud.matchStylePart)].filter(x=>x[0].includes(":")).forEach(function(match)
+              {
+                    var substr=match[0];
+                    substr=ud.edit_str_named_colors(substr)
+                    substr=ud.edit_dynamic_colors(substr)  
+                    substr=ud.restore_color(substr)
+                    substr=ud.restore_comments(substr)
+                    substr=ud.no_repeat_backgrounds(substr);
+                    substr=ud.set_the_round_border(substr);
+                    substr=ud.edit_background_image_urls(substr);
+                    str=str.replace(match[0],substr);
+              });
 
-       str=ud.edit_str_named_colors(str)
-       str=ud.edit_dynamic_colors(str)  
-
-       str=ud.edit_background_image_urls(str)
-              str=ud.restore_color(str)
+       //str=ud.edit_background_image_urls(str)
               //str=str.replace(/([;{}])/g,"  $1  ");
              // str=str.replace(/([;{])/g,"$1"+ud.nonBreakScriptIdent);
               //str.replace(/<font([^>]*)/,"<span$1") pff ?? no

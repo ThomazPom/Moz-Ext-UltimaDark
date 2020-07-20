@@ -316,6 +316,12 @@ display: table;
 
 padding: 10px 20px 0px 20px;
 }
+.numberinput{
+
+  width:40px;
+  background: black;
+  color:white;
+}
 
 .label-after
 {
@@ -377,7 +383,8 @@ padding: 10px 20px 0px 20px;
   <span class="label">Exclude these websites </span>
       <textarea class="listextarea" id="black_list"></textarea>
 
-      <a class="label label-after"><span id="donotdarken">Exclude </span></a>
+      <a class="label label-after"><span id="donotdarken">Exclude </span> </a>
+      <a class="label label-after"><span>Precision<input id="precision_number" class="numberinput" type="number" value="2" min="2" max="10"></span></a>
       <a class="label label-standalone" href="https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Match_patterns">&gt;Match patterns reference&lt;<br/></a>
     
       <div class="label  label-standalone">   	
