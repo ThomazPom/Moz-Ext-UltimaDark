@@ -166,7 +166,7 @@ window.dark_object=
                   dark_object.misc.monitorBeforeRequest,
                     {
                       urls : ud.userSettings.properWhiteList,
-                      types:["stylesheet","main_frame","sub_frame"]
+                      types:["stylesheet","main_frame","sub_frame","image"]
                     },
                     ["blocking"]
                 );
@@ -220,8 +220,8 @@ window.dark_object=
         minbright:200,
         minbrightbg:11,
         nonBreakScriptIdent:"§§IDENTIFIER§§",
-        maxbright:60, // main bgcolor
-        maxbrighttrigger:150,
+        maxbright:180, // main bgcolor
+        maxbrighttrigger:80,
         knownvariables:{},
         rgba_val:function(r,g,b,a){
           a= typeof a == "number"?a:1
@@ -235,16 +235,24 @@ window.dark_object=
         rgba_mode3:(x,multiplier)=>ud.round(x*multiplier+ud.minbrightbg),
         rgba:function(r,g,b,a){
             a= typeof a == "number"?a:1
-            var maxcol = ud.max(r,g,b);
+          //  var trigger = ud.max(r,g,b);
+            var trigger = (r+g+b)/3;
+            var mincol = ud.min(r,g,b);
       
 //    if(maxcol<=200){return "rgba("+max(r,200)+","+max(g,200)+","+max(b,200)+","+(a)+")";}
-            if(maxcol<=ud.maxbrighttrigger){
+            if(trigger<=ud.maxbrighttrigger){
       
               return ud.rgba_val(...[r,g,b].map(x => ud.max(ud.minbrightbg,x)),a);
             }
-            return ud.rgba_val(...[r,g,b].map(x => ud.rgba_mode1(x,maxcol-ud.maxbright)),a);
+
+   //         return ud.rgba_val(...[r,g,b].map(x => ud.rgba_mode1(x,maxcol-ud.maxbright)),a);
            // return ud.rgba_val(...[r,g,b].map(x => ud.rgba_mode2(x,ud.maxbright/maxcol)),a);
-           // return ud.rgba_val(...[r,g,b].map(x => ud.rgba_mode3(x,(ud.maxbright-ud.minbrightbg)/maxcol)),a);
+            //return ud.rgba_val(...[r,g,b].map(x => ud.rgba_mode3(x,(ud.maxbright-ud.minbrightbg)/maxcol)),a);
+
+            //# mode 4
+            var delta = mincol-ud.minbrightbg;
+
+            return ud.rgba_val(...[r,g,b].map(x =>ud.maxbright/255*(x-delta),a));
         },
         revert_rgba:function(r,g,b,a){
             a= typeof a == "number"?a:1
@@ -317,20 +325,125 @@ window.dark_object=
         edit_background_image_urls  :function(str){
 
          //  var valueblend=["overlay","multiply","color","exclusion"].join(","); 
-          var valueblend=["soft-light","soft-light","color","difference"].join(","); 
-          var white= "linear-gradient(rgba(200,200,200,1),rgba(150,150,150,1))"; 
-          var white2= "linear-gradient(rgba(200,200,200,1),rgba(150,150,150,1))";
-          [...str.matchAll(ud.urlBGRegex)].forEach(match=>{
-            var value=match[4]
-            if(!value.match(/(logo|icon)/) || value.match(/(background)/))
-            {
-           //   var valuedown=[value,value,value,value,value].join(",");// Yaaaay daker backgrounds, keeping colors
-                var valuedown=[white2,white,value,value,white].join(",");// Yaaaay daker backgrounds, keeping colors
-              str=str.replace(match[0],match[1]+"background-blend-mode:"+valueblend+";"+match[2]+":"+ud.set_oricolor(value,valuedown)) 
-            }
-          })
+         
           return str;
         },
+edit_an_image:function(details)
+{
+
+ if(!/^https?/.test(details.originUrl))
+          {
+            return{};
+          }
+          return new Promise((resolve, reject) => {
+              var canvas = document.createElement('canvas');
+              var myImage = new Image;
+              myImage.src=details.url;
+              var normalresolve = x=>{
+                canvas.width = myImage.width;
+                canvas.height = myImage.height;
+                var context = canvas.getContext('2d');
+                context.drawImage(myImage, 0, 0);
+                var islogo = ud.edit_a_logo(context,myImage.width,myImage.height);
+                if(islogo)
+                {
+                    resolve({ redirectUrl: canvas.toDataURL()});
+                }
+
+                if(!(/background|bg[._-]/).test(new URL(details.url).pathname))
+                {
+                  resolve({});
+                }
+
+            ud.edit_a_background(context,myImage.width,myImage.height,0xff)
+          
+                resolve({ redirectUrl: canvas.toDataURL()});
+            }
+          myImage.onload= normalresolve;
+
+            myImage.onerror=x=>{
+              resolve({})
+            }
+          setTimeout(x=>resolve({}),1000);
+          })
+
+},
+edit_a_logo:function(canvasContext, width, height) {
+      let theImageData = canvasContext.getImageData(0, 0, width, height),
+      theImageDataBufferTMP = new ArrayBuffer(theImageData.data.length),
+      theImageDataClamped8TMP = new Uint8ClampedArray(theImageDataBufferTMP),
+      theImageDataUint32TMP = new Uint32Array(theImageDataBufferTMP),
+      n = theImageDataUint32TMP.length;
+      theImageDataClamped8TMP.set(theImageData.data);
+
+      var cornerpixs = [0,parseInt(width/2),width*parseInt(height/2)-width,width*parseInt(height/2),n-width,n-parseInt(width/2),n-1]
+      //console.log(cornerpixs.map(x=>theImageDataUint32TMP[x]));
+      cornerpixs= cornerpixs.map(x=>theImageDataUint32TMP[x]<0x00ffffff)//superior to 0x00ffffffff is not
+     // console.log(cornerpixs)
+      var pixelcount = cornerpixs.reduce((a, b) =>a + b)
+      //console.log(pixelcount)
+      if(pixelcount<2)
+          {
+            return false;
+          }
+          imgDataLoop: while (n--) {
+      var number = theImageDataUint32TMP[n];
+      var r = number & 0xff
+      var g = (number >> 8) & 0xff
+      var b = (number >> 16) & 0xff
+      var a = (number >> 24) & 0xff
+      var maxcol=ud.max(r,g,b)
+      var delta=255-maxcol
+      r=r+delta;
+      g=g+delta;
+      b=b+delta
+      var newColor = ((a<<24)) | (b<<16)| (g<<8) | r;
+
+      theImageDataUint32TMP[n] = newColor; 
+    }
+
+    theImageData.data.set(theImageDataClamped8TMP);
+    canvasContext.putImageData(theImageData, 0, 0);
+  return true;
+},
+edit_a_background:function(canvasContext, width, height,max_a=1) {
+    // where all the magic happens
+
+    let theImageData = canvasContext.getImageData(0, 0, width, height),
+      theImageDataBufferTMP = new ArrayBuffer(theImageData.data.length),
+      theImageDataClamped8TMP = new Uint8ClampedArray(theImageDataBufferTMP),
+      theImageDataUint32TMP = new Uint32Array(theImageDataBufferTMP),
+      n = theImageDataUint32TMP.length;
+    theImageDataClamped8TMP.set(theImageData.data);
+
+    imgDataLoop: while (n--) {
+      var number = theImageDataUint32TMP[n];
+      var r = number & 0xff
+      var g = (number >> 8) & 0xff
+      var b = (number >> 16) & 0xff
+        
+      //if (r+b+g<=3*trigger_level)
+        //continue imgDataLoop;
+      var a = (number >> 24) & max_a
+      
+
+     // var rgbarr = [r,g,b].map(x => ud.maxbright *(x/ud.max(r,g,b)));
+      
+      //r=ud.max( r-100,0)//rgbarr[0];
+      //g=ud.max( g-100,0)//rgbarr[1];
+      //b=ud.max( b-100,0)//rgbarr[2];
+     // r=rgbarr[0];
+      //g=rgbarr[1];
+      //b=rgbarr[2];
+    //  a=Math.abs(ud.max(r,g,b)-255);
+      a=(r+g+b)/-3+255;
+      var newColor = ((a<<24)) | (b<<16)| (g<<8) | r;
+      theImageDataUint32TMP[n] = newColor; 
+    }
+    theImageData.data.set(theImageDataClamped8TMP);
+    canvasContext.putImageData(theImageData, 0, 0);
+  }
+       ,
         edit_str_named_colors:function(str){
 
           [...str.matchAll(ud.colorRegex)].forEach(match=>{
@@ -435,8 +548,8 @@ window.dark_object=
        // ud.matchStylePart=/{[^{]+}/gi //breaks amazon
     //    ud.dynamicColorRegex=/(#[0-9a-f]{3,8}|(rgb?|hsl)a?\([%0-9, .]+?\))/gi
         ud.dynamicColorRegex=/([:, \n])(#[0-9a-f]{3,8}|(rgb?|hsl)a?\([%0-9, .]+?\))($|["}\n;,)! ])/gi
-        ud.urlBGRegex = /(^|[^a-z0-9-])(background(-image)?)[\s\t]*?:[\s\t]*?(url\(.+?\))/g
-        ud.restoreColorRegex=/(^|[^a-z0-9-])(color.{1,5})(\/\*ori\*(.*?)\*eri\*\/rgb.*?\/\*sri\*\/)/g
+        ud.urlBGRegex = /(^|[^a-z0-9-])(background(-image)?)[\s\t]*?:[\s\t]*?(url\(["']?(.+?)["']?\))/g
+        ud.restoreColorRegex=/(^|[^a-z0-9-])(color.{1,5}|fill)(\/\*ori\*(.*?)\*eri\*\/rgb.*?\/\*sri\*\/)/g
         //ud.matchStylePart=new RegExp(["{[^}]+?((",[ud.radiusRegex,ud.variableRegex,ud.interventRegex ].map(x=>x.source).join(")|("),"))[^}]+?}"].join(""),"gi");
         ud.matchStylePart=/(^|<style.*?>)(.|\n)*?(<\/style>|$)|[^a-z0-9-]style=("(.|\n)+?("|$)|'(.|\n)+?('|$))/g
         
@@ -448,6 +561,10 @@ window.dark_object=
         if(details.url.match(ud.userSettings.exclude_regex))
         {
           return{}
+        }
+        if(details.type=="image") 
+        {
+          return ud.edit_an_image(details);
         }
         let filter = browser.webRequest.filterResponseData(details.requestId);
         let decoder = new TextDecoder("utf-8");
@@ -466,9 +583,10 @@ window.dark_object=
               str=ud.restore_color(str)
 
               str=ud.restore_comments(str)
-              str=ud.no_repeat_backgrounds(str);
+  //            str=ud.no_repeat_backgrounds(str);
               str=ud.set_the_round_border(str);
               str=ud.edit_background_image_urls(str);
+     //         str=ud.edit_backgrounds(str,details);
              // //str=str.replace(/([{}\n;])/g,"\t\n\t$1\t\n\t");
               //  str=str.replace(/([{}\n;])/g,"$1 ");  
 
@@ -478,10 +596,9 @@ window.dark_object=
             }
             else if(details.type=="main_frame" || details.type=="sub_frame")
             { 
-              if(str.includes(".pg.t-light"))
-              {
-                console.log(str);// .match()
-              }
+              str= str.replace(/<font([^>]+)color="/g,'<font$1 style="color:'); ///css4
+        
+                  str= str.replace(/bgcolor=/g,"");  // css4 too wide
               [...str.matchAll(ud.matchStylePart)].filter(x=>x[0].includes(":")).forEach(function(match)
               {
                     var substr=match[0];
@@ -489,16 +606,20 @@ window.dark_object=
                     substr=ud.edit_dynamic_colors(substr)  
                     substr=ud.restore_color(substr)
                     substr=ud.restore_comments(substr)
-                    substr=ud.no_repeat_backgrounds(substr);
+//                    substr=ud.no_repeat_backgrounds(substr);
                     substr=ud.set_the_round_border(substr);
                     substr=ud.edit_background_image_urls(substr);
+                    
+         //     str=ud.edit_backgrounds(str,details);
                     str=str.replace(match[0],substr);
+
               });
 
        //str=ud.edit_background_image_urls(str)
               //str=str.replace(/([;{}])/g,"  $1  ");
              // str=str.replace(/([;{])/g,"$1"+ud.nonBreakScriptIdent);
               //str.replace(/<font([^>]*)/,"<span$1") pff ?? no
+              str.replace(/<font([^>]+)color="/,'<font$1 style="color:"') ///css4
            //   [...str.matchAll(/(^|[^a-z0-9-])style="[^"]*?("|$)/gi)].forEach(subval=>{
               //    str=str.replace(subval[0],ud.edit_str(subval[0]))
              //     str=str.replace(subval[0],subval[0].replace(/(;)/g,"$1 "))
@@ -509,7 +630,7 @@ window.dark_object=
         
                  // str=str.replace(/<style(.*?>)/g,'<style onload="" ud-data="ud_broke_style" $1');
                   str= str.replace(/integrity/g,"");// too wide
-                  str= str.replace(/checksum/g,"");  // too wide
+                  str= str.replace(/integrity/g,"");// too wide
 
                   //[...str.matchAll(ud.matchStylePart)].forEach(function(stylepart){ 
                     //  console.log(!stylepart.match(/(=>|function|return|window|length|typeof)/),stylepart)   
