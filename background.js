@@ -203,7 +203,6 @@ window.dark_object=
           portFromCS = p;
           portFromCS.onMessage.addListener(function(m) {
             browser.storage.local.set(m,dark_object.background.setListener);
-            
           });
         }
         browser.runtime.onConnect.addListener(connected);
@@ -218,10 +217,11 @@ window.dark_object=
         max:Math.max,
         round:Math.round,
         minbright:200,
-        minbrightbg:11,
+        minbrightbg:30,
         nonBreakScriptIdent:"§§IDENTIFIER§§",
         maxbright:180, // main bgcolor
-        maxbrighttrigger:80,
+        maxbrighttrigger:135, // nice colors from 135
+        logo_light_trigger:100, 
         knownvariables:{},
         rgba_val:function(r,g,b,a){
           a= typeof a == "number"?a:1
@@ -240,19 +240,18 @@ window.dark_object=
             var mincol = ud.min(r,g,b);
       
 //    if(maxcol<=200){return "rgba("+max(r,200)+","+max(g,200)+","+max(b,200)+","+(a)+")";}
-            if(trigger<=ud.maxbrighttrigger){
-      
-              return ud.rgba_val(...[r,g,b].map(x => ud.max(ud.minbrightbg,x)),a);
+            if(trigger<ud.maxbrighttrigger){
+                return ud.rgba_val(...[r,g,b].map(x => x+ud.minbrightbg),a); // better contrast 
+            //  return ud.rgba_val(...[r,g,b].map(x => ud.max(ud.minbrightbg,x)),a); //than this
             }
 
    //         return ud.rgba_val(...[r,g,b].map(x => ud.rgba_mode1(x,maxcol-ud.maxbright)),a);
            // return ud.rgba_val(...[r,g,b].map(x => ud.rgba_mode2(x,ud.maxbright/maxcol)),a);
             //return ud.rgba_val(...[r,g,b].map(x => ud.rgba_mode3(x,(ud.maxbright-ud.minbrightbg)/maxcol)),a);
-
-            //# mode 4
-            var delta = mincol-ud.minbrightbg;
-
-            return ud.rgba_val(...[r,g,b].map(x =>ud.maxbright/255*(x-delta),a));
+            //a=ud.min(a,Math.pow((r+g+b)/-3+255,1.25))
+;            var delta = mincol;
+            var delta2 = ud.min(255-mincol,mincol);
+            return ud.rgba_val(...[r,g,b].map(x =>(ud.maxbright-ud.minbrightbg)/255*(x-delta)+ud.minbrightbg+delta2,a));
         },
         revert_rgba:function(r,g,b,a){
             a= typeof a == "number"?a:1
@@ -344,20 +343,25 @@ edit_an_image:function(details)
                 canvas.height = myImage.height;
                 var context = canvas.getContext('2d');
                 context.drawImage(myImage, 0, 0);
-                var islogo = ud.edit_a_logo(context,myImage.width,myImage.height);
+                var is_background =  (/background|(bg|box|panel|fond)[._-]/).test(new URL(details.url).pathname);
+                var islogo = !is_background && ud.edit_a_logo(context,myImage.width,myImage.height,details);
                 if(islogo)
                 {
                     resolve({ redirectUrl: canvas.toDataURL()});
                 }
 
-                if(!(/background|bg[._-]/).test(new URL(details.url).pathname))
+                if(is_background)
+                {
+                  ud.edit_a_background(context,myImage.width,myImage.height,0xff)
+          
+                resolve({ redirectUrl: canvas.toDataURL()});
+                }
+                else
                 {
                   resolve({});
                 }
 
-            ud.edit_a_background(context,myImage.width,myImage.height,0xff)
-          
-                resolve({ redirectUrl: canvas.toDataURL()});
+            
             }
           myImage.onload= normalresolve;
 
@@ -368,14 +372,14 @@ edit_an_image:function(details)
           })
 
 },
-edit_a_logo:function(canvasContext, width, height) {
+edit_a_logo:function(canvasContext, width, height,details) {
       let theImageData = canvasContext.getImageData(0, 0, width, height),
       theImageDataBufferTMP = new ArrayBuffer(theImageData.data.length),
       theImageDataClamped8TMP = new Uint8ClampedArray(theImageDataBufferTMP),
       theImageDataUint32TMP = new Uint32Array(theImageDataBufferTMP),
       n = theImageDataUint32TMP.length;
       theImageDataClamped8TMP.set(theImageData.data);
-
+/*
       var cornerpixs = [0,parseInt(width/2),width*parseInt(height/2)-width,width*parseInt(height/2),n-width,n-parseInt(width/2),n-1]
       //console.log(cornerpixs.map(x=>theImageDataUint32TMP[x]));
       cornerpixs= cornerpixs.map(x=>theImageDataUint32TMP[x]<0x00ffffff)//superior to 0x00ffffffff is not
@@ -386,19 +390,36 @@ edit_a_logo:function(canvasContext, width, height) {
           {
             return false;
           }
+*/
+      //not sure : should i use the global pixels or the local pixels
+      //var sampler = 40
+      //var samplepixelscount = Math.round(n/sampler); 
+      //var samplepixels = Array.from({length: samplepixelscount}, (x, i) => i*sampler).map(x=>theImageDataUint32TMP[x])
+      //.map(number=>[number & 0xff,(number >> 8) & 0xff,(number >> 16) & 0xff])
+      let unique = [...new Set(theImageDataUint32TMP)];
+      //var maxcol = Math.max(...[].concat(...samplepixels));
+      //var delta= 255-maxcol // 255 is the future logo brightness inversion; can be configurable
+      
+      //console.log(details.url,maxcol,n,sampler,samplepixels)
+      //console.log(details.url, unique,unique.length);
+      if(unique.length>200 || unique[0])
+      {
+        return false;
+      }
+
           imgDataLoop: while (n--) {
       var number = theImageDataUint32TMP[n];
       var r = number & 0xff
       var g = (number >> 8) & 0xff
       var b = (number >> 16) & 0xff
       var a = (number >> 24) & 0xff
-      var maxcol=ud.max(r,g,b)
-      var delta=255-maxcol
+
+      var maxcol=ud.max(r,g,b) // Local max col
+      var delta= 255-maxcol // 255 is the future logo brightness; can be configurable
       r=r+delta;
       g=g+delta;
-      b=b+delta
+      b=b+delta;
       var newColor = ((a<<24)) | (b<<16)| (g<<8) | r;
-
       theImageDataUint32TMP[n] = newColor; 
     }
 
@@ -422,10 +443,11 @@ edit_a_background:function(canvasContext, width, height,max_a=1) {
       var g = (number >> 8) & 0xff
       var b = (number >> 16) & 0xff
         
-      //if (r+b+g<=3*trigger_level)
-        //continue imgDataLoop;
+      //if ((r+b+g)/3<150)
+        //continue imgDataLoop; //does not work with gradients
       var a = (number >> 24) & max_a
       
+
 
      // var rgbarr = [r,g,b].map(x => ud.maxbright *(x/ud.max(r,g,b)));
       
@@ -436,7 +458,9 @@ edit_a_background:function(canvasContext, width, height,max_a=1) {
       //g=rgbarr[1];
       //b=rgbarr[2];
     //  a=Math.abs(ud.max(r,g,b)-255);
-      a=(r+g+b)/-3+255;
+      //a=ud.min(a,(r+g+b)/-3+255); // linear
+
+      a=ud.min(a,Math.pow((r+g+b)/-3+255,1.25)); // pow, solves gradients & keeps colors; 0 means full dark;
       var newColor = ((a<<24)) | (b<<16)| (g<<8) | r;
       theImageDataUint32TMP[n] = newColor; 
     }
@@ -549,7 +573,7 @@ edit_a_background:function(canvasContext, width, height,max_a=1) {
     //    ud.dynamicColorRegex=/(#[0-9a-f]{3,8}|(rgb?|hsl)a?\([%0-9, .]+?\))/gi
         ud.dynamicColorRegex=/([:, \n])(#[0-9a-f]{3,8}|(rgb?|hsl)a?\([%0-9, .]+?\))($|["}\n;,)! ])/gi
         ud.urlBGRegex = /(^|[^a-z0-9-])(background(-image)?)[\s\t]*?:[\s\t]*?(url\(["']?(.+?)["']?\))/g
-        ud.restoreColorRegex=/(^|[^a-z0-9-])(color.{1,5}|fill)(\/\*ori\*(.*?)\*eri\*\/rgb.*?\/\*sri\*\/)/g
+        ud.restoreColorRegex=/(^|[^a-z0-9-])(color.{1,5}|fill.{1,5})(\/\*ori\*(.*?)\*eri\*\/rgb.*?\/\*sri\*\/)/g
         //ud.matchStylePart=new RegExp(["{[^}]+?((",[ud.radiusRegex,ud.variableRegex,ud.interventRegex ].map(x=>x.source).join(")|("),"))[^}]+?}"].join(""),"gi");
         ud.matchStylePart=/(^|<style.*?>)(.|\n)*?(<\/style>|$)|[^a-z0-9-]style=("(.|\n)+?("|$)|'(.|\n)+?('|$))/g
         
@@ -584,7 +608,7 @@ edit_a_background:function(canvasContext, width, height,max_a=1) {
 
               str=ud.restore_comments(str)
   //            str=ud.no_repeat_backgrounds(str);
-              str=ud.set_the_round_border(str);
+           //   str=ud.set_the_round_border(str);
               str=ud.edit_background_image_urls(str);
      //         str=ud.edit_backgrounds(str,details);
              // //str=str.replace(/([{}\n;])/g,"\t\n\t$1\t\n\t");
@@ -600,15 +624,15 @@ edit_a_background:function(canvasContext, width, height,max_a=1) {
         
                   str= str.replace(/bgcolor=/g,"");  // css4 too wide
               [...str.matchAll(ud.matchStylePart)].filter(x=>x[0].includes(":")).forEach(function(match)
-              {
+              {//matchstylepart breaks amazon
                     var substr=match[0];
                     substr=ud.edit_str_named_colors(substr)
                     substr=ud.edit_dynamic_colors(substr)  
                     substr=ud.restore_color(substr)
                     substr=ud.restore_comments(substr)
 //                    substr=ud.no_repeat_backgrounds(substr);
-                    substr=ud.set_the_round_border(substr);
-                    substr=ud.edit_background_image_urls(substr);
+                   // substr=ud.set_the_round_border(substr);
+                 //   substr=ud.edit_background_image_urls(substr);
                     
          //     str=ud.edit_backgrounds(str,details);
                     str=str.replace(match[0],substr);
@@ -629,8 +653,7 @@ edit_a_background:function(canvasContext, width, height,max_a=1) {
   //            });
         
                  // str=str.replace(/<style(.*?>)/g,'<style onload="" ud-data="ud_broke_style" $1');
-                  str= str.replace(/integrity/g,"");// too wide
-                  str= str.replace(/integrity/g,"");// too wide
+                  str= str.replace(/integrity=/g,"nointegrity=");// too wide
 
                   //[...str.matchAll(ud.matchStylePart)].forEach(function(stylepart){ 
                     //  console.log(!stylepart.match(/(=>|function|return|window|length|typeof)/),stylepart)   
