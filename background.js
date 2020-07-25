@@ -336,14 +336,19 @@ edit_an_image:function(details)
           }
           return new Promise((resolve, reject) => {
               var canvas = document.createElement('canvas');
+              var theUrl = new URL(details.url);
+              console.log(theUrl);
+              
               var myImage = new Image;
-              myImage.src=details.url;
+              myImage.src=ud.knownvariables[theUrl.search] || details.url;
+              delete ud.knownvariables[theUrl.search];
               var normalresolve = x=>{
                 canvas.width = myImage.width;
                 canvas.height = myImage.height;
                 var context = canvas.getContext('2d');
                 context.drawImage(myImage, 0, 0);
-                var is_background =  (/background|(bg|box|panel|fond)[._-]/).test(new URL(details.url).pathname);
+                var is_background =  (/background|(bg|box|panel|fond)[._-]/).test(theUrl.pathname);
+                
                 var islogo = !is_background && ud.edit_a_logo(context,myImage.width,myImage.height,details);
                 if(islogo)
                 {
@@ -379,10 +384,12 @@ edit_a_logo:function(canvasContext, width, height,details) {
       theImageDataUint32TMP = new Uint32Array(theImageDataBufferTMP),
       n = theImageDataUint32TMP.length;
       theImageDataClamped8TMP.set(theImageData.data);
-/*
+
+      //    console.log(details,"willresolve")
+
       var cornerpixs = [0,parseInt(width/2),width*parseInt(height/2)-width,width*parseInt(height/2),n-width,n-parseInt(width/2),n-1]
       //console.log(cornerpixs.map(x=>theImageDataUint32TMP[x]));
-      cornerpixs= cornerpixs.map(x=>theImageDataUint32TMP[x]<0x00ffffff)//superior to 0x00ffffffff is not
+      cornerpixs= cornerpixs.map(x=>theImageDataUint32TMP[x]<0x00ffffff)//superior to 0x00ffffff is not
      // console.log(cornerpixs)
       var pixelcount = cornerpixs.reduce((a, b) =>a + b)
       //console.log(pixelcount)
@@ -390,22 +397,25 @@ edit_a_logo:function(canvasContext, width, height,details) {
           {
             return false;
           }
-*/
-      //not sure : should i use the global pixels or the local pixels
-      //var sampler = 40
-      //var samplepixelscount = Math.round(n/sampler); 
-      //var samplepixels = Array.from({length: samplepixelscount}, (x, i) => i*sampler).map(x=>theImageDataUint32TMP[x])
-      //.map(number=>[number & 0xff,(number >> 8) & 0xff,(number >> 16) & 0xff])
-      let unique = [...new Set(theImageDataUint32TMP)];
+      var samplepixels = theImageDataUint32TMP;
+      /*
+      var sampler = 40
+      var samplepixelscount = Math.round(n/sampler); 
+      samplepixels = Array.from({length: samplepixelscount}, (x, i) => i*sampler).map(x=>theImageDataUint32TMP[x])
+      .map(number=>[number & 0xff,(number >> 8) & 0xff,(number >> 16) & 0xff])
+      */
+      let unique = [...new Set(samplepixels)];
       //var maxcol = Math.max(...[].concat(...samplepixels));
       //var delta= 255-maxcol // 255 is the future logo brightness inversion; can be configurable
-      
+   //   console.log(unique);
       //console.log(details.url,maxcol,n,sampler,samplepixels)
-      //console.log(details.url, unique,unique.length);
-      if(unique.length>200 || unique[0])
+    //  console.log(details.url, unique,unique.length);
+      if(unique.length>300 || unique.indexOf(0)==-1)
       {
         return false;
       }
+      var delta2 = unique.indexOf(0x00ffffff)>-1?0:80
+      
 
           imgDataLoop: while (n--) {
       var number = theImageDataUint32TMP[n];
@@ -415,7 +425,11 @@ edit_a_logo:function(canvasContext, width, height,details) {
       var a = (number >> 24) & 0xff
 
       var maxcol=ud.max(r,g,b) // Local max col
-      var delta= 255-maxcol // 255 is the future logo brightness; can be configurable
+      var delta= 255-maxcol// 255 is the future logo brightness; can be configurable
+      if(a && (r+g+b)<30 && delta2)
+      {
+        delta-=delta2; // Experimental : if pic has black and white do not set black entirely white
+      }
       r=r+delta;
       g=g+delta;
       b=b+delta;
@@ -468,6 +482,21 @@ edit_a_background:function(canvasContext, width, height,max_a=1) {
     canvasContext.putImageData(theImageData, 0, 0);
   }
        ,
+        send_data_image_to_parser:function(str,details){
+          if(str.includes('data:'))
+          {
+
+          [...str.matchAll(/(data:image\/.+?)[)'"]/g)].forEach((match,lindex)=>{
+          //var id = `https://google.com/favicon.ico?${details.requestId}-${details.datacount}-${lindex}`
+         //   var id = "https://google.com/favicon.ico?1=10985-1-1"
+            var id=`?data-image=${details.requestId}-${details.datacount}-${lindex}`
+            ud.knownvariables[id]=match[1];
+            str=str.replace(match[1],'/favicon.ico'+id);
+          })
+
+          }
+          return str; 
+        },
         edit_str_named_colors:function(str){
 
           [...str.matchAll(ud.colorRegex)].forEach(match=>{
@@ -571,7 +600,8 @@ edit_a_background:function(canvasContext, width, height,max_a=1) {
         ud.interventRegex=/(^|[^a-z0-9-])(color|background(-color|-image)?)[\s\t]*?:[\s\t]*?[\n]*?([^;}]*?)([^;}]*?['"].*['"][^;}]*?)*?[\s\t]*?(![\s\t]*?important)?[\s\t]*?($|[;}\n\\])/gi
        // ud.matchStylePart=/{[^{]+}/gi //breaks amazon
     //    ud.dynamicColorRegex=/(#[0-9a-f]{3,8}|(rgb?|hsl)a?\([%0-9, .]+?\))/gi
-        ud.dynamicColorRegex=/([:, \n])(#[0-9a-f]{3,8}|(rgb?|hsl)a?\([%0-9, .]+?\))($|["}\n;,)! ])/gi
+    //
+        ud.dynamicColorRegex=/([:, \n(])(#[0-9a-f]{3,8}|(rgb?|hsl)a?\([%0-9, .]+?\))($|["}\n;,)! ])/gi
         ud.urlBGRegex = /(^|[^a-z0-9-])(background(-image)?)[\s\t]*?:[\s\t]*?(url\(["']?(.+?)["']?\))/g
         ud.restoreColorRegex=/(^|[^a-z0-9-])(color.{1,5}|fill.{1,5})(\/\*ori\*(.*?)\*eri\*\/rgb.*?\/\*sri\*\/)/g
         //ud.matchStylePart=new RegExp(["{[^}]+?((",[ud.radiusRegex,ud.variableRegex,ud.interventRegex ].map(x=>x.source).join(")|("),"))[^}]+?}"].join(""),"gi");
@@ -594,7 +624,9 @@ edit_a_background:function(canvasContext, width, height,max_a=1) {
         let decoder = new TextDecoder("utf-8");
         let encoder = new TextEncoder();
         var headFound = false;
+        details.datacount = 0;
         filter.ondata = event => {
+            details.datacount++
             var str = decoder.decode(event.data, {stream: true});
 
             if(details.type=="stylesheet" )
@@ -610,6 +642,7 @@ edit_a_background:function(canvasContext, width, height,max_a=1) {
   //            str=ud.no_repeat_backgrounds(str);
            //   str=ud.set_the_round_border(str);
               str=ud.edit_background_image_urls(str);
+              str=ud.send_data_image_to_parser(str,details);
      //         str=ud.edit_backgrounds(str,details);
              // //str=str.replace(/([{}\n;])/g,"\t\n\t$1\t\n\t");
               //  str=str.replace(/([{}\n;])/g,"$1 ");  
@@ -630,6 +663,8 @@ edit_a_background:function(canvasContext, width, height,max_a=1) {
                     substr=ud.edit_dynamic_colors(substr)  
                     substr=ud.restore_color(substr)
                     substr=ud.restore_comments(substr)
+
+              substr=ud.send_data_image_to_parser(substr,details);
 //                    substr=ud.no_repeat_backgrounds(substr);
                    // substr=ud.set_the_round_border(substr);
                  //   substr=ud.edit_background_image_urls(substr);
