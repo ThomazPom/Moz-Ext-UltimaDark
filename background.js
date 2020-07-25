@@ -219,7 +219,9 @@ window.dark_object=
         minbright:200,
         minbrightbg:30,
         nonBreakScriptIdent:"§§IDENTIFIER§§",
-        maxbright:180, // main bgcolor
+
+        maxbright:255, // Max text brightness
+        maxbrightbg:180, // main bgcolor
         maxbrighttrigger:135, // nice colors from 135
         logo_light_trigger:100, 
         knownvariables:{},
@@ -241,17 +243,18 @@ window.dark_object=
       
 //    if(maxcol<=200){return "rgba("+max(r,200)+","+max(g,200)+","+max(b,200)+","+(a)+")";}
             if(trigger<ud.maxbrighttrigger){
-                return ud.rgba_val(...[r,g,b].map(x => x+ud.minbrightbg),a); // better contrast 
-            //  return ud.rgba_val(...[r,g,b].map(x => ud.max(ud.minbrightbg,x)),a); //than this
+             //   return ud.rgba_val(...[r,g,b].map(x => x),a); // Keep same dark
+                return ud.rgba_val(...[r,g,b].map(x => x+ud.minbrightbg),a); // Pre Light(better contrast) 
+              //  return ud.rgba_val(...[r,g,b].map(x => ud.max(ud.minbrightbg,x)),a); // Set at minimum brightness of background colors
             }
 
-   //         return ud.rgba_val(...[r,g,b].map(x => ud.rgba_mode1(x,maxcol-ud.maxbright)),a);
-           // return ud.rgba_val(...[r,g,b].map(x => ud.rgba_mode2(x,ud.maxbright/maxcol)),a);
-            //return ud.rgba_val(...[r,g,b].map(x => ud.rgba_mode3(x,(ud.maxbright-ud.minbrightbg)/maxcol)),a);
+   //         return ud.rgba_val(...[r,g,b].map(x => ud.rgba_mode1(x,maxcol-ud.maxbrightbg)),a);
+           // return ud.rgba_val(...[r,g,b].map(x => ud.rgba_mode2(x,ud.maxbrightbg/maxcol)),a);
+            //return ud.rgba_val(...[r,g,b].map(x => ud.rgba_mode3(x,(ud.maxbrightbg-ud.minbrightbg)/maxcol)),a);
             //a=ud.min(a,Math.pow((r+g+b)/-3+255,1.25))
 ;            var delta = mincol;
-            var delta2 = ud.min(255-mincol,mincol);
-            return ud.rgba_val(...[r,g,b].map(x =>(ud.maxbright-ud.minbrightbg)/255*(x-delta)+ud.minbrightbg+delta2,a));
+            var delta2 = ud.min(255-mincol/*keep original contrast*/,mincol/*do not revert already dark backgrounds*/);
+            return ud.rgba_val(...[r,g,b].map(x =>(ud.maxbrightbg-ud.minbrightbg)/255*(x-delta)+ud.minbrightbg+delta2,a));
         },
         revert_rgba:function(r,g,b,a){
             a= typeof a == "number"?a:1
@@ -260,7 +263,7 @@ window.dark_object=
       
             var delta = ud.minbright-mincol;
             r=r+delta;g=g+delta;b=b+delta;
-            var multiplier = 255/ud.max(r,g,b)
+            var multiplier = ud.maxbright/ud.max(r,g,b)
             return ud.rgba_val(...[r,g,b].map(x=>ud.revert_mode2(x,multiplier)),a)
         },
         onlyUnique:function(value, index, self) { 
@@ -334,10 +337,15 @@ edit_an_image:function(details)
           {
             return{};
           }
+          var theUrl = new URL(details.url);
+          if(theUrl.pathname.endsWith(".gif"))
+          {
+            return;
+          }
+
           return new Promise((resolve, reject) => {
               var canvas = document.createElement('canvas');
-              var theUrl = new URL(details.url);
-              console.log(theUrl);
+             // console.log(theUrl);
               
               var myImage = new Image;
               myImage.src=ud.knownvariables[theUrl.search] || details.url;
@@ -347,9 +355,12 @@ edit_an_image:function(details)
                 canvas.height = myImage.height;
                 var context = canvas.getContext('2d');
                 context.drawImage(myImage, 0, 0);
-                var is_background =  (/background|(bg|box|panel|fond)[._-]/).test(theUrl.pathname);
+                var is_background =  (/footer|background|(bg|box|panel|fond)[._-]/i).test(theUrl.pathname);
+              //  console.log(details.url,is_background)
+                var islogo = !is_background
+                && !theUrl.pathname.endsWith(".jpg")
+                && ud.edit_a_logo(context,myImage.width,myImage.height,details);
                 
-                var islogo = !is_background && ud.edit_a_logo(context,myImage.width,myImage.height,details);
                 if(islogo)
                 {
                     resolve({ redirectUrl: canvas.toDataURL()});
@@ -378,6 +389,9 @@ edit_an_image:function(details)
 
 },
 edit_a_logo:function(canvasContext, width, height,details) {
+      if(width*height<400){ // small images can't be logos
+    //    return {};
+      }
       let theImageData = canvasContext.getImageData(0, 0, width, height),
       theImageDataBufferTMP = new ArrayBuffer(theImageData.data.length),
       theImageDataClamped8TMP = new Uint8ClampedArray(theImageDataBufferTMP),
@@ -389,32 +403,44 @@ edit_a_logo:function(canvasContext, width, height,details) {
 
       var cornerpixs = [0,parseInt(width/2),width*parseInt(height/2)-width,width*parseInt(height/2),n-width,n-parseInt(width/2),n-1]
       //console.log(cornerpixs.map(x=>theImageDataUint32TMP[x]));
-      cornerpixs= cornerpixs.map(x=>theImageDataUint32TMP[x]<0x00ffffff)//superior to 0x00ffffff is not
+      cornerpixs= cornerpixs.map(x=>theImageDataUint32TMP[x]<=0x00ffffff)//superior to 0x00ffffff is not fully alpha
      // console.log(cornerpixs)
       var pixelcount = cornerpixs.reduce((a, b) =>a + b)
       //console.log(pixelcount)
+
       if(pixelcount<2)
           {
             return false;
           }
       var samplepixels = theImageDataUint32TMP;
-      /*
-      var sampler = 40
-      var samplepixelscount = Math.round(n/sampler); 
-      samplepixels = Array.from({length: samplepixelscount}, (x, i) => i*sampler).map(x=>theImageDataUint32TMP[x])
-      .map(number=>[number & 0xff,(number >> 8) & 0xff,(number >> 16) & 0xff])
-      */
+      if(ud.sample_mode_active==false)
+      {
+//          var sampler = 40
+  //        var samplepixelscount = Math.round(n/sampler); 
+    //      samplepixels = Array.from({length: samplepixelscount}, (x, i) => i*sampler).map(x=>theImageDataUint32TMP[x])
+          
+          //#was used for globalcol#.map(number=>[number & 0xff,(number >> 8) & 0xff,(number >> 16) & 0xff])
+      }
       let unique = [...new Set(samplepixels)];
       //var maxcol = Math.max(...[].concat(...samplepixels));
       //var delta= 255-maxcol // 255 is the future logo brightness inversion; can be configurable
    //   console.log(unique);
       //console.log(details.url,maxcol,n,sampler,samplepixels)
     //  console.log(details.url, unique,unique.length);
-      if(unique.length>300 || unique.indexOf(0)==-1)
+          console.log(width,height,
+            details.url,
+            "alphapix:",pixelcount,
+            "unique",unique,
+            "fullset",theImageDataUint32TMP,
+            "sampleset",samplepixels
+
+            )
+ 
+      if(unique.length>600 || unique.indexOf(0)==-1)
       {
         return false;
       }
-      var delta2 = unique.indexOf(0x00ffffff)>-1?0:80
+      var delta2 = unique.indexOf(0x00ffffff)>-1?0:70
       
 
           imgDataLoop: while (n--) {
@@ -463,7 +489,7 @@ edit_a_background:function(canvasContext, width, height,max_a=1) {
       
 
 
-     // var rgbarr = [r,g,b].map(x => ud.maxbright *(x/ud.max(r,g,b)));
+     // var rgbarr = [r,g,b].map(x => ud.maxbrightbg *(x/ud.max(r,g,b)));
       
       //r=ud.max( r-100,0)//rgbarr[0];
       //g=ud.max( g-100,0)//rgbarr[1];
@@ -483,7 +509,7 @@ edit_a_background:function(canvasContext, width, height,max_a=1) {
   }
        ,
         send_data_image_to_parser:function(str,details){
-          if(str.includes('data:'))
+           if(str.includes('data:'))
           {
 
           [...str.matchAll(/(data:image\/.+?)[)'"]/g)].forEach((match,lindex)=>{
@@ -632,8 +658,8 @@ edit_a_background:function(canvasContext, width, height,max_a=1) {
             if(details.type=="stylesheet" )
             {
 
-       str=ud.edit_str_named_colors(str)
-       str=ud.edit_dynamic_colors(str)
+              str=ud.edit_str_named_colors(str)
+              str=ud.edit_dynamic_colors(str)
     //   str=ud.edit_background_image_urls(str)
                
               str=ud.restore_color(str)
@@ -641,8 +667,10 @@ edit_a_background:function(canvasContext, width, height,max_a=1) {
               str=ud.restore_comments(str)
   //            str=ud.no_repeat_backgrounds(str);
            //   str=ud.set_the_round_border(str);
-              str=ud.edit_background_image_urls(str);
-              str=ud.send_data_image_to_parser(str,details);
+             // str=ud.edit_background_image_urls(str);
+             // if(str.includes("data:image")){
+                str=ud.send_data_image_to_parser(str,details);
+              //}
      //         str=ud.edit_backgrounds(str,details);
              // //str=str.replace(/([{}\n;])/g,"\t\n\t$1\t\n\t");
               //  str=str.replace(/([{}\n;])/g,"$1 ");  
@@ -657,14 +685,15 @@ edit_a_background:function(canvasContext, width, height,max_a=1) {
         
                   str= str.replace(/bgcolor=/g,"");  // css4 too wide
               [...str.matchAll(ud.matchStylePart)].filter(x=>x[0].includes(":")).forEach(function(match)
-              {//matchstylepart breaks amazon
+              {   //matchstylepart breaks amazon
                     var substr=match[0];
                     substr=ud.edit_str_named_colors(substr)
                     substr=ud.edit_dynamic_colors(substr)  
                     substr=ud.restore_color(substr)
                     substr=ud.restore_comments(substr)
-
-              substr=ud.send_data_image_to_parser(substr,details);
+                //    if(substr.includes("data:image")){
+                      substr=ud.send_data_image_to_parser(substr,details);
+                  //  }
 //                    substr=ud.no_repeat_backgrounds(substr);
                    // substr=ud.set_the_round_border(substr);
                  //   substr=ud.edit_background_image_urls(substr);
