@@ -245,6 +245,7 @@ window.dark_object = {
             if (width * height < 400) { // small images can't be logos
               //    return {};
             }
+            console.log(width,height,details)
             let theImageData = canvasContext.getImageData(0, 0, width, height),
               theImageDataBufferTMP = new ArrayBuffer(theImageData.data.length),
               theImageDataClamped8TMP = new Uint8ClampedArray(theImageDataBufferTMP),
@@ -349,7 +350,7 @@ window.dark_object = {
             if (str.includes('data:')) {
 
               [...str.matchAll(/(data:image\/(png|jpe?g);base64,([^\"]*?))[)'"]/g)].forEach((match, lindex) => {
-                console.log(match)
+                
                 //var id = `https://google.com/favicon.ico?${details.requestId}-${details.datacount}-${lindex}`
                 //   var id = "https://google.com/favicon.ico?1=10985-1-1"
                 var id = `?data-image=${details.requestId}-${details.datacount}-${lindex}`
@@ -619,12 +620,13 @@ window.dark_object = {
             substr = ud.edit_str_named_colors(substr)
             substr = ud.edit_dynamic_colors(substr)
 
-          substr=ud.prefix_fg_vars(substr);
+            substr=ud.prefix_fg_vars(substr);
+            substr = ud.restore_var_color(substr)
+            
             substr = ud.restore_color(substr)
             substr = ud.restore_comments(substr)
-            substr = ud.restore_var_color(substr)
             //    if(substr.includes("data:image")){
-            //NOT READY substr = ud.send_data_image_to_parser(substr, details);
+            substr = ud.send_data_image_to_parser(substr, details);
             
             //  }
             //                    substr=ud.no_repeat_backgrounds(substr);
