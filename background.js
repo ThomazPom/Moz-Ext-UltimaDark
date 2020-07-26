@@ -196,7 +196,7 @@ window.dark_object = {
               return {};
             }
             var theUrl = new URL(details.url);
-            if (theUrl.pathname.endsWith(".gif")) {
+            if (theUrl.pathname.endsWith(".gif") && !theUrl.pathname.match(/logo|icon/i)) {
               return;
             }
             return new Promise((resolve, reject) => {
@@ -209,9 +209,14 @@ window.dark_object = {
                 canvas.height = myImage.height;
                 var context = canvas.getContext('2d');
                 context.drawImage(myImage, 0, 0);
-                var is_background = (/footer|background|(bg|box|panel|fond)[._-]/i).test(theUrl.pathname);
+
+                var is_background = (/[0-9]{2,4}x[0-9]{2,4}|footer|background|(bg|box|panel|fond)[._-]/i).test(theUrl.pathname+theUrl.search);
+                //is_background=is_background&&!((/(logo|icon)/i).test(theUrl.pathname+theUrl.search))
                 //  console.log(details.url,is_background)
+                
                 var islogo = !is_background && !theUrl.pathname.endsWith(".jpg") && ud.edit_a_logo(context, myImage.width, myImage.height, details);
+                
+              console.log(details,islogo,is_background)
                 if (islogo) {
                   resolve({
                     redirectUrl: canvas.toDataURL()
@@ -268,7 +273,7 @@ window.dark_object = {
             //console.log(details.url,maxcol,n,sampler,samplepixels)
             //  console.log(details.url, unique,unique.length);
             //console.log(width, height, details.url, "alphapix:", pixelcount, "unique", unique, "fullset", theImageDataUint32TMP, "sampleset", samplepixels, theImageData, canvasContext)
-            if (unique.length > 600 || unique.length == 256 || unique.indexOf(0) == -1) {
+            if (unique.length > 600 /*|| unique.length == 256 */|| unique.indexOf(0) == -1) {
               return false;
             }
             var delta2 = unique.indexOf(0x00ffffff) > -1 ? 0 : 70
@@ -359,7 +364,7 @@ window.dark_object = {
         minbrightbg: 30,
         nonBreakScriptIdent: "§§IDENTIFIER§§",
         maxbright: 255, // Max text brightness
-        maxbrightbg: 180, // main bgcolor
+        maxbrightbg: 150, // main bgcolor
         maxbrighttrigger: 135, // nice colors from 135
         logo_light_trigger: 100,
         knownvariables: {},
@@ -391,7 +396,11 @@ window.dark_object = {
           ;
           var delta = mincol;
           var delta2 = ud.min(255 - mincol /*keep original contrast*/ , mincol /*do not revert already dark backgrounds*/ );
-          return ud.rgba_val(...[r, g, b].map(x => (ud.maxbrightbg - ud.minbrightbg) / 255 * (x - delta) + ud.minbrightbg + delta2, a));
+          var rgbarr=[r, g, b].map(x => (ud.maxbrightbg - ud.minbrightbg) / 255 * (x - delta) + ud.minbrightbg + delta2, a);
+          rgbarr=rgbarr.map(x=>Math.pow(x,1.02)); /*little secret, better contrast*/
+          
+          return ud.rgba_val(...rgbarr);
+          
         },
         revert_rgba: function(r, g, b, a) {
           a = typeof a == "number" ? a : 1
