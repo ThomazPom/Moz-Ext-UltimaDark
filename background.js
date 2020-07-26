@@ -218,7 +218,7 @@ window.dark_object = {
                 /*&& !theUrl.pathname.endsWith(".jpg") //some websites renames png files in jpg */
                 && ud.edit_a_logo(context, myImage.width, myImage.height, details);
                 
-              console.log(details,islogo,is_background)
+            //  console.log(details,islogo,is_background)
                 if (islogo) {
                   resolve({
                     redirectUrl: canvas.toDataURL()
@@ -260,7 +260,7 @@ window.dark_object = {
             //console.log(pixelcount)
 
 
-            console.log(details.url,pixelcount)
+            //console.log(details.url,pixelcount)
             if (pixelcount < 2) {
               return false;
             }
@@ -276,7 +276,7 @@ window.dark_object = {
             //var maxcol = Math.max(...[].concat(...samplepixels));
             //var delta= 255-maxcol // 255 is the future logo brightness inversion; can be configurable
             //   console.log(unique);
-            console.log(details.url,maxcol,n,samplepixels,unique.length)
+            //console.log(details.url,maxcol,n,samplepixels,unique.length)
             //  console.log(details.url, unique,unique.length);
             //console.log(width, height, details.url, "alphapix:", pixelcount, "unique", unique, "fullset", theImageDataUint32TMP, "sampleset", samplepixels, theImageData, canvasContext)
             if (unique.length > 600 /*|| unique.length == 256 */
@@ -347,7 +347,9 @@ window.dark_object = {
           },
           send_data_image_to_parser: function(str, details) {
             if (str.includes('data:')) {
-              [...str.matchAll(/(data:image\/.+?)[)'"]/g)].forEach((match, lindex) => {
+
+              [...str.matchAll(/(data:image\/(png|jpe?g);base64,([^\"]*))[)'"]/g)].forEach((match, lindex) => {
+                console.log(match)
                 //var id = `https://google.com/favicon.ico?${details.requestId}-${details.datacount}-${lindex}`
                 //   var id = "https://google.com/favicon.ico?1=10985-1-1"
                 var id = `?data-image=${details.requestId}-${details.datacount}-${lindex}`
@@ -461,6 +463,21 @@ window.dark_object = {
           })
           return str;
         },
+        prefix_fg_vars: function(str) {
+          return str.replace(ud.variableRegex2,"$&;--ud-fg$2:/*evi*/$6/*svi*/");
+        },
+        restore_var_color: function(str) {
+
+          [1,2].forEach(x=>{
+            (str.match(ud.restoreVarRegex)||[])
+            .forEach(match=>
+              str=str.replace(match,match.replace(/--/g,"--ud-fg--").replace("var(","ud-funcvar(")))
+          });
+          [...str.matchAll(/\/\*evi\*\/(.*?)\/\*svi\*\//g)].forEach(match=>{
+            str=str.replace(match[0],ud.revert_rgba(...ud.eget_color(match[1])))
+          })
+          return str.replace(/ud-funcvar/g,"var");
+        },
         restore_comments: function(str) {
           return str.replace(/\/\*ori.+?eri\*\/|\/\*sri\*\//g, "")
         },
@@ -541,6 +558,7 @@ window.dark_object = {
       }
       ud.radiusRegex = /(^|[^a-z0-9-])(border-((top|bottom)-(left|right)-)?radius?[\s\t]*?:[\s\t]*?([5-9]|[1-9][0-9]|[1-9][0-9][0-9])[a-zA-Z\s\t%]+)($|["}\n;])/gi,
         ud.variableRegex = /(^|[^a-z0-9-])(--[a-z0-9-]+)[\s\t]*?:[\s\t]*?((#|rgba?)[^"}\n;]*?)[\s\t]*?($|["}\n;])/gi,
+        ud.variableRegex2 = /(^|[^a-z0-9-])(--[a-z0-9-]+)([\s\t]*?:)[\s\t]*?((\/\*ori\*(.*?)\*eri\*\/rgb.*?\/\*sri\*\/))/gi,"$&;$2-ud-fg:/*evi*/$6/*svi*/"
         ud.variableBasedRegex = /(^|[^a-z0-9-])var[\s\t]*?\([\s\t]*?(--[a-z0-9-]+)[\s\t]*?\)/gi,
         ud.interventRegex = /(^|[^a-z0-9-])(color|background(-color|-image)?)[\s\t]*?:[\s\t]*?[\n]*?([^;}]*?)([^;}]*?['"].*['"][^;}]*?)*?[\s\t]*?(![\s\t]*?important)?[\s\t]*?($|[;}\n\\])/gi
       // ud.matchStylePart=/{[^{]+}/gi //breaks amazon
@@ -549,6 +567,7 @@ window.dark_object = {
       ud.dynamicColorRegex = /([:, \n(])(#[0-9a-f]{3,8}|(rgb?|hsl)a?\([%0-9, .]+?\))($|["}\n;,)! ])/gi
       ud.urlBGRegex = /(^|[^a-z0-9-])(background(-image)?)[\s\t]*?:[\s\t]*?(url\(["']?(.+?)["']?\))/g
       ud.restoreColorRegex = /(^|[^a-z0-9-])(color.{1,5}|fill.{1,5})(\/\*ori\*(.*?)\*eri\*\/rgb.*?\/\*sri\*\/)/g
+      ud.restoreVarRegex = /([^a-z0-9-])(color|fill)[\s\t]*?:[\s\t]*?var[\s\t]*?\(.*?($|["}\n;! ])/g
       //ud.matchStylePart=new RegExp(["{[^}]+?((",[ud.radiusRegex,ud.variableRegex,ud.interventRegex ].map(x=>x.source).join(")|("),"))[^}]+?}"].join(""),"gi");
       ud.matchStylePart = /(^|<style.*?>)(.|\n)*?(<\/style>|$)|[^a-z0-9-]style=("(.|\n)+?("|$)|'(.|\n)+?('|$))/g
     }
@@ -574,6 +593,8 @@ window.dark_object = {
         if (details.type == "stylesheet") {
           str = ud.edit_str_named_colors(str)
           str = ud.edit_dynamic_colors(str)
+          str=ud.prefix_fg_vars(str);
+          str=ud.restore_var_color(str);
           //   str=ud.edit_background_image_urls(str)
           str = ud.restore_color(str)
           str = ud.restore_comments(str)
@@ -596,8 +617,11 @@ window.dark_object = {
             var substr = match[0];
             substr = ud.edit_str_named_colors(substr)
             substr = ud.edit_dynamic_colors(substr)
+
+          substr=ud.prefix_fg_vars(substr);
             substr = ud.restore_color(substr)
             substr = ud.restore_comments(substr)
+            substr = ud.restore_var_color(substr)
             //    if(substr.includes("data:image")){
             substr = ud.send_data_image_to_parser(substr, details);
             //  }
