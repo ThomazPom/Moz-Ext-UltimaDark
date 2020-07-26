@@ -267,7 +267,7 @@ window.dark_object = {
             //   console.log(unique);
             //console.log(details.url,maxcol,n,sampler,samplepixels)
             //  console.log(details.url, unique,unique.length);
-            console.log(width, height, details.url, "alphapix:", pixelcount, "unique", unique, "fullset", theImageDataUint32TMP, "sampleset", samplepixels, theImageData, canvasContext)
+            //console.log(width, height, details.url, "alphapix:", pixelcount, "unique", unique, "fullset", theImageDataUint32TMP, "sampleset", samplepixels, theImageData, canvasContext)
             if (unique.length > 600 || unique.length == 256 || unique.indexOf(0) == -1) {
               return false;
             }
@@ -538,7 +538,7 @@ window.dark_object = {
   },
   misc: {
     monitorBeforeRequest: function(details) {
-      if (details.url.match(ud.userSettings.exclude_regex)) {
+      if ((details.documentUrl || details.url).match(ud.userSettings.exclude_regex)) {
         return {}
       }
       if (details.type == "image") {

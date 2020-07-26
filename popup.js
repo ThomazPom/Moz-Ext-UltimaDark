@@ -36,7 +36,7 @@ var updateexcludetext=function(){
     	.filter((x,y,z)=>z.indexOf(x) === y)
     	.join("\n")
 
-
+    	/*
       browser.tabs.executeScript(tabs[0].id,{
       	code: `[...document.styleSheets].filter(x=>x.href).map(x=>new URL(x.href).hostname.split('.').slice(-precision_number).join('.')).filter((x,y,z)=>z.indexOf(x) === y)`.replace("precision_number",precision_number.value)
       }).then(result=>{
@@ -50,7 +50,8 @@ var updateexcludetext=function(){
 		    });
 
     	
-      	}).then(updatefunction);	
+      	}).then(updatefunction);*/	
+      	updatefunction();	
     }
 
 });
