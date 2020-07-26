@@ -334,27 +334,32 @@ edit_an_image:function(details)
 {
 
  if(!/^https?/.test(details.originUrl))
+
           {
             return{};
           }
           var theUrl = new URL(details.url);
+
           if(theUrl.pathname.endsWith(".gif"))
           {
             return;
           }
 
           return new Promise((resolve, reject) => {
+
               var canvas = document.createElement('canvas');
-             // console.log(theUrl);
               
               var myImage = new Image;
               myImage.src=ud.knownvariables[theUrl.search] || details.url;
               delete ud.knownvariables[theUrl.search];
+
               var normalresolve = x=>{
+
                 canvas.width = myImage.width;
                 canvas.height = myImage.height;
                 var context = canvas.getContext('2d');
                 context.drawImage(myImage, 0, 0);
+
                 var is_background =  (/footer|background|(bg|box|panel|fond)[._-]/i).test(theUrl.pathname);
               //  console.log(details.url,is_background)
                 var islogo = !is_background
@@ -368,8 +373,10 @@ edit_an_image:function(details)
 
                 if(is_background)
                 {
+
                   ud.edit_a_background(context,myImage.width,myImage.height,0xff)
           
+          console.log(details,theUrl,canvas);
                 resolve({ redirectUrl: canvas.toDataURL()});
                 }
                 else
@@ -432,11 +439,11 @@ edit_a_logo:function(canvasContext, width, height,details) {
             "alphapix:",pixelcount,
             "unique",unique,
             "fullset",theImageDataUint32TMP,
-            "sampleset",samplepixels
+            "sampleset",samplepixels,theImageData,canvasContext
 
             )
  
-      if(unique.length>600 || unique.indexOf(0)==-1)
+      if(unique.length>600 || unique.length==256 ||unique.indexOf(0)==-1)
       {
         return false;
       }
@@ -486,7 +493,7 @@ edit_a_background:function(canvasContext, width, height,max_a=1) {
       //if ((r+b+g)/3<150)
         //continue imgDataLoop; //does not work with gradients
       var a = (number >> 24) & max_a
-      
+      var oa= a;
 
 
      // var rgbarr = [r,g,b].map(x => ud.maxbrightbg *(x/ud.max(r,g,b)));
@@ -499,9 +506,17 @@ edit_a_background:function(canvasContext, width, height,max_a=1) {
       //b=rgbarr[2];
     //  a=Math.abs(ud.max(r,g,b)-255);
       //a=ud.min(a,(r+g+b)/-3+255); // linear
-
       a=ud.min(a,Math.pow((r+g+b)/-3+255,1.25)); // pow, solves gradients & keeps colors; 0 means full dark;
+      //cant fully alpha : if text is on white(to alpha) div and div on an image, text will be hard to read
+      if(a<1)
+      {
+        r=g=b=ud.minbrightbg;
+        a=oa;
+       // r=g=b=0;
+
+      }
       var newColor = ((a<<24)) | (b<<16)| (g<<8) | r;
+      
       theImageDataUint32TMP[n] = newColor; 
     }
     theImageData.data.set(theImageDataClamped8TMP);
