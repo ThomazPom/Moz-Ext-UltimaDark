@@ -614,14 +614,18 @@ window.dark_object = {
         }
         //    str=ud.edit_str(str);
         //   str=str.replace(new RegExp(ud.nonBreakScriptIdent,"g"),"")
-        /*
         if (["main_frame", "sub_frame"].includes(details.type) && !headFound && str.includes("head")) //inject foreground script
         {
+          var head_tag = str.matchAll(/<head.*?>/g).next();
+          if(head_tag.value)
+          {
+            var position=head_tag.value.index+head_tag.value[0].length
+            str = str.substring(0, position) + ud.injectscripts_str+str.substring(position)
+            headFound = true;
+          }
           // console.log(str);
-          headFound = true;
-          str = str.replace("<head>", "<head>" + ud.injectscripts_str) //When using regex replace, care about $1+ presents in injectedscript_str
+           // When using regex replace, care about $1+ presents in injectedscript_str
         }
-        */
         //str=str.replace(/(^|[^a-z0-9-])(color|background(-color)?)[\s\t]*?:[\s\t]*?([^"}\n;]*?)[\s\t]*?![\s\t]*?important[\s\t]*?($|["}\n;])/gi,"$1$2:$4$5");//VERYYOK
         filter.write(encoder.encode(str));
         //must not return this closes filter//
