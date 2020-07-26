@@ -214,7 +214,9 @@ window.dark_object = {
                 //is_background=is_background&&!((/(logo|icon)/i).test(theUrl.pathname+theUrl.search))
                 //  console.log(details.url,is_background)
                 
-                var islogo = !is_background && !theUrl.pathname.endsWith(".jpg") && ud.edit_a_logo(context, myImage.width, myImage.height, details);
+                var islogo = !is_background 
+                /*&& !theUrl.pathname.endsWith(".jpg") //some websites renames png files in jpg */
+                && ud.edit_a_logo(context, myImage.width, myImage.height, details);
                 
               console.log(details,islogo,is_background)
                 if (islogo) {
@@ -224,7 +226,7 @@ window.dark_object = {
                 }
                 if (is_background) {
                   ud.edit_a_background(context, myImage.width, myImage.height, 0xff)
-                  console.log(details, theUrl, canvas);
+                  //console.log(details, theUrl, canvas);
                   resolve({
                     redirectUrl: canvas.toDataURL()
                   });
@@ -256,9 +258,13 @@ window.dark_object = {
             // console.log(cornerpixs)
             var pixelcount = cornerpixs.reduce((a, b) => a + b)
             //console.log(pixelcount)
+
+
+            console.log(details.url,pixelcount)
             if (pixelcount < 2) {
               return false;
             }
+
             var samplepixels = theImageDataUint32TMP;
             if (ud.sample_mode_active == false) {
               //          var sampler = 40
@@ -270,10 +276,12 @@ window.dark_object = {
             //var maxcol = Math.max(...[].concat(...samplepixels));
             //var delta= 255-maxcol // 255 is the future logo brightness inversion; can be configurable
             //   console.log(unique);
-            //console.log(details.url,maxcol,n,sampler,samplepixels)
+            console.log(details.url,maxcol,n,samplepixels,unique.length)
             //  console.log(details.url, unique,unique.length);
             //console.log(width, height, details.url, "alphapix:", pixelcount, "unique", unique, "fullset", theImageDataUint32TMP, "sampleset", samplepixels, theImageData, canvasContext)
-            if (unique.length > 600 /*|| unique.length == 256 */|| unique.indexOf(0) == -1) {
+            if (unique.length > 600 /*|| unique.length == 256 */
+              /*|| unique.indexOf(0) == -1*/ // already tested before
+              ) {
               return false;
             }
             var delta2 = unique.indexOf(0x00ffffff) > -1 ? 0 : 70
