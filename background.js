@@ -348,7 +348,7 @@ window.dark_object = {
           send_data_image_to_parser: function(str, details) {
             if (str.includes('data:')) {
 
-              [...str.matchAll(/(data:image\/(png|jpe?g);base64,([^\"]*))[)'"]/g)].forEach((match, lindex) => {
+              [...str.matchAll(/(data:image\/(png|jpe?g);base64,([^\"]*?))[)'"]/g)].forEach((match, lindex) => {
                 console.log(match)
                 //var id = `https://google.com/favicon.ico?${details.requestId}-${details.datacount}-${lindex}`
                 //   var id = "https://google.com/favicon.ico?1=10985-1-1"
@@ -615,6 +615,7 @@ window.dark_object = {
           str = str.replace(/bgcolor=/g, ""); // css4 too wide
           [...str.matchAll(ud.matchStylePart)].filter(x => x[0].includes(":")).forEach(function(match) { //matchstylepart breaks amazon
             var substr = match[0];
+          
             substr = ud.edit_str_named_colors(substr)
             substr = ud.edit_dynamic_colors(substr)
 
@@ -623,7 +624,8 @@ window.dark_object = {
             substr = ud.restore_comments(substr)
             substr = ud.restore_var_color(substr)
             //    if(substr.includes("data:image")){
-            substr = ud.send_data_image_to_parser(substr, details);
+            //NOT READY substr = ud.send_data_image_to_parser(substr, details);
+            
             //  }
             //                    substr=ud.no_repeat_backgrounds(substr);
             // substr=ud.set_the_round_border(substr);
