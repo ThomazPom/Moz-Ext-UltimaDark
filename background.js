@@ -1,7 +1,6 @@
 window.dark_object = {
   foreground: {
     inject: function() {
-      console.log("Hello from background");
       ud.frontWatch = [
         ["background-color", "backgroundColor"]
       ];
@@ -129,7 +128,7 @@ window.dark_object = {
            document.head.parentNode.style.backgroundColor=getComputedStyle(document.body)["backgroundColor"] 
           }
       });
-      console.log("UltimaDark is loaded");
+      console.log("UltimaDark is loaded",window);
     }
   },
   background: {
@@ -233,7 +232,8 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
         return script;
       })
       ud.colorRegex = new RegExp(CSS_COLOR_NAMES_RGX, "gi");
-      ud.injectscripts_str = ud.injectscripts.map(x => x.outerHTML).join("")
+      //ud.injectscripts_str = ud.injectscripts.map(x => x.outerHTML).join("")// Head detection method
+      ud.injectscripts_str = ud.injectscripts.map(x => x.innerHTML).join(";") // JS injection method
       // Listen for onHeaderReceived for the target page.
       // Set "blocking" and "responseHeaders".
       var portFromCS;
