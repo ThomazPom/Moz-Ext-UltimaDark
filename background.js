@@ -198,7 +198,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
                     var a_filter=headersdo[x.name.toLowerCase()];
                       return a_filter?a_filter(x):true;
                 })
-                console.log(e.responseHeaders)
+               // console.log(e.responseHeaders)
               return {responseHeaders: e.responseHeaders};
           },
           {
@@ -666,7 +666,7 @@ b = ud.min(Math.pow(b + delta,1.05),255); // experimental power up whites in log
           stream: true
         });
         if (details.type == "stylesheet") {
-          console.log(details.requestId,details.datacount, details,str);
+         // console.log(details.requestId,details.datacount, details,str);
           str = ud.edit_str_named_colors(str)
           str = ud.edit_dynamic_colors(str)
           str=ud.prefix_fg_vars(str);
