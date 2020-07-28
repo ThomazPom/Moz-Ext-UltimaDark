@@ -32,5 +32,6 @@ img,video
   border-radius: 5px;
 }
 path {
-    fill: var(--secondary-color);
+  filter: brightness(1.3);
+    /*fill: var(--secondary-color);*/
 }
