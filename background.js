@@ -166,9 +166,7 @@ window.dark_object = {
             js : [
               {code: ud.injectscripts_str}
               ],
-            css: [{
-              file: "override.css"
-            }],
+            css: [{code: ud.inject_css_override}], // Forced overrides
             runAt: "document_start",
             matchAboutBlank: true,
             allFrames: true
@@ -190,6 +188,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
                 var headersdo = {
                   "content-security-policy":(x=>{
                     x.value = x.value.replace(/script-src/, "script-src inline")
+                    x.value = x.value.replace(/style-src/, "style-src *")
                       return true;
                     }),
                 }
@@ -245,7 +244,32 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
         });
       }
       browser.runtime.onConnect.addListener(connected);
-      dark_object.background.setListener();
+      //Promises before starting :
+      fetch("inject_css_suggested.css").then(res=>res.text())
+      .then(str=>{
+
+          str = ud.edit_str_named_colors(str)
+          str = ud.edit_dynamic_colors(str)
+          str = ud.prefix_fg_vars(str);
+          str = ud.restore_var_color(str);
+          str = ud.restore_color(str)
+          str = ud.restore_comments(str)
+          ud.inject_css_suggested=str;
+          return fetch("inject_css_override.css")
+
+      })
+      .then(res=>res.text())
+      .then(str=>{
+          str = ud.edit_str_named_colors(str)
+          str = ud.edit_dynamic_colors(str)
+          str = ud.prefix_fg_vars(str);
+          str = ud.restore_var_color(str);
+          str = ud.restore_color(str)
+          str = ud.restore_comments(str)
+          ud.inject_css_override=str;
+      })
+      .then(x=>dark_object.background.setListener())
+      
       ud = {
         ...ud,
         ...{
@@ -269,7 +293,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
                 var context = canvas.getContext('2d');
                 context.drawImage(myImage, 0, 0);
 
-                var is_background = (/footer|background|(bg|box|panel|fond)[._-]/i).test(theUrl.pathname+theUrl.search);
+                var is_background = (/footer|background|(bg|box|panel|fond|bck)[._-]/i).test(theUrl.pathname+theUrl.search);
                 //is_background=is_background&&!((/(logo|icon)/i).test(theUrl.pathname+theUrl.search))
                 //  console.log(details.url,is_background)
                 
@@ -341,7 +365,8 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
             //console.log(details.url,maxcol,n,samplepixels,unique.length)
             //  console.log(details.url, unique,unique.length);
             //console.log(width, height, details.url, "alphapix:", pixelcount, "unique", unique, "fullset", theImageDataUint32TMP, "sampleset", samplepixels, theImageData, canvasContext)
-            if (unique.length > 600 /*|| unique.length == 256 */
+          //  console.log(details.url, unique.length);
+            if (unique.length > 700 /*|| unique.length == 256 */
               /*|| unique.indexOf(0) == -1*/ // already tested before
               ) {
               return false;
@@ -359,10 +384,10 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
            //     delta -= delta2; // Experimental : if pic has black and white do not set black entirely white
               
               }
-           
-r = ud.min(Math.pow(r + delta,1.05),255);
-g = ud.min(Math.pow(g + delta,1.05),255);
-b = ud.min(Math.pow(b + delta,1.05),255); // experimental power up whites in logos; but how much ?
+                       
+            r = ud.min(Math.pow(r + delta,1.05),255);
+            g = ud.min(Math.pow(g + delta,1.05),255);
+            b = ud.min(Math.pow(b + delta,1.05),255); // experimental power up whites in logos; but how much ?
 
            /*   r = r + delta;
               g = g + delta;
@@ -439,7 +464,7 @@ b = ud.min(Math.pow(b + delta,1.05),255); // experimental power up whites in log
         min: Math.min,
         max: Math.max,
         round: Math.round,
-        minbright: 200,
+        minbright: 135,
         minbrightbg: 30,
         nonBreakScriptIdent: "§§IDENTIFIER§§",
         maxbright: 255, // Max text brightness
@@ -482,8 +507,16 @@ b = ud.min(Math.pow(b + delta,1.05),255); // experimental power up whites in log
           
         },
         revert_rgba: function(r, g, b, a) {
+
           a = typeof a == "number" ? a : 1
-          var mincol = ud.min(r, g, b);
+          var rgbarr=[r,g,b].map(x=>(ud.maxbright-ud.minbright)/255*x);
+          var maxcol=ud.max(...rgbarr);
+          var delta =  ud.maxbright-maxcol;
+          return ud.rgba_val(...rgbarr.map(x => Math.round(x+delta)), a)
+          /*
+          //var mincol = ud.min(r, g, b);
+          //var avg = (r+ g+ b)/3;
+          
           if (mincol >= ud.minbright) {
             return ud.rgba_val(r, g, b, a)
           }
@@ -493,6 +526,7 @@ b = ud.min(Math.pow(b + delta,1.05),255); // experimental power up whites in log
           b = b + delta;
           var multiplier = ud.maxbright / ud.max(r, g, b)
           return ud.rgba_val(...[r, g, b].map(x => ud.revert_mode2(x, multiplier)), a)
+          */
         },
         onlyUnique: function(value, index, self) {
           return self.indexOf(value) === index;
@@ -572,58 +606,6 @@ b = ud.min(Math.pow(b + delta,1.05),255); // experimental power up whites in log
           })
           return str.replace(/colorfunc/g, "rgba");
         },
-        edit_str: function(strp, source = "background") {
-          var str = strp;
-          str = str.replace(ud.radiusRegex, "$1;filter:brightness(0.95);box-shadow: 0 0 5px 1px rgba(0,0,0,0)!important;border:1px solid rgba(255,255,255,0.1)!important;$2$7");
-          var bgvals = [...str.matchAll(ud.variableRegex)] //OK
-          bgvals.forEach(function(bgval) {
-            var replacestr = bgval[1] + bgval[2] + ":" + ((bgval[3])) + ";" + bgval[2] + "-fg:" + ud.revert_rgba(...ud.eget_color(bgval[3])) + ";" + bgval[2] + "-bg:" + ud.rgba(...ud.eget_color(bgval[3])) + bgval[5]
-            str = str.replace(new RegExp(ud.escapeRegExp(bgval[0]), "g"), replacestr) //OK
-          })
-          var bgvals = [...str.matchAll(ud.interventRegex)]
-          var o_strlen = str.length
-          bgvals.forEach(function(bgval) {
-            var replacestr = o_str = bgval[0];
-            var property = bgval[2];
-            var value = bgval[4] || bgval[5]
-            var start = bgval[1];
-            var important = bgval[6] || "";
-            var end = bgval[7];
-            if (str.source == "background" && bgval.index + bgval.length == o_strlen && !value.trim().length) {
-              str = str + "unset;noprop:"
-              return;
-            }
-            var isvarbased = value.match(ud.variableBasedRegex)
-            if (value.match(/gradient[\s\t]*?\(/)) {
-              valuebefore = value;
-              value.match(/(rgba?\([0-9,.\s\t]+?\)|#[a-f0-9]{2,8}|[a-z-]+)/gi).forEach(x => {
-                var is_color_result = ud.is_color(x)
-                if (is_color_result) {
-                  value = value.replace(x, ud.rgba(...is_color_result));
-                }
-              })
-            }
-            if (property.startsWith("background") && value.startsWith("url(") && (!value.match(/(logo|icon)/) || value.match(/(background)/))) {
-              var valueblend = ["overlay", "multiply", "color", "exclusion"].join(",");
-              var valuedown = [value, value, value, value, value].join(","); // Yaaaay daker backgrounds, keeping colors
-              replacestr = start + "background-blend-mode:" + valueblend + ";" + property + ":" + valuedown + important + end
-              //console.log(replacestr,o_str)
-            } else if (isvarbased) {
-              var suffix = ["background", "background-color", "background-image"].includes(property) ? "-bg" : "-fg";
-              replacestr = start + property + ":" + value.replace(ud.variableBasedRegex, "var($2" + suffix + ")") + important + end;
-            } else if (property == "background-image") {
-              replacestr = start + property + ":" + value + important + end
-            } else if (property == "background") {
-              replacestr = start + property + ":" + value + ";background-color:" + (ud.rgba(...ud.eget_color(value, property, "background-color"))) + important + end
-            } else if (property == "background-color") {
-              replacestr = start + property + ":" + (ud.rgba(...ud.eget_color(value, property, property))) + important + end
-            } else if (["color"].includes(property)) {
-              replacestr = start + property + ":" + (ud.revert_rgba(...ud.eget_color(value, property, property))) + important + end
-            }
-            str = str.replace(new RegExp(ud.escapeRegExp(o_str), "g"), replacestr) //OK
-          });
-          return str;
-        }
       }
       ud.radiusRegex = /(^|[^a-z0-9-])(border-((top|bottom)-(left|right)-)?radius?[\s\t]*?:[\s\t]*?([5-9]|[1-9][0-9]|[1-9][0-9][0-9])[a-zA-Z\s\t%]+)($|["}\n;])/gi,
         ud.variableRegex = /(^|[^a-z0-9-])(--[a-z0-9-]+)[\s\t]*?:[\s\t]*?((#|rgba?)[^"}\n;]*?)[\s\t]*?($|["}\n;])/gi,
@@ -686,11 +668,44 @@ b = ud.min(Math.pow(b + delta,1.05),255); // experimental power up whites in log
           //  str=str.replace(/([{}\n;])/g,"$1 ");  
           //   [...str.matchAll(ud.matchStylePart)].forEach(function(stylepart){            
           //      str=str.replace(stylepart[0],ud.edit_str(stylepart[0]));
-          //});          
+          //});    
         } else if (details.type == "main_frame" || details.type == "sub_frame") {
-          str = str.replace(/<font([^>]+)color="/g, '<font$1 style="color:'); ///css4
-          str = str.replace(/bgcolor=/g, ""); // css4 too wide
+          //str = str.replace(/<font([^>]+)color="/g, '<font$1 style="color:'); ///css4
+          //str = str.replace(/bgcolor=/g, ""); // css4 too wide
+          var brokenstyle = str.match(/<style.*?>[^"]((?!<\/style>).|\n)*$/);
+          if (details.brokenstyle) {
+            str=details.brokenstyle+str;
+            details.brokenstyle=null;
+          }
+          if(brokenstyle){
+            str=str.replace(brokenstyle[0],"");
+            details.brokenstyle=brokenstyle[0];
+          }
+          //str=str.replace(/<script/g,"<noscript");
+          var html_element = document.createElement("html")
+
+          html_element.innerHTML=str.replace(/<script/g,"<anoscript");
+          html_element.querySelectorAll("style").forEach(astyle=>{
+            var substr = astyle.innerHTML;
+          
+            substr = ud.edit_str_named_colors(substr)
+            substr = ud.edit_dynamic_colors(substr)
+
+            substr=ud.prefix_fg_vars(substr);
+            substr = ud.restore_var_color(substr)
+            
+            substr = ud.restore_color(substr)
+            substr = ud.restore_comments(substr)
+            //    if(substr.includes("data:image")){
+            substr = ud.send_data_image_to_parser(substr, details);
+
+            str = str.replace(astyle.innerHTML, substr);
+          });
+          html_element.remove();
+
           [...str.matchAll(ud.matchStylePart)].filter(x => x[0].includes(":")).forEach(function(match) { //matchstylepart breaks amazon
+            return;
+
             var substr = match[0];
           
             substr = ud.edit_str_named_colors(substr)
@@ -735,19 +750,24 @@ b = ud.min(Math.pow(b + delta,1.05),255); // experimental power up whites in log
         }
         //    str=ud.edit_str(str);
         //   str=str.replace(new RegExp(ud.nonBreakScriptIdent,"g"),"")
-        if (false&&["main_frame", "sub_frame"].includes(details.type)) //inject foreground script
+        if (details.datacount == 1 && ["main_frame", "sub_frame"].includes(details.type)) //inject foreground script
         {
-          if(!headFound)
-          {
               var head_tag = str.matchAll(/<head.*?>/g).next();
               if(head_tag.value)
               {
-                console.log("headFound")
                 var position=head_tag.value.index+head_tag.value[0].length
-                str = str.substring(0, position) + ud.injectscripts_str+str.substring(position)
+                //  str = str.substring(0, position) + "<link id='ud-link' rel='stylesheet' href='https://pom.pm/Tests/Ultimadark_misc/override.css'>" +str.substring(position)
+                /* Non overrride styles */
+                str = str.substring(0, position) + "<style id='ud-style'>"+ud.inject_css_suggested+"</style>"+str.substring(position);
+                //  str += "<style id='ud-style'>"+ud.inject_css_suggested+"</style>";
+                //  str = str.substring(0, position) + ud.injectscripts_str+str.substring(position)
                 headFound = true;
               }
-          }
+              else{
+                /* Non overrride styles */
+                str = "<style id='ud-style'>"+ud.inject_css_suggested+"</style>"+str;
+              }
+          
           if(!bodyFound && false)
           {
             var body_tag = str.matchAll(/<body.*?url\((.*?['")]).*?>/g).next();
@@ -760,6 +780,8 @@ b = ud.min(Math.pow(b + delta,1.05),255); // experimental power up whites in log
           }
           // console.log(str);
            // When using regex replace, care about $1+ presents in injectedscript_str
+          
+
         }
         //str=str.replace(/(^|[^a-z0-9-])(color|background(-color)?)[\s\t]*?:[\s\t]*?([^"}\n;]*?)[\s\t]*?![\s\t]*?important[\s\t]*?($|["}\n;])/gi,"$1$2:$4$5");//VERYYOK
         filter.write(encoder.encode(str));

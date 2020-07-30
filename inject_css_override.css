@@ -1,0 +1,24 @@
+/*watched_ultimadark*/
+
+:root {
+  --main-bgcolor: white;
+  --main-color: unset;
+
+  --secondary-color: black;
+}
+::placeholder{
+
+  opacity: 1;
+  color:var(--main-color);
+}
+img,video
+{
+  border-radius: 5px;
+}
+path {
+  filter: brightness(1.3);
+    /*fill: var(--secondary-color);*/
+}
+font[color] {
+    filter: brightness(20) saturate(0.5);
+}

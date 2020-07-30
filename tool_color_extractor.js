@@ -1,3 +1,21 @@
+var  copyToClipboard = str => {
+  const el = document.createElement('textarea');
+  el.value = str;
+  el.setAttribute('readonly', '');
+  el.style.position = 'absolute';
+  el.style.left = '-9999px';
+  document.body.appendChild(el);
+  el.select();
+  document.execCommand('copy');
+  document.body.removeChild(el);
+};
+document.querySelectorAll("h3,style").forEach(x=>x.remove())
+var validCsses = {};
+var finalCss= "";
+var lestyle = document.createElement("style");
+lestyle.innerHTML="body{background:transparent}*{color:transparent;background:transparent}";
+document.body.appendChild(lestyle);
+
 String.prototype.insert = function(index, string) {
   if (index > 0)
   {
@@ -10,47 +28,47 @@ function has(elem,value)
 {
 return ["rgba(0, 0, 0, 0)",""].includes(getComputedStyle(elem)[value])?false:value+":"+getComputedStyle(elem)[value]
 }
-fetch("result.css").then(res=>res.text()).then(text=>{
-var res =[...text.matchAll(/{/g)];
-for(i=res.length-1;i>=0;i--)
-{
-var	item=res[i]
-	text=text.insert(item.index,",#coloritem-"+i)
-	var h3 = document.createElement("h3");
-	h3.id="coloritem-"+i;
-	document.body.appendChild(h3)
-	h3.innerHTML="#coloritem-"+i
-}
-var lestyle = document.createElement("style");
-lestyle.innerHTML="body{background:transparent}*{color:transparent;background:transparent}";
-document.body.appendChild(lestyle);
+fetch("result.css").then(res=>res.text()).then(o_text=>{
 
-var lestyle = document.createElement("style");
-lestyle.innerHTML=text;
-document.body.appendChild(lestyle);
-var finaltext=""
-var names=text.split(/[{}/;]+/).filter(x=>x.includes("#coloritem")).map(x=>x.trim())
-document.querySelectorAll("h3").forEach((elem)=>{
-//console.log(names)
-var lename=names.filter(x=>x.includes(elem.id))
-var cssrule = [
-has(elem,"color"),
-has(elem,"background-color"),
-has(elem,"border-color"),
-].filter(x=>x)
-var truecss = cssrule.join(";\n")
-if(truecss)
-{
-		console.log(lename,elem.id,truecss)
-		finaltext+=`
-${lename}{
-${truecss}
+  var text=o_text;
+	text=text.replace(/url\(/,'\aurl(')
+	text=text.replace(/<!--.*?-->/,'')
+	var res =[...text.matchAll("([^{};]*?)({(\n|[^{])*?})")];
+	res = res.map((x,i)=>[x[0].trim(),x[1].split(",").map(x=>x.trim()),x[2].replace(/url\(/,'arl').trim()])
+	res.forEach((x,i)=>{
+		x[1].forEach((y,j)=>
+		{
+			var h3 = document.createElement("h3");
+			h3.id=`coloritem-${i}-${j}`;
+			document.body.appendChild(h3)
+			h3.innerHTML=h3.id;
+
+			var substyle = document.createElement("style");
+			substyle.innerHTML=`#${h3.id},${y}${x[2]}`;
+			document.body.appendChild(substyle)
+
+			var cssrule = [
+			has(h3,"color"),
+			has(h3,"background-color"),
+			has(h3,"border-color"),
+			].filter(x=>x)
+			var truecss = cssrule.join(";\n")
+			if(truecss)
+			{
+					var prevnames =validCsses[truecss]||[]
+					prevnames.push(y)
+
+					validCsses[truecss]= prevnames;
+			}
+
+		});
+	})
+Object.keys(validCsses).map(csskey=>{
+finalCss+=`
+${validCsses[csskey].join(",")}{
+${csskey};
 }`
 
-}
-
-
-
 })
-console.log(finaltext)
-})
+document.body.innerHTML=`<pre>${finalCss}</pre>`;
+});
