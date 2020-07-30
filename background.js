@@ -371,7 +371,8 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
               ) {
               return false;
             }
-            var delta2 = unique.indexOf(0x00ffffff) > -1 ? 0 : 150 // care with pow
+            var delta2 = unique.includes(0x00ffffff)? 0 : 135 // care with pow
+            //one last time : 00 is the alpha level : 0 alpha means No transparency
             imgDataLoop: while (n--) {
               var number = theImageDataUint32TMP[n];
               var r = number & 0xff
@@ -380,8 +381,8 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
               var a = (number >> 24) & 0xff
               var maxcol = ud.max(r, g, b) // Local max col
               var delta = 255 - maxcol // 255 is the future logo brightness; can be configurable
-              if (a && (r + g + b) < 30 && delta2) {
-           //     delta -= delta2; // Experimental : if pic has black and white do not set black entirely white
+              if (delta2 && a && (r + g + b) < 1) {
+                delta -= delta2; // Experimental : if pic has black and white do not set black entirely white
               
               }
                        
@@ -509,6 +510,12 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
         revert_rgba: function(r, g, b, a) {
 
           a = typeof a == "number" ? a : 1
+
+          if(!a || (r+b+g)/3>ud.minbright) { // keep colors if possible
+            return ud.rgba_val(r, g, b, a)
+          }
+
+
           var rgbarr=[r,g,b].map(x=>(ud.maxbright-ud.minbright)/255*x);
           var maxcol=ud.max(...rgbarr);
           var delta =  ud.maxbright-maxcol;
