@@ -26,6 +26,7 @@ html,body{
 }
 
 input{
+   color: white;
   background-color: var(--main-bgcolor)
 }
 text inputs,textarea,select,select[size][multiple]{
