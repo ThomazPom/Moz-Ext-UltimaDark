@@ -100,8 +100,9 @@ window.dark_object = {
                 return;
               }
               var new_value = conditon(this, value) ? watcher(this, value) : value;
-              return originalSet.call(this, new_value||value);
+              
               ud.styleInEdition = ud.styleInEdition.filter(x => x != this)
+              return originalSet.call(this, new_value||value);
             }
           });
         }
@@ -109,15 +110,8 @@ window.dark_object = {
       //  new ud.Inspector(CSSStyleSheet,"addRule",console.log,console.log);
       ud.frontEditor = function(elem, value) {
         if (!value.endsWith(ud.styleflag)) {
-          str=value;
-          str = ud.edit_str_named_colors(str)
-          str = ud.edit_dynamic_colors(str)
-          str=ud.prefix_fg_vars(str);
-          str=ud.restore_var_color(str);
-          //   str=ud.edit_background_image_urls(str)
-          str = ud.restore_color(str)
-          str = ud.restore_comments(str)
-          return [str, ud.styleflag].join("");
+                
+          return [ud.edit_str(value), ud.styleflag].join("");
         }
       }
       //  ud.prototypeEditor( Element,    "innerHTML",     ud.frontEditor,     (elem,value)=>elem instanceof HTMLStyleElement       );
@@ -187,7 +181,8 @@ window.dark_object = {
 browser.webRequest.onHeadersReceived.addListener(function(e){
                 var headersdo = {
                   "content-security-policy":(x=>{
-                    x.value = x.value.replace(/script-src/, "script-src inline")
+                    x.value = x.value.replace(/script-src/, "script-src *")
+                    x.value = x.value.replace(/default-src/, "default-src-src *")
                     x.value = x.value.replace(/style-src/, "style-src *")
                       return true;
                     }),
@@ -248,31 +243,25 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
       fetch("inject_css_suggested.css").then(res=>res.text())
       .then(str=>{
 
-          str = ud.edit_str_named_colors(str)
-          str = ud.edit_dynamic_colors(str)
-          str = ud.prefix_fg_vars(str);
-          str = ud.restore_var_color(str);
-          str = ud.restore_color(str)
-          str = ud.restore_comments(str)
-          ud.inject_css_suggested=str;
+          
+          ud.inject_css_suggested=ud.edit_str(str);
           return fetch("inject_css_override.css")
 
       })
       .then(res=>res.text())
       .then(str=>{
-          str = ud.edit_str_named_colors(str)
-          str = ud.edit_dynamic_colors(str)
-          str = ud.prefix_fg_vars(str);
-          str = ud.restore_var_color(str);
-          str = ud.restore_color(str)
-          str = ud.restore_comments(str)
-          ud.inject_css_override=str;
+          ud.inject_css_override=ud.edit_str(str);
       })
       .then(x=>dark_object.background.setListener())
       
       ud = {
         ...ud,
         ...{
+          attfunc_map:{
+              "fill":ud.revert_rgba,
+              "color":ud.revert_rgba,
+              "bgcolor":ud.rgba
+            },
           edit_background_image_urls: function(str) {
             //  var valueblend=["overlay","multiply","color","exclusion"].join(","); 
             return str;
@@ -280,40 +269,59 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
           edit_an_image: function(details) {
             var theUrl = new URL(details.url);
             if (theUrl.pathname.endsWith(".gif") && !theUrl.pathname.match(/logo|icon/i)) {
-              return;
+              return {}; // avoid animated gifs
             }
+            if (theUrl.search.includes("ud-bypass_image")
+              ||(theUrl.search="" && theUrl.pathname=="/favicon.ico")) {
+              return {}; // avoid simple favicons
+            }
+           
             return new Promise((resolve, reject) => {
               var canvas = document.createElement('canvas');
               var myImage = new Image;
-              myImage.src = ud.knownvariables[theUrl.search] || details.url;
-              delete ud.knownvariables[theUrl.search];
+
+              var dataImageId=details.url.match(/\?data-image=[0-9-]+/)
+              if(dataImageId)
+              {
+                myImage.src=ud.knownvariables[dataImageId[0]];
+                delete ud.knownvariables[dataImageId[0]];
+              }
+              else
+              {
+                  myImage.src=details.url+"#ud-letpass_image";
+              }
               var normalresolve = x => {
+            
+
+
                 canvas.width = myImage.width;
                 canvas.height = myImage.height;
                 var context = canvas.getContext('2d');
                 context.drawImage(myImage, 0, 0);
 
                 var is_background = (/footer|background|(bg|box|panel|fond|bck)[._-]/i).test(theUrl.pathname+theUrl.search);
+                is_background = is_background||details.url.includes("#ud-background")
                 //is_background=is_background&&!((/(logo|icon)/i).test(theUrl.pathname+theUrl.search))
-                //  console.log(details.url,is_background)
                 
                 var islogo = !is_background 
                 /*&& !theUrl.pathname.endsWith(".jpg") //some websites renames png files in jpg */
                 && ud.edit_a_logo(context, myImage.width, myImage.height, details);
+               //   console.log(theUrl,is_background,islogo,theUrl.search.startsWith("?data-image="))
                 
-//              console.log(details,islogo,is_background,canvas.toDataURL())
-                if (islogo) {
+                //console.log(details.url,myImage.src,theUrl,islogo,is_background,canvas.toDataURL())
+                
+                if (islogo ) {
                   resolve({
                     redirectUrl: canvas.toDataURL()
                   });
                 }
-                if (is_background) {
+                else if (is_background) {
                   ud.edit_a_background(context, myImage.width, myImage.height, 0xff)
                   //console.log(details, theUrl, canvas);
                   resolve({
                     redirectUrl: canvas.toDataURL()
                   });
-                } else if(theUrl.search.startsWith("favicon.ico?data-image=")){
+                } else if(theUrl.search.startsWith("?data-image=")){
                   resolve({redirectUrl: myImage.src});
                 } else {
                   resolve({});
@@ -342,12 +350,15 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
             //console.log(cornerpixs.map(x=>theImageDataUint32TMP[x]));
             cornerpixs = cornerpixs.map(x => theImageDataUint32TMP[x] <= 0x00ffffff) //superior to 0x00ffffff is not fully alpha
             // console.log(cornerpixs)
-            var pixelcount = cornerpixs.reduce((a, b) => a + b)
+            var pixelcount1 = cornerpixs.slice(0,4).reduce((a, b) => a + b)
+            var pixelcount2 = cornerpixs.slice(4).reduce((a, b) => a + b)
             //console.log(pixelcount)
 
 
-            //console.log(details.url,pixelcount)
-            if (pixelcount < 2) {
+          //  console.log(details.url,pixelcount1,pixelcount1)
+            if (!pixelcount1 || !pixelcount2) {
+
+           // console.log(details.url,"is not a logo : not enough trasnparent pixels")
               return false;
             }
 
@@ -365,20 +376,24 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
             //console.log(details.url,maxcol,n,samplepixels,unique.length)
             //  console.log(details.url, unique,unique.length);
             //console.log(width, height, details.url, "alphapix:", pixelcount, "unique", unique, "fullset", theImageDataUint32TMP, "sampleset", samplepixels, theImageData, canvasContext)
-          //  console.log(details.url, unique.length);
-            if (unique.length > 700 /*|| unique.length == 256 */
+            // console.log(details.url, unique.length);
+            if (unique.length > 700 + details.url.match(/logo|icon/)*700 /*|| unique.length == 256 */
               /*|| unique.indexOf(0) == -1*/ // already tested before
               ) {
               return false;
             }
-            var delta2 = unique.includes(0x00ffffff)? 0 : 135 // care with pow
-            //one last time : 00 is the alpha level : 0 alpha means No transparency
+            var delta2 = unique.includes(0xffffffff) &&  unique.includes(0xff000000)? 135 : 0 // care with pow
+            //one last time : 00 is the opacity level : 0xff means full opacity, 0x00 means full transparency
             imgDataLoop: while (n--) {
               var number = theImageDataUint32TMP[n];
               var r = number & 0xff
               var g = (number >> 8) & 0xff
               var b = (number >> 16) & 0xff
               var a = (number >> 24) & 0xff
+              /*if((r+g+b)/3>500)
+              {
+                continue imgDataLoop;
+              }*/
               var maxcol = ud.max(r, g, b) // Local max col
               var delta = 255 - maxcol // 255 is the future logo brightness; can be configurable
               if (delta2 && a && (r + g + b) < 1) {
@@ -442,7 +457,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
           send_data_image_to_parser: function(str, details) {
             if (str.includes('data:')) {
 
-              [...str.matchAll(/(data:image\/(png|jpe?g);base64,([^\"]*?))[)'"]/g)].forEach((match, lindex) => {
+              [...str.matchAll(/(data:image\/(png|jpe?g|svg\+xml);base64,([^\"]*?))[)'"]/g)].forEach((match, lindex) => {
                 
                 //var id = `https://google.com/favicon.ico?${details.requestId}-${details.datacount}-${lindex}`
                 //   var id = "https://google.com/favicon.ico?1=10985-1-1"
@@ -452,7 +467,163 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
               })
             }
             return str;
+          },
+          parse_and_edit_html1:function(str,details){
+            var newDoc=new Document
+          var html_element = document.createElement("html")
+
+          html_element.innerHTML=str;//.replace(/"stylesheet"|<script|<img/g,"<anoscript");
+
+          //console.log(html_element,str)
+
+          html_element.querySelectorAll("style,[style]").forEach(astyle=>{
+            var o_substr;
+            var substr;
+            if(astyle instanceof HTMLStyleElement)
+            {
+                  substr=o_substr = astyle.innerHTML;
+            }
+            else{
+                  substr=o_substr=astyle.getAttribute("style");
+                  substr=" "+substr+" ";
+            }
+            substr=ud.edit_str(substr)
+            //    if(substr.includes("data:image")){
+            substr = ud.send_data_image_to_parser(substr, details);
+
+            str = str.replace(o_substr, substr);
+          });
+
+          html_element.querySelectorAll("link[rel='icon']").forEach(link=>{
+            str=str.replace(link.outerHTML,link.outerHTML.replace(/(href*=".*?)"/,"$1?ud-bypass_image\""))
+          })
+
+          html_element.querySelectorAll("[fill],[color],path,[bgcolor]").forEach(coloreditem=>{
+            var thecolor
+            var o_outer=coloreditem.outerHTML
+
+          for (const [key, afunction] of Object.entries({
+              "fill":ud.revert_rgba,
+              "color":ud.revert_rgba,
+              "bgcolor":ud.rgba
+            })) {
+                if(ud.is_color(thecolor=coloreditem.getAttribute(key)))
+
+                coloreditem.setAttribute(
+                  key,afunction(...ud.eget_color(thecolor)))
+                }
+                str=str.replace(o_outer.slice(0,o_outer.indexOf(">")+1),
+                  coloreditem.outerHTML.slice(0,coloreditem.outerHTML.indexOf(">")+1),
+                  )
+          })
+          html_element.remove();
+          str = str.replace(/integrity=/g, "nointegrity=");
+          
+          if (details.datacount == 1) //inject foreground script
+          {
+            
+
+                var head_tag = str.matchAll(/<head.*?>/g).next();
+                if(head_tag.value)
+                {
+                  var position=head_tag.value.index+head_tag.value[0].length
+                  //  str = str.substring(0, position) + "<link id='ud-link' rel='stylesheet' href='https://pom.pm/Tests/Ultimadark_misc/override.css'>" +str.substring(position)
+                  /* Non overrride styles */
+                  str = str.substring(0, position) + "<style id='ud-style'>"+ud.inject_css_suggested+"</style>"+str.substring(position);
+                  //  str += "<style id='ud-style'>"+ud.inject_css_suggested+"</style>";
+                  //  str = str.substring(0, position) + ud.injectscripts_str+str.substring(position)
+                  headFound = true;
+                }
+                else{
+                  /* Non overrride styles */
+                  str = "<style id='ud-style'>"+ud.inject_css_suggested+"</style>"+str;
+                }  
+
           }
+          return str;
+          },
+          decodeHtml: function(html) {
+              var txt = document.createElement("textarea");
+              txt.innerHTML = html;
+              return txt.value;
+          },
+          parse_and_edit_html2:function(str,details){
+            details.requestScripts=details.requestScripts||[]
+
+            
+            str= str.replace(/(<script ?.*?>)((.|\n)*?)(<\/script>)/g,(match, g1, g2, g3,g4)=>{
+              var securedScript = {
+                "id":["--ud-SecuredScript-",details.requestScripts.length,"--"].join(""),
+                "content":match
+              }
+              details.requestScripts.push(securedScript);
+              return securedScript.id;
+            });
+
+            str=ud.send_data_image_to_parser(str,details);
+
+
+            str= str.replace(/(<style ?.*?>)((.|[\r\n])*?)(<\/style>)/g,(match, g1, g2, g3,g4)=>[g1,ud.edit_str(g2),g4].join(''));
+
+            str=str.replace(/[\s\t]style[\s\t]*?=[\s\t]*?(".*?"|'.*?')/g,(match,g1)=>" style="+ud.edit_str(g1))
+            
+            str=str.replace(/[\s\t](fill|color|bgcolor)[\s\t]*?=[\s\t]*?("(.*?)"|'(.*?)'|[a-zA-Z0-9#])/g,(match,g1,g2,g3,g4)=>
+              {
+                var usedcolor=g3||g4;
+                var possiblecolor=ud.is_color(usedcolor)
+           //     console.log(possiblecolor,g1,usedcolor,ud.attfunc_map[g1],ud.hex_val,(ud.attfunc_map[g1])(...(possiblecolor||[]),ud.hex_val));
+
+             return  [" ",g1,"=",'"',possiblecolor?(ud.attfunc_map[g1])(...possiblecolor,ud.hex_val):usedcolor,'"'].join('')
+            }
+            )
+            
+          //  console.log(str);
+            //str= str.replace(/(<style ?.*?>)(.*?)(<\/style>)/g,(match, g1, g2,g3)=>{console.log(match);return match});
+           // console.log(str.match(/(<style.*?>)(.*?)(<\/)/g),str.match(/<style.{0,300}/g).map(x=>x.slice(0,300)))
+            if(details.datacount==1)
+            {
+              str=ud.inject_inject_css_suggested_tag(str);
+              str=str.replace(/(<body.*?url\()(.*?)(["']?\).*?>)/,(match,g1,g2,g3)=>[g1,g2,"#ud-background",g3].join(""))
+            }
+            str=str.replace(/[\s\t]integrity=/g," nointegrity=")
+            details.requestScripts.forEach(securedScript=>{
+              str=str.replace(securedScript.id,securedScript.content)
+            })
+            return str;
+          }
+
+          ,
+          parse_and_edit_html3:function(str,details){
+              
+                  //var html_element = document.createElement("html")
+                  //html_element.innerHTML=str.replace(/<\/?html.*?>/g,"")
+                  var parser = new DOMParser();
+                  var html_element = parser.parseFromString(
+                    str.replace(/<script.*?>/g,"$&nonExistent();").replace(/&/g,"&UDisabled",/*XSS PROTECTION*/)
+                    .replace(/\/\*[\s\S]*?\*\//g,'')
+                  , "text/html").documentElement;
+                  // The code
+
+                    html_element.querySelectorAll("style").forEach(astyle=>{
+                     // astyle.innerHTML=ud.edit_str(astyle.innerHTML);
+                    });
+                    html_element.querySelectorAll("[style]").forEach(astyle=>{
+                    //  astyle.setAttribute("style",ud.edit_str(astyle.getAttribute("style")));
+                    });
+                    html_element.querySelectorAll("integrity").forEach(anintegrity=>{
+                      anintegrity.removeAttribute("integrity")
+                    });
+                    
+                  //
+                  var outer_edited = "<!DOCTYPE html>"+html_element.outerHTML.replace(/UDisabled\(?\)?/gi,"")
+
+
+                  outer_edited = outer_edited.replace(/integrity=/g,"notintegrity=")
+                  outer_edited=ud.decodeHtml(outer_edited)
+                  console.log(details,str)
+                  console.log(details,outer_edited)
+                  return outer_edited;
+            }
         }
       }
     }
@@ -465,11 +636,11 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
         min: Math.min,
         max: Math.max,
         round: Math.round,
-        minbright: 135,
+        minbright: 150,
         minbrightbg: 30,
         nonBreakScriptIdent: "§§IDENTIFIER§§",
         maxbright: 255, // Max text brightness
-        maxbrightbg: 150, // main bgcolor
+        maxbrightbg: 145, // main bgcolor
         maxbrighttrigger: 135, // nice colors from 135
         logo_light_trigger: 100,
         knownvariables: {},
@@ -477,13 +648,22 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
           a = typeof a == "number" ? a : 1
           return "rgba(" + (r) + "," + (g) + "," + (b) + "," + (a) + ")"
         },
+        hex_val: function(r, g, b, a) {
+          a = typeof a == "number" ? a : 1
+          return "#"
+          +r.toString(16).padStart(2,"0")
+          +g.toString(16).padStart(2,"0")
+          +b.toString(16).padStart(2,"0")
+          +(a==1?"":(a*255).toString(16).padStart(2,"0"))
+        },
+
         set_oricolor: (ori, sri) => "/*ori*" + ori + "*eri*/" + sri + "/*sri*/",
         res_oricolor: x => x.match(/\/\*ori\*(.*?)\*eri\*\//)[1],
         revert_mode2: (x, multiplier) => ud.min(ud.round(x * multiplier), 255),
         rgba_mode1: (x, delta) => ud.max(x - delta, ud.minbrightbg),
         rgba_mode2: (x, multiplier) => ud.max(x * multiplier, ud.minbrightbg),
         rgba_mode3: (x, multiplier) => ud.round(x * multiplier + ud.minbrightbg),
-        rgba: function(r, g, b, a) {
+        rgba: function(r, g, b, a,render=false) {
           a = typeof a == "number" ? a : 1
           //  var trigger = ud.max(r,g,b);
           var trigger = (r + g + b) / 3;
@@ -491,7 +671,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
           //    if(maxcol<=200){return "rgba("+max(r,200)+","+max(g,200)+","+max(b,200)+","+(a)+")";}
           if (trigger < ud.maxbrighttrigger) {
             //   return ud.rgba_val(...[r,g,b].map(x => x),a); // Keep same dark
-            return ud.rgba_val(...[r, g, b].map(x => x + ud.minbrightbg), a); // Pre Light(better contrast) 
+            return (render||ud.rgba_val)(...[r, g, b].map(x => x + ud.minbrightbg), a); // Pre Light(better contrast) 
             //  return ud.rgba_val(...[r,g,b].map(x => ud.max(ud.minbrightbg,x)),a); // Set at minimum brightness of background colors
           }
           //         return ud.rgba_val(...[r,g,b].map(x => ud.rgba_mode1(x,maxcol-ud.maxbrightbg)),a);
@@ -504,36 +684,33 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
           var rgbarr=[r, g, b].map(x => (ud.maxbrightbg - ud.minbrightbg) / 255 * (x - delta) + ud.minbrightbg + delta2);
           rgbarr=rgbarr.map(x=>ud.round(Math.pow(x,1.02))); /*little secret, better contrast*/
           
-          return ud.rgba_val(...rgbarr,a);
+          return (render||ud.rgba_val)(...rgbarr,a);
           
         },
-        revert_rgba: function(r, g, b, a) {
+        revert_rgba: function(r, g, b, a,render) {
 
           a = typeof a == "number" ? a : 1
 
-          if(!a || (r+b+g)/3>ud.minbright) { // keep colors if possible
-            return ud.rgba_val(r, g, b, a)
+          var mincol = ud.min(r, g, b);
+         
+          if (mincol >= ud.minbright) {
+            return (render||ud.rgba_val)(r, g, b, a)
           }
-
-
+/*
           var rgbarr=[r,g,b].map(x=>(ud.maxbright-ud.minbright)/255*x);
           var maxcol=ud.max(...rgbarr);
           var delta =  ud.maxbright-maxcol;
           return ud.rgba_val(...rgbarr.map(x => Math.round(x+delta)), a)
-          /*
-          //var mincol = ud.min(r, g, b);
+  */
           //var avg = (r+ g+ b)/3;
           
-          if (mincol >= ud.minbright) {
-            return ud.rgba_val(r, g, b, a)
-          }
           var delta = ud.minbright - mincol;
           r = r + delta;
           g = g + delta;
           b = b + delta;
           var multiplier = ud.maxbright / ud.max(r, g, b)
-          return ud.rgba_val(...[r, g, b].map(x => ud.revert_mode2(x, multiplier)), a)
-          */
+          return (render||ud.rgba_val)(...[r, g, b].map(x => ud.revert_mode2(x, multiplier)), a)
+          
         },
         onlyUnique: function(value, index, self) {
           return self.indexOf(value) === index;
@@ -559,6 +736,15 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
           }
           return returnvalue
         },
+        get_inject_css_suggested_tag:x=>"<style id='ud-style'>"+ud.inject_css_suggested+"</style>",
+        inject_inject_css_suggested_tag:function(str)
+        {
+            var head_tag = str.match(/<head ?.*?>/);
+            str=head_tag?
+              str.replace(head_tag[0],head_tag[0]+ud.get_inject_css_suggested_tag())
+              :ud.get_inject_css_suggested_tag()+str
+            return str
+        },
         is_color: function(possiblecolor) {
           //if(possiblecolor.match(/^(rgba?\([0,.\s\t]+?\))/))
           //{
@@ -567,8 +753,8 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
           var testresult = ud.eget_color(possiblecolor, "background", "background-color")
           return testresult.filter(x => x).length ? testresult : false
         },
-        restore_color: function(str) {
-          [...str.matchAll(ud.restoreColorRegex)].forEach(match => {
+        restore_color: function(str,regex) {
+          [...str.matchAll(regex||ud.restoreColorRegex)].forEach(match => {
             str = str.replace(match[0], match[1] + match[2] + ud.set_oricolor(match[4], ud.revert_rgba(...ud.eget_color(match[4]))))
           })
           return str;
@@ -613,6 +799,17 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
           })
           return str.replace(/colorfunc/g, "rgba");
         },
+        edit_str:function(str)
+        {
+          str = ud.edit_str_named_colors(str)
+          str = ud.edit_dynamic_colors(str)
+          str = ud.prefix_fg_vars(str);
+          str = ud.restore_var_color(str);
+          str = ud.restore_color(str);
+          str = ud.restore_comments(str);
+          return str; 
+        }
+
       }
       ud.radiusRegex = /(^|[^a-z0-9-])(border-((top|bottom)-(left|right)-)?radius?[\s\t]*?:[\s\t]*?([5-9]|[1-9][0-9]|[1-9][0-9][0-9])[a-zA-Z\s\t%]+)($|["}\n;])/gi,
         ud.variableRegex = /(^|[^a-z0-9-])(--[a-z0-9-]+)[\s\t]*?:[\s\t]*?((#|rgba?)[^"}\n;]*?)[\s\t]*?($|["}\n;])/gi,
@@ -625,6 +822,8 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
       ud.dynamicColorRegex = /([:, \n(])(#[0-9a-f]{3,8}|(rgb?|hsl)a?\([%0-9, .]+?\))($|["}\n;,)! ])/gi
       ud.urlBGRegex = /(^|[^a-z0-9-])(background(-image)?)[\s\t]*?:[\s\t]*?(url\(["']?(.+?)["']?\))/g
       ud.restoreColorRegex = /(^|[^a-z0-9-])(color.{1,5}|fill.{1,5})(\/\*ori\*(.*?)\*eri\*\/rgb.*?\/\*sri\*\/)/g
+      ud.restoreAnyRegex = /()()(\/\*ori\*(.*?)\*eri\*\/rgb.*?\/\*sri\*\/)/g
+      
       ud.restoreVarRegex = /([^a-z0-9-])(color|fill)[\s\t]*?:[\s\t]*?var[\s\t]*?\(.*?($|["}\n;! ])/g
       //ud.matchStylePart=new RegExp(["{[^}]+?((",[ud.radiusRegex,ud.variableRegex,ud.interventRegex ].map(x=>x.source).join(")|("),"))[^}]+?}"].join(""),"gi");
       ud.matchStylePart = /(^|<style.*?>)(.|\n)*?(<\/style>|$)|[^a-z0-9-]style=("(.|\n)+?("|$)|'(.|\n)+?('|$))/g
@@ -632,10 +831,10 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
   },
   misc: {
     monitorBeforeRequest: function(details) {
-
+      //console.log(details.url,details);
       if(details.originUrl && details.originUrl.startsWith("moz-extension://"))
       {
-        return{};
+        return{cancel:!details.url.endsWith("#ud-letpass_image")};
       }
       if ((details.documentUrl || details.url).match(ud.userSettings.exclude_regex)) {
         return {}
@@ -648,6 +847,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
       let encoder = new TextEncoder();
       var headFound,bodyFound = false;
       details.datacount = 0;
+      details.writeEnd = "";
       
       filter.ondata = event => {
         details.datacount++
@@ -655,146 +855,27 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
           stream: true
         });
         if (details.type == "stylesheet") {
-         // console.log(details.requestId,details.datacount, details,str);
-          str = ud.edit_str_named_colors(str)
-          str = ud.edit_dynamic_colors(str)
-          str=ud.prefix_fg_vars(str);
-          str=ud.restore_var_color(str);
-          //   str=ud.edit_background_image_urls(str)
-          str = ud.restore_color(str)
-          str = ud.restore_comments(str)
-          //            str=ud.no_repeat_backgrounds(str);
-          //   str=ud.set_the_round_border(str);
-          // str=ud.edit_background_image_urls(str);
-          // if(str.includes("data:image")){
+          str = ud.edit_str(str);
+
           str = ud.send_data_image_to_parser(str, details);
-          //console.log(details.datacount, details.requestId, details,str.match,str)
-          //}
-          //         str=ud.edit_backgrounds(str,details);
-          // //str=str.replace(/([{}\n;])/g,"\t\n\t$1\t\n\t");
-          //  str=str.replace(/([{}\n;])/g,"$1 ");  
-          //   [...str.matchAll(ud.matchStylePart)].forEach(function(stylepart){            
-          //      str=str.replace(stylepart[0],ud.edit_str(stylepart[0]));
-          //});    
-        } else if (details.type == "main_frame" || details.type == "sub_frame") {
-          //str = str.replace(/<font([^>]+)color="/g, '<font$1 style="color:'); ///css4
-          //str = str.replace(/bgcolor=/g, ""); // css4 too wide
-          var brokenstyle = str.match(/<style.*?>[^"]((?!<\/style>).|\n)*$/);
-          if (details.brokenstyle) {
-            str=details.brokenstyle+str;
-            details.brokenstyle=null;
-          }
-          if(brokenstyle){
-            str=str.replace(brokenstyle[0],"");
-            details.brokenstyle=brokenstyle[0];
-          }
-          //str=str.replace(/<script/g,"<noscript");
-          var html_element = document.createElement("html")
-
-          html_element.innerHTML=str.replace(/<script/g,"<anoscript");
-          html_element.querySelectorAll("style").forEach(astyle=>{
-            var substr = astyle.innerHTML;
-          
-            substr = ud.edit_str_named_colors(substr)
-            substr = ud.edit_dynamic_colors(substr)
-
-            substr=ud.prefix_fg_vars(substr);
-            substr = ud.restore_var_color(substr)
-            
-            substr = ud.restore_color(substr)
-            substr = ud.restore_comments(substr)
-            //    if(substr.includes("data:image")){
-            substr = ud.send_data_image_to_parser(substr, details);
-
-            str = str.replace(astyle.innerHTML, substr);
-          });
-          html_element.remove();
-
-          [...str.matchAll(ud.matchStylePart)].filter(x => x[0].includes(":")).forEach(function(match) { //matchstylepart breaks amazon
-            return;
-
-            var substr = match[0];
-          
-            substr = ud.edit_str_named_colors(substr)
-            substr = ud.edit_dynamic_colors(substr)
-
-            substr=ud.prefix_fg_vars(substr);
-            substr = ud.restore_var_color(substr)
-            
-            substr = ud.restore_color(substr)
-            substr = ud.restore_comments(substr)
-            //    if(substr.includes("data:image")){
-            substr = ud.send_data_image_to_parser(substr, details);
-            
-            //  }
-            //                    substr=ud.no_repeat_backgrounds(substr);
-            // substr=ud.set_the_round_border(substr);
-            //   substr=ud.edit_background_image_urls(substr);
-            //     str=ud.edit_backgrounds(str,details);
-            str = str.replace(match[0], substr);
-          });
-          //str=ud.edit_background_image_urls(str)
-          //str=str.replace(/([;{}])/g,"  $1  ");
-          // str=str.replace(/([;{])/g,"$1"+ud.nonBreakScriptIdent);
-          //str.replace(/<font([^>]*)/,"<span$1") pff ?? no
-          str.replace(/<font([^>]+)color="/, '<font$1 style="color:"') ///css4
-          //   [...str.matchAll(/(^|[^a-z0-9-])style="[^"]*?("|$)/gi)].forEach(subval=>{
-          //    str=str.replace(subval[0],ud.edit_str(subval[0]))
-          //     str=str.replace(subval[0],subval[0].replace(/(;)/g,"$1 "))
-          // });
-          //              [...str.matchAll(/<style[^>]*?>.*?(<\/style[^>]*?>|$)/gi)].forEach(subval=>{
-          //   str=str.replace(subval[0],subval[0].replace(/(;)/g,"$1 "))
-          //            });
-          // str=str.replace(/<style(.*?>)/g,'<style onload="" ud-data="ud_broke_style" $1');
-          str = str.replace(/integrity=/g, "nointegrity="); // too wide
-          //[...str.matchAll(ud.matchStylePart)].forEach(function(stylepart){ 
-          //  console.log(!stylepart.match(/(=>|function|return|window|length|typeof)/),stylepart)   
-          //  if(!stylepart[0].match(/=>| if|else|function|return|window|length|typeof/))
-          // {       
-          //       str=str.replace(stylepart[0],ud.edit_str(stylepart[0]));
-          //}
-          //});
         }
-        //    str=ud.edit_str(str);
-        //   str=str.replace(new RegExp(ud.nonBreakScriptIdent,"g"),"")
-        if (details.datacount == 1 && ["main_frame", "sub_frame"].includes(details.type)) //inject foreground script
-        {
-              var head_tag = str.matchAll(/<head.*?>/g).next();
-              if(head_tag.value)
-              {
-                var position=head_tag.value.index+head_tag.value[0].length
-                //  str = str.substring(0, position) + "<link id='ud-link' rel='stylesheet' href='https://pom.pm/Tests/Ultimadark_misc/override.css'>" +str.substring(position)
-                /* Non overrride styles */
-                str = str.substring(0, position) + "<style id='ud-style'>"+ud.inject_css_suggested+"</style>"+str.substring(position);
-                //  str += "<style id='ud-style'>"+ud.inject_css_suggested+"</style>";
-                //  str = str.substring(0, position) + ud.injectscripts_str+str.substring(position)
-                headFound = true;
-              }
-              else{
-                /* Non overrride styles */
-                str = "<style id='ud-style'>"+ud.inject_css_suggested+"</style>"+str;
-              }
-          
-          if(!bodyFound && false)
-          {
-            var body_tag = str.matchAll(/<body.*?url\((.*?['")]).*?>/g).next();
-            if(body_tag.value)
-            {
-              var position=head_tag.value.index+head_tag.value[1].length
-              str = str.substring(0, position) +"?background=1"+str.substring(position)
-              bodyFound = true;
-            }
-          }
-          // console.log(str);
-           // When using regex replace, care about $1+ presents in injectedscript_str
-          
-
-        }
-        //str=str.replace(/(^|[^a-z0-9-])(color|background(-color)?)[\s\t]*?:[\s\t]*?([^"}\n;]*?)[\s\t]*?![\s\t]*?important[\s\t]*?($|["}\n;])/gi,"$1$2:$4$5");//VERYYOK
+        else if (details.type == "main_frame" || details.type == "sub_frame") {
+          // Cant do both
+          // Next step would be to truly parse str ;
+          details.writeEnd+=str;
+          str="";
+      }
         filter.write(encoder.encode(str));
         //must not return this closes filter//
       }
       filter.onstop = event => {
+        if(details.writeEnd)
+        {
+          details.datacount=1;
+            details.writeEnd=ud.parse_and_edit_html2(details.writeEnd,details)
+          
+            filter.write(encoder.encode(details.writeEnd));
+        }
         filter.disconnect();
       }
       return {}

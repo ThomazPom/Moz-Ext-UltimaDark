@@ -16,9 +16,14 @@ img,video
   border-radius: 5px;
 }
 path {
-  filter: brightness(1.3);
+  filter: brightness(1.4);
     /*fill: var(--secondary-color);*/
 }
 font[color] {
-    filter: brightness(20) saturate(0.5);
+    /*filter: brightness(20) saturate(0.5);*/
+}
+html:not(.ud-loaded){
+   background:var(--main-bgcolor);
+   background-color:var(--main-bgcolor);
+   color: var(--secondary-color);
 }
