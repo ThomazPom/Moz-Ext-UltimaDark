@@ -80,7 +80,7 @@ window.dark_object = {
             if (elem instanceof HTMLStyleElement && elem.getAttribute("data-ultima") != "ud_style_watched") {
               elem.setAttribute("data-ultima", "ud_style_watched");
               var observer2 = new MutationObserver(mutationreacord => {
-                ud.styleEditor(elem)
+                ud.raw_styleEditor(elem)
               });
               var innerhtml_config = {
                 characterData: true,
@@ -92,37 +92,103 @@ window.dark_object = {
             }
           })
         },
-        ud.prototypeEditor = function(leType, atName, watcher = x => x, conditon = (elem, value) => 1) {
+        ud.valuePrototypeEditor = function(leType, atName, watcher = x => x, conditon = (elem, value) => 1) {
           var originalSet = Object.getOwnPropertyDescriptor(leType.prototype, atName).set;
           Object.defineProperty(leType.prototype, atName, {
             set: function(value) {
-               if (ud.styleInEdition.includes(this)) {
-                return;
-              }
               var new_value = conditon(this, value) ? watcher(this, value) : value;
-              
-              ud.styleInEdition = ud.styleInEdition.filter(x => x != this)
               return originalSet.call(this, new_value||value);
             }
           });
         }
+        ud.functionPrototypeEditor = function(leType, laFonction, watcher = x => x, conditon = (elem, value) => 1) {
+          var originalFunction = Object.getOwnPropertyDescriptor(leType.prototype, laFonction.name).value;
+          Object.defineProperty(leType.prototype, laFonction.name, 
+            {value:function(arguments) {
+              console.log(arguments,conditon(this, arguments),watcher(this.arguments));
+              var new_args = conditon(this, arguments) ? watcher(this, arguments) : [...arguments];
+              console.log(arguments,conditon(this, arguments),watcher(this.arguments),new_args);
+              return originalFunction.apply(this, new_args);
+            
+          }});
+        }
       //  new ud.Inspector(Document, "createElement",x=>{},ud.styleWatcher);;
       //  new ud.Inspector(CSSStyleSheet,"addRule",console.log,console.log);
       ud.frontEditor = function(elem, value) {
-        if (!value.endsWith(ud.styleflag)) {
+        //if (!value.endsWith(ud.styleflag)) {
                 
-          return [ud.edit_str(value), ud.styleflag].join("");
-        }
+          return ud.edit_str(value)
+        //}
       }
       //  ud.prototypeEditor( Element,    "innerHTML",     ud.frontEditor,     (elem,value)=>elem instanceof HTMLStyleElement       );
       window.addEventListener('load', (event) => {
           var bodycolor = getComputedStyle(document.body)["backgroundColor"]
           if(bodycolor!="rgba(0, 0, 0, 0)")
           {
-           document.head.parentNode.style.backgroundColor=getComputedStyle(document.body)["backgroundColor"] 
+            document.head.parentNode.style.backgroundColor=getComputedStyle(document.body)["backgroundColor"] 
           }
-      });
-      console.log("UltimaDark is loaded",window);
+          //setInterval(function()
+          //{
+            var docscrollW = document.body.scrollWidth;
+          window.disabled && ud.getallBgimages(
+            document,(elem,url)=>!url.includes("#ud-background")
+            && elem.scrollWidth/docscrollW>.4
+            && !ud.background_match.test(url)).forEach(x=>{
+              var styleelem = getComputedStyle(x[0]);
+              if(styleelem["background-size"].includes(styleelem["width"])){
+                x[0].style.backgroundImage="url('"+x[1]+"#ud-background-magic')";
+              }
+              x[0].setAttribute("ud-backgrounded",1)
+            })
+
+
+          ud.getallBgimages(
+            document,(elem,url)=>
+            elem.scrollWidth/docscrollW>.5 // Is a big object
+            && !ud.background_match.test(url) // IS not bacgkgrounded-darken
+            ).forEach(x=>{
+              
+              var styleelem = getComputedStyle(x[0]);
+
+              if(styleelem["background-size"].includes(styleelem["width"])){
+                  var stylebefore = getComputedStyle(x[0],":before");
+                  var className="ud-background-overlay-"
+                  +(stylebefore.backgroundColor=="rgba(0, 0, 0, 0)"?"before":"after")
+                  x[0].classList.add(className)
+                  x[0].setAttribute("ud-backgrounded",2)
+              }
+            })
+ud.valuePrototypeEditor(CSS2Properties,"backgroundColor",(elem,value)=>{console.log(elem,value);return "black"})
+ud.valuePrototypeEditor(CSS2Properties,"background-color",(elem,value)=>{console.log(elem,value);return "black"})
+
+ud.valuePrototypeEditor(Element,"className",(elem,value)=>{console.log(elem,value);return "black"})
+ud.valuePrototypeEditor(Element,"classList",(elem,value)=>{console.log(elem,value);return ["black"]})
+ud.valuePrototypeEditor(CSS2Properties,"color",(elem,value)=>{console.log(elem,value);return "red"})
+ud.functionPrototypeEditor(DOMTokenList,DOMTokenList.prototype.add,(elem,args)=>{console.log(elem,args);return ["yellow"]});
+ud.functionPrototypeEditor(Document,Document.prototype.createElement,(elem,args)=>{console.log(elem,args); return ["span"]})
+ud.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.addRule,(elem,args)=>{console.log(elem,args); return [".have-border","border: 1px solid black;"]})
+ud.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.insertRule,(elem,args)=>{console.log(elem,args); return [".have-border { border: 1px solid black;}",0]})
+ud.valuePrototypeEditor( Element,    "innerHTML", (elem,value)=>{console.log(elem,value);return "black"}      );
+
+            //ud.prototypeEditor( Element,    "innerHTML", (elem,value)=>ud.edit_str(value),     (elem,value)=>elem instanceof HTMLStyleElement       );
+          //  new ud.Inspector(Document, "createElement",console.log,x=>{console.log("this",x,"has been created")});
+            //new ud.Inspector(Document, "createElement",x=>{},ud.styleWatcher);
+            //   new ud.Inspector(Document, "createElement",console.log,x=>{console.log("this",x,"has been created")});
+            //new ud.Inspector(Node, "appendChild",console.log,x=>{console.log("this",x,"has been append")});
+           
+            //new ud.Inspector(Node, "appendChild",console.log,x=>{console.log("this",x,"has been append")});
+            //new ud.Inspector(Element, "append",console.log,x=>{console.log("this",x,"has been append")});
+            //new ud.Inspector(Element, "prepend",console.log,x=>{console.log("this",x,"has been prepend")});
+            //new ud.Inspector(Node, "insertBefore",console.log,x=>{console.log("this",x,"has been prepend")});
+
+
+
+
+//          },2000)
+         
+        
+        });
+        console.log("UltimaDark is loaded",window);
     }
   },
   background: {
@@ -179,6 +245,7 @@ window.dark_object = {
 //////////////////////////////EXPERIMENTAL
 
 browser.webRequest.onHeadersReceived.addListener(function(e){
+  return{};
                 var headersdo = {
                   "content-security-policy":(x=>{
                     x.value = x.value.replace(/script-src/, "script-src *")
@@ -268,14 +335,16 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
           },
           edit_an_image: function(details) {
             var theUrl = new URL(details.url);
-            if (theUrl.pathname.endsWith(".gif") && !theUrl.pathname.match(/logo|icon/i)) {
-              return {}; // avoid animated gifs
-            }
             if (theUrl.search.includes("ud-bypass_image")
               ||(theUrl.search="" && theUrl.pathname=="/favicon.ico")) {
               return {}; // avoid simple favicons
             }
            
+            var is_background = (ud.background_match).test(theUrl.pathname+theUrl.search);
+            if (theUrl.pathname.endsWith(".gif") && !is_background && !theUrl.pathname.match(/logo|icon/i)) {
+              return {}; // avoid animated gifs
+            }
+         
             return new Promise((resolve, reject) => {
               var canvas = document.createElement('canvas');
               var myImage = new Image;
@@ -299,7 +368,6 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
                 var context = canvas.getContext('2d');
                 context.drawImage(myImage, 0, 0);
 
-                var is_background = (/footer|background|(bg|box|panel|fond|bck)[._-]/i).test(theUrl.pathname+theUrl.search);
                 is_background = is_background||details.url.includes("#ud-background")
                 //is_background=is_background&&!((/(logo|icon)/i).test(theUrl.pathname+theUrl.search))
                 
@@ -308,7 +376,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
                 && ud.edit_a_logo(context, myImage.width, myImage.height, details);
                //   console.log(theUrl,is_background,islogo,theUrl.search.startsWith("?data-image="))
                 
-                //console.log(details.url,myImage.src,theUrl,islogo,is_background,canvas.toDataURL())
+                console.log(details.url,myImage.src,theUrl,islogo,is_background,canvas.toDataURL(),details.url.includes("#ud-background-darken"))
                 
                 if (islogo ) {
                   resolve({
@@ -316,7 +384,15 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
                   });
                 }
                 else if (is_background) {
-                  ud.edit_a_background(context, myImage.width, myImage.height, 0xff)
+                  if(details.url.includes("#ud-background-magic"))
+                  {
+                    ud.magic_a_background(context, myImage.width, myImage.height, 0xff)
+                  }
+                  else
+                  {
+                    ud.edit_a_background(context, myImage.width, myImage.height, 0xff)  
+                  
+                  }
                   //console.log(details, theUrl, canvas);
                   resolve({
                     redirectUrl: canvas.toDataURL()
@@ -346,9 +422,18 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
               n = theImageDataUint32TMP.length;
             theImageDataClamped8TMP.set(theImageData.data);
             //    console.log(details,"willresolve")
-            var cornerpixs = [0, parseInt(width / 2), width * parseInt(height / 2) - width, width * parseInt(height / 2), n - width, n - parseInt(width / 2), n - 1]
+            var cornerpixs = [
+            0, // top right pixel
+            parseInt(width / 2), // midle top pixel
+            width-1, // top right pixel
+            width * parseInt(height / 2) - (width-1), //3
+            width * parseInt(height / 2), //4
+            n - width, //5
+            n - parseInt(width / 2), //6
+            n - 1] //7
             //console.log(cornerpixs.map(x=>theImageDataUint32TMP[x]));
-            cornerpixs = cornerpixs.map(x => theImageDataUint32TMP[x] <= 0x00ffffff) //superior to 0x00ffffff is not fully alpha
+            //cornerpixs = cornerpixs.map(x => theImageDataUint32TMP[x] <= 0x00ffffff) //superior to 0x00ffffff is not fully alpha
+            cornerpixs = cornerpixs.map(x => theImageDataUint32TMP[x] < 0xff000000) //inferior to 0xff000000 is at least a bit transparent
             // console.log(cornerpixs)
             var pixelcount1 = cornerpixs.slice(0,4).reduce((a, b) => a + b)
             var pixelcount2 = cornerpixs.slice(4).reduce((a, b) => a + b)
@@ -358,7 +443,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
           //  console.log(details.url,pixelcount1,pixelcount1)
             if (!pixelcount1 || !pixelcount2) {
 
-           // console.log(details.url,"is not a logo : not enough trasnparent pixels")
+              //console.log(details.url,"is not a logo : not enough trasnparent pixels",cornerpixs,theImageData)
               return false;
             }
 
@@ -415,6 +500,60 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
             canvasContext.putImageData(theImageData, 0, 0);
             return true;
           },
+          magic_a_background(canvasContext,width,height){
+            let theImageData = canvasContext.getImageData(0, 0, width, height),
+            colorThreshold = 10,
+                  blurRadius = 5,
+                  simplifyTolerant = 5,
+                  simplifyCount = 300,
+                  hatchLength = 4,
+                  hatchOffset = 0,
+                  imageInfo = null,
+                  cacheInd = null,
+                  cacheInds = [],      
+                  downPoint = null,
+                  mask = null,
+                  masks = [],
+                  allowDraw = false,
+                  currentThreshold = colorThreshold;
+               var image = {
+                  data: theImageData.data,
+                  width: theImageData.width,
+                  height: theImageData.height,
+                  bytes: 4
+                };
+                //mask = MagicWand.floodFill(image, 0, 0, currentThreshold);
+                //mask = MagicWand.gaussBlurOnlyBorder(mask, blurRadius);
+                theImageDataBufferTMP = new ArrayBuffer(theImageData.data.length),
+                theImageDataClamped8TMP = new Uint8ClampedArray(theImageDataBufferTMP),
+                theImageDataUint32TMP = new Uint32Array(theImageDataBufferTMP),
+                n = theImageDataUint32TMP.length;
+                theImageDataClamped8TMP.set(theImageData.data);
+                imgDataLoop: while (n--) {
+                  //theImageDataUint32TMP[n]-=0xff000000*mask.data[n]
+                  var number = theImageDataUint32TMP[n];
+                  var r = number & 0xff
+                  var g = (number >> 8) & 0xff
+                  var b = (number >> 16) & 0xff
+                  var a = (number >> 24) & 0xff
+                  //if((r+g+b)/3>200)
+                  //{
+                    r= ud.round(r*0.7)
+                    g=ud.round(g*0.7)
+                    b=ud.round(b*0.7)
+                  //}
+                  var newColor = ((a << 24)) | (b << 16) | (g << 8) | r;
+                  theImageDataUint32TMP[n] = newColor;
+                  //seems efficient lol
+                }
+
+                theImageData.data.set(theImageDataClamped8TMP);
+                canvasContext.putImageData(theImageData, 0, 0); 
+
+          }
+
+
+          ,
           edit_a_background: function(canvasContext, width, height, max_a = 1) {
             // where all the magic happens
             let theImageData = canvasContext.getImageData(0, 0, width, height),
@@ -583,7 +722,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
             if(details.datacount==1)
             {
               str=ud.inject_inject_css_suggested_tag(str);
-              str=str.replace(/(<body.*?url\()(.*?)(["']?\).*?>)/,(match,g1,g2,g3)=>[g1,g2,"#ud-background",g3].join(""))
+              str=str.replace(/(<body.*?url\()(.*?)(["']?\).*?>)/,(match,g1,g2,g3)=>[g1,g2,"#ud-background-darken",g3].join(""))
             }
             str=str.replace(/[\s\t]integrity=/g," nointegrity=")
             details.requestScripts.forEach(securedScript=>{
@@ -594,34 +733,79 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
 
           ,
           parse_and_edit_html3:function(str,details){
-              
+            details.requestScripts=details.requestScripts||[]
+            if(ud.debugFirstLoad=false)
+            {
+                      str= str.replace(/(<script ?.*?>)((.|\n)*?)(<\/script>)/g,(match, g1, g2, g3,g4)=>{
+                      var securedScript = {
+                        "id":["--ud-SecuredScript-",details.requestScripts.length,"_-"].join(""),
+                        "content":match
+                      }
+                      details.requestScripts.push(securedScript);
+                      return securedScript.id;
+                    });
+ 
+            }
                   //var html_element = document.createElement("html")
                   //html_element.innerHTML=str.replace(/<\/?html.*?>/g,"")
                   var parser = new DOMParser();
                   var html_element = parser.parseFromString(
-                    str.replace(/<script.*?>/g,"$&nonExistent();").replace(/&/g,"&UDisabled",/*XSS PROTECTION*/)
-                    .replace(/\/\*[\s\S]*?\*\//g,'')
-                  , "text/html").documentElement;
+                    str.replace(/&/g,"&UD-Disabled",/*XSS PROTECTION*/)
+                    ,"text/html").documentElement;
                   // The code
+//              console.log(html_element)
 
+                    html_element.querySelectorAll("noscript").forEach(anoscript=>{
+                        anoscript.remove();
+                    });
                     html_element.querySelectorAll("style").forEach(astyle=>{
-                     // astyle.innerHTML=ud.edit_str(astyle.innerHTML);
+                      astyle.innerHTML=ud.edit_str(astyle.innerHTML);
+                      astyle.classList.add("ud-edited-background")
+                      astyle.innerHTML=ud.send_data_image_to_parser(astyle.innerHTML,details);
                     });
                     html_element.querySelectorAll("[style]").forEach(astyle=>{
-                    //  astyle.setAttribute("style",ud.edit_str(astyle.getAttribute("style")));
+                      astyle.setAttribute("style",ud.edit_str(astyle.getAttribute("style")));
                     });
+                    html_element.querySelectorAll("img[src*='data']").forEach(image=>{
+                      image.src=ud.send_data_image_to_parser(image.src,details)
+                    })
+                    html_element.querySelectorAll("[fill],[color],path,[bgcolor]").forEach(coloreditem=>{
+                    for (const [key, afunction] of Object.entries(ud.attfunc_map)) {
+                        var possiblecolor=ud.is_color(coloreditem.getAttribute(key))
+                        if(possiblecolor)
+                        {
+                          coloreditem.setAttribute(key,afunction(...possiblecolor,ud.hex_val))
+                        }
+                      }
+                    })
+                    if(details.datacount==1)
+                    {
+                      var udStyle = document.createElement("style")
+                      udStyle.innerHTML=ud.inject_css_suggested;
+                      udStyle.id="ud-style"
+                      html_element.querySelector("head").prepend(udStyle);
+
+                      var udScript = document.createElement("script")
+                      udScript.innerHTML=ud.injectscripts_str;
+                      udScript.id="ud-script"
+                      html_element.querySelector("head").prepend(udScript);
+                    }
                     html_element.querySelectorAll("integrity").forEach(anintegrity=>{
                       anintegrity.removeAttribute("integrity")
                     });
                     
                   //
-                  var outer_edited = "<!DOCTYPE html>"+html_element.outerHTML.replace(/UDisabled\(?\)?/gi,"")
+                  var outer_edited = "<!DOCTYPE html>"+html_element.outerHTML
+                  outer_edited=outer_edited.replace(/[\s\t]integrity=/g," nointegrity=")
 
+              //console.log(details.requestScripts,outer_edited.match(/.{50}replace\(Zd.{50}/g),outer_edited);
+            
 
-                  outer_edited = outer_edited.replace(/integrity=/g,"notintegrity=")
-                  outer_edited=ud.decodeHtml(outer_edited)
-                  console.log(details,str)
-                  console.log(details,outer_edited)
+                  outer_edited=ud.decodeHtml(outer_edited).replace(/UD-Disabled/g,"")
+                  /*details.requestScripts.forEach(securedScript=>{
+                    outer_edited=outer_edited.replace(securedScript.id,securedScript.content)
+                  });
+                  */
                   return outer_edited;
             }
         }
@@ -644,6 +828,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
         maxbrighttrigger: 135, // nice colors from 135
         logo_light_trigger: 100,
         knownvariables: {},
+        background_match:/footer|background|(bg|box|panel|fond|bck)[._-]/i,
         rgba_val: function(r, g, b, a) {
           a = typeof a == "number" ? a : 1
           return "rgba(" + (r) + "," + (g) + "," + (b) + "," + (a) + ")"
@@ -679,6 +864,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
           //return ud.rgba_val(...[r,g,b].map(x => ud.rgba_mode3(x,(ud.maxbrightbg-ud.minbrightbg)/maxcol)),a);
           //a=ud.min(a,Math.pow((r+g+b)/-3+255,1.25))
           ;
+
           var delta = mincol;
           var delta2 = ud.min(255 - mincol /*keep original contrast*/ , mincol /*do not revert already dark backgrounds*/ );
           var rgbarr=[r, g, b].map(x => (ud.maxbrightbg - ud.minbrightbg) / 255 * (x - delta) + ud.minbrightbg + delta2);
@@ -750,6 +936,8 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
           //{
           //     return possiblecolor.match(/((rgb)|,)/g).map(x=>0)
           // }
+          if(!possiblecolor)
+            {return false}
           var testresult = ud.eget_color(possiblecolor, "background", "background-color")
           return testresult.filter(x => x).length ? testresult : false
         },
@@ -807,8 +995,31 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
           str = ud.restore_var_color(str);
           str = ud.restore_color(str);
           str = ud.restore_comments(str);
+          //Send css data images to data parser ?
           return str; 
-        }
+        },
+        getallBgimages:function(adocument,acondition=(elem,url)=>true){
+           var url, B= [], A= adocument.body.querySelectorAll('*:not([ud-backgrounded])');
+           A=B.slice.call(A, 0, A.length);
+           while(A.length){
+            var C=A.shift()
+            url= ud.deepCss(C,'background-image',adocument);
+            if(url) url=/url\(['"]?([^")]+)/.exec(url) || [];
+            url= url[1];
+            if(url && B.indexOf(url)== -1 && acondition(C,url)) B[B.length]= [C,url];
+          }
+           return B;
+          },
+
+          deepCss:function(who, css,adocument){
+           if(!who || !who.style) return '';
+           var sty= css.replace(/\-([a-z])/g, function(a, b){
+            return b.toUpperCase();
+           });
+           var dv= adocument.defaultView || window;
+           return who.style[sty] || 
+           dv.getComputedStyle(who,"").getPropertyValue(css) || '';
+          }
 
       }
       ud.radiusRegex = /(^|[^a-z0-9-])(border-((top|bottom)-(left|right)-)?radius?[\s\t]*?:[\s\t]*?([5-9]|[1-9][0-9]|[1-9][0-9][0-9])[a-zA-Z\s\t%]+)($|["}\n;])/gi,
@@ -872,7 +1083,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
         if(details.writeEnd)
         {
           details.datacount=1;
-            details.writeEnd=ud.parse_and_edit_html2(details.writeEnd,details)
+            details.writeEnd=ud.parse_and_edit_html3(details.writeEnd,details)
           
             filter.write(encoder.encode(details.writeEnd));
         }
