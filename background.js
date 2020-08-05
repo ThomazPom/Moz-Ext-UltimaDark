@@ -94,6 +94,8 @@ window.dark_object = {
         },
         ud.valuePrototypeEditor = function(leType, atName, watcher = x => x, conditon = (elem, value) => 1) {
           var originalSet = Object.getOwnPropertyDescriptor(leType.prototype, atName).set;
+          Object.defineProperty(leType.prototype, "o_ud_set_"+atName, {set:originalSet});
+          //ud.knownvariables["o_ud_set_"+atName]=originalSet
           Object.defineProperty(leType.prototype, atName, {
             set: function(value) {
               var new_value = conditon(this, value) ? watcher(this, value) : value;
@@ -103,13 +105,13 @@ window.dark_object = {
         }
         ud.functionPrototypeEditor = function(leType, laFonction, watcher = x => x, conditon = (elem, value) => 1) {
           var originalFunction = Object.getOwnPropertyDescriptor(leType.prototype, laFonction.name).value;
+          Object.defineProperty(leType.prototype, "o_ud_"+laFonction.name, {value:originalFunction});
           Object.defineProperty(leType.prototype, laFonction.name, 
-            {value:function(arguments) {
-              console.log(arguments,conditon(this, arguments),watcher(this.arguments));
-              var new_args = conditon(this, arguments) ? watcher(this, arguments) : [...arguments];
-              console.log(arguments,conditon(this, arguments),watcher(this.arguments),new_args);
+            {value:function() {
+              //console.log(arguments,conditon(this, arguments),watcher(this.arguments));
+              var new_args = conditon(this, arguments) ? watcher(this, arguments) : arguments;
+              //console.log(new_args, typeof new_args,typeof watcher(this, arguments),watcher);
               return originalFunction.apply(this, new_args);
-            
           }});
         }
       //  new ud.Inspector(Document, "createElement",x=>{},ud.styleWatcher);;
@@ -158,17 +160,6 @@ window.dark_object = {
                   x[0].setAttribute("ud-backgrounded",2)
               }
             })
-ud.valuePrototypeEditor(CSS2Properties,"backgroundColor",(elem,value)=>{console.log(elem,value);return "black"})
-ud.valuePrototypeEditor(CSS2Properties,"background-color",(elem,value)=>{console.log(elem,value);return "black"})
-
-ud.valuePrototypeEditor(Element,"className",(elem,value)=>{console.log(elem,value);return "black"})
-ud.valuePrototypeEditor(Element,"classList",(elem,value)=>{console.log(elem,value);return ["black"]})
-ud.valuePrototypeEditor(CSS2Properties,"color",(elem,value)=>{console.log(elem,value);return "red"})
-ud.functionPrototypeEditor(DOMTokenList,DOMTokenList.prototype.add,(elem,args)=>{console.log(elem,args);return ["yellow"]});
-ud.functionPrototypeEditor(Document,Document.prototype.createElement,(elem,args)=>{console.log(elem,args); return ["span"]})
-ud.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.addRule,(elem,args)=>{console.log(elem,args); return [".have-border","border: 1px solid black;"]})
-ud.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.insertRule,(elem,args)=>{console.log(elem,args); return [".have-border { border: 1px solid black;}",0]})
-ud.valuePrototypeEditor( Element,    "innerHTML", (elem,value)=>{console.log(elem,value);return "black"}      );
 
             //ud.prototypeEditor( Element,    "innerHTML", (elem,value)=>ud.edit_str(value),     (elem,value)=>elem instanceof HTMLStyleElement       );
           //  new ud.Inspector(Document, "createElement",console.log,x=>{console.log("this",x,"has been created")});
@@ -188,6 +179,27 @@ ud.valuePrototypeEditor( Element,    "innerHTML", (elem,value)=>{console.log(ele
          
         
         });
+        ud.valuePrototypeEditor(CSS2Properties,"backgroundColor",(elem,value)=>{console.log(elem,value);return "black"})
+ud.valuePrototypeEditor(CSS2Properties,"background-color",(elem,value)=>{console.log(elem,value);return "black"})
+
+ud.valuePrototypeEditor(Element,"className",(elem,value)=>{console.log(elem,value);return "black"})
+ud.valuePrototypeEditor(Element,"classList",(elem,value)=>{console.log(elem,value);return ["black"]})
+ud.valuePrototypeEditor(CSS2Properties,"color",(elem,value)=>{console.log(elem,value);return "red"})
+ud.functionPrototypeEditor(DOMTokenList,DOMTokenList.prototype.add,(elem,args)=>{console.log(elem,args);return ["yellow"]});
+ud.functionPrototypeEditor(Document,Document.prototype.createElement,function(elem,args){return ["span"]},(elem,args)=>args[0]=="style")
+ud.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.addRule,(elem,args)=>{console.log(elem,args); return [".have-border","border: 1px solid black;"]})
+ud.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.insertRule,(elem,args)=>{console.log(elem,args); return [".have-border { border: 1px solid black;}",0]})
+ud.functionPrototypeEditor(DocumentFragment,DocumentFragment.prototype.append,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
+ud.functionPrototypeEditor(Element,Element.prototype.append,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
+ud.functionPrototypeEditor(Document,Document.prototype.append,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
+ud.functionPrototypeEditor(DocumentFragment,DocumentFragment.prototype.prepend,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
+ud.functionPrototypeEditor(Element,Element.prototype.prepend,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
+ud.functionPrototypeEditor(Document,Document.prototype.prepend,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
+
+//This one is the one youtube uses
+ud.valuePrototypeEditor( Element,    "innerHTML", (elem,value)=>{
+      console.log(elem,value);return "black"}      );
+
         console.log("UltimaDark is loaded",window);
     }
   },
