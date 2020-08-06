@@ -179,27 +179,43 @@ window.dark_object = {
          
         
         });
+
+
+
+
+
+if(breakpages=false)
+{
+
         ud.valuePrototypeEditor(CSS2Properties,"backgroundColor",(elem,value)=>{console.log(elem,value);return "black"})
 ud.valuePrototypeEditor(CSS2Properties,"background-color",(elem,value)=>{console.log(elem,value);return "black"})
 
 ud.valuePrototypeEditor(Element,"className",(elem,value)=>{console.log(elem,value);return "black"})
 ud.valuePrototypeEditor(Element,"classList",(elem,value)=>{console.log(elem,value);return ["black"]})
-ud.valuePrototypeEditor(CSS2Properties,"color",(elem,value)=>{console.log(elem,value);return "red"})
+ud.valuePrototypeEditor(CSS2Properties,"color",(elem,value)=>{console.log(elem,value);return "lightgreen"})
 ud.functionPrototypeEditor(DOMTokenList,DOMTokenList.prototype.add,(elem,args)=>{console.log(elem,args);return ["yellow"]});
 ud.functionPrototypeEditor(Document,Document.prototype.createElement,function(elem,args){return ["span"]},(elem,args)=>args[0]=="style")
+
 ud.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.addRule,(elem,args)=>{console.log(elem,args); return [".have-border","border: 1px solid black;"]})
 ud.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.insertRule,(elem,args)=>{console.log(elem,args); return [".have-border { border: 1px solid black;}",0]})
+
 ud.functionPrototypeEditor(DocumentFragment,DocumentFragment.prototype.append,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
 ud.functionPrototypeEditor(Element,Element.prototype.append,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
 ud.functionPrototypeEditor(Document,Document.prototype.append,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
 ud.functionPrototypeEditor(DocumentFragment,DocumentFragment.prototype.prepend,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
 ud.functionPrototypeEditor(Element,Element.prototype.prepend,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
 ud.functionPrototypeEditor(Document,Document.prototype.prepend,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
-
-//This one is the one youtube uses
+}
+/*
+        */
+//This is the one youtube uses
 ud.valuePrototypeEditor( Element,    "innerHTML", (elem,value)=>{
-      console.log(elem,value);return "black"}      );
-
+  
+value= value.replace(/(<style ?.*?>)((.|[\r\n])*?)(<\/style>)/g,(match, g1, g2, g3,g4)=>
+  [g1,ud.edit_str(value),g4].join('')) 
+    return value;
+ },(elem,value)=>value.includes('style'));
+        
         console.log("UltimaDark is loaded",window);
     }
   },
@@ -235,9 +251,7 @@ ud.valuePrototypeEditor( Element,    "innerHTML", (elem,value)=>{
             matches: ud.userSettings.properWhiteList,
             excludeMatches: ud.userSettings.properBlackList,
 
-            js : [
-              {code: ud.injectscripts_str}
-              ],
+            //js : [{code: ud.injectscripts_str}],
             css: [{code: ud.inject_css_override}], // Forced overrides
             runAt: "document_start",
             matchAboutBlank: true,
@@ -304,7 +318,6 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
         script.innerHTML = "(" + code.toString() + ")()";
         return script;
       })
-      ud.colorRegex = new RegExp(CSS_COLOR_NAMES_RGX, "gi");
       //ud.injectscripts_str = ud.injectscripts.map(x => x.outerHTML).join("")// Head detection method
       ud.injectscripts_str = ud.injectscripts.map(x => x.innerHTML).join(";") // JS injection method
       // Listen for onHeaderReceived for the target page.
@@ -388,7 +401,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
                 && ud.edit_a_logo(context, myImage.width, myImage.height, details);
                //   console.log(theUrl,is_background,islogo,theUrl.search.startsWith("?data-image="))
                 
-                console.log(details.url,myImage.src,theUrl,islogo,is_background,canvas.toDataURL(),details.url.includes("#ud-background-darken"))
+                //console.log(details.url,myImage.src,theUrl,islogo,is_background,canvas.toDataURL(),details.url.includes("#ud-background-darken"))
                 
                 if (islogo ) {
                   resolve({
@@ -423,8 +436,8 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
             })
           },
           edit_a_logo: function(canvasContext, width, height, details) {
-            if (width * height < 400) { // small images can't be logos
-              //    return {};
+            if (width * height < 400) { // small images can't be logos or affect the page
+                  return {};
             }
             //console.log(width,height,details)
             let theImageData = canvasContext.getImageData(0, 0, width, height),
@@ -435,14 +448,14 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
             theImageDataClamped8TMP.set(theImageData.data);
             //    console.log(details,"willresolve")
             var cornerpixs = [
-            0, // top right pixel
-            parseInt(width / 2), // midle top pixel
-            width-1, // top right pixel
-            width * parseInt(height / 2) - (width-1), //3
-            width * parseInt(height / 2), //4
-            n - width, //5
-            n - parseInt(width / 2), //6
-            n - 1] //7
+            0, // 1 top right pixel
+            parseInt(width / 2), //2 midle top pixel
+            width-1, // 3 top right pixel
+            width * parseInt(height / 2) - (width-1), //4
+            width * parseInt(height / 2), //5
+            n - width, //6
+            n - parseInt(width / 2), //7
+            n - 1] //8
             //console.log(cornerpixs.map(x=>theImageDataUint32TMP[x]));
             //cornerpixs = cornerpixs.map(x => theImageDataUint32TMP[x] <= 0x00ffffff) //superior to 0x00ffffff is not fully alpha
             cornerpixs = cornerpixs.map(x => theImageDataUint32TMP[x] < 0xff000000) //inferior to 0xff000000 is at least a bit transparent
@@ -827,8 +840,12 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
   both: {
     install: function() {
       document.o_createElement = document.createElement;
+      const CSS_COLOR_NAMES = ["AliceBlue", "AntiqueWhite", "Aqua", "Aquamarine", "Azure", "Beige", "Bisque", "Black", "BlanchedAlmond", "Blue", "BlueViolet", "Brown", "BurlyWood", "CadetBlue", "Chartreuse", "Chocolate", "Coral", "CornflowerBlue", "Cornsilk", "Crimson", "Cyan", "DarkBlue", "DarkCyan", "DarkGoldenRod", "DarkGray", "DarkGrey", "DarkGreen", "DarkKhaki", "DarkMagenta", "DarkOliveGreen", "DarkOrange", "DarkOrchid", "DarkRed", "DarkSalmon", "DarkSeaGreen", "DarkSlateBlue", "DarkSlateGray", "DarkSlateGrey", "DarkTurquoise", "DarkViolet", "DeepPink", "DeepSkyBlue", "DimGray", "DimGrey", "DodgerBlue", "FireBrick", "FloralWhite", "ForestGreen", "Fuchsia", "Gainsboro", "GhostWhite", "Gold", "GoldenRod", "Gray", "Grey", "Green", "GreenYellow", "HoneyDew", "HotPink", "IndianRed", "Indigo", "Ivory", "Khaki", "Lavender", "LavenderBlush", "LawnGreen", "LemonChiffon", "LightBlue", "LightCoral", "LightCyan", "LightGoldenRodYellow", "LightGray", "LightGrey", "LightGreen", "LightPink", "LightSalmon", "LightSeaGreen", "LightSkyBlue", "LightSlateGray", "LightSlateGrey", "LightSteelBlue", "LightYellow", "Lime", "LimeGreen", "Linen", "Magenta", "Maroon", "MediumAquaMarine", "MediumBlue", "MediumOrchid", "MediumPurple", "MediumSeaGreen", "MediumSlateBlue", "MediumSpringGreen", "MediumTurquoise", "MediumVioletRed", "MidnightBlue", "MintCream", "MistyRose", "Moccasin", "NavajoWhite", "Navy", "OldLace", "Olive", "OliveDrab", "Orange", "OrangeRed", "Orchid", "PaleGoldenRod", "PaleGreen", "PaleTurquoise", "PaleVioletRed", "PapayaWhip", "PeachPuff", "Peru", "Pink", "Plum", "PowderBlue", "Purple", "RebeccaPurple", "Red", "RosyBrown", "RoyalBlue", "SaddleBrown", "Salmon", "SandyBrown", "SeaGreen", "SeaShell", "Sienna", "Silver", "SkyBlue", "SlateBlue", "SlateGray", "SlateGrey", "Snow", "SpringGreen", "SteelBlue", "Tan", "Teal", "Thistle", "Tomato", "Turquoise", "Violet", "Wheat", "White", "WhiteSmoke", "Yellow", "YellowGreen", ];
+      const CSS_COLOR_NAMES_RGX = "([:,\\s\\n])(" + (CSS_COLOR_NAMES.join("|")) + ")([,;\\s\\n!\"}]|$)"
+
       window.ud = {
         userSettings:{},
+        colorRegex:new RegExp(CSS_COLOR_NAMES_RGX, "gi"),
         min: Math.min,
         max: Math.max,
         round: Math.round,
@@ -840,7 +857,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
         maxbrighttrigger: 135, // nice colors from 135
         logo_light_trigger: 100,
         knownvariables: {},
-        background_match:/footer|background|(bg|box|panel|fond|bck)[._-]/i,
+        background_match:/(footer[^\/\\]*$)|background|(bg|box|panel|fond|bck)[._-]/i,
         rgba_val: function(r, g, b, a) {
           a = typeof a == "number" ? a : 1
           return "rgba(" + (r) + "," + (g) + "," + (b) + "," + (a) + ")"
@@ -954,25 +971,24 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
           return testresult.filter(x => x).length ? testresult : false
         },
         restore_color: function(str,regex) {
+          return str.replace(ud.restoreColorRegex,
+            (match,g1,g2,g3,g4)=>g1+g2+":"+ud.set_oricolor(g4, ud.revert_rgba(...ud.eget_color(g4))))
+/*
           [...str.matchAll(regex||ud.restoreColorRegex)].forEach(match => {
             str = str.replace(match[0], match[1] + match[2] + ud.set_oricolor(match[4], ud.revert_rgba(...ud.eget_color(match[4]))))
           })
           return str;
+  */
         },
+  
         prefix_fg_vars: function(str) { // Must replace important with direct styles
-          return str.replace(ud.variableRegex2,"$&!important;--ud-fg$2:/*evi*/$6/*svi*/!important");
+          return str.replace(ud.variableRegex2,"$&!important;--ud-fg$2:/*evi*/$6/*svi*/");
         },
         restore_var_color: function(str) { 
 
-          [1,2,3,4,5,6].forEach(x=>{ // C MOCHE
-            (str.match(ud.restoreVarRegex)||[])
-            .forEach(match=>
-              str=str.replace(match,match.replace(/--/g,"--ud-fg--").replace("var(","ud-funcvar(")))
-          });
-          [...str.matchAll(/\/\*evi\*\/(.*?)\/\*svi\*\//g)].forEach(match=>{
-            str=str.replace(match[0],ud.revert_rgba(...ud.eget_color(match[1])))
-          })
-          return str.replace(/ud-funcvar/g,"var");
+          return str.replace(ud.restoreVarRegex,match=>match.replace(/--/g,"--ud-fg--"))
+          .replace(/\/\*evi\*\/(.*?)\/\*svi\*\//g,match=>ud.revert_rgba(...ud.eget_color(match)))
+          
         },
         restore_comments: function(str) {
           return str.replace(/\/\*ori.+?eri\*\/|\/\*sri\*\//g, "")
@@ -985,19 +1001,20 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
           return str.replace(/(^|[^a-z0-9-])(repeat(-[xy])?)($|["}\n;,)! ])/g, "$1no-repeat;background-color:rgba(0,0,0,0.5);noprop:$4")
         },
         edit_str_named_colors: function(str) {
-          [...str.matchAll(ud.colorRegex)].forEach(match => {
-            str = str.replace(match[0], match[1] + ud.set_oricolor(match[2], ud.rgba(...ud.eget_color(match[2]))) + match[3])
-          })
-          return str;
-        },
+          return str.replace(ud.colorRegex,(match,g1,g2,g3)=>g1 + ud.set_oricolor(g2, ud.rgba(...ud.eget_color(g2))) + g3)
+         },
         edit_dynamic_colors: function(str) {
+          return str.replace(ud.dynamicColorRegex,(match,g1,g2,g3)=>
+              ud.set_oricolor(g1,ud.rgba(...ud.eget_color(g1)))+g3
+            )
+          /*
           [1,2,3,4,5,6].forEach(x => { // C MOCHE
             [...str.matchAll(ud.dynamicColorRegex)].forEach(match => {
               newcolor = ud.rgba(...ud.eget_color(match[2])).replace("rgba", "colorfunc");
               str = str.replace(match[0], match[1] + ud.set_oricolor(match[2], newcolor) + match[4])
             })
           })
-          return str.replace(/colorfunc/g, "rgba");
+          return str.replace(/colorfunc/g, "rgba");*/
         },
         edit_str:function(str)
         {
@@ -1042,12 +1059,13 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
       // ud.matchStylePart=/{[^{]+}/gi //breaks amazon
       //    ud.dynamicColorRegex=/(#[0-9a-f]{3,8}|(rgb?|hsl)a?\([%0-9, .]+?\))/gi
       //
-      ud.dynamicColorRegex = /([:, \n(])(#[0-9a-f]{3,8}|(rgb?|hsl)a?\([%0-9, .]+?\))($|["}\n;,)! ])/gi
+      ud.dynamicColorRegex = /(#[0-9a-f]{3,8}|(rgb?|hsl)a?\([%0-9, .]+?\))([,);\n\r\s\t}!]|$)/gi
       ud.urlBGRegex = /(^|[^a-z0-9-])(background(-image)?)[\s\t]*?:[\s\t]*?(url\(["']?(.+?)["']?\))/g
-      ud.restoreColorRegex = /(^|[^a-z0-9-])(color.{1,5}|fill.{1,5})(\/\*ori\*(.*?)\*eri\*\/rgb.*?\/\*sri\*\/)/g
+      ud.restoreColorRegex = /(^|[^a-z0-9-])(color|fill)[\s\t]*?:[\s\t]*?(\/\*ori\*(.*?)\*eri\*\/rgb.*?\/\*sri\*\/)/g
       ud.restoreAnyRegex = /()()(\/\*ori\*(.*?)\*eri\*\/rgb.*?\/\*sri\*\/)/g
       
-      ud.restoreVarRegex = /([^a-z0-9-])(color|fill)[\s\t]*?:[\s\t]*?var[\s\t]*?\(.*?($|["}\n;! ])/g
+      //Variables can use other variables :
+      ud.restoreVarRegex = /([^a-z0-9-])(--ud-fg--.*?|color|fill)[\s\t]*?:[\s\t]*?var[\s\t]*?\(.*?($|["}\n;!])/g
       //ud.matchStylePart=new RegExp(["{[^}]+?((",[ud.radiusRegex,ud.variableRegex,ud.interventRegex ].map(x=>x.source).join(")|("),"))[^}]+?}"].join(""),"gi");
       ud.matchStylePart = /(^|<style.*?>)(.|\n)*?(<\/style>|$)|[^a-z0-9-]style=("(.|\n)+?("|$)|'(.|\n)+?('|$))/g
     }
@@ -1105,7 +1123,5 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
     }
   }
 }
-const CSS_COLOR_NAMES = ["AliceBlue", "AntiqueWhite", "Aqua", "Aquamarine", "Azure", "Beige", "Bisque", "Black", "BlanchedAlmond", "Blue", "BlueViolet", "Brown", "BurlyWood", "CadetBlue", "Chartreuse", "Chocolate", "Coral", "CornflowerBlue", "Cornsilk", "Crimson", "Cyan", "DarkBlue", "DarkCyan", "DarkGoldenRod", "DarkGray", "DarkGrey", "DarkGreen", "DarkKhaki", "DarkMagenta", "DarkOliveGreen", "DarkOrange", "DarkOrchid", "DarkRed", "DarkSalmon", "DarkSeaGreen", "DarkSlateBlue", "DarkSlateGray", "DarkSlateGrey", "DarkTurquoise", "DarkViolet", "DeepPink", "DeepSkyBlue", "DimGray", "DimGrey", "DodgerBlue", "FireBrick", "FloralWhite", "ForestGreen", "Fuchsia", "Gainsboro", "GhostWhite", "Gold", "GoldenRod", "Gray", "Grey", "Green", "GreenYellow", "HoneyDew", "HotPink", "IndianRed", "Indigo", "Ivory", "Khaki", "Lavender", "LavenderBlush", "LawnGreen", "LemonChiffon", "LightBlue", "LightCoral", "LightCyan", "LightGoldenRodYellow", "LightGray", "LightGrey", "LightGreen", "LightPink", "LightSalmon", "LightSeaGreen", "LightSkyBlue", "LightSlateGray", "LightSlateGrey", "LightSteelBlue", "LightYellow", "Lime", "LimeGreen", "Linen", "Magenta", "Maroon", "MediumAquaMarine", "MediumBlue", "MediumOrchid", "MediumPurple", "MediumSeaGreen", "MediumSlateBlue", "MediumSpringGreen", "MediumTurquoise", "MediumVioletRed", "MidnightBlue", "MintCream", "MistyRose", "Moccasin", "NavajoWhite", "Navy", "OldLace", "Olive", "OliveDrab", "Orange", "OrangeRed", "Orchid", "PaleGoldenRod", "PaleGreen", "PaleTurquoise", "PaleVioletRed", "PapayaWhip", "PeachPuff", "Peru", "Pink", "Plum", "PowderBlue", "Purple", "RebeccaPurple", "Red", "RosyBrown", "RoyalBlue", "SaddleBrown", "Salmon", "SandyBrown", "SeaGreen", "SeaShell", "Sienna", "Silver", "SkyBlue", "SlateBlue", "SlateGray", "SlateGrey", "Snow", "SpringGreen", "SteelBlue", "Tan", "Teal", "Thistle", "Tomato", "Turquoise", "Violet", "Wheat", "White", "WhiteSmoke", "Yellow", "YellowGreen", ];
-const CSS_COLOR_NAMES_RGX = "([:,\\s\\n])(" + (CSS_COLOR_NAMES.join("|")) + ")([,;\\s\\n!\"}]|$)"
 dark_object.both.install()
 dark_object.background.install()
