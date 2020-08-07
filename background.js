@@ -1,6 +1,7 @@
 window.dark_object = {
   foreground: {
     inject: function() {
+      console.log("UltimaDark is loading",window);
       ud.frontWatch = [
         ["background-color", "backgroundColor"]
       ];
@@ -210,12 +211,12 @@ ud.functionPrototypeEditor(Document,Document.prototype.prepend,(elem,args)=>{con
         */
 //This is the one youtube uses
 ud.valuePrototypeEditor( Element,    "innerHTML", (elem,value)=>{
-  
+  console.log(value)
 value= value.replace(/(<style ?.*?>)((.|[\r\n])*?)(<\/style>)/g,(match, g1, g2, g3,g4)=>
-  [g1,ud.edit_str(value),g4].join('')) 
+  [g1,ud.edit_str(value),g4].join(''))
+  .replace(/[\s\t\r\n]style[\s\t]*?=[\s\t]*?(".*?"|'.*?')/g,(match,g1)=>" style="+ud.edit_str(g1))
     return value;
- },(elem,value)=>value.includes('style'));
-        
+ },(elem,value)=>value && value.toString().includes('style')); //toString : sombe object can redefine tostring to generate thzir inner
         console.log("UltimaDark is loaded",window);
     }
   },
@@ -271,12 +272,22 @@ value= value.replace(/(<style ?.*?>)((.|[\r\n])*?)(<\/style>)/g,(match, g1, g2, 
 //////////////////////////////EXPERIMENTAL
 
 browser.webRequest.onHeadersReceived.addListener(function(e){
-  return{};
+    var n = e.responseHeaders.length;
+    var headersLow={}
+    while (n--) {
+      headersLow[e.responseHeaders[n].name.toLowerCase()] = e.responseHeaders[n].value;
+    }
+  ud.knownvariables["request-headers-"+e.requestId]=headersLow
+
                 var headersdo = {
-                  "content-security-policy":(x=>{
+                  "experimental-content-security-policy":(x=>{
                     x.value = x.value.replace(/script-src/, "script-src *")
                     x.value = x.value.replace(/default-src/, "default-src-src *")
                     x.value = x.value.replace(/style-src/, "style-src *")
+                      return true;
+                    }),
+                    "content-type":(x=>{
+                      x.value = x.value.replace(/charset=[0-9A-Z-]+/i, "charset=utf-8")
                       return true;
                     }),
                 }
@@ -358,6 +369,10 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
             //  var valueblend=["overlay","multiply","color","exclusion"].join(","); 
             return str;
           },
+          svgDataURL:function(svg) {
+            var svgAsXML = (new XMLSerializer).serializeToString(svg);
+            return "data:image/svg+xml," + encodeURIComponent(svgAsXML);
+          },
           edit_an_image: function(details) {
             var theUrl = new URL(details.url);
             if (theUrl.search.includes("ud-bypass_image")
@@ -366,78 +381,114 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
             }
            
             var is_background = (ud.background_match).test(theUrl.pathname+theUrl.search);
+            is_background = is_background||details.url.includes("#ud-background")
             if (theUrl.pathname.endsWith(".gif") && !is_background && !theUrl.pathname.match(/logo|icon/i)) {
               return {}; // avoid animated gifs
             }
-         
-            return new Promise((resolve, reject) => {
-              var canvas = document.createElement('canvas');
-              var myImage = new Image;
+            var canvas = document.createElement('canvas');
+            var myImage = new Image;
 
-              var dataImageId=details.url.match(/\?data-image=[0-9-]+/)
-              if(dataImageId)
-              {
-                myImage.src=ud.knownvariables[dataImageId[0]];
-                delete ud.knownvariables[dataImageId[0]];
-              }
-              else
-              {
-                  myImage.src=details.url+"#ud-letpass_image";
-              }
-              var normalresolve = x => {
-            
+            if(theUrl.pathname.match(/\.svg$/))
+            {
+              return new Promise((resolve, reject) => { //on my way to do a reaaal svg url parsing
+                fetch(details.url+"#ud-letpass_image")
+                    .then(response=>response.text()).then(text=>{
+                          var div = document.createElement("div");
+                          div.innerHTML=text;
+                          document.body.appendChild(div)
+                          var svg  = div.querySelector('svg')
+                          var {width, height} = svg.getBBox(); 
+                          div.innerHTML=text.replace("<svg",`<svg width="${width}"  height="${height}" ` );
+                          svg  = div.querySelector('svg')
+                          var can  = document.createElement("canvas")
+                          var ctx  = can.getContext('2d');
+                          var sourceImage = new Image;
+                          can.width=width;
+                          can.height=height;
 
+                           sourceImage.onload = function(){
+                                      ctx.drawImage(sourceImage,0,0,width,height);
+                                      div.remove()
+                                      var islogo = ud.edit_a_logo(ctx, width, height, details);
+                                      //console.log(details,can.toDataURL())
+                                      //img1.src = can.toDataURL();
+                                      resolve(islogo?{
+                                        redirectUrl: can.toDataURL()
+                                      }:{});
+                                    };
+                            sourceImage.src = ud.svgDataURL(svg)
 
-                canvas.width = myImage.width;
-                canvas.height = myImage.height;
-                var context = canvas.getContext('2d');
-                context.drawImage(myImage, 0, 0);
-
-                is_background = is_background||details.url.includes("#ud-background")
-                //is_background=is_background&&!((/(logo|icon)/i).test(theUrl.pathname+theUrl.search))
-                
-                var islogo = !is_background 
-                /*&& !theUrl.pathname.endsWith(".jpg") //some websites renames png files in jpg */
-                && ud.edit_a_logo(context, myImage.width, myImage.height, details);
-               //   console.log(theUrl,is_background,islogo,theUrl.search.startsWith("?data-image="))
-                
-                //console.log(details.url,myImage.src,theUrl,islogo,is_background,canvas.toDataURL(),details.url.includes("#ud-background-darken"))
-                
-                if (islogo ) {
-                  resolve({
-                    redirectUrl: canvas.toDataURL()
-                  });
-                }
-                else if (is_background) {
-                  if(details.url.includes("#ud-background-magic"))
+                        
+                    })
+              })
+            }
+            else{
+                return new Promise((resolve, reject) => {
+                  
+                  var dataImageId=details.url.match(/\?data-image=[0-9-]+/)
+                  if(dataImageId)
                   {
-                    ud.magic_a_background(context, myImage.width, myImage.height, 0xff)
+                    myImage.src=ud.knownvariables[dataImageId[0]];
+                    delete ud.knownvariables[dataImageId[0]];
                   }
                   else
                   {
-                    ud.edit_a_background(context, myImage.width, myImage.height, 0xff)  
-                  
+                      myImage.src=details.url+"#ud-letpass_image";
                   }
-                  //console.log(details, theUrl, canvas);
-                  resolve({
-                    redirectUrl: canvas.toDataURL()
-                  });
-                } else if(theUrl.search.startsWith("?data-image=")){
-                  resolve({redirectUrl: myImage.src});
-                } else {
-                  resolve({});
-                }
+                  var normalresolve = x => {
+                
+
+                    canvas.width = myImage.width;
+                    canvas.height = myImage.height;
+                    var context = canvas.getContext('2d');
+                    context.drawImage(myImage, 0, 0);
+
+                    //is_background=is_background&&!((/(logo|icon)/i).test(theUrl.pathname+theUrl.search))
+                    
+                    var islogo = !is_background && ud.edit_a_logo(context, myImage.width, myImage.height, details);
+                    /*&& !theUrl.pathname.endsWith(".jpg") //some websites renames png files in jpg */
+                    
+                   //   console.log(theUrl,is_background,islogo,theUrl.search.startsWith("?data-image="))
+                    
+                    //console.log(1,islogo,details.url,myImage.src, is_background,canvas.toDataURL())
+                    
+                    if (islogo ) {
+                      resolve({
+                        redirectUrl: canvas.toDataURL()
+                      });
+                    }
+                    else if (is_background) {
+                      if(details.url.includes("#ud-background-magic"))
+                      {
+                        ud.magic_a_background(context, myImage.width, myImage.height, 0xff)
+                      }
+                      else
+                      {
+                        ud.edit_a_background(context, myImage.width, myImage.height, 0xff)  
+                      
+                      }
+                      //console.log(details, theUrl, canvas);
+                      resolve({
+                        redirectUrl: canvas.toDataURL()
+                      });
+                    } else if(theUrl.search.startsWith("?data-image=")){
+                      resolve({redirectUrl: myImage.src});
+                    } else {
+                      resolve({});
+                    }
+                  }
+                  myImage.onload = normalresolve;
+                  myImage.onerror = x => {
+                    resolve({})
+                  }
+                  setTimeout(x => resolve({}), 1000);
+                })
               }
-              myImage.onload = normalresolve;
-              myImage.onerror = x => {
-                resolve({})
-              }
-              setTimeout(x => resolve({}), 1000);
-            })
           },
           edit_a_logo: function(canvasContext, width, height, details) {
-            if (width * height < 400) { // small images can't be logos or affect the page
-                  return {};
+            if (width * height < 50) { // small images can't be logos or affect the page
+                  //console.log(`${details.url} is too small: ${width} width, ${height} height `)
+                  return false;
             }
             //console.log(width,height,details)
             let theImageData = canvasContext.getImageData(0, 0, width, height),
@@ -1065,7 +1116,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
       ud.restoreAnyRegex = /()()(\/\*ori\*(.*?)\*eri\*\/rgb.*?\/\*sri\*\/)/g
       
       //Variables can use other variables :
-      ud.restoreVarRegex = /([^a-z0-9-])(--ud-fg--.*?|color|fill)[\s\t]*?:[\s\t]*?var[\s\t]*?\(.*?($|["}\n;!])/g
+      ud.restoreVarRegex = /([^a-z0-9-])(--ud-fg--[a-zA-Z0-9]|color|fill)[\s\t]*?:[\s\t]*?var[\s\t]*?\(.*?($|["}\n;!])/g
       //ud.matchStylePart=new RegExp(["{[^}]+?((",[ud.radiusRegex,ud.variableRegex,ud.interventRegex ].map(x=>x.source).join(")|("),"))[^}]+?}"].join(""),"gi");
       ud.matchStylePart = /(^|<style.*?>)(.|\n)*?(<\/style>|$)|[^a-z0-9-]style=("(.|\n)+?("|$)|'(.|\n)+?('|$))/g
     }
@@ -1084,23 +1135,32 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
         return ud.edit_an_image(details);
       }
       let filter = browser.webRequest.filterResponseData(details.requestId);
-      let decoder = new TextDecoder("utf-8");
+      let decoder = new TextDecoder();
       let encoder = new TextEncoder();
-      var headFound,bodyFound = false;
       details.datacount = 0;
       details.writeEnd = "";
-      
+      details.isMainFrame = ["main_frame","sub_frame"].includes(details.type)
+      details.isStyleSheet = ["stylesheet"].includes(details.type)
+      details.charset = null;
+
       filter.ondata = event => {
         details.datacount++
+
+        if(details.isMainFrame && decoder.encoding=="utf-8" && details.charset!="utf-8")
+        {
+          let headers = ud.knownvariables[ "request-headers-" + details.requestId ];
+          details.charset = (headers["content-type"].match(/charset=([0-9A-Z-]+)/i) || ["","utf-8"])[1]
+          decoder=new TextDecoder(details.charset)
+        }
         var str = decoder.decode(event.data, {
           stream: true
         });
-        if (details.type == "stylesheet") {
+        if (details.isStyleSheet) {
           str = ud.edit_str(str);
 
           str = ud.send_data_image_to_parser(str, details);
         }
-        else if (details.type == "main_frame" || details.type == "sub_frame") {
+        else if (details.isMainFrame) {
           // Cant do both
           // Next step would be to truly parse str ;
           details.writeEnd+=str;
