@@ -1,14 +1,15 @@
 window.dark_object = {
   foreground: {
     inject: function() {
+      //Object.defineProperty(window,"ud",{value:ud,writable:false})//No script can override ultimadark
       console.log("UltimaDark is loading",window);
-      ud.frontWatch = [
+      uDark.frontWatch = [
         ["background-color", "backgroundColor"]
       ];
-      ud.revert_frontWatch = [
+      uDark.revert_frontWatch = [
         ["color", "color"]
       ]
-      ud.Inspector = class Inspector {
+      uDark.Inspector = class Inspector {
         constructor(leType, atName, watcher = x => {}, applyOnReturn = x => {}) {
           var leProto = leType instanceof Function ? leType.prototype : leType
           var originalMethod = leProto[atName]
@@ -24,64 +25,64 @@ window.dark_object = {
           console.log("Now watching", leType.name, originalMethod, "in", document.location.href)
         }
       }
-      ud.styleflag = "/*watched_ultimadark*/"
-      ud.backPoperties = [
+      uDark.styleflag = "/*watched_ultimadark*/"
+      uDark.backPoperties = [
         ["background", "background-color"],
         ["background-color"]
       ];
-      ud.colorProperties = [
+      uDark.colorProperties = [
         ["color"]
       ];
-      ud.propertyEditor = function(aProperty, arule, howto) {
+      uDark.propertyEditor = function(aProperty, arule, howto) {
         var rulelist = ([arule, ...arule.cssRules || []]).filter(x => x.style);
         rulelist.forEach(function(arule) {
           var propSource = aProperty[0]
           var propDest = aProperty[1] || propSource;
           var value = arule.style[propSource]
           var valueDest = arule.style[propDest]
-          if (value && !valueDest.includes(ud.styleflag)) {
+          if (value && !valueDest.includes(uDark.styleflag)) {
             howto(propSource, propDest, value, valueDest, arule)
           }
         })
       }
-      ud.styleInEdition = [];
-      ud.styleEditor = function(astyle) {
-        if (ud.styleInEdition.includes(astyle)) {
+      uDark.styleInEdition = [];
+      uDark.styleEditor = function(astyle) {
+        if (uDark.styleInEdition.includes(astyle)) {
           return;
         }
-        ud.styleInEdition.push(astyle);
+        uDark.styleInEdition.push(astyle);
         [...document.styleSheets].filter(x => x.ownerNode === astyle).forEach(aSheet => {
           [...(aSheet.rules || aSheet.cssRules)].forEach(arule => {
-            ud.backPoperties.forEach(aProperty => {
-              ud.propertyEditor(aProperty, arule, (propSource, propDest, value, valueDest, arule) => {
-                var is_color_result = ud.is_color(value)
+            uDark.backPoperties.forEach(aProperty => {
+              uDark.propertyEditor(aProperty, arule, (propSource, propDest, value, valueDest, arule) => {
+                var is_color_result = uDark.is_color(value)
                 if (is_color_result) {
-                  arule.style[propDest] = ud.rgba(...is_color_result) + ud.styleflag
+                  arule.style[propDest] = uDark.rgba(...is_color_result) + uDark.styleflag
                 }
               })
             })
-            ud.colorProperties.forEach(aProperty => {
-              ud.propertyEditor(aProperty, arule, (propSource, propDest, value, valueDest, arule) => {
-                var is_color_result = ud.is_color(value)
+            uDark.colorProperties.forEach(aProperty => {
+              uDark.propertyEditor(aProperty, arule, (propSource, propDest, value, valueDest, arule) => {
+                var is_color_result = uDark.is_color(value)
                 // console.log(propSource,propDest,value,valueDest,arule,is_color_result)
                 if (is_color_result) {
-                  arule.style[propDest] = ud.revert_rgba(...is_color_result) + ud.styleflag
+                  arule.style[propDest] = uDark.revert_rgba(...is_color_result) + uDark.styleflag
                 }
               })
             })
           })
         })
-        ud.styleInEdition = ud.styleInEdition.filter(x => x != astyle)
+        uDark.styleInEdition = uDark.styleInEdition.filter(x => x != astyle)
       }
-      ud.raw_styleEditor = function(astyle) {
-        astyle.innerHTML = ud.edit_str(astyle.innerHTML)
+      uDark.raw_styleEditor = function(astyle) {
+        astyle.innerHTML = uDark.edit_str(astyle.innerHTML)
       }
-      ud.styleWatcher = function() {
+      uDark.styleWatcher = function() {
           [...arguments].forEach(elem => {
             if (elem instanceof HTMLStyleElement && elem.getAttribute("data-ultima") != "ud_style_watched") {
               elem.setAttribute("data-ultima", "ud_style_watched");
               var observer2 = new MutationObserver(mutationreacord => {
-                ud.raw_styleEditor(elem)
+                uDark.raw_styleEditor(elem)
               });
               var innerhtml_config = {
                 characterData: true,
@@ -93,10 +94,10 @@ window.dark_object = {
             }
           })
         },
-        ud.valuePrototypeEditor = function(leType, atName, watcher = x => x, conditon = (elem, value) => 1) {
+        uDark.valuePrototypeEditor = function(leType, atName, watcher = x => x, conditon = (elem, value) => 1) {
           var originalSet = Object.getOwnPropertyDescriptor(leType.prototype, atName).set;
           Object.defineProperty(leType.prototype, "o_ud_set_"+atName, {set:originalSet});
-          //ud.knownvariables["o_ud_set_"+atName]=originalSet
+          //uDark.knownvariables["o_ud_set_"+atName]=originalSet
           Object.defineProperty(leType.prototype, atName, {
             set: function(value) {
               var new_value = conditon(this, value) ? watcher(this, value) : value;
@@ -104,7 +105,7 @@ window.dark_object = {
             }
           });
         }
-        ud.functionPrototypeEditor = function(leType, laFonction, watcher = x => x, conditon = (elem, value) => 1) {
+        uDark.functionPrototypeEditor = function(leType, laFonction, watcher = x => x, conditon = (elem, value) => 1) {
           var originalFunction = Object.getOwnPropertyDescriptor(leType.prototype, laFonction.name).value;
           Object.defineProperty(leType.prototype, "o_ud_"+laFonction.name, {value:originalFunction});
           Object.defineProperty(leType.prototype, laFonction.name, 
@@ -115,15 +116,15 @@ window.dark_object = {
               return originalFunction.apply(this, new_args);
           }});
         }
-      //  new ud.Inspector(Document, "createElement",x=>{},ud.styleWatcher);;
-      //  new ud.Inspector(CSSStyleSheet,"addRule",console.log,console.log);
-      ud.frontEditor = function(elem, value) {
-        //if (!value.endsWith(ud.styleflag)) {
+      //  new uDark.Inspector(Document, "createElement",x=>{},uDark.styleWatcher);;
+      //  new uDark.Inspector(CSSStyleSheet,"addRule",console.log,console.log);
+      uDark.frontEditor = function(elem, value) {
+        //if (!value.endsWith(uDark.styleflag)) {
                 
-          return ud.edit_str(value)
+          return uDark.edit_str(value)
         //}
       }
-      //  ud.prototypeEditor( Element,    "innerHTML",     ud.frontEditor,     (elem,value)=>elem instanceof HTMLStyleElement       );
+      //  uDark.prototypeEditor( Element,    "innerHTML",     uDark.frontEditor,     (elem,value)=>elem instanceof HTMLStyleElement       );
       window.addEventListener('load', (event) => {
           var bodycolor = getComputedStyle(document.body)["backgroundColor"]
           if(bodycolor!="rgba(0, 0, 0, 0)")
@@ -133,10 +134,10 @@ window.dark_object = {
           //setInterval(function()
           //{
             var docscrollW = document.body.scrollWidth;
-          window.disabled && ud.getallBgimages(
+          window.disabled && uDark.getallBgimages(
             document,(elem,url)=>!url.includes("#ud-background")
             && elem.scrollWidth/docscrollW>.4
-            && !ud.background_match.test(url)).forEach(x=>{
+            && !uDark.background_match.test(url)).forEach(x=>{
               var styleelem = getComputedStyle(x[0]);
               if(styleelem["background-size"].includes(styleelem["width"])){
                 x[0].style.backgroundImage="url('"+x[1]+"#ud-background-magic')";
@@ -145,10 +146,10 @@ window.dark_object = {
             })
 
 
-          ud.getallBgimages(
+          uDark.getallBgimages(
             document,(elem,url)=>
             elem.scrollWidth/docscrollW>.5 // Is a big object
-            && !ud.background_match.test(url) // IS not bacgkgrounded-darken
+            && !uDark.background_match.test(url) // IS not bacgkgrounded-darken
             ).forEach(x=>{
               
               var styleelem = getComputedStyle(x[0]);
@@ -162,16 +163,16 @@ window.dark_object = {
               }
             })
 
-            //ud.prototypeEditor( Element,    "innerHTML", (elem,value)=>ud.edit_str(value),     (elem,value)=>elem instanceof HTMLStyleElement       );
-          //  new ud.Inspector(Document, "createElement",console.log,x=>{console.log("this",x,"has been created")});
-            //new ud.Inspector(Document, "createElement",x=>{},ud.styleWatcher);
-            //   new ud.Inspector(Document, "createElement",console.log,x=>{console.log("this",x,"has been created")});
-            //new ud.Inspector(Node, "appendChild",console.log,x=>{console.log("this",x,"has been append")});
+            //uDark.prototypeEditor( Element,    "innerHTML", (elem,value)=>uDark.edit_str(value),     (elem,value)=>elem instanceof HTMLStyleElement       );
+          //  new uDark.Inspector(Document, "createElement",console.log,x=>{console.log("this",x,"has been created")});
+            //new uDark.Inspector(Document, "createElement",x=>{},uDark.styleWatcher);
+            //   new uDark.Inspector(Document, "createElement",console.log,x=>{console.log("this",x,"has been created")});
+            //new uDark.Inspector(Node, "appendChild",console.log,x=>{console.log("this",x,"has been append")});
            
-            //new ud.Inspector(Node, "appendChild",console.log,x=>{console.log("this",x,"has been append")});
-            //new ud.Inspector(Element, "append",console.log,x=>{console.log("this",x,"has been append")});
-            //new ud.Inspector(Element, "prepend",console.log,x=>{console.log("this",x,"has been prepend")});
-            //new ud.Inspector(Node, "insertBefore",console.log,x=>{console.log("this",x,"has been prepend")});
+            //new uDark.Inspector(Node, "appendChild",console.log,x=>{console.log("this",x,"has been append")});
+            //new uDark.Inspector(Element, "append",console.log,x=>{console.log("this",x,"has been append")});
+            //new uDark.Inspector(Element, "prepend",console.log,x=>{console.log("this",x,"has been prepend")});
+            //new uDark.Inspector(Node, "insertBefore",console.log,x=>{console.log("this",x,"has been prepend")});
 
 
 
@@ -188,33 +189,33 @@ window.dark_object = {
 if(breakpages=false)
 {
 
-        ud.valuePrototypeEditor(CSS2Properties,"backgroundColor",(elem,value)=>{console.log(elem,value);return "black"})
-ud.valuePrototypeEditor(CSS2Properties,"background-color",(elem,value)=>{console.log(elem,value);return "black"})
+        uDark.valuePrototypeEditor(CSS2Properties,"backgroundColor",(elem,value)=>{console.log(elem,value);return "black"})
+uDark.valuePrototypeEditor(CSS2Properties,"background-color",(elem,value)=>{console.log(elem,value);return "black"})
 
-ud.valuePrototypeEditor(Element,"className",(elem,value)=>{console.log(elem,value);return "black"})
-ud.valuePrototypeEditor(Element,"classList",(elem,value)=>{console.log(elem,value);return ["black"]})
-ud.valuePrototypeEditor(CSS2Properties,"color",(elem,value)=>{console.log(elem,value);return "lightgreen"})
-ud.functionPrototypeEditor(DOMTokenList,DOMTokenList.prototype.add,(elem,args)=>{console.log(elem,args);return ["yellow"]});
-ud.functionPrototypeEditor(Document,Document.prototype.createElement,function(elem,args){return ["span"]},(elem,args)=>args[0]=="style")
+uDark.valuePrototypeEditor(Element,"className",(elem,value)=>{console.log(elem,value);return "black"})
+uDark.valuePrototypeEditor(Element,"classList",(elem,value)=>{console.log(elem,value);return ["black"]})
+uDark.valuePrototypeEditor(CSS2Properties,"color",(elem,value)=>{console.log(elem,value);return "lightgreen"})
+uDark.functionPrototypeEditor(DOMTokenList,DOMTokenList.prototype.add,(elem,args)=>{console.log(elem,args);return ["yellow"]});
+uDark.functionPrototypeEditor(Document,Document.prototype.createElement,function(elem,args){return ["span"]},(elem,args)=>args[0]=="style")
 
-ud.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.addRule,(elem,args)=>{console.log(elem,args); return [".have-border","border: 1px solid black;"]})
-ud.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.insertRule,(elem,args)=>{console.log(elem,args); return [".have-border { border: 1px solid black;}",0]})
+uDark.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.addRule,(elem,args)=>{console.log(elem,args); return [".have-border","border: 1px solid black;"]})
+uDark.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.insertRule,(elem,args)=>{console.log(elem,args); return [".have-border { border: 1px solid black;}",0]})
 
-ud.functionPrototypeEditor(DocumentFragment,DocumentFragment.prototype.append,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
-ud.functionPrototypeEditor(Element,Element.prototype.append,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
-ud.functionPrototypeEditor(Document,Document.prototype.append,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
-ud.functionPrototypeEditor(DocumentFragment,DocumentFragment.prototype.prepend,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
-ud.functionPrototypeEditor(Element,Element.prototype.prepend,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
-ud.functionPrototypeEditor(Document,Document.prototype.prepend,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
+uDark.functionPrototypeEditor(DocumentFragment,DocumentFragment.prototype.append,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
+uDark.functionPrototypeEditor(Element,Element.prototype.append,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
+uDark.functionPrototypeEditor(Document,Document.prototype.append,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
+uDark.functionPrototypeEditor(DocumentFragment,DocumentFragment.prototype.prepend,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
+uDark.functionPrototypeEditor(Element,Element.prototype.prepend,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
+uDark.functionPrototypeEditor(Document,Document.prototype.prepend,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
 }
 /*
         */
 //This is the one youtube uses
-ud.valuePrototypeEditor( Element,    "innerHTML", (elem,value)=>{
-  console.log(value)
+uDark.valuePrototypeEditor( Element,    "innerHTML", (elem,value)=>{
+ // console.log(value)
 value= value.replace(/(<style ?.*?>)((.|[\r\n])*?)(<\/style>)/g,(match, g1, g2, g3,g4)=>
-  [g1,ud.edit_str(value),g4].join(''))
-  .replace(/[\s\t\r\n]style[\s\t]*?=[\s\t]*?(".*?"|'.*?')/g,(match,g1)=>" style="+ud.edit_str(g1))
+  [g1,uDark.edit_str(value),g4].join(''))
+  .replace(/[\s\t\r\n]style[\s\t]*?=[\s\t]*?(".*?"|'.*?')/g,(match,g1)=>" style="+uDark.edit_str(g1))
     return value;
  },(elem,value)=>value && value.toString().includes('style')); //toString : sombe object can redefine tostring to generate thzir inner
         console.log("UltimaDark is loaded",window);
@@ -230,39 +231,39 @@ value= value.replace(/(<style ?.*?>)((.|[\r\n])*?)(<\/style>)/g,(match, g1, g2, 
     },
     setListener: function() {
       browser.storage.local.get(null, function(res) {
-        ud.userSettings = res;
-        ud.userSettings.properWhiteList = (res.white_list || dark_object.background.defaultRegexes.white_list).split("\n").filter(dark_object.background.filterContentScript)
-        ud.userSettings.properBlackList = (res.black_list || dark_object.background.defaultRegexes.black_list).split("\n").filter(dark_object.background.filterContentScript)
-        ud.userSettings.exclude_regex = (res.black_list || dark_object.background.defaultRegexes.black_list).split("\n").map(x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // Sanitize regex
+        uDark.userSettings = res;
+        uDark.userSettings.properWhiteList = (res.white_list || dark_object.background.defaultRegexes.white_list).split("\n").filter(dark_object.background.filterContentScript)
+        uDark.userSettings.properBlackList = (res.black_list || dark_object.background.defaultRegexes.black_list).split("\n").filter(dark_object.background.filterContentScript)
+        uDark.userSettings.exclude_regex = (res.black_list || dark_object.background.defaultRegexes.black_list).split("\n").map(x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // Sanitize regex
           .replace(/(^<all_urls>|\\\*)/g, "(.*?)") // Allow wildcards
           .replace(/^(.*)$/g, "^$1$")).join("|") // User multi match)
-        ud.knownvariables = {};
+        uDark.knownvariables = {};
         browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.monitorBeforeRequest);
-        if (ud.regiteredCS) {
-          ud.regiteredCS.unregister();
-          ud.regiteredCS = null
+        if (uDark.regiteredCS) {
+          uDark.regiteredCS.unregister();
+          uDark.regiteredCS = null
         }
-        if (!res.disable_webext && ud.userSettings.properWhiteList.length) {
+        if (!res.disable_webext && uDark.userSettings.properWhiteList.length) {
           browser.webRequest.onBeforeRequest.addListener(dark_object.misc.monitorBeforeRequest, {
-              urls: ud.userSettings.properWhiteList,
+              urls: uDark.userSettings.properWhiteList,
               types: ["stylesheet", "main_frame", "sub_frame", "image"]
             },
             ["blocking"]);
           var contentScript = {
-            matches: ud.userSettings.properWhiteList,
-            excludeMatches: ud.userSettings.properBlackList,
+            matches: uDark.userSettings.properWhiteList,
+            excludeMatches: uDark.userSettings.properBlackList,
 
-            //js : [{code: ud.injectscripts_str}],
-            css: [{code: ud.inject_css_override}], // Forced overrides
+            //js : [{code: uDark.injectscripts_str}],
+            css: [{code: uDark.inject_css_override}], // Forced overrides
             runAt: "document_start",
             matchAboutBlank: true,
             allFrames: true
           }
-          if (!ud.userSettings.properBlackList.length) {
+          if (!uDark.userSettings.properBlackList.length) {
             delete contentScript.excludeMatches;
           }
           browser.contentScripts.register(contentScript).then(x => {
-            ud.regiteredCS = x
+            uDark.regiteredCS = x
           });
         }
 
@@ -277,7 +278,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
     while (n--) {
       headersLow[e.responseHeaders[n].name.toLowerCase()] = e.responseHeaders[n].value;
     }
-  ud.knownvariables["request-headers-"+e.requestId]=headersLow
+  uDark.knownvariables["request-headers-"+e.requestId]=headersLow
 
                 var headersdo = {
                   "experimental-content-security-policy":(x=>{
@@ -299,7 +300,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
               return {responseHeaders: e.responseHeaders};
           },
           {
-              urls: ud.userSettings.properWhiteList,
+              urls: uDark.userSettings.properWhiteList,
               types: ["main_frame", "sub_frame"]
             },
             ["blocking", "responseHeaders"]);
@@ -324,13 +325,13 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
       });
     },
     install: function() {
-      ud.injectscripts = [dark_object.both.install, dark_object.foreground.inject].map(code => {
+      uDark.injectscripts = [dark_object.both.install, dark_object.foreground.inject].map(code => {
         var script = document.createElement("script");
         script.innerHTML = "(" + code.toString() + ")()";
         return script;
       })
-      //ud.injectscripts_str = ud.injectscripts.map(x => x.outerHTML).join("")// Head detection method
-      ud.injectscripts_str = ud.injectscripts.map(x => x.innerHTML).join(";") // JS injection method
+      //uDark.injectscripts_str = uDark.injectscripts.map(x => x.outerHTML).join("")// Head detection method
+      uDark.injectscripts_str = uDark.injectscripts.map(x => x.innerHTML).join(";") // JS injection method
       // Listen for onHeaderReceived for the target page.
       // Set "blocking" and "responseHeaders".
       var portFromCS;
@@ -347,23 +348,23 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
       .then(str=>{
 
           
-          ud.inject_css_suggested=ud.edit_str(str);
+          uDark.inject_css_suggested=uDark.edit_str(str);
           return fetch("inject_css_override.css")
 
       })
       .then(res=>res.text())
       .then(str=>{
-          ud.inject_css_override=ud.edit_str(str);
+          uDark.inject_css_override=uDark.edit_str(str);
       })
       .then(x=>dark_object.background.setListener())
       
-      ud = {
-        ...ud,
+      window.uDark = {
+        ...uDark,
         ...{
           attfunc_map:{
-              "fill":ud.revert_rgba,
-              "color":ud.revert_rgba,
-              "bgcolor":ud.rgba
+              "fill":uDark.revert_rgba,
+              "color":uDark.revert_rgba,
+              "bgcolor":uDark.rgba
             },
           edit_background_image_urls: function(str) {
             //  var valueblend=["overlay","multiply","color","exclusion"].join(","); 
@@ -380,7 +381,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
               return {}; // avoid simple favicons
             }
            
-            var is_background = (ud.background_match).test(theUrl.pathname+theUrl.search);
+            var is_background = (uDark.background_match).test(theUrl.pathname+theUrl.search);
             is_background = is_background||details.url.includes("#ud-background")
             if (theUrl.pathname.endsWith(".gif") && !is_background && !theUrl.pathname.match(/logo|icon/i)) {
               return {}; // avoid animated gifs
@@ -409,14 +410,14 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
                            sourceImage.onload = function(){
                                       ctx.drawImage(sourceImage,0,0,width,height);
                                       div.remove()
-                                      var islogo = ud.edit_a_logo(ctx, width, height, details);
+                                      var islogo = uDark.edit_a_logo(ctx, width, height, details);
                                       //console.log(details,can.toDataURL())
                                       //img1.src = can.toDataURL();
                                       resolve(islogo?{
                                         redirectUrl: can.toDataURL()
                                       }:{});
                                     };
-                            sourceImage.src = ud.svgDataURL(svg)
+                            sourceImage.src = uDark.svgDataURL(svg)
 
                         
                     })
@@ -428,8 +429,8 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
                   var dataImageId=details.url.match(/\?data-image=[0-9-]+/)
                   if(dataImageId)
                   {
-                    myImage.src=ud.knownvariables[dataImageId[0]];
-                    delete ud.knownvariables[dataImageId[0]];
+                    myImage.src=uDark.knownvariables[dataImageId[0]];
+                    delete uDark.knownvariables[dataImageId[0]];
                   }
                   else
                   {
@@ -445,7 +446,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
 
                     //is_background=is_background&&!((/(logo|icon)/i).test(theUrl.pathname+theUrl.search))
                     
-                    var islogo = !is_background && ud.edit_a_logo(context, myImage.width, myImage.height, details);
+                    var islogo = !is_background && uDark.edit_a_logo(context, myImage.width, myImage.height, details);
                     /*&& !theUrl.pathname.endsWith(".jpg") //some websites renames png files in jpg */
                     
                    //   console.log(theUrl,is_background,islogo,theUrl.search.startsWith("?data-image="))
@@ -460,11 +461,11 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
                     else if (is_background) {
                       if(details.url.includes("#ud-background-magic"))
                       {
-                        ud.magic_a_background(context, myImage.width, myImage.height, 0xff)
+                        uDark.magic_a_background(context, myImage.width, myImage.height, 0xff)
                       }
                       else
                       {
-                        ud.edit_a_background(context, myImage.width, myImage.height, 0xff)  
+                        uDark.edit_a_background(context, myImage.width, myImage.height, 0xff)  
                       
                       }
                       //console.log(details, theUrl, canvas);
@@ -524,7 +525,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
             }
 
             var samplepixels = theImageDataUint32TMP;
-            if (ud.sample_mode_active == false) {
+            if (uDark.sample_mode_active == false) {
               //          var sampler = 40
               //        var samplepixelscount = Math.round(n/sampler); 
               //      samplepixels = Array.from({length: samplepixelscount}, (x, i) => i*sampler).map(x=>theImageDataUint32TMP[x])
@@ -555,16 +556,16 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
               {
                 continue imgDataLoop;
               }*/
-              var maxcol = ud.max(r, g, b) // Local max col
+              var maxcol = uDark.max(r, g, b) // Local max col
               var delta = 255 - maxcol // 255 is the future logo brightness; can be configurable
               if (delta2 && a && (r + g + b) < 1) {
                 delta -= delta2; // Experimental : if pic has black and white do not set black entirely white
               
               }
                        
-            r = ud.min(Math.pow(r + delta,1.05),255);
-            g = ud.min(Math.pow(g + delta,1.05),255);
-            b = ud.min(Math.pow(b + delta,1.05),255); // experimental power up whites in logos; but how much ?
+            r = uDark.min(Math.pow(r + delta,1.05),255);
+            g = uDark.min(Math.pow(g + delta,1.05),255);
+            b = uDark.min(Math.pow(b + delta,1.05),255); // experimental power up whites in logos; but how much ?
 
            /*   r = r + delta;
               g = g + delta;
@@ -614,9 +615,9 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
                   var a = (number >> 24) & 0xff
                   //if((r+g+b)/3>200)
                   //{
-                    r= ud.round(r*0.7)
-                    g=ud.round(g*0.7)
-                    b=ud.round(b*0.7)
+                    r= uDark.round(r*0.7)
+                    g=uDark.round(g*0.7)
+                    b=uDark.round(b*0.7)
                   //}
                   var newColor = ((a << 24)) | (b << 16) | (g << 8) | r;
                   theImageDataUint32TMP[n] = newColor;
@@ -647,19 +648,19 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
               //continue imgDataLoop; //does not work with gradients
               var a = (number >> 24) & max_a
               var oa = a;
-              // var rgbarr = [r,g,b].map(x => ud.maxbrightbg *(x/ud.max(r,g,b)));
-              //r=ud.max( r-100,0)//rgbarr[0];
-              //g=ud.max( g-100,0)//rgbarr[1];
-              //b=ud.max( b-100,0)//rgbarr[2];
+              // var rgbarr = [r,g,b].map(x => uDark.maxbrightbg *(x/uDark.max(r,g,b)));
+              //r=uDark.max( r-100,0)//rgbarr[0];
+              //g=uDark.max( g-100,0)//rgbarr[1];
+              //b=uDark.max( b-100,0)//rgbarr[2];
               // r=rgbarr[0];
               //g=rgbarr[1];
               //b=rgbarr[2];
-              //  a=Math.abs(ud.max(r,g,b)-255);
-              //a=ud.min(a,(r+g+b)/-3+255); // linear
-              a = ud.min(a, Math.pow((r + g + b) / -3 + 255, 1.25)); // pow, solves gradients & keeps colors; 0 means full dark;
+              //  a=Math.abs(uDark.max(r,g,b)-255);
+              //a=uDark.min(a,(r+g+b)/-3+255); // linear
+              a = uDark.min(a, Math.pow((r + g + b) / -3 + 255, 1.25)); // pow, solves gradients & keeps colors; 0 means full dark;
               //cant fully alpha : if text is on white(to alpha) div and div on an image, text will be hard to read
               if (a < 1) {
-                r = g = b = ud.minbrightbg;
+                r = g = b = uDark.minbrightbg;
                 a = oa;
                 // r=g=b=0;
               }
@@ -677,7 +678,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
                 //var id = `https://google.com/favicon.ico?${details.requestId}-${details.datacount}-${lindex}`
                 //   var id = "https://google.com/favicon.ico?1=10985-1-1"
                 var id = `?data-image=${details.requestId}-${details.datacount}-${lindex}`
-                ud.knownvariables[id] = match[1];
+                uDark.knownvariables[id] = match[1];
                 str = str.replace(match[1], '/favicon.ico' + id);
               })
             }
@@ -702,9 +703,9 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
                   substr=o_substr=astyle.getAttribute("style");
                   substr=" "+substr+" ";
             }
-            substr=ud.edit_str(substr)
+            substr=uDark.edit_str(substr)
             //    if(substr.includes("data:image")){
-            substr = ud.send_data_image_to_parser(substr, details);
+            substr = uDark.send_data_image_to_parser(substr, details);
 
             str = str.replace(o_substr, substr);
           });
@@ -718,14 +719,14 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
             var o_outer=coloreditem.outerHTML
 
           for (const [key, afunction] of Object.entries({
-              "fill":ud.revert_rgba,
-              "color":ud.revert_rgba,
-              "bgcolor":ud.rgba
+              "fill":uDark.revert_rgba,
+              "color":uDark.revert_rgba,
+              "bgcolor":uDark.rgba
             })) {
-                if(ud.is_color(thecolor=coloreditem.getAttribute(key)))
+                if(uDark.is_color(thecolor=coloreditem.getAttribute(key)))
 
                 coloreditem.setAttribute(
-                  key,afunction(...ud.eget_color(thecolor)))
+                  key,afunction(...uDark.eget_color(thecolor)))
                 }
                 str=str.replace(o_outer.slice(0,o_outer.indexOf(">")+1),
                   coloreditem.outerHTML.slice(0,coloreditem.outerHTML.indexOf(">")+1),
@@ -744,14 +745,14 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
                   var position=head_tag.value.index+head_tag.value[0].length
                   //  str = str.substring(0, position) + "<link id='ud-link' rel='stylesheet' href='https://pom.pm/Tests/Ultimadark_misc/override.css'>" +str.substring(position)
                   /* Non overrride styles */
-                  str = str.substring(0, position) + "<style id='ud-style'>"+ud.inject_css_suggested+"</style>"+str.substring(position);
-                  //  str += "<style id='ud-style'>"+ud.inject_css_suggested+"</style>";
-                  //  str = str.substring(0, position) + ud.injectscripts_str+str.substring(position)
+                  str = str.substring(0, position) + "<style id='ud-style'>"+uDark.inject_css_suggested+"</style>"+str.substring(position);
+                  //  str += "<style id='ud-style'>"+uDark.inject_css_suggested+"</style>";
+                  //  str = str.substring(0, position) + uDark.injectscripts_str+str.substring(position)
                   headFound = true;
                 }
                 else{
                   /* Non overrride styles */
-                  str = "<style id='ud-style'>"+ud.inject_css_suggested+"</style>"+str;
+                  str = "<style id='ud-style'>"+uDark.inject_css_suggested+"</style>"+str;
                 }  
 
           }
@@ -775,20 +776,20 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
               return securedScript.id;
             });
 
-            str=ud.send_data_image_to_parser(str,details);
+            str=uDark.send_data_image_to_parser(str,details);
 
 
-            str= str.replace(/(<style ?.*?>)((.|[\r\n])*?)(<\/style>)/g,(match, g1, g2, g3,g4)=>[g1,ud.edit_str(g2),g4].join(''));
+            str= str.replace(/(<style ?.*?>)((.|[\r\n])*?)(<\/style>)/g,(match, g1, g2, g3,g4)=>[g1,uDark.edit_str(g2),g4].join(''));
 
-            str=str.replace(/[\s\t]style[\s\t]*?=[\s\t]*?(".*?"|'.*?')/g,(match,g1)=>" style="+ud.edit_str(g1))
+            str=str.replace(/[\s\t]style[\s\t]*?=[\s\t]*?(".*?"|'.*?')/g,(match,g1)=>" style="+uDark.edit_str(g1))
             
             str=str.replace(/[\s\t](fill|color|bgcolor)[\s\t]*?=[\s\t]*?("(.*?)"|'(.*?)'|[a-zA-Z0-9#])/g,(match,g1,g2,g3,g4)=>
               {
                 var usedcolor=g3||g4;
-                var possiblecolor=ud.is_color(usedcolor)
-           //     console.log(possiblecolor,g1,usedcolor,ud.attfunc_map[g1],ud.hex_val,(ud.attfunc_map[g1])(...(possiblecolor||[]),ud.hex_val));
+                var possiblecolor=uDark.is_color(usedcolor)
+           //     console.log(possiblecolor,g1,usedcolor,uDark.attfunc_map[g1],uDark.hex_val,(uDark.attfunc_map[g1])(...(possiblecolor||[]),uDark.hex_val));
 
-             return  [" ",g1,"=",'"',possiblecolor?(ud.attfunc_map[g1])(...possiblecolor,ud.hex_val):usedcolor,'"'].join('')
+             return  [" ",g1,"=",'"',possiblecolor?(uDark.attfunc_map[g1])(...possiblecolor,uDark.hex_val):usedcolor,'"'].join('')
             }
             )
             
@@ -797,7 +798,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
            // console.log(str.match(/(<style.*?>)(.*?)(<\/)/g),str.match(/<style.{0,300}/g).map(x=>x.slice(0,300)))
             if(details.datacount==1)
             {
-              str=ud.inject_inject_css_suggested_tag(str);
+              str=uDark.inject_inject_css_suggested_tag(str);
               str=str.replace(/(<body.*?url\()(.*?)(["']?\).*?>)/,(match,g1,g2,g3)=>[g1,g2,"#ud-background-darken",g3].join(""))
             }
             str=str.replace(/[\s\t]integrity=/g," nointegrity=")
@@ -810,7 +811,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
           ,
           parse_and_edit_html3:function(str,details){
             details.requestScripts=details.requestScripts||[]
-            if(ud.debugFirstLoad=false)
+            if(uDark.debugFirstLoad=false)
             {
                       str= str.replace(/(<script ?.*?>)((.|\n)*?)(<\/script>)/g,(match, g1, g2, g3,g4)=>{
                       var securedScript = {
@@ -835,34 +836,34 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
                         anoscript.remove();
                     });
                     html_element.querySelectorAll("style").forEach(astyle=>{
-                      astyle.innerHTML=ud.edit_str(astyle.innerHTML);
+                      astyle.innerHTML=uDark.edit_str(astyle.innerHTML);
                       astyle.classList.add("ud-edited-background")
-                      astyle.innerHTML=ud.send_data_image_to_parser(astyle.innerHTML,details);
+                      astyle.innerHTML=uDark.send_data_image_to_parser(astyle.innerHTML,details);
                     });
                     html_element.querySelectorAll("[style]").forEach(astyle=>{
-                      astyle.setAttribute("style",ud.edit_str(astyle.getAttribute("style")));
+                      astyle.setAttribute("style",uDark.edit_str(astyle.getAttribute("style")));
                     });
                     html_element.querySelectorAll("img[src*='data']").forEach(image=>{
-                      image.src=ud.send_data_image_to_parser(image.src,details)
+                      image.src=uDark.send_data_image_to_parser(image.src,details)
                     })
                     html_element.querySelectorAll("[fill],[color],path,[bgcolor]").forEach(coloreditem=>{
-                    for (const [key, afunction] of Object.entries(ud.attfunc_map)) {
-                        var possiblecolor=ud.is_color(coloreditem.getAttribute(key))
+                    for (const [key, afunction] of Object.entries(uDark.attfunc_map)) {
+                        var possiblecolor=uDark.is_color(coloreditem.getAttribute(key))
                         if(possiblecolor)
                         {
-                          coloreditem.setAttribute(key,afunction(...possiblecolor,ud.hex_val))
+                          coloreditem.setAttribute(key,afunction(...possiblecolor,uDark.hex_val))
                         }
                       }
                     })
                     if(details.datacount==1)
                     {
                       var udStyle = document.createElement("style")
-                      udStyle.innerHTML=ud.inject_css_suggested;
+                      udStyle.innerHTML=uDark.inject_css_suggested;
                       udStyle.id="ud-style"
                       html_element.querySelector("head").prepend(udStyle);
 
                       var udScript = document.createElement("script")
-                      udScript.innerHTML=ud.injectscripts_str;
+                      udScript.innerHTML=uDark.injectscripts_str;
                       udScript.id="ud-script"
                       html_element.querySelector("head").prepend(udScript);
                     }
@@ -877,7 +878,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
               //console.log(details.requestScripts,outer_edited.match(/.{50}replace\(Zd.{50}/g),outer_edited);
             
 
-                  outer_edited=ud.decodeHtml(outer_edited).replace(/UD-Disabled/g,"")
+                  outer_edited=uDark.decodeHtml(outer_edited).replace(/UD-Disabled/g,"")
                   /*details.requestScripts.forEach(securedScript=>{
                     outer_edited=outer_edited.replace(securedScript.id,securedScript.content)
                   });
@@ -894,7 +895,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
       const CSS_COLOR_NAMES = ["AliceBlue", "AntiqueWhite", "Aqua", "Aquamarine", "Azure", "Beige", "Bisque", "Black", "BlanchedAlmond", "Blue", "BlueViolet", "Brown", "BurlyWood", "CadetBlue", "Chartreuse", "Chocolate", "Coral", "CornflowerBlue", "Cornsilk", "Crimson", "Cyan", "DarkBlue", "DarkCyan", "DarkGoldenRod", "DarkGray", "DarkGrey", "DarkGreen", "DarkKhaki", "DarkMagenta", "DarkOliveGreen", "DarkOrange", "DarkOrchid", "DarkRed", "DarkSalmon", "DarkSeaGreen", "DarkSlateBlue", "DarkSlateGray", "DarkSlateGrey", "DarkTurquoise", "DarkViolet", "DeepPink", "DeepSkyBlue", "DimGray", "DimGrey", "DodgerBlue", "FireBrick", "FloralWhite", "ForestGreen", "Fuchsia", "Gainsboro", "GhostWhite", "Gold", "GoldenRod", "Gray", "Grey", "Green", "GreenYellow", "HoneyDew", "HotPink", "IndianRed", "Indigo", "Ivory", "Khaki", "Lavender", "LavenderBlush", "LawnGreen", "LemonChiffon", "LightBlue", "LightCoral", "LightCyan", "LightGoldenRodYellow", "LightGray", "LightGrey", "LightGreen", "LightPink", "LightSalmon", "LightSeaGreen", "LightSkyBlue", "LightSlateGray", "LightSlateGrey", "LightSteelBlue", "LightYellow", "Lime", "LimeGreen", "Linen", "Magenta", "Maroon", "MediumAquaMarine", "MediumBlue", "MediumOrchid", "MediumPurple", "MediumSeaGreen", "MediumSlateBlue", "MediumSpringGreen", "MediumTurquoise", "MediumVioletRed", "MidnightBlue", "MintCream", "MistyRose", "Moccasin", "NavajoWhite", "Navy", "OldLace", "Olive", "OliveDrab", "Orange", "OrangeRed", "Orchid", "PaleGoldenRod", "PaleGreen", "PaleTurquoise", "PaleVioletRed", "PapayaWhip", "PeachPuff", "Peru", "Pink", "Plum", "PowderBlue", "Purple", "RebeccaPurple", "Red", "RosyBrown", "RoyalBlue", "SaddleBrown", "Salmon", "SandyBrown", "SeaGreen", "SeaShell", "Sienna", "Silver", "SkyBlue", "SlateBlue", "SlateGray", "SlateGrey", "Snow", "SpringGreen", "SteelBlue", "Tan", "Teal", "Thistle", "Tomato", "Turquoise", "Violet", "Wheat", "White", "WhiteSmoke", "Yellow", "YellowGreen", ];
       const CSS_COLOR_NAMES_RGX = "([:,\\s\\n])(" + (CSS_COLOR_NAMES.join("|")) + ")([,;\\s\\n!\"}]|$)"
 
-      window.ud = {
+      window.uDark = {
         userSettings:{},
         colorRegex:new RegExp(CSS_COLOR_NAMES_RGX, "gi"),
         min: Math.min,
@@ -924,58 +925,58 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
 
         set_oricolor: (ori, sri) => "/*ori*" + ori + "*eri*/" + sri + "/*sri*/",
         res_oricolor: x => x.match(/\/\*ori\*(.*?)\*eri\*\//)[1],
-        revert_mode2: (x, multiplier) => ud.min(ud.round(x * multiplier), 255),
-        rgba_mode1: (x, delta) => ud.max(x - delta, ud.minbrightbg),
-        rgba_mode2: (x, multiplier) => ud.max(x * multiplier, ud.minbrightbg),
-        rgba_mode3: (x, multiplier) => ud.round(x * multiplier + ud.minbrightbg),
+        revert_mode2: (x, multiplier) => uDark.min(uDark.round(x * multiplier), 255),
+        rgba_mode1: (x, delta) => uDark.max(x - delta, uDark.minbrightbg),
+        rgba_mode2: (x, multiplier) => uDark.max(x * multiplier, uDark.minbrightbg),
+        rgba_mode3: (x, multiplier) => uDark.round(x * multiplier + uDark.minbrightbg),
         rgba: function(r, g, b, a,render=false) {
           a = typeof a == "number" ? a : 1
-          //  var trigger = ud.max(r,g,b);
+          //  var trigger = uDark.max(r,g,b);
           var trigger = (r + g + b) / 3;
-          var mincol = ud.min(r, g, b);
+          var mincol = uDark.min(r, g, b);
           //    if(maxcol<=200){return "rgba("+max(r,200)+","+max(g,200)+","+max(b,200)+","+(a)+")";}
-          if (trigger < ud.maxbrighttrigger) {
-            //   return ud.rgba_val(...[r,g,b].map(x => x),a); // Keep same dark
-            return (render||ud.rgba_val)(...[r, g, b].map(x => x + ud.minbrightbg), a); // Pre Light(better contrast) 
-            //  return ud.rgba_val(...[r,g,b].map(x => ud.max(ud.minbrightbg,x)),a); // Set at minimum brightness of background colors
+          if (trigger < uDark.maxbrighttrigger) {
+            //   return uDark.rgba_val(...[r,g,b].map(x => x),a); // Keep same dark
+            return (render||uDark.rgba_val)(...[r, g, b].map(x => x + uDark.minbrightbg), a); // Pre Light(better contrast) 
+            //  return uDark.rgba_val(...[r,g,b].map(x => uDark.max(uDark.minbrightbg,x)),a); // Set at minimum brightness of background colors
           }
-          //         return ud.rgba_val(...[r,g,b].map(x => ud.rgba_mode1(x,maxcol-ud.maxbrightbg)),a);
-          // return ud.rgba_val(...[r,g,b].map(x => ud.rgba_mode2(x,ud.maxbrightbg/maxcol)),a);
-          //return ud.rgba_val(...[r,g,b].map(x => ud.rgba_mode3(x,(ud.maxbrightbg-ud.minbrightbg)/maxcol)),a);
-          //a=ud.min(a,Math.pow((r+g+b)/-3+255,1.25))
+          //         return uDark.rgba_val(...[r,g,b].map(x => uDark.rgba_mode1(x,maxcol-uDark.maxbrightbg)),a);
+          // return uDark.rgba_val(...[r,g,b].map(x => uDark.rgba_mode2(x,uDark.maxbrightbg/maxcol)),a);
+          //return uDark.rgba_val(...[r,g,b].map(x => uDark.rgba_mode3(x,(uDark.maxbrightbg-uDark.minbrightbg)/maxcol)),a);
+          //a=uDark.min(a,Math.pow((r+g+b)/-3+255,1.25))
           ;
 
           var delta = mincol;
-          var delta2 = ud.min(255 - mincol /*keep original contrast*/ , mincol /*do not revert already dark backgrounds*/ );
-          var rgbarr=[r, g, b].map(x => (ud.maxbrightbg - ud.minbrightbg) / 255 * (x - delta) + ud.minbrightbg + delta2);
-          rgbarr=rgbarr.map(x=>ud.round(Math.pow(x,1.02))); /*little secret, better contrast*/
+          var delta2 = uDark.min(255 - mincol /*keep original contrast*/ , mincol /*do not revert already dark backgrounds*/ );
+          var rgbarr=[r, g, b].map(x => (uDark.maxbrightbg - uDark.minbrightbg) / 255 * (x - delta) + uDark.minbrightbg + delta2);
+          rgbarr=rgbarr.map(x=>uDark.round(Math.pow(x,1.02))); /*little secret, better contrast*/
           
-          return (render||ud.rgba_val)(...rgbarr,a);
+          return (render||uDark.rgba_val)(...rgbarr,a);
           
         },
         revert_rgba: function(r, g, b, a,render) {
 
           a = typeof a == "number" ? a : 1
 
-          var mincol = ud.min(r, g, b);
+          var mincol = uDark.min(r, g, b);
          
-          if (mincol >= ud.minbright) {
-            return (render||ud.rgba_val)(r, g, b, a)
+          if (mincol >= uDark.minbright) {
+            return (render||uDark.rgba_val)(r, g, b, a)
           }
 /*
-          var rgbarr=[r,g,b].map(x=>(ud.maxbright-ud.minbright)/255*x);
-          var maxcol=ud.max(...rgbarr);
-          var delta =  ud.maxbright-maxcol;
-          return ud.rgba_val(...rgbarr.map(x => Math.round(x+delta)), a)
+          var rgbarr=[r,g,b].map(x=>(uDark.maxbright-uDark.minbright)/255*x);
+          var maxcol=uDark.max(...rgbarr);
+          var delta =  uDark.maxbright-maxcol;
+          return uDark.rgba_val(...rgbarr.map(x => Math.round(x+delta)), a)
   */
           //var avg = (r+ g+ b)/3;
           
-          var delta = ud.minbright - mincol;
+          var delta = uDark.minbright - mincol;
           r = r + delta;
           g = g + delta;
           b = b + delta;
-          var multiplier = ud.maxbright / ud.max(r, g, b)
-          return (render||ud.rgba_val)(...[r, g, b].map(x => ud.revert_mode2(x, multiplier)), a)
+          var multiplier = uDark.maxbright / uDark.max(r, g, b)
+          return (render||uDark.rgba_val)(...[r, g, b].map(x => uDark.revert_mode2(x, multiplier)), a)
           
         },
         onlyUnique: function(value, index, self) {
@@ -985,11 +986,11 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
           return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
         },
         eget_color: function(anycolor, force1 = "color", force2 = "color") {
-          return ud.get_color(force1 + ":" + anycolor, force2)
+          return uDark.get_color(force1 + ":" + anycolor, force2)
         },
         get_color: function(colorprop, whatget = "background-color", thespanp = false) {
-          if (!ud.userSettings.disable_cache && !thespanp && ud.knownvariables[colorprop + whatget]) {
-            return ud.knownvariables[colorprop + whatget];
+          if (!uDark.userSettings.disable_cache && !thespanp && uDark.knownvariables[colorprop + whatget]) {
+            return uDark.knownvariables[colorprop + whatget];
           }
           var thespan = thespanp || document.o_createElement("meta")
           thespan.style = colorprop
@@ -997,18 +998,18 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
           var style = getComputedStyle(thespan)
           var returnvalue = [...[...(style[whatget].matchAll(/[0-9\.]+/g))].map(x => parseFloat(x)), 1].splice(0, 4)
           thespan.remove();
-          if (!ud.userSettings.disable_cache) {
-            ud.knownvariables[colorprop + whatget] = returnvalue;
+          if (!uDark.userSettings.disable_cache) {
+            uDark.knownvariables[colorprop + whatget] = returnvalue;
           }
           return returnvalue
         },
-        get_inject_css_suggested_tag:x=>"<style id='ud-style'>"+ud.inject_css_suggested+"</style>",
+        get_inject_css_suggested_tag:x=>"<style id='ud-style'>"+uDark.inject_css_suggested+"</style>",
         inject_inject_css_suggested_tag:function(str)
         {
             var head_tag = str.match(/<head ?.*?>/);
             str=head_tag?
-              str.replace(head_tag[0],head_tag[0]+ud.get_inject_css_suggested_tag())
-              :ud.get_inject_css_suggested_tag()+str
+              str.replace(head_tag[0],head_tag[0]+uDark.get_inject_css_suggested_tag())
+              :uDark.get_inject_css_suggested_tag()+str
             return str
         },
         is_color: function(possiblecolor) {
@@ -1018,63 +1019,63 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
           // }
           if(!possiblecolor)
             {return false}
-          var testresult = ud.eget_color(possiblecolor, "background", "background-color")
+          var testresult = uDark.eget_color(possiblecolor, "background", "background-color")
           return testresult.filter(x => x).length ? testresult : false
         },
         restore_color: function(str,regex) {
-          return str.replace(ud.restoreColorRegex,
-            (match,g1,g2,g3,g4)=>g1+g2+":"+ud.set_oricolor(g4, ud.revert_rgba(...ud.eget_color(g4))))
+          return str.replace(uDark.restoreColorRegex,
+            (match,g1,g2,g3,g4)=>g1+g2+":"+uDark.set_oricolor(g4, uDark.revert_rgba(...uDark.eget_color(g4))))
 /*
-          [...str.matchAll(regex||ud.restoreColorRegex)].forEach(match => {
-            str = str.replace(match[0], match[1] + match[2] + ud.set_oricolor(match[4], ud.revert_rgba(...ud.eget_color(match[4]))))
+          [...str.matchAll(regex||uDark.restoreColorRegex)].forEach(match => {
+            str = str.replace(match[0], match[1] + match[2] + uDark.set_oricolor(match[4], uDark.revert_rgba(...uDark.eget_color(match[4]))))
           })
           return str;
   */
         },
   
         prefix_fg_vars: function(str) { // Must replace important with direct styles
-          return str.replace(ud.variableRegex2,"$&!important;--ud-fg$2:/*evi*/$6/*svi*/");
+          return str.replace(uDark.variableRegex2,"$&!important;--ud-fg$2:/*evi*/$6/*svi*/");
         },
         restore_var_color: function(str) { 
 
-          return str.replace(ud.restoreVarRegex,match=>match.replace(/--/g,"--ud-fg--"))
-          .replace(/\/\*evi\*\/(.*?)\/\*svi\*\//g,match=>ud.revert_rgba(...ud.eget_color(match)))
+          return str.replace(uDark.restoreVarRegex,match=>match.replace(/--/g,"--ud-fg--"))
+          .replace(/\/\*evi\*\/(.*?)\/\*svi\*\//g,match=>uDark.revert_rgba(...uDark.eget_color(match)))
           
         },
         restore_comments: function(str) {
           return str.replace(/\/\*ori.+?eri\*\/|\/\*sri\*\//g, "")
         },
         set_the_round_border: function(str) {
-          return str.replace(ud.radiusRegex, "$1;filter:brightness(0.95);box-shadow: 0 0 5px 1px rgba(0,0,0,0)!important;border:1px solid rgba(255,255,255,0.2)!important;$2$7");
+          return str.replace(uDark.radiusRegex, "$1;filter:brightness(0.95);box-shadow: 0 0 5px 1px rgba(0,0,0,0)!important;border:1px solid rgba(255,255,255,0.2)!important;$2$7");
         },
         no_repeat_backgrounds: function(str) {
           //    return str.replace(/\/\*(.|\n)*?[^oes][^r][^i]\*\//g,"");
           return str.replace(/(^|[^a-z0-9-])(repeat(-[xy])?)($|["}\n;,)! ])/g, "$1no-repeat;background-color:rgba(0,0,0,0.5);noprop:$4")
         },
         edit_str_named_colors: function(str) {
-          return str.replace(ud.colorRegex,(match,g1,g2,g3)=>g1 + ud.set_oricolor(g2, ud.rgba(...ud.eget_color(g2))) + g3)
+          return str.replace(uDark.colorRegex,(match,g1,g2,g3)=>g1 + uDark.set_oricolor(g2, uDark.rgba(...uDark.eget_color(g2))) + g3)
          },
         edit_dynamic_colors: function(str) {
-          return str.replace(ud.dynamicColorRegex,(match,g1,g2,g3)=>
-              ud.set_oricolor(g1,ud.rgba(...ud.eget_color(g1)))+g3
+          return str.replace(uDark.dynamicColorRegex,(match,g1,g2,g3)=>
+              uDark.set_oricolor(g1,uDark.rgba(...uDark.eget_color(g1)))+g3
             )
           /*
           [1,2,3,4,5,6].forEach(x => { // C MOCHE
-            [...str.matchAll(ud.dynamicColorRegex)].forEach(match => {
-              newcolor = ud.rgba(...ud.eget_color(match[2])).replace("rgba", "colorfunc");
-              str = str.replace(match[0], match[1] + ud.set_oricolor(match[2], newcolor) + match[4])
+            [...str.matchAll(uDark.dynamicColorRegex)].forEach(match => {
+              newcolor = uDark.rgba(...uDark.eget_color(match[2])).replace("rgba", "colorfunc");
+              str = str.replace(match[0], match[1] + uDark.set_oricolor(match[2], newcolor) + match[4])
             })
           })
           return str.replace(/colorfunc/g, "rgba");*/
         },
         edit_str:function(str)
         {
-          str = ud.edit_str_named_colors(str)
-          str = ud.edit_dynamic_colors(str)
-          str = ud.prefix_fg_vars(str);
-          str = ud.restore_var_color(str);
-          str = ud.restore_color(str);
-          str = ud.restore_comments(str);
+          str = uDark.edit_str_named_colors(str)
+          str = uDark.edit_dynamic_colors(str)
+          str = uDark.prefix_fg_vars(str);
+          str = uDark.restore_var_color(str);
+          str = uDark.restore_color(str);
+          str = uDark.restore_comments(str);
           //Send css data images to data parser ?
           return str; 
         },
@@ -1083,7 +1084,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
            A=B.slice.call(A, 0, A.length);
            while(A.length){
             var C=A.shift()
-            url= ud.deepCss(C,'background-image',adocument);
+            url= uDark.deepCss(C,'background-image',adocument);
             if(url) url=/url\(['"]?([^")]+)/.exec(url) || [];
             url= url[1];
             if(url && B.indexOf(url)== -1 && acondition(C,url)) B[B.length]= [C,url];
@@ -1102,23 +1103,23 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
           }
 
       }
-      ud.radiusRegex = /(^|[^a-z0-9-])(border-((top|bottom)-(left|right)-)?radius?[\s\t]*?:[\s\t]*?([5-9]|[1-9][0-9]|[1-9][0-9][0-9])[a-zA-Z\s\t%]+)($|["}\n;])/gi,
-        ud.variableRegex = /(^|[^a-z0-9-])(--[a-z0-9-]+)[\s\t]*?:[\s\t]*?((#|rgba?)[^"}\n;]*?)[\s\t]*?($|["}\n;])/gi,
-        ud.variableRegex2 = /(^|[^a-z0-9-])(--[a-z0-9-]+)([\s\t]*?:)[\s\t]*?((\/\*ori\*(.*?)\*eri\*\/rgb.*?\/\*sri\*\/))/gi,"$&;$2-ud-fg:/*evi*/$6/*svi*/"
-        ud.variableBasedRegex = /(^|[^a-z0-9-])var[\s\t]*?\([\s\t]*?(--[a-z0-9-]+)[\s\t]*?\)/gi,
-        ud.interventRegex = /(^|[^a-z0-9-])(color|background(-color|-image)?)[\s\t]*?:[\s\t]*?[\n]*?([^;}]*?)([^;}]*?['"].*['"][^;}]*?)*?[\s\t]*?(![\s\t]*?important)?[\s\t]*?($|[;}\n\\])/gi
-      // ud.matchStylePart=/{[^{]+}/gi //breaks amazon
-      //    ud.dynamicColorRegex=/(#[0-9a-f]{3,8}|(rgb?|hsl)a?\([%0-9, .]+?\))/gi
+      uDark.radiusRegex = /(^|[^a-z0-9-])(border-((top|bottom)-(left|right)-)?radius?[\s\t]*?:[\s\t]*?([5-9]|[1-9][0-9]|[1-9][0-9][0-9])[a-zA-Z\s\t%]+)($|["}\n;])/gi,
+        uDark.variableRegex = /(^|[^a-z0-9-])(--[a-z0-9-]+)[\s\t]*?:[\s\t]*?((#|rgba?)[^"}\n;]*?)[\s\t]*?($|["}\n;])/gi,
+        uDark.variableRegex2 = /(^|[^a-z0-9-])(--[a-z0-9-]+)([\s\t]*?:)[\s\t]*?((\/\*ori\*(.*?)\*eri\*\/rgb.*?\/\*sri\*\/))/gi,"$&;$2-ud-fg:/*evi*/$6/*svi*/"
+        uDark.variableBasedRegex = /(^|[^a-z0-9-])var[\s\t]*?\([\s\t]*?(--[a-z0-9-]+)[\s\t]*?\)/gi,
+        uDark.interventRegex = /(^|[^a-z0-9-])(color|background(-color|-image)?)[\s\t]*?:[\s\t]*?[\n]*?([^;}]*?)([^;}]*?['"].*['"][^;}]*?)*?[\s\t]*?(![\s\t]*?important)?[\s\t]*?($|[;}\n\\])/gi
+      // uDark.matchStylePart=/{[^{]+}/gi //breaks amazon
+      //    uDark.dynamicColorRegex=/(#[0-9a-f]{3,8}|(rgb?|hsl)a?\([%0-9, .]+?\))/gi
       //
-      ud.dynamicColorRegex = /(#[0-9a-f]{3,8}|(rgb?|hsl)a?\([%0-9, .]+?\))([,);\n\r\s\t}!]|$)/gi
-      ud.urlBGRegex = /(^|[^a-z0-9-])(background(-image)?)[\s\t]*?:[\s\t]*?(url\(["']?(.+?)["']?\))/g
-      ud.restoreColorRegex = /(^|[^a-z0-9-])(color|fill)[\s\t]*?:[\s\t]*?(\/\*ori\*(.*?)\*eri\*\/rgb.*?\/\*sri\*\/)/g
-      ud.restoreAnyRegex = /()()(\/\*ori\*(.*?)\*eri\*\/rgb.*?\/\*sri\*\/)/g
+      uDark.dynamicColorRegex = /(#[0-9a-f]{3,8}|(rgb?|hsl)a?\([%0-9, .]+?\))([,);\n\r\s\t}!]|$)/gi
+      uDark.urlBGRegex = /(^|[^a-z0-9-])(background(-image)?)[\s\t]*?:[\s\t]*?(url\(["']?(.+?)["']?\))/g
+      uDark.restoreColorRegex = /(^|[^a-z0-9-])(color|fill)[\s\t]*?:[\s\t]*?(\/\*ori\*(.*?)\*eri\*\/rgb.*?\/\*sri\*\/)/g
+      uDark.restoreAnyRegex = /()()(\/\*ori\*(.*?)\*eri\*\/rgb.*?\/\*sri\*\/)/g
       
       //Variables can use other variables :
-      ud.restoreVarRegex = /([^a-z0-9-])(--ud-fg--[a-zA-Z0-9]|color|fill)[\s\t]*?:[\s\t]*?var[\s\t]*?\(.*?($|["}\n;!])/g
-      //ud.matchStylePart=new RegExp(["{[^}]+?((",[ud.radiusRegex,ud.variableRegex,ud.interventRegex ].map(x=>x.source).join(")|("),"))[^}]+?}"].join(""),"gi");
-      ud.matchStylePart = /(^|<style.*?>)(.|\n)*?(<\/style>|$)|[^a-z0-9-]style=("(.|\n)+?("|$)|'(.|\n)+?('|$))/g
+      uDark.restoreVarRegex = /([^a-z0-9-])(--ud-fg--[a-zA-Z0-9]|color|fill)[\s\t]*?:[\s\t]*?var[\s\t]*?\(.*?($|["}\n;!])/g
+      //uDark.matchStylePart=new RegExp(["{[^}]+?((",[uDark.radiusRegex,uDark.variableRegex,uDark.interventRegex ].map(x=>x.source).join(")|("),"))[^}]+?}"].join(""),"gi");
+      uDark.matchStylePart = /(^|<style.*?>)(.|\n)*?(<\/style>|$)|[^a-z0-9-]style=("(.|\n)+?("|$)|'(.|\n)+?('|$))/g
     }
   },
   misc: {
@@ -1128,11 +1129,11 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
       {
         return{cancel:!details.url.endsWith("#ud-letpass_image")};
       }
-      if ((details.documentUrl || details.url).match(ud.userSettings.exclude_regex)) {
+      if ((details.documentUrl || details.url).match(uDark.userSettings.exclude_regex)) {
         return {}
       }
       if (details.type == "image") {
-        return ud.edit_an_image(details);
+        return uDark.edit_an_image(details);
       }
       let filter = browser.webRequest.filterResponseData(details.requestId);
       let decoder = new TextDecoder();
@@ -1148,7 +1149,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
 
         if(details.isMainFrame && decoder.encoding=="utf-8" && details.charset!="utf-8")
         {
-          let headers = ud.knownvariables[ "request-headers-" + details.requestId ];
+          let headers = uDark.knownvariables[ "request-headers-" + details.requestId ];
           details.charset = (headers["content-type"].match(/charset=([0-9A-Z-]+)/i) || ["","utf-8"])[1]
           decoder=new TextDecoder(details.charset)
         }
@@ -1156,9 +1157,9 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
           stream: true
         });
         if (details.isStyleSheet) {
-          str = ud.edit_str(str);
+          str = uDark.edit_str(str);
 
-          str = ud.send_data_image_to_parser(str, details);
+          str = uDark.send_data_image_to_parser(str, details);
         }
         else if (details.isMainFrame) {
           // Cant do both
@@ -1173,7 +1174,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
         if(details.writeEnd)
         {
           details.datacount=1;
-            details.writeEnd=ud.parse_and_edit_html3(details.writeEnd,details)
+            details.writeEnd=uDark.parse_and_edit_html3(details.writeEnd,details)
           
             filter.write(encoder.encode(details.writeEnd));
         }
