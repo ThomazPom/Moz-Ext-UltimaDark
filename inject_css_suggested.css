@@ -16,12 +16,12 @@ color:rgb(0, 0, 238);
    -webkit-text-stroke-color: rgba(255,255,255,0.4);
 }
 *//*
-svg:not([fill]):not([color]:not([mask]),
-svg:not([fill]):not([color]):not([mask]) :not([fill]):not([color]):not([mask]) {
-    fill:  var(--secondary-color);
-    Does not override  svg or path with fill or style, but defaults to white, perfect 
-}
 */
+
+svg:not([fill]):not([color]):not([mask]), svg:not([fill]):not([color]):not([mask]) :not([fill]):not([color]):not([mask]) {
+    fill: var(--secondary-color);
+    /*Does not override  svg or path with fill or style, but defaults to white, perfect */
+}
 path,svg {
    /* fill: var(--secondary-color);
    Cant do this : some logos are svgs with path and urls and no fill;

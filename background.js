@@ -191,6 +191,7 @@ if(breakpages=false)
 
         uDark.valuePrototypeEditor(CSS2Properties,"backgroundColor",(elem,value)=>{console.log(elem,value);return "black"})
 uDark.valuePrototypeEditor(CSS2Properties,"background-color",(elem,value)=>{console.log(elem,value);return "black"})
+uDark.valuePrototypeEditor(CSS2Properties,"background",(elem,value)=>{console.log(elem,value);return "black"})
 
 uDark.valuePrototypeEditor(Element,"className",(elem,value)=>{console.log(elem,value);return "black"})
 uDark.valuePrototypeEditor(Element,"classList",(elem,value)=>{console.log(elem,value);return ["black"]})
@@ -212,12 +213,17 @@ uDark.functionPrototypeEditor(Document,Document.prototype.prepend,(elem,args)=>{
         */
 //This is the one youtube uses
 uDark.valuePrototypeEditor( Element,    "innerHTML", (elem,value)=>{
+  if(elem instanceof HTMLStyleElement)
+  {
+    return uDark.edit_str(value)
+  }
  // console.log(value)
 value= value.replace(/(<style ?.*?>)((.|[\r\n])*?)(<\/style>)/g,(match, g1, g2, g3,g4)=>
   [g1,uDark.edit_str(value),g4].join(''))
   .replace(/[\s\t\r\n]style[\s\t]*?=[\s\t]*?(".*?"|'.*?')/g,(match,g1)=>" style="+uDark.edit_str(g1))
     return value;
- },(elem,value)=>value && value.toString().includes('style')); //toString : sombe object can redefine tostring to generate thzir inner
+ },(elem,value)=>value && value.toString().includes('style')
+        ||elem instanceof HTMLStyleElement); //toString : sombe object can redefine tostring to generate thzir inner
         console.log("UltimaDark is loaded",window);
     }
   },
@@ -410,6 +416,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
                            sourceImage.onload = function(){
                                       ctx.drawImage(sourceImage,0,0,width,height);
                                       div.remove()
+                                      //So far  svg'sare only used for logos
                                       var islogo = uDark.edit_a_logo(ctx, width, height, details);
                                       //console.log(details,can.toDataURL())
                                       //img1.src = can.toDataURL();
@@ -425,7 +432,6 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
             }
             else{
                 return new Promise((resolve, reject) => {
-                  
                   var dataImageId=details.url.match(/\?data-image=[0-9-]+/)
                   if(dataImageId)
                   {
@@ -437,7 +443,9 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
                       myImage.src=details.url+"#ud-letpass_image";
                   }
                   var normalresolve = x => {
-                
+                    //Very small data:images are often used as backgrounds
+                    is_background = is_background || dataImageId && (myImage.width<5 || myImage.height<5)
+
 
                     canvas.width = myImage.width;
                     canvas.height = myImage.height;
@@ -486,8 +494,8 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
                 })
               }
           },
-          edit_a_logo: function(canvasContext, width, height, details) {
-            if (width * height < 50) { // small images can't be logos or affect the page
+          edit_a_logo: function(canvasContext, width, height, details) { // must found a better saturation, less brighness calc
+            if (width * height < 50 || width<5 || height < 5) { // small images can't be logos or affect the page
                   //console.log(`${details.url} is too small: ${width} width, ${height} height `)
                   return false;
             }
