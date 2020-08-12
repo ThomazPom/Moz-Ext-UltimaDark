@@ -85,22 +85,14 @@ window.dark_object = {
 
 
 
-
-
 //
-//
-if(breakpages=0)
+if(breakpages=false)
 {
+
 uDark.functionPrototypeEditor(Document,Document.prototype.createElement,function(elem,args){
 
   console.log(args);return ["style"]},
-  (elem,args)=>args[0]=="style",(result)=>{console.log(result);return result})
-
-
-uDark.functionPrototypeEditor(Document,Document.prototype.createElement,function(elem,args){
-
-  console.log(args);return ["span"]},
-  (elem,args)=>args[0]=="style",(result)=>{console.log(result);return result})
+  (elem,args)=>args[0]=="style",(result)=>{console.log(result,result.__proto__.fill);return result})
 
 uDark.valuePrototypeEditor(Element,"className",(elem,value)=>{console.log(elem,value);return "black"})
 uDark.valuePrototypeEditor(Element,"classList",(elem,value)=>{console.log(elem,value);return ["black"]})
@@ -122,9 +114,6 @@ uDark.functionPrototypeEditor(DocumentFragment,DocumentFragment.prototype.prepen
 uDark.functionPrototypeEditor(Element,Element.prototype.prepend,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
 uDark.functionPrototypeEditor(Document,Document.prototype.prepend,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
 }
-
-/**/
-
 
 /**/
 
