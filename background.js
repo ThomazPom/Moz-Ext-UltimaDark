@@ -1,100 +1,8 @@
 window.dark_object = {
   foreground: {
     inject: function() {
-      //Object.defineProperty(window,"ud",{value:ud,writable:false})//No script can override ultimadark
-      console.log("UltimaDark is loading",window);
-      uDark.frontWatch = [
-        ["background-color", "backgroundColor"]
-      ];
-      uDark.revert_frontWatch = [
-        ["color", "color"]
-      ]
-      uDark.Inspector = class Inspector {
-        constructor(leType, atName, watcher = x => {}, applyOnReturn = x => {}) {
-          var leProto = leType instanceof Function ? leType.prototype : leType
-          var originalMethod = leProto[atName]
-          var inspectMethod = function() {
-            var watcher_result = watcher.apply(null, arguments)
-            var callresult = originalMethod.apply(this, arguments)
-            var apply_result = applyOnReturn.apply(null, [callresult])
-            return callresult;
-          }
-          if (leProto[atName].name != "inspectMethod") {
-            leProto[atName] = inspectMethod
-          }
-          console.log("Now watching", leType.name, originalMethod, "in", document.location.href)
-        }
-      }
-      uDark.styleflag = "/*watched_ultimadark*/"
-      uDark.backPoperties = [
-        ["background", "background-color"],
-        ["background-color"]
-      ];
-      uDark.colorProperties = [
-        ["color"]
-      ];
-      uDark.propertyEditor = function(aProperty, arule, howto) {
-        var rulelist = ([arule, ...arule.cssRules || []]).filter(x => x.style);
-        rulelist.forEach(function(arule) {
-          var propSource = aProperty[0]
-          var propDest = aProperty[1] || propSource;
-          var value = arule.style[propSource]
-          var valueDest = arule.style[propDest]
-          if (value && !valueDest.includes(uDark.styleflag)) {
-            howto(propSource, propDest, value, valueDest, arule)
-          }
-        })
-      }
-      uDark.styleInEdition = [];
-      uDark.styleEditor = function(astyle) {
-        if (uDark.styleInEdition.includes(astyle)) {
-          return;
-        }
-        uDark.styleInEdition.push(astyle);
-        [...document.styleSheets].filter(x => x.ownerNode === astyle).forEach(aSheet => {
-          [...(aSheet.rules || aSheet.cssRules)].forEach(arule => {
-            uDark.backPoperties.forEach(aProperty => {
-              uDark.propertyEditor(aProperty, arule, (propSource, propDest, value, valueDest, arule) => {
-                var is_color_result = uDark.is_color(value)
-                if (is_color_result) {
-                  arule.style[propDest] = uDark.rgba(...is_color_result) + uDark.styleflag
-                }
-              })
-            })
-            uDark.colorProperties.forEach(aProperty => {
-              uDark.propertyEditor(aProperty, arule, (propSource, propDest, value, valueDest, arule) => {
-                var is_color_result = uDark.is_color(value)
-                // console.log(propSource,propDest,value,valueDest,arule,is_color_result)
-                if (is_color_result) {
-                  arule.style[propDest] = uDark.revert_rgba(...is_color_result) + uDark.styleflag
-                }
-              })
-            })
-          })
-        })
-        uDark.styleInEdition = uDark.styleInEdition.filter(x => x != astyle)
-      }
-      uDark.raw_styleEditor = function(astyle) {
-        astyle.innerHTML = uDark.edit_str(astyle.innerHTML)
-      }
-      uDark.styleWatcher = function() {
-          [...arguments].forEach(elem => {
-            if (elem instanceof HTMLStyleElement && elem.getAttribute("data-ultima") != "ud_style_watched") {
-              elem.setAttribute("data-ultima", "ud_style_watched");
-              var observer2 = new MutationObserver(mutationreacord => {
-                uDark.raw_styleEditor(elem)
-              });
-              var innerhtml_config = {
-                characterData: true,
-                attributes: false,
-                childList: true,
-                subtree: true
-              };
-              observer2.observe(elem, innerhtml_config);
-            }
-          })
-        },
         uDark.valuePrototypeEditor = function(leType, atName, watcher = x => x, conditon = (elem, value) => 1) {
+       //   console.log(leType,atName)
           var originalSet = Object.getOwnPropertyDescriptor(leType.prototype, atName).set;
           Object.defineProperty(leType.prototype, "o_ud_set_"+atName, {set:originalSet});
           //uDark.knownvariables["o_ud_set_"+atName]=originalSet
@@ -105,16 +13,23 @@ window.dark_object = {
             }
           });
         }
-        uDark.functionPrototypeEditor = function(leType, laFonction, watcher = x => x, conditon = (elem, value) => 1) {
+        uDark.functionPrototypeEditor = function(leType, laFonction, watcher = x => x, conditon = (elem, value) => 1,do_on_result=x=>x) {
+    //         console.log(leType,leType.name,leType.prototype,laFonction,laFonction.name)
           var originalFunction = Object.getOwnPropertyDescriptor(leType.prototype, laFonction.name).value;
-          Object.defineProperty(leType.prototype, "o_ud_"+laFonction.name, {value:originalFunction});
+          Object.defineProperty(leType.prototype, "o_ud_"+laFonction.name, {value:originalFunction,writable:true});
           Object.defineProperty(leType.prototype, laFonction.name, 
-            {value:function() {
-              //console.log(arguments,conditon(this, arguments),watcher(this.arguments));
-              var new_args = conditon(this, arguments) ? watcher(this, arguments) : arguments;
-              //console.log(new_args, typeof new_args,typeof watcher(this, arguments),watcher);
-              return originalFunction.apply(this, new_args);
-          }});
+            {
+              value:{[laFonction.name]:function() {
+                  if(conditon(this, arguments))
+                  {
+                    return do_on_result(originalFunction.apply(this, watcher(this, arguments)));
+                  }
+                  else
+                  {
+                    return (originalFunction.apply(this, arguments));
+                  }
+            }}[laFonction.name]
+          });
         }
       //  new uDark.Inspector(Document, "createElement",x=>{},uDark.styleWatcher);;
       //  new uDark.Inspector(CSSStyleSheet,"addRule",console.log,console.log);
@@ -162,42 +77,40 @@ window.dark_object = {
                   x[0].setAttribute("ud-backgrounded",2)
               }
             })
-
-            //uDark.prototypeEditor( Element,    "innerHTML", (elem,value)=>uDark.edit_str(value),     (elem,value)=>elem instanceof HTMLStyleElement       );
-          //  new uDark.Inspector(Document, "createElement",console.log,x=>{console.log("this",x,"has been created")});
-            //new uDark.Inspector(Document, "createElement",x=>{},uDark.styleWatcher);
-            //   new uDark.Inspector(Document, "createElement",console.log,x=>{console.log("this",x,"has been created")});
-            //new uDark.Inspector(Node, "appendChild",console.log,x=>{console.log("this",x,"has been append")});
-           
-            //new uDark.Inspector(Node, "appendChild",console.log,x=>{console.log("this",x,"has been append")});
-            //new uDark.Inspector(Element, "append",console.log,x=>{console.log("this",x,"has been append")});
-            //new uDark.Inspector(Element, "prepend",console.log,x=>{console.log("this",x,"has been prepend")});
-            //new uDark.Inspector(Node, "insertBefore",console.log,x=>{console.log("this",x,"has been prepend")});
-
-
-
-
-//          },2000)
-         
-        
         });
 
 
 
 
 
-if(breakpages=false)
-{
 
-        uDark.valuePrototypeEditor(CSS2Properties,"backgroundColor",(elem,value)=>{console.log(elem,value);return "black"})
-uDark.valuePrototypeEditor(CSS2Properties,"background-color",(elem,value)=>{console.log(elem,value);return "black"})
-uDark.valuePrototypeEditor(CSS2Properties,"background",(elem,value)=>{console.log(elem,value);return "black"})
+
+
+
+//
+//
+if(breakpages=0)
+{
+uDark.functionPrototypeEditor(Document,Document.prototype.createElement,function(elem,args){
+
+  console.log(args);return ["style"]},
+  (elem,args)=>args[0]=="style",(result)=>{console.log(result);return result})
+
+
+uDark.functionPrototypeEditor(Document,Document.prototype.createElement,function(elem,args){
+
+  console.log(args);return ["span"]},
+  (elem,args)=>args[0]=="style",(result)=>{console.log(result);return result})
 
 uDark.valuePrototypeEditor(Element,"className",(elem,value)=>{console.log(elem,value);return "black"})
 uDark.valuePrototypeEditor(Element,"classList",(elem,value)=>{console.log(elem,value);return ["black"]})
+
+ uDark.valuePrototypeEditor(CSS2Properties,"backgroundColor",(elem,value)=>{console.log(elem,value);return "black"})
+uDark.valuePrototypeEditor(CSS2Properties,"background-color",(elem,value)=>{console.log(elem,value);return "black"})
+uDark.valuePrototypeEditor(CSS2Properties,"background",(elem,value)=>{console.log(elem,value);return "black"})
+//uDark.valuePrototypeEditor(Element,"fill",(elem,value)=>{console.log(elem,value);return ["black"]})
 uDark.valuePrototypeEditor(CSS2Properties,"color",(elem,value)=>{console.log(elem,value);return "lightgreen"})
 uDark.functionPrototypeEditor(DOMTokenList,DOMTokenList.prototype.add,(elem,args)=>{console.log(elem,args);return ["yellow"]});
-uDark.functionPrototypeEditor(Document,Document.prototype.createElement,function(elem,args){return ["span"]},(elem,args)=>args[0]=="style")
 
 uDark.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.addRule,(elem,args)=>{console.log(elem,args); return [".have-border","border: 1px solid black;"]})
 uDark.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.insertRule,(elem,args)=>{console.log(elem,args); return [".have-border { border: 1px solid black;}",0]})
@@ -209,19 +122,55 @@ uDark.functionPrototypeEditor(DocumentFragment,DocumentFragment.prototype.prepen
 uDark.functionPrototypeEditor(Element,Element.prototype.prepend,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
 uDark.functionPrototypeEditor(Document,Document.prototype.prepend,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
 }
-/*
-        */
+
+/**/
+
+
+/**/
+
+uDark.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.addRule,(elem,args)=> [args[0], uDark.edit_str(args[1])])
+
+//Facebook classic uses this one
+
+uDark.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.insertRule,(elem,args)=>[uDark.edit_str(args[0]),args[1]||0])
+
+//W3C uses this one
+
+uDark.valuePrototypeEditor(CSS2Properties,"backgroundColor",(elem,value)=>uDark.rgba(...uDark.eget_color(value)))
+uDark.valuePrototypeEditor(CSS2Properties,"background-color",(elem,value)=>uDark.rgba(...uDark.eget_color(value)))
+uDark.valuePrototypeEditor(CSS2Properties,"color",(elem,value)=>uDark.revert_rgba(...uDark.eget_color(value)))
+uDark.valuePrototypeEditor(HTMLElement,"style",(elem,value)=>uDark.edit_str(value),(elem,value)=>!elem.is_easy_get)// Care with "style and eget, this cause recursions"
+
+uDark.valuePrototypeEditor( HTMLElement,"innerText",
+  (elem,value)=>{
+      return uDark.edit_str(value)
+  },(elem,value)=>value && elem instanceof HTMLStyleElement);
 //This is the one youtube uses
 uDark.valuePrototypeEditor( Element,    "innerHTML", (elem,value)=>{
+
   if(elem instanceof HTMLStyleElement)
   {
     return uDark.edit_str(value)
   }
- // console.log(value)
-value= value.replace(/(<style ?.*?>)((.|[\r\n])*?)(<\/style>)/g,(match, g1, g2, g3,g4)=>
-  [g1,uDark.edit_str(value),g4].join(''))
-  .replace(/[\s\t\r\n]style[\s\t]*?=[\s\t]*?(".*?"|'.*?')/g,(match,g1)=>" style="+uDark.edit_str(g1))
-    return value;
+     var parser = new DOMParser();
+                  var html_element = parser.parseFromString(
+                    value//.replace(/&([a-zA-Z0-9#]+?);/g,"&UD-Disabled-$1;",/*XSS PROTECTION*/)
+                  .replace(/<noscript ?.*?>.*?<\/noscript>/gi,"")
+                    ,"text/html").documentElement;
+//value= value.replace(/(<style ?.*?>)((.|[\r\n])*?)(<\/style>)/g,(match, g1, g2, g3,g4)=>[g1,uDark.edit_str(value),g4].join(''))
+  //.replace(/[\s\t\r\n]style[\s\t]*?=[\s\t]*?(".*?"|'.*?')/g,(match,g1)=>" style="+uDark.edit_str(g1))
+ 
+  //console.log(value)
+html_element.querySelectorAll("style").forEach(astyle=>{
+      astyle.innerHTML=uDark.edit_str(astyle.innerHTML);
+      astyle.classList.add("ud-edited-background")
+      //astyle.innerHTML=uDark.send_data_image_to_parser(astyle.innerHTML,details);
+    });
+      html_element.querySelectorAll("[style]").forEach(astyle=>{
+      //console.log(details,astyle,astyle.innerHTML,astyle.innerHTML.includes(`button,[type="reset"],[type="button"],button:hover,[type="button"],[type="submit"],button:active:hover,[type="button"],[type="submi`))
+      astyle.setAttribute("style",uDark.edit_str(astyle.getAttribute("style")));
+    });
+    return html_element.innerHTML;
  },(elem,value)=>value && value.toString().includes('style')
         ||elem instanceof HTMLStyleElement); //toString : sombe object can redefine tostring to generate thzir inner
         console.log("UltimaDark is loaded",window);
@@ -244,17 +193,17 @@ value= value.replace(/(<style ?.*?>)((.|[\r\n])*?)(<\/style>)/g,(match, g1, g2, 
           .replace(/(^<all_urls>|\\\*)/g, "(.*?)") // Allow wildcards
           .replace(/^(.*)$/g, "^$1$")).join("|") // User multi match)
         uDark.knownvariables = {};
-        browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.monitorBeforeRequest);
+        browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editBeforeData);
         if (uDark.regiteredCS) {
           uDark.regiteredCS.unregister();
           uDark.regiteredCS = null
         }
         if (!res.disable_webext && uDark.userSettings.properWhiteList.length) {
-          browser.webRequest.onBeforeRequest.addListener(dark_object.misc.monitorBeforeRequest, {
+          browser.webRequest.onHeadersReceived.addListener(dark_object.misc.editBeforeData, {
               urls: uDark.userSettings.properWhiteList,
               types: ["stylesheet", "main_frame", "sub_frame", "image"]
             },
-            ["blocking"]);
+            ["blocking", "responseHeaders"]);
           var contentScript = {
             matches: uDark.userSettings.properWhiteList,
             excludeMatches: uDark.userSettings.properBlackList,
@@ -279,13 +228,7 @@ value= value.replace(/(<style ?.*?>)((.|[\r\n])*?)(<\/style>)/g,(match, g1, g2, 
 //////////////////////////////EXPERIMENTAL
 
 browser.webRequest.onHeadersReceived.addListener(function(e){
-    var n = e.responseHeaders.length;
-    var headersLow={}
-    while (n--) {
-      headersLow[e.responseHeaders[n].name.toLowerCase()] = e.responseHeaders[n].value;
-    }
-  uDark.knownvariables["request-headers-"+e.requestId]=headersLow
-
+  return {};
                 var headersdo = {
                   "experimental-content-security-policy":(x=>{
                     x.value = x.value.replace(/script-src/, "script-src *")
@@ -302,7 +245,6 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
                     var a_filter=headersdo[x.name.toLowerCase()];
                       return a_filter?a_filter(x):true;
                 })
-               // console.log(e.responseHeaders)
               return {responseHeaders: e.responseHeaders};
           },
           {
@@ -312,21 +254,6 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
             ["blocking", "responseHeaders"]);
 
 ///////////////////////////////EXPERIMENTAL
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
       });
     },
@@ -379,6 +306,30 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
           svgDataURL:function(svg) {
             var svgAsXML = (new XMLSerializer).serializeToString(svg);
             return "data:image/svg+xml," + encodeURIComponent(svgAsXML);
+          },
+          get_image_base64: function(details) {
+
+              return new Promise((resolve, reject) => { 
+
+                  var canvas = document.createElement('canvas');
+                  var myImage = new Image;
+                  var normalresolve=x=>{
+
+                    canvas.width = myImage.width;
+                    canvas.height = myImage.height;
+                    var context = canvas.getContext('2d');
+                    context.drawImage(myImage, 0, 0);
+                      resolve({
+                        redirectUrl: canvas.toDataURL()
+                      });  
+                  }
+                  myImage.src=details.url+"#ud-letpass_image";
+                  myImage.onload = normalresolve;
+                  myImage.onerror = x => {
+                    resolve({})
+                  }
+                  setTimeout(x => resolve({}), 1000);
+            });
           },
           edit_an_image: function(details) {
             var theUrl = new URL(details.url);
@@ -818,6 +769,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
 
           ,
           parse_and_edit_html3:function(str,details){
+
             details.requestScripts=details.requestScripts||[]
             if(uDark.debugFirstLoad=false)
             {
@@ -835,27 +787,29 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
                   //html_element.innerHTML=str.replace(/<\/?html.*?>/g,"")
                   var parser = new DOMParser();
                   var html_element = parser.parseFromString(
-                    str.replace(/&/g,"&UD-Disabled",/*XSS PROTECTION*/)
+                    str//.replace(/&([a-zA-Z0-9#]+?);/g,"&UD-Disabled-$1;",/*XSS PROTECTION*/)
+                  .replace(/<noscript ?.*?>.*?<\/noscript>/gi,"")
                     ,"text/html").documentElement;
                   // The code
 //              console.log(html_element)
 
-                    html_element.querySelectorAll("noscript").forEach(anoscript=>{
-                        anoscript.remove();
-                    });
+                    //html_element.querySelectorAll("noscript").forEach(anoscript=>{
+                    //    anoscript.remove();
+                    //});
                     html_element.querySelectorAll("style").forEach(astyle=>{
                       astyle.innerHTML=uDark.edit_str(astyle.innerHTML);
                       astyle.classList.add("ud-edited-background")
                       astyle.innerHTML=uDark.send_data_image_to_parser(astyle.innerHTML,details);
                     });
                     html_element.querySelectorAll("[style]").forEach(astyle=>{
+                      //console.log(details,astyle,astyle.innerHTML,astyle.innerHTML.includes(`button,[type="reset"],[type="button"],button:hover,[type="button"],[type="submit"],button:active:hover,[type="button"],[type="submi`))
                       astyle.setAttribute("style",uDark.edit_str(astyle.getAttribute("style")));
                     });
                     html_element.querySelectorAll("img[src*='data']").forEach(image=>{
                       image.src=uDark.send_data_image_to_parser(image.src,details)
                     })
                     html_element.querySelectorAll("[fill],[color],path,[bgcolor]").forEach(coloreditem=>{
-                    for (const [key, afunction] of Object.entries(uDark.attfunc_map)) {
+                     for (const [key, afunction] of Object.entries(uDark.attfunc_map)) {
                         var possiblecolor=uDark.is_color(coloreditem.getAttribute(key))
                         if(possiblecolor)
                         {
@@ -865,6 +819,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
                     })
                     if(details.datacount==1)
                     {
+
                       var udStyle = document.createElement("style")
                       udStyle.innerHTML=uDark.inject_css_suggested;
                       udStyle.id="ud-style"
@@ -875,22 +830,12 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
                       udScript.id="ud-script"
                       html_element.querySelector("head").prepend(udScript);
                     }
-                    html_element.querySelectorAll("integrity").forEach(anintegrity=>{
-                      anintegrity.removeAttribute("integrity")
-                    });
                     
-                  //
-                  var outer_edited = "<!DOCTYPE html>"+html_element.outerHTML
+                  
+                  var outer_edited = "<!doctype html>"+html_element.outerHTML
                   outer_edited=outer_edited.replace(/[\s\t]integrity=/g," nointegrity=")
+          
 
-              //console.log(details.requestScripts,outer_edited.match(/.{50}replace\(Zd.{50}/g),outer_edited);
-            
-
-                  outer_edited=uDark.decodeHtml(outer_edited).replace(/UD-Disabled/g,"")
-                  /*details.requestScripts.forEach(securedScript=>{
-                    outer_edited=outer_edited.replace(securedScript.id,securedScript.content)
-                  });
-                  */
                   return outer_edited;
             }
         }
@@ -994,13 +939,19 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
           return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
         },
         eget_color: function(anycolor, force1 = "color", force2 = "color") {
-          return uDark.get_color(force1 + ":" + anycolor, force2)
+          return uDark.get_color(force1 + ":" + anycolor, force2,false,anycolor)
         },
-        get_color: function(colorprop, whatget = "background-color", thespanp = false) {
+        get_color: function(colorprop, whatget = "background-color", thespanp = false,anycolor=false) {
+          if(anycolor=="none") // linkedin ???????? does not work
+          {
+          //  console.log(colorprop)
+            //return [0,0,0,0]
+          }
           if (!uDark.userSettings.disable_cache && !thespanp && uDark.knownvariables[colorprop + whatget]) {
             return uDark.knownvariables[colorprop + whatget];
           }
           var thespan = thespanp || document.o_createElement("meta")
+          thespan.is_easy_get = true;
           thespan.style = colorprop
           document.head.appendChild(thespan)
           var style = getComputedStyle(thespan)
@@ -1131,42 +1082,62 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
     }
   },
   misc: {
-    monitorBeforeRequest: function(details) {
-      //console.log(details.url,details);
+    editBeforeData: function(details) {
+
+
+
+
+
       if(details.originUrl && details.originUrl.startsWith("moz-extension://"))
       {
         return{cancel:!details.url.endsWith("#ud-letpass_image")};
       }
+
+
+      details.isMainFrame = ["main_frame","sub_frame"].includes(details.type)
+      details.isStyleSheet = ["stylesheet"].includes(details.type)
+      //if(details.isMainFrame && !details.documentUrl && )
+      //console.log(details);
+
       if ((details.documentUrl || details.url).match(uDark.userSettings.exclude_regex)) {
         return {}
       }
       if (details.type == "image") {
         return uDark.edit_an_image(details);
       }
+//return {redirectUrl:dataurl}
+      
+
+
+
+    var n = details.responseHeaders.length;
+    var headersLow={}
+    while (n--) {
+      headersLow[details.responseHeaders[n].name.toLowerCase()] = details.responseHeaders[n].value;
+    }
+    if(!(headersLow["content-type"]||"").includes("text/"))
+    {
+      return {}
+    }
+
+
+      details.charset = ((headersLow["content-type"]||"").match(/charset=([0-9A-Z-]+)/i) || ["","utf-8"])[1]
+
+
       let filter = browser.webRequest.filterResponseData(details.requestId);
-      let decoder = new TextDecoder();
+      let decoder=new TextDecoder(details.charset)
       let encoder = new TextEncoder();
       details.datacount = 0;
       details.writeEnd = "";
-      details.isMainFrame = ["main_frame","sub_frame"].includes(details.type)
-      details.isStyleSheet = ["stylesheet"].includes(details.type)
       details.charset = null;
 
       filter.ondata = event => {
         details.datacount++
-
-        if(details.isMainFrame && decoder.encoding=="utf-8" && details.charset!="utf-8")
-        {
-          let headers = uDark.knownvariables[ "request-headers-" + details.requestId ];
-          details.charset = (headers["content-type"].match(/charset=([0-9A-Z-]+)/i) || ["","utf-8"])[1]
-          decoder=new TextDecoder(details.charset)
-        }
         var str = decoder.decode(event.data, {
           stream: true
         });
         if (details.isStyleSheet) {
           str = uDark.edit_str(str);
-
           str = uDark.send_data_image_to_parser(str, details);
         }
         else if (details.isMainFrame) {

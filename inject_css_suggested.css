@@ -18,9 +18,20 @@ color:rgb(0, 0, 238);
 *//*
 */
 
-svg:not([fill]):not([color]):not([mask]), svg:not([fill]):not([color]):not([mask]) :not([fill]):not([color]):not([mask]) {
-    fill: var(--secondary-color);
+svg:not([fill]):not([color]):not([mask]), svg :not([fill]):not([color]):not([mask]) {
+    /*fill: none;*/
     /*Does not override  svg or path with fill or style, but defaults to white, perfect */
+}
+svg text
+{
+  color: white;
+  fill: white;
+}
+:not([fill]):not([color]):not([mask])>path:not([fill]):not([color]):not([mask])
+{
+
+  color: white;
+  fill: white;
 }
 path,svg {
    /* fill: var(--secondary-color);
@@ -72,7 +83,7 @@ background-color:rgb(227, 227, 227);
 /* Non text-related properties for buttons: these ones are shared with
    input[type="color"] */
 button,[type="reset"],[type="button"],button:hover,[type="button"],[type="submit"],button:active:hover,[type="button"],[type="submit"]{
-background-color:rgb(240, 240, 240);
+background-color:inherit;
 }
 /* Text-related properties for buttons: these ones are not shared with
    input[type="color"] */
@@ -124,6 +135,6 @@ background-color:rgb(173, 216, 230);
 merror{
 background-color:rgb(255, 255, 224);
 }
-*|*:-moz-full-screen:not(:root)::backdrop{
+*:-moz-full-screen:not(:root)::backdrop{
 background-color:rgb(0, 0, 0);
 }
