@@ -44,7 +44,7 @@ window.dark_object = {
           var bodycolor = getComputedStyle(document.body)["backgroundColor"]
           if(bodycolor!="rgba(0, 0, 0, 0)")
           {
-            document.head.parentNode.style.backgroundColor=getComputedStyle(document.body)["backgroundColor"] 
+            document.head.parentNode.style.o_ud_set_backgroundColor=getComputedStyle(document.body)["backgroundColor"] 
           }
           //setInterval(function()
           //{
@@ -389,7 +389,6 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
             }
             else{
                 return new Promise((resolve, reject) => {
-                  console.log(details,theUrl)
                   if(details.isDataUrl)
                   {
                     myImage.src=details.url.slice(34)
