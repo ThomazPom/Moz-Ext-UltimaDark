@@ -366,7 +366,6 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
                           document.body.appendChild(div)
                           var svg  = div.querySelector('svg')
                           var {width, height} = svg.getBBox(); 
-                          console.log(svg,details,text,width,height);
                           div.innerHTML=text.replace("<svg",`<svg width="${width}"  height="${height}" ` );
                           svg  = div.querySelector('svg')
                           var can  = document.createElement("canvas")
@@ -1133,7 +1132,10 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
       }
       if(!(details.headersLow["content-type"]||"text/").includes("text/")) return {}
       details.charset = ((details.headersLow["content-type"]||"").match(/charset=([0-9A-Z-]+)/i) || ["","utf-8"])[1]
-
+      if(details.url.startsWith("https://data-image.com/?base64IMG="))
+      {
+        return {redirectUrl:data.url.slice(34)}
+      }
       let filter = browser.webRequest.filterResponseData(details.requestId);
       let decoder=new TextDecoder(details.charset)
       let encoder = new TextEncoder();
