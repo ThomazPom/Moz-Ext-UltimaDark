@@ -114,8 +114,21 @@ uDark.functionPrototypeEditor(DocumentFragment,DocumentFragment.prototype.prepen
 uDark.functionPrototypeEditor(Element,Element.prototype.prepend,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
 uDark.functionPrototypeEditor(Document,Document.prototype.prepend,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
 }
+//FINALLY CNN Use this one (webpack)!!!!
+uDark.valuePrototypeEditor(Node,"textContent",(elem,value)=>uDark.send_data_image_to_parser(uDark.edit_str(value)),(elem,value)=>elem instanceof HTMLStyleElement)
 
-/**/
+
+uDark.valuePrototypeEditor(CSS2Properties,"background",(elem,value)=>{
+  let possiblecolor =  uDark.is_color(value);
+  return possiblecolor?uDark.rgba(...possiblecolor):value;
+  
+})
+
+
+uDark.valuePrototypeEditor(CSSRule,"cssText",(elem,value)=>uDark.edit_str(value))
+uDark.valuePrototypeEditor(CSSStyleDeclaration,"cssText",(elem,value)=>uDark.edit_str(value))
+uDark.functionPrototypeEditor(CSSStyleDeclaration,CSSStyleDeclaration.prototype.setProperty,(elem,args)=>{console.log(elem,args);return args})
+
 
 uDark.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.addRule,(elem,args)=> [args[0], uDark.edit_str(args[1])])
 
@@ -183,6 +196,7 @@ html_element.querySelectorAll("style").forEach(astyle=>{
           .replace(/^(.*)$/g, "^$1$")).join("|") // User multi match)
         uDark.knownvariables = {};
         browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editBeforeData);
+        browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.editBeforeRequest);
         if (uDark.regiteredCS) {
           uDark.regiteredCS.unregister();
           uDark.regiteredCS = null
@@ -190,10 +204,15 @@ html_element.querySelectorAll("style").forEach(astyle=>{
         if (!res.disable_webext && uDark.userSettings.properWhiteList.length) {
           browser.webRequest.onHeadersReceived.addListener(dark_object.misc.editBeforeData, {
               urls: uDark.userSettings.properWhiteList,
-              types: ["stylesheet", "main_frame", "sub_frame", "image"]
+              types: [ "main_frame", "sub_frame"]
             },
             ["blocking", "responseHeaders"]);
-          var contentScript = {
+          browser.webRequest.onBeforeRequest.addListener(dark_object.misc.editBeforeRequest, {
+              urls: uDark.userSettings.properWhiteList,
+              types: ["stylesheet", "image"]
+            },
+            ["blocking"]);
+            var contentScript = {
             matches: uDark.userSettings.properWhiteList,
             excludeMatches: uDark.userSettings.properBlackList,
 
@@ -217,13 +236,12 @@ html_element.querySelectorAll("style").forEach(astyle=>{
 //////////////////////////////EXPERIMENTAL
 
 browser.webRequest.onHeadersReceived.addListener(function(e){
-  return {};
                 var headersdo = {
-                  "experimental-content-security-policy":(x=>{
+                  "content-security-policy":(x=>{
                     x.value = x.value.replace(/script-src/, "script-src *")
-                    x.value = x.value.replace(/default-src/, "default-src-src *")
+                    x.value = x.value.replace(/default-src/, "default-src *")
                     x.value = x.value.replace(/style-src/, "style-src *")
-                      return true;
+                      return false;
                     }),
                     "content-type":(x=>{
                       x.value = x.value.replace(/charset=[0-9A-Z-]+/i, "charset=utf-8")
@@ -234,6 +252,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
                     var a_filter=headersdo[x.name.toLowerCase()];
                       return a_filter?a_filter(x):true;
                 })
+               // console.log(e.responseHeaders)
               return {responseHeaders: e.responseHeaders};
           },
           {
@@ -241,9 +260,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
               types: ["main_frame", "sub_frame"]
             },
             ["blocking", "responseHeaders"]);
-
 ///////////////////////////////EXPERIMENTAL
-
       });
     },
     install: function() {
@@ -268,8 +285,6 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
       //Promises before starting :
       fetch("inject_css_suggested.css").then(res=>res.text())
       .then(str=>{
-
-          
           uDark.inject_css_suggested=uDark.edit_str(str);
           return fetch("inject_css_override.css")
 
@@ -312,7 +327,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
                         redirectUrl: canvas.toDataURL()
                       });  
                   }
-                  myImage.src=details.url+"#ud-letpass_image";
+                  myImage.src=details.url;
                   myImage.onload = normalresolve;
                   myImage.onerror = x => {
                     resolve({})
@@ -322,6 +337,8 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
           },
           edit_an_image: function(details) {
             var theUrl = new URL(details.url);
+
+            details.isDataUrl =theUrl.hostname=="data-image.com"
             if (theUrl.search.includes("ud-bypass_image")
               ||(theUrl.search="" && theUrl.pathname=="/favicon.ico")) {
               return {}; // avoid simple favicons
@@ -338,7 +355,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
             if(theUrl.pathname.match(/\.svg$/))
             {
               return new Promise((resolve, reject) => { //on my way to do a reaaal svg url parsing
-                fetch(details.url+"#ud-letpass_image")
+                fetch(details.url)
                     .then(response=>response.text()).then(text=>{
                           var div = document.createElement("div");
                           div.innerHTML=text;
@@ -372,19 +389,18 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
             }
             else{
                 return new Promise((resolve, reject) => {
-                  var dataImageId=details.url.match(/\?data-image=[0-9-]+/)
-                  if(dataImageId)
+                  console.log(details,theUrl)
+                  if(details.isDataUrl)
                   {
-                    myImage.src=uDark.knownvariables[dataImageId[0]];
-                    delete uDark.knownvariables[dataImageId[0]];
+                    myImage.src=details.url.slice(34)
                   }
                   else
                   {
-                      myImage.src=details.url+"#ud-letpass_image";
+                      myImage.src=details.url;
                   }
                   var normalresolve = x => {
                     //Very small data:images are often used as backgrounds
-                    is_background = is_background || dataImageId && (myImage.width<5 || myImage.height<5)
+                    is_background = is_background || details.isDataUrl && (myImage.width<5 || myImage.height<5)
 
 
                     canvas.width = myImage.width;
@@ -420,7 +436,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
                       resolve({
                         redirectUrl: canvas.toDataURL()
                       });
-                    } else if(theUrl.search.startsWith("?data-image=")){
+                    } else if(details.isDataUrl){
                       resolve({redirectUrl: myImage.src});
                     } else {
                       resolve({});
@@ -618,20 +634,6 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
             theImageData.data.set(theImageDataClamped8TMP);
             canvasContext.putImageData(theImageData, 0, 0);
           },
-          send_data_image_to_parser: function(str, details) {
-            if (str.includes('data:')) {
-
-              [...str.matchAll(/(data:image\/(png|jpe?g|svg\+xml);base64,([^\"]*?))[)'"]/g)].forEach((match, lindex) => {
-                
-                //var id = `https://google.com/favicon.ico?${details.requestId}-${details.datacount}-${lindex}`
-                //   var id = "https://google.com/favicon.ico?1=10985-1-1"
-                var id = `?data-image=${details.requestId}-${details.datacount}-${lindex}`
-                uDark.knownvariables[id] = match[1];
-                str = str.replace(match[1], '/favicon.ico' + id);
-              })
-            }
-            return str;
-          },
           parse_and_edit_html1:function(str,details){
             var newDoc=new Document
           var html_element = document.createElement("html")
@@ -794,7 +796,8 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
                       //console.log(details,astyle,astyle.innerHTML,astyle.innerHTML.includes(`button,[type="reset"],[type="button"],button:hover,[type="button"],[type="submit"],button:active:hover,[type="button"],[type="submi`))
                       astyle.setAttribute("style",uDark.edit_str(astyle.getAttribute("style")));
                     });
-                    html_element.querySelectorAll("img[src*='data']").forEach(image=>{
+                    html_element.querySelectorAll("img[src*=data]").forEach(image=>{
+                      //console.log(html_element,image,uDark.send_data_image_to_parser(image.src,details))
                       image.src=uDark.send_data_image_to_parser(image.src,details)
                     })
                     html_element.querySelectorAll("[fill],[color],path,[bgcolor]").forEach(coloreditem=>{
@@ -940,8 +943,14 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
             return uDark.knownvariables[colorprop + whatget];
           }
           var thespan = thespanp || document.o_createElement("meta")
-          thespan.is_easy_get = true;
-          thespan.style = colorprop
+          thespan.is_easy_get = true; 
+          if('o_ud_set_cssText' in thespan.style)
+          {
+            thespan.style.o_ud_set_cssText=colorprop;
+          }
+          else{
+            thespan.style.cssText=colorprop;
+          }
           document.head.appendChild(thespan)
           var style = getComputedStyle(thespan)
           var returnvalue = [...[...(style[whatget].matchAll(/[0-9\.]+/g))].map(x => parseFloat(x)), 1].splice(0, 4)
@@ -1048,6 +1057,12 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
            var dv= adocument.defaultView || window;
            return who.style[sty] || 
            dv.getComputedStyle(who,"").getPropertyValue(css) || '';
+          },
+          send_data_image_to_parser: function(str, details) {
+            if (str.includes('data:')) {
+              str=str.replace(/(?<!(base64IMG=))(data:image\/(png|jpe?g|svg\+xml);base64,([^\"]*?))([)'"]|$)/g,"https://data-image.com?base64IMG=$&")
+           } 
+            return str;
           }
 
       }
@@ -1071,82 +1086,65 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
     }
   },
   misc: {
-    editBeforeData: function(details) {
-
-
-
-
-
-      if(details.originUrl && details.originUrl.startsWith("moz-extension://"))
-      {
-        return{cancel:!details.url.endsWith("#ud-letpass_image")};
-      }
-
-
-      details.isMainFrame = ["main_frame","sub_frame"].includes(details.type)
-      details.isStyleSheet = ["stylesheet"].includes(details.type)
-      //if(details.isMainFrame && !details.documentUrl && )
-      //console.log(details);
-
-      if ((details.documentUrl || details.url).match(uDark.userSettings.exclude_regex)) {
+    editBeforeRequest:function(details)
+    {
+      if(details.originUrl && details.originUrl.startsWith("moz-extension://")||
+        (details.documentUrl || details.url).match(uDark.userSettings.exclude_regex)) {
         return {}
       }
-      if (details.type == "image") {
+      details.isStyleSheet = ["stylesheet"].includes(details.type)
+      details.isImage = ["image"].includes(details.type)
+      if (details.isImage) {
         return uDark.edit_an_image(details);
       }
-//return {redirectUrl:dataurl}
-      
-
-
-
-    var n = details.responseHeaders.length;
-    var headersLow={}
-    while (n--) {
-      headersLow[details.responseHeaders[n].name.toLowerCase()] = details.responseHeaders[n].value;
-    }
-    if(!(headersLow["content-type"]||"").includes("text/"))
-    {
+      let filter = browser.webRequest.filterResponseData(details.requestId);
+      let decoder=new TextDecoder()
+      let encoder = new TextEncoder();
+      details.datacount = 0;
+      filter.ondata = event => {
+        details.datacount++
+        var str = decoder.decode(event.data, {stream: true});
+          str = uDark.edit_str(str);
+          str = uDark.send_data_image_to_parser(str, details);
+          filter.write(encoder.encode(str));
+        }
+      filter.onstop = event => {
+        filter.disconnect(); // Low perf if not disconnected !
+      }
+        //must not return this closes filter//
       return {}
-    }
+    },
 
-
-      details.charset = ((headersLow["content-type"]||"").match(/charset=([0-9A-Z-]+)/i) || ["","utf-8"])[1]
-
+    editBeforeData: function(details) {
+      if(details.originUrl && details.originUrl.startsWith("moz-extension://")||
+        (details.documentUrl || details.url).match(uDark.userSettings.exclude_regex)) {
+        return {}
+      }
+      var n = details.responseHeaders.length;
+      details.headersLow={}
+      while (n--) {
+        details.headersLow[details.responseHeaders[n].name.toLowerCase()] = details.responseHeaders[n].value;
+      }
+      if(!(details.headersLow["content-type"]||"text/").includes("text/")) return {}
+      details.charset = ((details.headersLow["content-type"]||"").match(/charset=([0-9A-Z-]+)/i) || ["","utf-8"])[1]
 
       let filter = browser.webRequest.filterResponseData(details.requestId);
       let decoder=new TextDecoder(details.charset)
       let encoder = new TextEncoder();
       details.datacount = 0;
       details.writeEnd = "";
-      details.charset = null;
 
       filter.ondata = event => {
-        details.datacount++
-        var str = decoder.decode(event.data, {
-          stream: true
-        });
-        if (details.isStyleSheet) {
-          str = uDark.edit_str(str);
-          str = uDark.send_data_image_to_parser(str, details);
-        }
-        else if (details.isMainFrame) {
-          // Cant do both
-          // Next step would be to truly parse str ;
-          details.writeEnd+=str;
-          str="";
-      }
-        filter.write(encoder.encode(str));
-        //must not return this closes filter//
+          details.datacount++
+          // Cant do both, next step would be to truly parse str ;
+          details.writeEnd+=decoder.decode(event.data, {stream: true});
+          //must not return this closes filter//
       }
       filter.onstop = event => {
-        if(details.writeEnd)
-        {
-          details.datacount=1;
-            details.writeEnd=uDark.parse_and_edit_html3(details.writeEnd,details)
-          
-            filter.write(encoder.encode(details.writeEnd));
-        }
-        filter.disconnect();
+        details.datacount=1;
+        details.writeEnd=uDark.parse_and_edit_html3(details.writeEnd,details)
+        filter.write(encoder.encode(details.writeEnd));
+        filter.disconnect(); // Low perf if not disconnected !
       }
       return {}
     }
