@@ -366,6 +366,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
                           document.body.appendChild(div)
                           var svg  = div.querySelector('svg')
                           var {width, height} = svg.getBBox(); 
+                          console.log(svg,details,text,width,height);
                           div.innerHTML=text.replace("<svg",`<svg width="${width}"  height="${height}" ` );
                           svg  = div.querySelector('svg')
                           var can  = document.createElement("canvas")
@@ -381,9 +382,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
                                       var islogo = uDark.edit_a_logo(ctx, width, height, details);
                                       //console.log(details,can.toDataURL())
                                       //img1.src = can.toDataURL();
-                                      resolve(islogo?{
-                                        redirectUrl: can.toDataURL()
-                                      }:{});
+                                      resolve({redirectUrl:islogo?can.toDataURL():details.dataUrl});
                                     };
                             sourceImage.src = uDark.svgDataURL(svg)
                 }
