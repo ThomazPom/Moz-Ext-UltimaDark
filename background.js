@@ -337,8 +337,12 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
           },
           edit_an_image: function(details) {
             var theUrl = new URL(details.url);
-
             details.isDataUrl =theUrl.hostname=="data-image.com"
+            if(details.isDataUrl)
+            {
+              details.dataUrl= details.url.slice(34)
+              details.isSvgDataUrl = details.dataUrl.startsWith("data:image/svg+xml;base64,")
+            }
             if (theUrl.search.includes("ud-bypass_image")
               ||(theUrl.search="" && theUrl.pathname=="/favicon.ico")) {
               return {}; // avoid simple favicons
@@ -352,12 +356,12 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
             var canvas = document.createElement('canvas');
             var myImage = new Image;
 
-            if(theUrl.pathname.match(/\.svg$/))
+            if(theUrl.pathname.match(/\.svg$/) || details.isSvgDataUrl)
             {
               return new Promise((resolve, reject) => { //on my way to do a reaaal svg url parsing
-                fetch(details.url)
-                    .then(response=>response.text()).then(text=>{
-                          var div = document.createElement("div");
+                let svgSupport = function(text)
+                {
+                  var div = document.createElement("div");
                           div.innerHTML=text;
                           document.body.appendChild(div)
                           var svg  = div.querySelector('svg')
@@ -382,24 +386,29 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
                                       }:{});
                                     };
                             sourceImage.src = uDark.svgDataURL(svg)
+                }
 
-                        
-                    })
+                details.isSvgDataUrl?
+                svgSupport(atob(details.dataUrl.slice(26)))
+                :fetch(details.url).then(response=>response.text()).then(svgSupport)
+
               })
             }
             else{
                 return new Promise((resolve, reject) => {
                   if(details.isDataUrl)
                   {
-                    myImage.src=details.url.slice(34)
+                    myImage.src=details.dataUrl;
                   }
                   else
                   {
                       myImage.src=details.url;
                   }
+
                   var normalresolve = x => {
+
                     //Very small data:images are often used as backgrounds
-                    is_background = is_background || details.isDataUrl && (myImage.width<5 || myImage.height<5)
+                    is_background = is_background || details.isDataUrl && (5-myImage.width<0 || 5-myImage.width<0)
 
 
                     canvas.width = myImage.width;
@@ -414,7 +423,6 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
                     
                    //   console.log(theUrl,is_background,islogo,theUrl.search.startsWith("?data-image="))
                     
-                    //console.log(1,islogo,details.url,myImage.src, is_background,canvas.toDataURL())
                     
                     if (islogo ) {
                       resolve({
