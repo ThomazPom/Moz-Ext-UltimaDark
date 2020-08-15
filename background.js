@@ -31,16 +31,7 @@ window.dark_object = {
             }}[laFonction.name]
           });
         }
-      //  new uDark.Inspector(Document, "createElement",x=>{},uDark.styleWatcher);;
-      //  new uDark.Inspector(CSSStyleSheet,"addRule",console.log,console.log);
-      uDark.frontEditor = function(elem, value) {
-        //if (!value.endsWith(uDark.styleflag)) {
-                
-          return uDark.edit_str(value)
-        //}
-      }
-      //  uDark.prototypeEditor( Element,    "innerHTML",     uDark.frontEditor,     (elem,value)=>elem instanceof HTMLStyleElement       );
-      window.addEventListener('load', (event) => {
+     window.addEventListener('load', (event) => {
           var bodycolor = getComputedStyle(document.body)["backgroundColor"]
           if(bodycolor!="rgba(0, 0, 0, 0)")
           {
@@ -113,6 +104,10 @@ uDark.functionPrototypeEditor(Document,Document.prototype.append,(elem,args)=>{c
 uDark.functionPrototypeEditor(DocumentFragment,DocumentFragment.prototype.prepend,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
 uDark.functionPrototypeEditor(Element,Element.prototype.prepend,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
 uDark.functionPrototypeEditor(Document,Document.prototype.prepend,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
+//Youtube uses this one
+uDark.functionPrototypeEditor(CSSStyleDeclaration,CSSStyleDeclaration.prototype.setProperty,(elem,args)=>{console.log(elem,args);return args})
+
+
 }
 //FINALLY CNN Use this one (webpack)!!!!
 uDark.valuePrototypeEditor(Node,"textContent",(elem,value)=>uDark.send_data_image_to_parser(uDark.edit_str(value)),(elem,value)=>elem instanceof HTMLStyleElement)
@@ -127,7 +122,6 @@ uDark.valuePrototypeEditor(CSS2Properties,"background",(elem,value)=>{
 
 uDark.valuePrototypeEditor(CSSRule,"cssText",(elem,value)=>uDark.edit_str(value))
 uDark.valuePrototypeEditor(CSSStyleDeclaration,"cssText",(elem,value)=>uDark.edit_str(value))
-uDark.functionPrototypeEditor(CSSStyleDeclaration,CSSStyleDeclaration.prototype.setProperty,(elem,args)=>{console.log(elem,args);return args})
 
 
 uDark.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.addRule,(elem,args)=> [args[0], uDark.edit_str(args[1])])
@@ -141,7 +135,7 @@ uDark.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.insertRule,(
 uDark.valuePrototypeEditor(CSS2Properties,"backgroundColor",(elem,value)=>uDark.rgba(...uDark.eget_color(value)))
 uDark.valuePrototypeEditor(CSS2Properties,"background-color",(elem,value)=>uDark.rgba(...uDark.eget_color(value)))
 uDark.valuePrototypeEditor(CSS2Properties,"color",(elem,value)=>uDark.revert_rgba(...uDark.eget_color(value)))
-uDark.valuePrototypeEditor(HTMLElement,"style",(elem,value)=>uDark.edit_str(value),(elem,value)=>!elem.is_easy_get)// Care with "style and eget, this cause recursions"
+uDark.valuePrototypeEditor(HTMLElement,"style",(elem,value)=>uDark.edit_str(value,true),(elem,value)=>!elem.is_easy_get)// Care with "style and eget, this cause recursions"
 
 uDark.valuePrototypeEditor( HTMLElement,"innerText",
   (elem,value)=>{
@@ -842,12 +836,14 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
   both: {
     install: function() {
       document.o_createElement = document.createElement;
-      const CSS_COLOR_NAMES = ["AliceBlue", "AntiqueWhite", "Aqua", "Aquamarine", "Azure", "Beige", "Bisque", "Black", "BlanchedAlmond", "Blue", "BlueViolet", "Brown", "BurlyWood", "CadetBlue", "Chartreuse", "Chocolate", "Coral", "CornflowerBlue", "Cornsilk", "Crimson", "Cyan", "DarkBlue", "DarkCyan", "DarkGoldenRod", "DarkGray", "DarkGrey", "DarkGreen", "DarkKhaki", "DarkMagenta", "DarkOliveGreen", "DarkOrange", "DarkOrchid", "DarkRed", "DarkSalmon", "DarkSeaGreen", "DarkSlateBlue", "DarkSlateGray", "DarkSlateGrey", "DarkTurquoise", "DarkViolet", "DeepPink", "DeepSkyBlue", "DimGray", "DimGrey", "DodgerBlue", "FireBrick", "FloralWhite", "ForestGreen", "Fuchsia", "Gainsboro", "GhostWhite", "Gold", "GoldenRod", "Gray", "Grey", "Green", "GreenYellow", "HoneyDew", "HotPink", "IndianRed", "Indigo", "Ivory", "Khaki", "Lavender", "LavenderBlush", "LawnGreen", "LemonChiffon", "LightBlue", "LightCoral", "LightCyan", "LightGoldenRodYellow", "LightGray", "LightGrey", "LightGreen", "LightPink", "LightSalmon", "LightSeaGreen", "LightSkyBlue", "LightSlateGray", "LightSlateGrey", "LightSteelBlue", "LightYellow", "Lime", "LimeGreen", "Linen", "Magenta", "Maroon", "MediumAquaMarine", "MediumBlue", "MediumOrchid", "MediumPurple", "MediumSeaGreen", "MediumSlateBlue", "MediumSpringGreen", "MediumTurquoise", "MediumVioletRed", "MidnightBlue", "MintCream", "MistyRose", "Moccasin", "NavajoWhite", "Navy", "OldLace", "Olive", "OliveDrab", "Orange", "OrangeRed", "Orchid", "PaleGoldenRod", "PaleGreen", "PaleTurquoise", "PaleVioletRed", "PapayaWhip", "PeachPuff", "Peru", "Pink", "Plum", "PowderBlue", "Purple", "RebeccaPurple", "Red", "RosyBrown", "RoyalBlue", "SaddleBrown", "Salmon", "SandyBrown", "SeaGreen", "SeaShell", "Sienna", "Silver", "SkyBlue", "SlateBlue", "SlateGray", "SlateGrey", "Snow", "SpringGreen", "SteelBlue", "Tan", "Teal", "Thistle", "Tomato", "Turquoise", "Violet", "Wheat", "White", "WhiteSmoke", "Yellow", "YellowGreen", ];
-      const CSS_COLOR_NAMES_RGX = "([:,\\s\\n])(" + (CSS_COLOR_NAMES.join("|")) + ")([,;\\s\\n!\"}]|$)"
+      const CSS_COLOR_NAMES = ["AliceBlue", "AntiqueWhite", "Aqua", "Aquamarine", "Azure", "Beige", "Bisque", "Black", "BlanchedAlmond", "Blue", "BlueViolet", "Brown", "BurlyWood", "CadetBlue", "Chartreuse", "Chocolate", "Coral", "CornflowerBlue", "Cornsilk", "Crimson", "Cyan", "DarkBlue", "DarkCyan", "DarkGoldenRod", "DarkGray", "DarkGrey", "DarkGreen", "DarkKhaki", "DarkMagenta", "DarkOliveGreen", "DarkOrange", "DarkOrchid", "DarkRed", "DarkSalmon", "DarkSeaGreen", "DarkSlateBlue", "DarkSlateGray", "DarkSlateGrey", "DarkTurquoise", "DarkViolet", "DeepPink", "DeepSkyBlue", "DimGray", "DimGrey", "DodgerBlue", "FireBrick", "FloralWhite", "ForestGreen", "Fuchsia", "Gainsboro", "GhostWhite", "Gold", "GoldenRod", "Gray", "Grey", "Green", "GreenYellow", "HoneyDew", "HotPink", "IndianRed", "Indigo", "Ivory", "Khaki", "Lavender", "LavenderBlush", "LawnGreen", "LemonChiffon", "LightBlue", "LightCoral", "LightCyan", "LightGoldenRodYellow", "LightGray", "LightGrey", "LightGreen", "LightPink", "LightSalmon", "LightSeaGreen", "LightSkyBlue", "LightSlateGray", "LightSlateGrey", "LightSteelBlue", "LightYellow", "Lime", "LimeGreen", "Linen", "Magenta", "Maroon", "MediumAquaMarine", "MediumBlue", "MediumOrchid", "MediumPurple", "MediumSeaGreen", "MediumSlateBlue", "MediumSpringGreen", "MediumTurquoise", "MediumVioletRed", "MidnightBlue", "MintCream", "MistyRose", "Moccasin", "NavajoWhite", "Navy", "OldLace", "Olive", "OliveDrab", "Orange", "OrangeRed", "Orchid", "PaleGoldenRod", "PaleGreen", "PaleTurquoise", "PaleVioletRed", "PapayaWhip", "PeachPuff", "Peru", "Pink", "Plum", "PowderBlue", "Purple", "RebeccaPurple", "Red", "RosyBrown", "RoyalBlue", "SaddleBrown", "Salmon", "SandyBrown", "SeaGreen", "SeaShell", "Sienna", "Silver", "SkyBlue", "SlateBlue", "SlateGray", "SlateGrey", "Snow", "SpringGreen", "SteelBlue", "Tan", "Teal", "Thistle", "Tomato", "Turquoise", "Violet", "Wheat", "White", "WhiteSmoke", "Yellow", "YellowGreen", ]
+      .sort(function(a, b){  return b.length - a.length;});  // ASC  -> a.length - b.length   // DESC -> b.length - a.length
+      const CSS_COLOR_NAMES_RGX = "(" + (CSS_COLOR_NAMES.join("|")) + ")([,;\\s\\n!\"})]|$)"
 
       window.uDark = {
         userSettings:{},
         colorRegex:new RegExp(CSS_COLOR_NAMES_RGX, "gi"),
+        CSS_COLOR_NAMES_RGX:"(" + (CSS_COLOR_NAMES.join("|")) + ")",
         min: Math.min,
         max: Math.max,
         round: Math.round,
@@ -947,7 +943,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
           if (!uDark.userSettings.disable_cache && !thespanp && uDark.knownvariables[colorprop + whatget]) {
             return uDark.knownvariables[colorprop + whatget];
           }
-          var thespan = thespanp || document.o_createElement("meta")
+          let thespan = thespanp || document.o_createElement("meta")
           thespan.is_easy_get = true; 
           if('o_ud_set_cssText' in thespan.style)
           {
@@ -981,22 +977,42 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
           // }
           if(!possiblecolor)
             {return false}
-          var testresult = uDark.eget_color(possiblecolor, "background", "background-color")
+          let testresult = uDark.eget_color(possiblecolor, "background", "background-color")
           return testresult.filter(x => x).length ? testresult : false
         },
+
+        restore_all_color: function(str) {
+          return str.replace(uDark.restoreAllColorRegex,match=>
+            uDark.revert_rgba(...uDark.eget_color(match))
+          ).replace(/(^|[^a-z0-9-])--([a-z0-9-])/g,"$1--ud-fg--$2")
+        },
+        
+
         restore_color: function(str,regex) {
+         // No need to use the restore all as colors are single values or at most var based :)
           return str.replace(uDark.restoreColorRegex,
-            (match,g1,g2,g3,g4)=>g1+g2+":"+uDark.set_oricolor(g4, uDark.revert_rgba(...uDark.eget_color(g4))))
-/*
-          [...str.matchAll(regex||uDark.restoreColorRegex)].forEach(match => {
-            str = str.replace(match[0], match[1] + match[2] + uDark.set_oricolor(match[4], uDark.revert_rgba(...uDark.eget_color(match[4]))))
-          })
-          return str;
-  */
+            (match,g1,g2,g3,g4,g5,g6)=>
+            {
+              let possiblecolor = uDark.is_color(g3)
+              let result = g1+g2+":"
+              +(possiblecolor?uDark.revert_rgba(...uDark.eget_color(g3)):
+                g3.replace(/--/g,"--ud-fg--"))+g4
+              return result
+            })
         },
   
-        prefix_fg_vars: function(str) { // Must replace important with direct styles
-          return str.replace(uDark.variableRegex2,"$&!important;--ud-fg$2:/*evi*/$6/*svi*/");
+        prefix_fg_vars: function(str) { 
+          return str.replace(uDark.variableRegex2,(match,g1,g2,g3,g4,g5)=>
+          {
+                      //console.log(2,str,3,g1,4,g2,5,g3,6,g4)
+
+            return g1+g2+":"+(g4?uDark.edit_all_dynamic_colors(g3):uDark.rgba(...uDark.eget_color(g3))  )
+            +";--ud-fg"+g2+":"+(g4?uDark.restore_all_color(g3):uDark.revert_rgba(...uDark.eget_color(g3))  )
+
+            +g5
+            
+          })
+          
         },
         restore_var_color: function(str) { 
 
@@ -1014,31 +1030,44 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
           //    return str.replace(/\/\*(.|\n)*?[^oes][^r][^i]\*\//g,"");
           return str.replace(/(^|[^a-z0-9-])(repeat(-[xy])?)($|["}\n;,)! ])/g, "$1no-repeat;background-color:rgba(0,0,0,0.5);noprop:$4")
         },
-        edit_str_named_colors: function(str) {
-          return str.replace(uDark.colorRegex,(match,g1,g2,g3)=>g1 + uDark.set_oricolor(g2, uDark.rgba(...uDark.eget_color(g2))) + g3)
+
+        edit_str_named_colors_no_chunk: function(chunk) {
+           return chunk.replace(uDark.colorRegex,(match,g1,g2,pos)=>{
+                if(!(/[,(:\s\t\r\n]/).test(chunk[pos-1]))
+                {
+                  return match;
+                }
+                return uDark.rgba_val(...uDark.eget_color(g1))+g2;
+              })
+              
          },
-        edit_dynamic_colors: function(str) {
-          return str.replace(uDark.dynamicColorRegex,(match,g1,g2,g3)=>
-              uDark.set_oricolor(g1,uDark.rgba(...uDark.eget_color(g1)))+g3
-            )
-          /*
-          [1,2,3,4,5,6].forEach(x => { // C MOCHE
-            [...str.matchAll(uDark.dynamicColorRegex)].forEach(match => {
-              newcolor = uDark.rgba(...uDark.eget_color(match[2])).replace("rgba", "colorfunc");
-              str = str.replace(match[0], match[1] + uDark.set_oricolor(match[2], newcolor) + match[4])
-            })
-          })
-          return str.replace(/colorfunc/g, "rgba");*/
-        },
+        edit_str_named_colors: function(str) {
+           return str.replace( new RegExp("{[^{}]*?"+uDark.CSS_COLOR_NAMES_RGX+"[^{}]*}","gis"),chunk=>{
+              return chunk.replace(uDark.colorRegex,(match,g1,g2,pos)=>{
+                if(!(/[,(:\s\t\r\n]/).test(chunk[pos-1]))
+                {
+                  return match;
+                }
+                return uDark.rgba_val(...uDark.eget_color(g1))+g2;
+              })
+            })  
+         },
+        edit_dynamic_colors_no_chunk:str=>str.replace(uDark.dynamicColorRegex,(match,g1,g2,g3)=>uDark.rgba(...uDark.eget_color(match))),
+        edit_all_dynamic_colors:str=>str.replace(uDark.dynamicAllColorRegex,(match)=>uDark.rgba(...uDark.eget_color(match))),
+        edit_dynamic_colors:str=>str.replace( new RegExp("{[^{}]*?}","gis"),uDark.edit_dynamic_colors_no_chunk),
         edit_str:function(str)
         {
-          str = uDark.edit_str_named_colors(str)
-          str = uDark.edit_dynamic_colors(str)
+          let nochunk = !str.includes("{");
+          str = nochunk
+            ?uDark.edit_str_named_colors_no_chunk(str)
+            :uDark.edit_str_named_colors(str)
           str = uDark.prefix_fg_vars(str);
-          str = uDark.restore_var_color(str);
+
+          str = nochunk
+            ?uDark.edit_dynamic_colors_no_chunk(str)
+            :uDark.edit_dynamic_colors(str)
+          str = uDark.edit_dynamic_colors(str)
           str = uDark.restore_color(str);
-          str = uDark.restore_comments(str);
-          //Send css data images to data parser ?
           return str; 
         },
         getallBgimages:function(adocument,acondition=(elem,url)=>true){
@@ -1071,23 +1100,20 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
           }
 
       }
-      uDark.radiusRegex = /(^|[^a-z0-9-])(border-((top|bottom)-(left|right)-)?radius?[\s\t]*?:[\s\t]*?([5-9]|[1-9][0-9]|[1-9][0-9][0-9])[a-zA-Z\s\t%]+)($|["}\n;])/gi,
-        uDark.variableRegex = /(^|[^a-z0-9-])(--[a-z0-9-]+)[\s\t]*?:[\s\t]*?((#|rgba?)[^"}\n;]*?)[\s\t]*?($|["}\n;])/gi,
-        uDark.variableRegex2 = /(^|[^a-z0-9-])(--[a-z0-9-]+)([\s\t]*?:)[\s\t]*?((\/\*ori\*(.*?)\*eri\*\/rgb.*?\/\*sri\*\/))/gi,"$&;$2-ud-fg:/*evi*/$6/*svi*/"
-        uDark.variableBasedRegex = /(^|[^a-z0-9-])var[\s\t]*?\([\s\t]*?(--[a-z0-9-]+)[\s\t]*?\)/gi,
-        uDark.interventRegex = /(^|[^a-z0-9-])(color|background(-color|-image)?)[\s\t]*?:[\s\t]*?[\n]*?([^;}]*?)([^;}]*?['"].*['"][^;}]*?)*?[\s\t]*?(![\s\t]*?important)?[\s\t]*?($|[;}\n\\])/gi
-      // uDark.matchStylePart=/{[^{]+}/gi //breaks amazon
-      //    uDark.dynamicColorRegex=/(#[0-9a-f]{3,8}|(rgb?|hsl)a?\([%0-9, .]+?\))/gi
-      //
-      uDark.dynamicColorRegex = /(#[0-9a-f]{3,8}|(rgb?|hsl)a?\([%0-9, .]+?\))([,);\n\r\s\t}!]|$)/gi
-      uDark.urlBGRegex = /(^|[^a-z0-9-])(background(-image)?)[\s\t]*?:[\s\t]*?(url\(["']?(.+?)["']?\))/g
-      uDark.restoreColorRegex = /(^|[^a-z0-9-])(color|fill)[\s\t]*?:[\s\t]*?(\/\*ori\*(.*?)\*eri\*\/rgb.*?\/\*sri\*\/)/g
-      uDark.restoreAnyRegex = /()()(\/\*ori\*(.*?)\*eri\*\/rgb.*?\/\*sri\*\/)/g
+      //uDark.radiusRegex = /(^|[^a-z0-9-])(border-((top|bottom)-(left|right)-)?radius?[\s\t]*?:[\s\t]*?([5-9]|[1-9][0-9]|[1-9][0-9][0-9])[a-zA-Z\s\t%]+)($|["}\n;])/gi,
+        uDark.variableRegex2 = /(^|[^a-z0-9-])(--[a-z0-9-]+)(?:[\s\t]*?:)[\s\t]*((?:#[0-9a-f]{3,8}|(?:rgb|hsl)a?\([%0-9, .]+?\))|(var\(.*?\)))($|[;\n\r}]|!important)/gi,
+        //uDark.variableBasedRegex = /(^|[^a-z0-9-])var[\s\t]*?\([\s\t]*?(--[a-z0-9-]+)[\s\t]*?\)/gi,
+       // uDark.interventRegex = /(^|[^a-z0-9-])(color|background(-color|-image)?)[\s\t]*?:[\s\t]*?[\n]*?([^;}]*?)([^;}]*?['"].*['"][^;}]*?)*?[\s\t]*?(![\s\t]*?important)?[\s\t]*?($|[;}\n\\])/gi
+        uDark.dynamicColorRegex = /(?<!(^|[^a-z0-9-])(--[a-zA-Z0-9-]+|color|fill)(?:[\s\t]*?:)[\s\t]*?)(#[0-9a-f]{3,8}|(rgb|hsl)a?\([%0-9, .]+?\))/gi // Any color .. if not preceded by color attribute :)
+        uDark.dynamicAllColorRegex = /(#[0-9a-f]{3,8}|(rgb|hsl)a?\([%0-9, .]+?\))/gi // Use in proerty values
       
-      //Variables can use other variables :
-      uDark.restoreVarRegex = /([^a-z0-9-])(--ud-fg--[a-zA-Z0-9]|color|fill)[\s\t]*?:[\s\t]*?var[\s\t]*?\(.*?($|["}\n;!])/g
-      //uDark.matchStylePart=new RegExp(["{[^}]+?((",[uDark.radiusRegex,uDark.variableRegex,uDark.interventRegex ].map(x=>x.source).join(")|("),"))[^}]+?}"].join(""),"gi");
-      uDark.matchStylePart = /(^|<style.*?>)(.|\n)*?(<\/style>|$)|[^a-z0-9-]style=("(.|\n)+?("|$)|'(.|\n)+?('|$))/g
+        //uDark.urlBGRegex = /(^|[^a-z0-9-])(background(-image)?)[\s\t]*?:[\s\t]*?(url\(["']?(.+?)["']?\))/g
+        uDark.restoreColorRegex = /(^|[^a-z0-9-])(color|fill)[\s\t]*?:[\s\t]*(.+?)($|[;\n\r}!])/g // var edits are done in the prefix 
+        uDark.restoreAllColorRegex = /(?:#[0-9a-f]{3,8}|(?:rgb|hsl)a?\([%0-9, .]+?\))/gi // var edit is in the function
+        //Variables can use other variables :
+        //uDark.restoreVarRegex = /([^a-z0-9-])(--ud-fg--[a-zA-Z0-9]+|color|fill)[\s\t]*?:[\s\t]*?var[\s\t]*?\(.*?($|["}\n;!])/g
+        //uDark.matchStylePart=new RegExp(["{[^}]+?((",[uDark.radiusRegex,uDark.variableRegex,uDark.interventRegex ].map(x=>x.source).join(")|("),"))[^}]+?}"].join(""),"gi");
+        //uDark.matchStylePart = /(^|<style.*?>)(.|\n)*?(<\/style>|$)|[^a-z0-9-]style=("(.|\n)+?("|$)|'(.|\n)+?('|$))/g
     }
   },
   misc: {
