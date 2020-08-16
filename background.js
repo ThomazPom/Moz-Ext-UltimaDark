@@ -799,6 +799,12 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
                       //console.log(html_element,image,uDark.send_data_image_to_parser(image.src,details))
                       image.src=uDark.send_data_image_to_parser(image.src,details)
                     })
+
+                    //I would prefer clear cache one rather than killing it
+                    html_element.querySelectorAll("link[rel='stylesheet']")
+                    .forEach(x=>x.setAttribute("href",x.getAttribute("href")+"#cachekiller=1")); // 1 as cache killer is better than random :)
+                    ///
+
                     html_element.querySelectorAll("[fill],[color],path,[bgcolor]").forEach(coloreditem=>{
                      for (const [key, afunction] of Object.entries(uDark.attfunc_map)) {
                         var possiblecolor=uDark.is_color(coloreditem.getAttribute(key))
@@ -1119,6 +1125,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
   misc: {
     editBeforeRequest:function(details)
     {
+      //console.log(details)
       if(details.originUrl && details.originUrl.startsWith("moz-extension://")||
         (details.documentUrl || details.url).match(uDark.userSettings.exclude_regex)) {
         return {}
