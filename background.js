@@ -189,6 +189,7 @@ html_element.querySelectorAll("style").forEach(astyle=>{
           .replace(/(^<all_urls>|\\\*)/g, "(.*?)") // Allow wildcards
           .replace(/^(.*)$/g, "^$1$")).join("|") // User multi match)
         uDark.knownvariables = {};
+        uDark.fixedRandom = Math.random();
         browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editBeforeData);
         browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.editBeforeRequest);
         if (uDark.regiteredCS) {
@@ -223,38 +224,8 @@ html_element.querySelectorAll("style").forEach(astyle=>{
             uDark.regiteredCS = x
           });
         }
-
-
-
-
-//////////////////////////////EXPERIMENTAL
-
-browser.webRequest.onHeadersReceived.addListener(function(e){
-                var headersdo = {
-                  "content-security-policy":(x=>{
-                    x.value = x.value.replace(/script-src/, "script-src *")
-                    x.value = x.value.replace(/default-src/, "default-src *")
-                    x.value = x.value.replace(/style-src/, "style-src *")
-                      return false;
-                    }),
-                    "content-type":(x=>{
-                      x.value = x.value.replace(/charset=[0-9A-Z-]+/i, "charset=utf-8")
-                      return true;
-                    }),
-                }
-                e.responseHeaders= e.responseHeaders.filter(x=>{
-                    var a_filter=headersdo[x.name.toLowerCase()];
-                      return a_filter?a_filter(x):true;
-                })
-               // console.log(e.responseHeaders)
-              return {responseHeaders: e.responseHeaders};
-          },
-          {
-              urls: uDark.userSettings.properWhiteList,
-              types: ["main_frame", "sub_frame"]
-            },
-            ["blocking", "responseHeaders"]);
-///////////////////////////////EXPERIMENTAL
+        else
+          console.log("UD Did not load : ","White list",uDark.userSettings.properWhiteList,"Enabled",!res.disable_webext)
       });
     },
     install: function() {
@@ -292,6 +263,18 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
       window.uDark = {
         ...uDark,
         ...{
+           headersdo:{
+                  "content-security-policy":(x=>{
+                    x.value = x.value.replace(/script-src/, "script-src *")
+                    x.value = x.value.replace(/default-src/, "default-src *")
+                    x.value = x.value.replace(/style-src/, "style-src *")
+                      return false;
+                    }),
+                    "content-type":(x=>{
+                      x.value = x.value.replace(/charset=[0-9A-Z-]+/i, "charset=utf-8")
+                      return true;
+                    }),
+                },
           attfunc_map:{
               "fill":uDark.revert_rgba,
               "color":uDark.revert_rgba,
@@ -802,7 +785,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
 
                     //I would prefer clear cache one rather than killing it
                     html_element.querySelectorAll("link[rel='stylesheet']")
-                    .forEach(x=>x.setAttribute("href",x.getAttribute("href")+"#cachekiller=1")); // 1 as cache killer is better than random :)
+                    .forEach(x=>x.setAttribute("href",x.getAttribute("href")+"#cachekiller=1"+uDark.fixedRandom)); // 1 as cache killer is better than random :)
                     ///
 
                     html_element.querySelectorAll("[fill],[color],path,[bgcolor]").forEach(coloreditem=>{
@@ -1169,6 +1152,10 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
       {
         return {redirectUrl:data.url.slice(34)}
       }
+      details.responseHeaders= details.responseHeaders.filter(x=>{
+          var a_filter= uDark.headersdo[x.name.toLowerCase()];
+          return a_filter?a_filter(x):true;
+      })
       let filter = browser.webRequest.filterResponseData(details.requestId);
       let decoder=new TextDecoder(details.charset)
       let encoder = new TextEncoder();
@@ -1187,7 +1174,7 @@ browser.webRequest.onHeadersReceived.addListener(function(e){
         filter.write(encoder.encode(details.writeEnd));
         filter.disconnect(); // Low perf if not disconnected !
       }
-      return {}
+      return {responseHeaders:details.responseHeaders}
     }
   }
 }

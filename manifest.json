@@ -9,7 +9,7 @@
     "96": "icons/2x.png"
   },
   "permissions": [
-    "<all_urls>","tabs","browsingDataq","webNavigation", "webRequest", "webRequestBlocking","storage","unlimitedStorage"
+    "<all_urls>","tabs","browsingData","webNavigation", "webRequest", "webRequestBlocking","storage","unlimitedStorage"
 ]
   ,
 
