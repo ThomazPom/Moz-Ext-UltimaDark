@@ -80,23 +80,26 @@ window.dark_object = {
 if(breakpages=false)
 {
 
-uDark.functionPrototypeEditor(Document,Document.prototype.createElement,function(elem,args){
 
-  console.log(args);return ["style"]},
-  (elem,args)=>args[0]=="style",(result)=>{console.log(result,result.__proto__.fill);return result})
 
 uDark.valuePrototypeEditor(Element,"className",(elem,value)=>{console.log(elem,value);return "black"})
 uDark.valuePrototypeEditor(Element,"classList",(elem,value)=>{console.log(elem,value);return ["black"]})
-
- uDark.valuePrototypeEditor(CSS2Properties,"backgroundColor",(elem,value)=>{console.log(elem,value);return "black"})
-uDark.valuePrototypeEditor(CSS2Properties,"background-color",(elem,value)=>{console.log(elem,value);return "black"})
-uDark.valuePrototypeEditor(CSS2Properties,"background",(elem,value)=>{console.log(elem,value);return "black"})
+uDark.valuePrototypeEditor(CSS2Properties,"background-image",(elem,value)=>{console.log(elem,value);return "none"})
+/*done*/uDark.valuePrototypeEditor(CSS2Properties,"backgroundColor",(elem,value)=>{console.log(elem,value);return "black"})
+/*done*/uDark.valuePrototypeEditor(CSS2Properties,"background-color",(elem,value)=>{console.log(elem,value);return "black"})
+/*must add img bg*/uDark.valuePrototypeEditor(CSS2Properties,"background",(elem,value)=>{console.log(elem,value);return "black"})
 //uDark.valuePrototypeEditor(Element,"fill",(elem,value)=>{console.log(elem,value);return ["black"]})
-uDark.valuePrototypeEditor(CSS2Properties,"color",(elem,value)=>{console.log(elem,value);return "lightgreen"})
+/*done*/uDark.valuePrototypeEditor(CSS2Properties,"color",(elem,value)=>{console.log(elem,value);return "lightgreen"})
 uDark.functionPrototypeEditor(DOMTokenList,DOMTokenList.prototype.add,(elem,args)=>{console.log(elem,args);return ["yellow"]});
 
-uDark.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.addRule,(elem,args)=>{console.log(elem,args); return [".have-border","border: 1px solid black;"]})
-uDark.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.insertRule,(elem,args)=>{console.log(elem,args); return [".have-border { border: 1px solid black;}",0]})
+/*done*/uDark.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.addRule,(elem,args)=>{console.log(elem,args); return [".have-border","border: 1px solid black;"]})
+/*done*/uDark.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.insertRule,(elem,args)=>{console.log(elem,args); return [".have-border { border: 1px solid black;}",0]})
+
+//Youtube uses this one
+uDark.functionPrototypeEditor(CSSStyleDeclaration,CSSStyleDeclaration.prototype.setProperty,(elem,args)=>{console.log(elem,args);return args})
+
+// should not be usefull
+
 
 uDark.functionPrototypeEditor(DocumentFragment,DocumentFragment.prototype.append,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
 uDark.functionPrototypeEditor(Element,Element.prototype.append,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
@@ -104,11 +107,31 @@ uDark.functionPrototypeEditor(Document,Document.prototype.append,(elem,args)=>{c
 uDark.functionPrototypeEditor(DocumentFragment,DocumentFragment.prototype.prepend,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
 uDark.functionPrototypeEditor(Element,Element.prototype.prepend,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
 uDark.functionPrototypeEditor(Document,Document.prototype.prepend,(elem,args)=>{console.log(elem,args); return ["NOAPPEND"]})
+
 //Youtube uses this one
 uDark.functionPrototypeEditor(CSSStyleDeclaration,CSSStyleDeclaration.prototype.setProperty,(elem,args)=>{console.log(elem,args);return args})
 
-
+uDark.functionPrototypeEditor(Document,Document.prototype.createElement,function(elem,args){
+  //console.log(elem,args,new Error);
+  return args},
+   (elem,args)=>args[0]=="style",
+   (result)=>
+   {console.log(result);return result})
 }
+
+
+
+//experimental zone
+
+
+//
+
+
+//UserStyles.org append text nodes to style elements 
+uDark.functionPrototypeEditor(Node,Node.prototype.appendChild,(elem,args)=>{(args[0].textContent=uDark.edit_str(args[0].textContent));return args},(elem,value)=>elem instanceof HTMLStyleElement)
+uDark.functionPrototypeEditor(Node,Node.prototype.insertBefore,(elem,args)=>{(args[0].textContent=uDark.edit_str(args[0].textContent));return args},(elem,value)=>elem instanceof HTMLStyleElement)
+
+
 //FINALLY CNN Use this one (webpack)!!!!
 uDark.valuePrototypeEditor(Node,"textContent",(elem,value)=>uDark.send_data_image_to_parser(uDark.edit_str(value)),(elem,value)=>elem instanceof HTMLStyleElement)
 
@@ -120,8 +143,8 @@ uDark.valuePrototypeEditor(CSS2Properties,"background",(elem,value)=>{
 })
 
 
-uDark.valuePrototypeEditor(CSSRule,"cssText",(elem,value)=>uDark.edit_str(value))
-uDark.valuePrototypeEditor(CSSStyleDeclaration,"cssText",(elem,value)=>uDark.edit_str(value))
+uDark.valuePrototypeEditor(CSSRule,"cssText",(elem,value)=>console.log("CSSTEXT OF",elem,"=>",value)||uDark.edit_str(value))
+uDark.valuePrototypeEditor(CSSStyleDeclaration,"cssText",(elem,value)=>console.log("CSSTEXT OF",elem,"=>",value)||uDark.edit_str(value))
 
 
 uDark.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.addRule,(elem,args)=> [args[0], uDark.edit_str(args[1])])
@@ -227,6 +250,9 @@ html_element.querySelectorAll("style").forEach(astyle=>{
         else
           console.log("UD Did not load : ","White list",uDark.userSettings.properWhiteList,"Enabled",!res.disable_webext)
       });
+      browser.webRequest.handlerBehaviorChanged().then(x=>console.log(`In-memory cache flushed`),error=>console.log(`Error: ${error}`));
+      browser.browsingData.removeCache({}).then(x=>console.log(`Browser cache flushed`),error=>console.log(`Error: ${error}`));
+
     },
     install: function() {
       uDark.injectscripts = [dark_object.both.install, dark_object.foreground.inject].map(code => {
@@ -251,14 +277,20 @@ html_element.querySelectorAll("style").forEach(astyle=>{
       fetch("inject_css_suggested.css").then(res=>res.text())
       .then(str=>{
           uDark.inject_css_suggested=uDark.edit_str(str);
-          return fetch("inject_css_override.css")
-
+          return fetch("inject_css_suggested_no_edit.css").then(res=>res.text())
       })
-      .then(res=>res.text())
+      .then(str=>{
+          uDark.inject_css_suggested+=str;
+          return fetch("inject_css_override.css").then(res=>res.text())
+      })
       .then(str=>{
           uDark.inject_css_override=uDark.edit_str(str);
+          return fetch("inject_css_override_no_edit.css").then(res=>res.text())
       })
-      .then(x=>dark_object.background.setListener())
+      .then(str=>{
+          uDark.inject_css_override+=str;
+          dark_object.background.setListener()
+      })
       
       window.uDark = {
         ...uDark,
@@ -342,7 +374,7 @@ html_element.querySelectorAll("style").forEach(astyle=>{
                           div.innerHTML=text;
                           document.body.appendChild(div)
                           var svg  = div.querySelector('svg')
-                          var {width, height} = svg.getBBox(); 
+                          var {width, height} = svg.getBoundingClientRect(); 
                           div.innerHTML=text.replace("<svg",`<svg width="${width}"  height="${height}" ` );
                           svg  = div.querySelector('svg')
                           var can  = document.createElement("canvas")
@@ -352,6 +384,7 @@ html_element.querySelectorAll("style").forEach(astyle=>{
                           can.height=height;
 
                            sourceImage.onload = function(){
+     //                               console.log(width,height);
                                       ctx.drawImage(sourceImage,0,0,width,height);
                                       div.remove()
                                       //So far  svg'sare only used for logos
@@ -615,131 +648,7 @@ html_element.querySelectorAll("style").forEach(astyle=>{
             }
             theImageData.data.set(theImageDataClamped8TMP);
             canvasContext.putImageData(theImageData, 0, 0);
-          },
-          parse_and_edit_html1:function(str,details){
-            var newDoc=new Document
-          var html_element = document.createElement("html")
-
-          html_element.innerHTML=str;//.replace(/"stylesheet"|<script|<img/g,"<anoscript");
-
-          //console.log(html_element,str)
-
-          html_element.querySelectorAll("style,[style]").forEach(astyle=>{
-            var o_substr;
-            var substr;
-            if(astyle instanceof HTMLStyleElement)
-            {
-                  substr=o_substr = astyle.innerHTML;
-            }
-            else{
-                  substr=o_substr=astyle.getAttribute("style");
-                  substr=" "+substr+" ";
-            }
-            substr=uDark.edit_str(substr)
-            //    if(substr.includes("data:image")){
-            substr = uDark.send_data_image_to_parser(substr, details);
-
-            str = str.replace(o_substr, substr);
-          });
-
-          html_element.querySelectorAll("link[rel='icon']").forEach(link=>{
-            str=str.replace(link.outerHTML,link.outerHTML.replace(/(href*=".*?)"/,"$1?ud-bypass_image\""))
-          })
-
-          html_element.querySelectorAll("[fill],[color],path,[bgcolor]").forEach(coloreditem=>{
-            var thecolor
-            var o_outer=coloreditem.outerHTML
-
-          for (const [key, afunction] of Object.entries({
-              "fill":uDark.revert_rgba,
-              "color":uDark.revert_rgba,
-              "bgcolor":uDark.rgba
-            })) {
-                if(uDark.is_color(thecolor=coloreditem.getAttribute(key)))
-
-                coloreditem.setAttribute(
-                  key,afunction(...uDark.eget_color(thecolor)))
-                }
-                str=str.replace(o_outer.slice(0,o_outer.indexOf(">")+1),
-                  coloreditem.outerHTML.slice(0,coloreditem.outerHTML.indexOf(">")+1),
-                  )
-          })
-          html_element.remove();
-          str = str.replace(/integrity=/g, "nointegrity=");
-          
-          if (details.datacount == 1) //inject foreground script
-          {
-            
-
-                var head_tag = str.matchAll(/<head.*?>/g).next();
-                if(head_tag.value)
-                {
-                  var position=head_tag.value.index+head_tag.value[0].length
-                  //  str = str.substring(0, position) + "<link id='ud-link' rel='stylesheet' href='https://pom.pm/Tests/Ultimadark_misc/override.css'>" +str.substring(position)
-                  /* Non overrride styles */
-                  str = str.substring(0, position) + "<style id='ud-style'>"+uDark.inject_css_suggested+"</style>"+str.substring(position);
-                  //  str += "<style id='ud-style'>"+uDark.inject_css_suggested+"</style>";
-                  //  str = str.substring(0, position) + uDark.injectscripts_str+str.substring(position)
-                  headFound = true;
-                }
-                else{
-                  /* Non overrride styles */
-                  str = "<style id='ud-style'>"+uDark.inject_css_suggested+"</style>"+str;
-                }  
-
           }
-          return str;
-          },
-          decodeHtml: function(html) {
-              var txt = document.createElement("textarea");
-              txt.innerHTML = html;
-              return txt.value;
-          },
-          parse_and_edit_html2:function(str,details){
-            details.requestScripts=details.requestScripts||[]
-
-            
-            str= str.replace(/(<script ?.*?>)((.|\n)*?)(<\/script>)/g,(match, g1, g2, g3,g4)=>{
-              var securedScript = {
-                "id":["--ud-SecuredScript-",details.requestScripts.length,"--"].join(""),
-                "content":match
-              }
-              details.requestScripts.push(securedScript);
-              return securedScript.id;
-            });
-
-            str=uDark.send_data_image_to_parser(str,details);
-
-
-            str= str.replace(/(<style ?.*?>)((.|[\r\n])*?)(<\/style>)/g,(match, g1, g2, g3,g4)=>[g1,uDark.edit_str(g2),g4].join(''));
-
-            str=str.replace(/[\s\t]style[\s\t]*?=[\s\t]*?(".*?"|'.*?')/g,(match,g1)=>" style="+uDark.edit_str(g1))
-            
-            str=str.replace(/[\s\t](fill|color|bgcolor)[\s\t]*?=[\s\t]*?("(.*?)"|'(.*?)'|[a-zA-Z0-9#])/g,(match,g1,g2,g3,g4)=>
-              {
-                var usedcolor=g3||g4;
-                var possiblecolor=uDark.is_color(usedcolor)
-           //     console.log(possiblecolor,g1,usedcolor,uDark.attfunc_map[g1],uDark.hex_val,(uDark.attfunc_map[g1])(...(possiblecolor||[]),uDark.hex_val));
-
-             return  [" ",g1,"=",'"',possiblecolor?(uDark.attfunc_map[g1])(...possiblecolor,uDark.hex_val):usedcolor,'"'].join('')
-            }
-            )
-            
-          //  console.log(str);
-            //str= str.replace(/(<style ?.*?>)(.*?)(<\/style>)/g,(match, g1, g2,g3)=>{console.log(match);return match});
-           // console.log(str.match(/(<style.*?>)(.*?)(<\/)/g),str.match(/<style.{0,300}/g).map(x=>x.slice(0,300)))
-            if(details.datacount==1)
-            {
-              str=uDark.inject_inject_css_suggested_tag(str);
-              str=str.replace(/(<body.*?url\()(.*?)(["']?\).*?>)/,(match,g1,g2,g3)=>[g1,g2,"#ud-background-darken",g3].join(""))
-            }
-            str=str.replace(/[\s\t]integrity=/g," nointegrity=")
-            details.requestScripts.forEach(securedScript=>{
-              str=str.replace(securedScript.id,securedScript.content)
-            })
-            return str;
-          }
-
           ,
           parse_and_edit_html3:function(str,details){
 
@@ -782,7 +691,6 @@ html_element.querySelectorAll("style").forEach(astyle=>{
                       //console.log(html_element,image,uDark.send_data_image_to_parser(image.src,details))
                       image.src=uDark.send_data_image_to_parser(image.src,details)
                     })
-
                     //I would prefer clear cache one rather than killing it
                     html_element.querySelectorAll("link[rel='stylesheet']")
                     .forEach(x=>x.setAttribute("href",x.getAttribute("href")+"#cachekiller=1"+uDark.fixedRandom)); // 1 as cache killer is better than random :)
@@ -844,7 +752,7 @@ html_element.querySelectorAll("style").forEach(astyle=>{
         maxbrighttrigger: 135, // nice colors from 135
         logo_light_trigger: 100,
         knownvariables: {},
-        background_match:/(footer[^\/\\]*$)|background|(bg|box|panel|fond|bck)[._-]/i,
+        background_match:/(footer[^\/\\]*$)|background|(bg|box|panel|fond|fundo)[._-]/i,
         rgba_val: function(r, g, b, a) {
           a = typeof a == "number" ? a : 1
           return "rgba(" + (r) + "," + (g) + "," + (b) + "," + (a) + ")"
@@ -1055,7 +963,7 @@ html_element.querySelectorAll("style").forEach(astyle=>{
           str = nochunk
             ?uDark.edit_dynamic_colors_no_chunk(str)
             :uDark.edit_dynamic_colors(str)
-          str = uDark.edit_dynamic_colors(str)
+          //str = uDark.edit_dynamic_colors(str)
           str = uDark.restore_color(str);
           return str; 
         },

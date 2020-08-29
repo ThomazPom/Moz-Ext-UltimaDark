@@ -11,7 +11,7 @@ var myPort = browser.runtime.connect({name:"port-from-cs"});
 window.onload=function()
 {
 var updatefunction = function(event){
-  console.log("Popup will ask background to update lists because of",event)
+  console.log("Popup will ask background to update status and list because of",event)
   var checkbox_status =  Object.fromEntries( [...disable_checkboxes].map( x => [x.id, x.checked]) );
   var action_lists_status =  Object.fromEntries( [blacklist,whitelist,precision_number].map( x => [x.id, x.value||defaultValues[x.id]]) );
     myPort.postMessage(
