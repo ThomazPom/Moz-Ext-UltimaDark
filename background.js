@@ -899,14 +899,13 @@ html_element.querySelectorAll("style").forEach(astyle=>{
         },
   
         prefix_fg_vars: function(str) { 
-          return str.replace(uDark.variableRegex2,(match,g1,g2,g3,g4,g5)=>
+          return str.replace(uDark.variableRegex2,(match,g1,g2,g3)=>
           {
+            //Broke : uDark.prefix_fg_vars("{;--scrollbar:rgba(255,255,255,0.2);--highlight-bg:#1c1b1b;--highlight-color:#fff;--highlight-comment:#999;--highlight-punctuation:#ccc;}")
                       //console.log(2,str,3,g1,4,g2,5,g3,6,g4)
-
-            return g1+g2+":"+(g4?uDark.edit_all_dynamic_colors(g3):uDark.rgba(...uDark.eget_color(g3))  )
-            +";--ud-fg"+g2+":"+(g4?uDark.restore_all_color(g3):uDark.revert_rgba(...uDark.eget_color(g3))  )
-
-            +g5
+           // console.log(match,"\n",g1,"\n",g2,"\n",g3,"\n")
+            return g1+g2+":"+uDark.edit_all_dynamic_colors(g3)
+            +";--ud-fg"+g2+":"+uDark.restore_all_color(g3)  
             
           })
           
@@ -998,10 +997,10 @@ html_element.querySelectorAll("style").forEach(astyle=>{
 
       }
       //uDark.radiusRegex = /(^|[^a-z0-9-])(border-((top|bottom)-(left|right)-)?radius?[\s\t]*?:[\s\t]*?([5-9]|[1-9][0-9]|[1-9][0-9][0-9])[a-zA-Z\s\t%]+)($|["}\n;])/gi,
-        uDark.variableRegex2 = /(^|[^a-z0-9-])(--[a-z0-9-]+)(?:[\s\t]*?:)[\s\t]*((?:#[0-9a-f]{3,8}|(?:rgb|hsl)a?\([%0-9, .]+?\))|(var\(.*?\)))($|[;\n\r}]|!important)/gi,
+        uDark.variableRegex2 = /(^|[^a-z0-9-])(--[a-z0-9-]+)(?:[\s\t]*?:)[\s\t]*(([^;}])*)/gi,
         //uDark.variableBasedRegex = /(^|[^a-z0-9-])var[\s\t]*?\([\s\t]*?(--[a-z0-9-]+)[\s\t]*?\)/gi,
        // uDark.interventRegex = /(^|[^a-z0-9-])(color|background(-color|-image)?)[\s\t]*?:[\s\t]*?[\n]*?([^;}]*?)([^;}]*?['"].*['"][^;}]*?)*?[\s\t]*?(![\s\t]*?important)?[\s\t]*?($|[;}\n\\])/gi
-        uDark.dynamicColorRegex = /(?<!(^|[^a-z0-9-])(--[a-zA-Z0-9-]+|color|fill)(?:[\s\t]*?:)[\s\t]*?)(#[0-9a-f]{3,8}|(rgb|hsl)a?\([%0-9, .]+?\))/gi // Any color .. if not preceded by color attribute :)
+        uDark.dynamicColorRegex = /(?<!(^|[^a-z0-9-])(--[a-zA-Z0-9-]+|color|fill)(?:[\s\t]*?:)[\s\t]*?)(#[0-9a-f]{3,8}|(rgb|hsl)a?\([%0-9, .]+?\))/gi // Any color .. if not preceded by color attribute or is not a var() already edited:)
         uDark.dynamicAllColorRegex = /(#[0-9a-f]{3,8}|(rgb|hsl)a?\([%0-9, .]+?\))/gi // Use in proerty values
       
         //uDark.urlBGRegex = /(^|[^a-z0-9-])(background(-image)?)[\s\t]*?:[\s\t]*?(url\(["']?(.+?)["']?\))/g
@@ -1031,10 +1030,20 @@ html_element.querySelectorAll("style").forEach(astyle=>{
       let encoder = new TextEncoder();
       details.datacount = 0;
       filter.ondata = event => {
+
         details.datacount++
         var str = decoder.decode(event.data, {stream: true});
+        if(details.url.includes("stacks.css"))
+        {
+          console.log(str.includes("--highlight-bg:"),str.match(/--highlight-bg:.*/),str)
+        }
           str = uDark.edit_str(str);
           str = uDark.send_data_image_to_parser(str, details);
+
+           if(details.url.includes("stacks.css"))
+        {
+          console.log(str.includes("--highlight-bg:"),str.match(/--highlight-bg:.*/))
+        }
           filter.write(encoder.encode(str));
         }
       filter.onstop = event => {
