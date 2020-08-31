@@ -393,6 +393,11 @@ html_element.querySelectorAll("style").forEach(astyle=>{
                                       //img1.src = can.toDataURL();
                                       resolve({redirectUrl:islogo?can.toDataURL():details.dataUrl});
                                     };
+                            myImage.onerror = x => {
+                                resolve({})
+                            }
+                            setTimeout(x => resolve({}), 1000);
+
                             sourceImage.src = uDark.svgDataURL(svg)
                 }
 
