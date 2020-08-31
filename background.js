@@ -901,7 +901,7 @@ html_element.querySelectorAll("style").forEach(astyle=>{
         prefix_fg_vars: function(str) { 
           return str.replace(uDark.variableRegex2,(match,g1,g2,g3)=>
           {
-            //Broke : uDark.prefix_fg_vars("{;--scrollbar:rgba(255,255,255,0.2);--highlight-bg:#1c1b1b;--highlight-color:#fff;--highlight-comment:#999;--highlight-punctuation:#ccc;}")
+            //Fixed : uDark.prefix_fg_vars("{;--scrollbar:rgba(255,255,255,0.2);--highlight-bg:#1c1b1b;--highlight-color:#fff;--highlight-comment:#999;--highlight-punctuation:#ccc;}")
                       //console.log(2,str,3,g1,4,g2,5,g3,6,g4)
            // console.log(match,"\n",g1,"\n",g2,"\n",g3,"\n")
             return g1+g2+":"+uDark.edit_all_dynamic_colors(g3)
@@ -1033,17 +1033,9 @@ html_element.querySelectorAll("style").forEach(astyle=>{
 
         details.datacount++
         var str = decoder.decode(event.data, {stream: true});
-        if(details.url.includes("stacks.css"))
-        {
-          console.log(str.includes("--highlight-bg:"),str.match(/--highlight-bg:.*/),str)
-        }
+       
           str = uDark.edit_str(str);
           str = uDark.send_data_image_to_parser(str, details);
-
-           if(details.url.includes("stacks.css"))
-        {
-          console.log(str.includes("--highlight-bg:"),str.match(/--highlight-bg:.*/))
-        }
           filter.write(encoder.encode(str));
         }
       filter.onstop = event => {
