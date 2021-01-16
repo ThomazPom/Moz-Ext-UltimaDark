@@ -375,6 +375,12 @@ html_element.querySelectorAll("style").forEach(astyle=>{
                           document.body.appendChild(div)
                           var svg  = div.querySelector('svg')
                           var {width, height} = svg.getBoundingClientRect(); 
+                          if(!width||!height)
+                          {
+                               var {width, height} = svg.getBBox(); 
+                          } 
+                          console.log(svg.getBoundingClientRect(),svg.getBBox())
+
                           div.innerHTML=text.replace("<svg",`<svg width="${width}"  height="${height}" ` );
                           svg  = div.querySelector('svg')
                           var can  = document.createElement("canvas")
@@ -757,7 +763,7 @@ html_element.querySelectorAll("style").forEach(astyle=>{
         maxbrighttrigger: 135, // nice colors from 135
         logo_light_trigger: 100,
         knownvariables: {},
-        background_match:/(footer[^\/\\]*$)|background|(bg|box|panel|fond|fundo)[._-]/i,
+        background_match:/(footer[^\/\\]*$)|background|(bg|box|panel|fond|fundo|bck)[._-]/i,
         rgba_val: function(r, g, b, a) {
           a = typeof a == "number" ? a : 1
           return "rgba(" + (r) + "," + (g) + "," + (b) + "," + (a) + ")"
@@ -893,12 +899,15 @@ html_element.querySelectorAll("style").forEach(astyle=>{
         restore_color: function(str,regex) {
          // No need to use the restore all as colors are single values or at most var based :)
           return str.replace(uDark.restoreColorRegex,
-            (match,g1,g2,g3,g4,g5,g6)=>
+            (match,g1,g2,g3,g4,g5)=>
             {
-              let possiblecolor = uDark.is_color(g3)
-              let result = g1+g2+":"
-              +(possiblecolor?uDark.revert_rgba(...uDark.eget_color(g3)):
-                g3.replace(/--/g,"--ud-fg--"))+g4
+              console.log([match,g1,g2,g3]);
+              let possiblecolor = uDark.is_color(g2)
+              let result = g1+":"
+              +(possiblecolor?uDark.revert_rgba(...uDark.eget_color(g2)):
+                g2.replace(/--/g,"--ud-fg--"))+g3
+
+              console.log(possiblecolor,result)
               return result
             })
         },
@@ -909,6 +918,15 @@ html_element.querySelectorAll("style").forEach(astyle=>{
             //Fixed : uDark.prefix_fg_vars("{;--scrollbar:rgba(255,255,255,0.2);--highlight-bg:#1c1b1b;--highlight-color:#fff;--highlight-comment:#999;--highlight-punctuation:#ccc;}")
                       //console.log(2,str,3,g1,4,g2,5,g3,6,g4)
            // console.log(match,"\n",g1,"\n",g2,"\n",g3,"\n")
+           let rgbaParams = g3.match(/^([0-9]{1,3}),([0-9]{1,3}),([0-9]{1,3}$)/);
+           if(rgbaParams)
+           {
+            rgbaParams = Object.assign(new Array(4).fill(1),rgbaParams.slice(1).map(parseFloat));
+            console.log(rgbaParams);
+            return g1+g2+":"+uDark.rgba(...rgbaParams,function(){return [...arguments].slice(0,3)}).join(",")
+            +";--ud-fg"+g2+":"+uDark.revert_rgba(...rgbaParams,function(){return [...arguments].slice(0,3)}).join(",")
+            
+           }
             return g1+g2+":"+uDark.edit_all_dynamic_colors(g3)
             +";--ud-fg"+g2+":"+uDark.restore_all_color(g3)  
             
@@ -1009,7 +1027,7 @@ html_element.querySelectorAll("style").forEach(astyle=>{
         uDark.dynamicAllColorRegex = /(#[0-9a-f]{3,8}|(rgb|hsl)a?\([%0-9, .]+?\))/gi // Use in proerty values
       
         //uDark.urlBGRegex = /(^|[^a-z0-9-])(background(-image)?)[\s\t]*?:[\s\t]*?(url\(["']?(.+?)["']?\))/g
-        uDark.restoreColorRegex = /(^|[^a-z0-9-])(color|fill)[\s\t]*?:[\s\t]*(.+?)($|[;\n\r}!])/g // var edits are done in the prefix 
+        uDark.restoreColorRegex = /(?<![a-z0-9-])(color|fill)[\s\t]*?:[\s\t]*(.+?)($|[;\n\r}!])/gi // var edits are done in the prefix 
         uDark.restoreAllColorRegex = /(?:#[0-9a-f]{3,8}|(?:rgb|hsl)a?\([%0-9, .]+?\))/gi // var edit is in the function
         //Variables can use other variables :
         //uDark.restoreVarRegex = /([^a-z0-9-])(--ud-fg--[a-zA-Z0-9]+|color|fill)[\s\t]*?:[\s\t]*?var[\s\t]*?\(.*?($|["}\n;!])/g

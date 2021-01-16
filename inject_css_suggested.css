@@ -39,9 +39,8 @@ path,svg {
 
    default path fill is black otherwise*/
 }
-s
 a{
-   color:rgb(0, 0, 238); 
+   color:rgb(0, 0, 255); 
 }
 html,body{
    background:var(--main-bgcolor);
