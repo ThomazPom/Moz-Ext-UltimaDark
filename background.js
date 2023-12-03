@@ -379,7 +379,7 @@ html_element.querySelectorAll("style").forEach(astyle=>{
                           {
                                var {width, height} = svg.getBBox(); 
                           } 
-                          console.log(svg.getBoundingClientRect(),svg.getBBox())
+                          //console.log(svg.getBoundingClientRect(),svg.getBBox())
 
                           div.innerHTML=text.replace("<svg",`<svg width="${width}"  height="${height}" ` );
                           svg  = div.querySelector('svg')
@@ -690,7 +690,7 @@ html_element.querySelectorAll("style").forEach(astyle=>{
                     //    anoscript.remove();
                     //});
                     html_element.querySelectorAll("style").forEach(astyle=>{
-                      astyle.innerHTML=uDark.edit_str(astyle.innerHTML);
+                      astyle.innerHTML=uDark.edit_str(astyle.innerHTML,astyle.sheet);
                       astyle.classList.add("ud-edited-background")
                       astyle.innerHTML=uDark.send_data_image_to_parser(astyle.innerHTML,details);
                     });
@@ -901,36 +901,50 @@ html_element.querySelectorAll("style").forEach(astyle=>{
           return str.replace(uDark.restoreColorRegex,
             (match,g1,g2,g3,g4,g5)=>
             {
-              console.log([match,g1,g2,g3]);
+              //console.log([match,g1,g2,g3]);
               let possiblecolor = uDark.is_color(g2)
               let result = g1+":"
               +(possiblecolor?uDark.revert_rgba(...uDark.eget_color(g2)):
                 g2.replace(/--/g,"--ud-fg--"))+g3
 
-              console.log(possiblecolor,result)
+              //console.log(possiblecolor,result)
               return result
             })
         },
-  
-        prefix_fg_vars: function(str) { 
-          return str.replace(uDark.variableRegex2,(match,g1,g2,g3)=>
-          {
-            //Fixed : uDark.prefix_fg_vars("{;--scrollbar:rgba(255,255,255,0.2);--highlight-bg:#1c1b1b;--highlight-color:#fff;--highlight-comment:#999;--highlight-punctuation:#ccc;}")
-                      //console.log(2,str,3,g1,4,g2,5,g3,6,g4)
-           // console.log(match,"\n",g1,"\n",g2,"\n",g3,"\n")
-           let rgbaParams = g3.match(/^([0-9]{1,3}),([0-9]{1,3}),([0-9]{1,3}$)/);
-           if(rgbaParams)
-           {
-            rgbaParams = Object.assign(new Array(4).fill(1),rgbaParams.slice(1).map(parseFloat));
-            console.log(rgbaParams);
-            return g1+g2+":"+uDark.rgba(...rgbaParams,function(){return [...arguments].slice(0,3)}).join(",")
-            +";--ud-fg"+g2+":"+uDark.revert_rgba(...rgbaParams,function(){return [...arguments].slice(0,3)}).join(",")
+        do_css_rules: function(cssRules) {
+
+          return [...cssRules].map(rule => {
             
-           }
-            return g1+g2+":"+uDark.edit_all_dynamic_colors(g3)
-            +";--ud-fg"+g2+":"+uDark.restore_all_color(g3)  
-            
+
+              if(rule.cssRules && rule.cssRules.length){
+                uDark.do_css_rules(rule.cssRules);
+            }
+            else if(rule.style){  
+                let variables = Object.values(rule.style).filter(x=>x.startsWith("--"))
+                variables.forEach(variableName=>{
+                      let value=rule.style.getPropertyValue(variableName)
+                      let newName = "--ud-fg"+ variableName ;
+                      rule.style.setProperty(variableName,uDark.edit_all_dynamic_colors(value));
+                      rule.style.setProperty(newName,uDark.restore_all_color(value) );
+                });
+                
+            }
+            else{
+              // If a rule is not edited or empty it ends here
+              // console.log("RULE",rule)
+            }
+
+          return rule;
           })
+        },
+        prefix_fg_vars: function(str,cssStyleSheet) { 
+         
+          if(!cssStyleSheet)
+          {
+            cssStyleSheet = new CSSStyleSheet();
+            cssStyleSheet.replaceSync(str);
+          }
+          return uDark.do_css_rules(cssStyleSheet.cssRules).map(r=>r.cssText).join("\n");
           
         },
         restore_var_color: function(str) { 
@@ -938,9 +952,6 @@ html_element.querySelectorAll("style").forEach(astyle=>{
           return str.replace(uDark.restoreVarRegex,match=>match.replace(/--/g,"--ud-fg--"))
           .replace(/\/\*evi\*\/(.*?)\/\*svi\*\//g,match=>uDark.revert_rgba(...uDark.eget_color(match)))
           
-        },
-        restore_comments: function(str) {
-          return str.replace(/\/\*ori.+?eri\*\/|\/\*sri\*\//g, "")
         },
         set_the_round_border: function(str) {
           return str.replace(uDark.radiusRegex, "$1;filter:brightness(0.95);box-shadow: 0 0 5px 1px rgba(0,0,0,0)!important;border:1px solid rgba(255,255,255,0.2)!important;$2$7");
@@ -974,20 +985,41 @@ html_element.querySelectorAll("style").forEach(astyle=>{
         edit_dynamic_colors_no_chunk:str=>str.replace(uDark.dynamicColorRegex,(match,g1,g2,g3)=>uDark.rgba(...uDark.eget_color(match))),
         edit_all_dynamic_colors:str=>str.replace(uDark.dynamicAllColorRegex,(match)=>uDark.rgba(...uDark.eget_color(match))),
         edit_dynamic_colors:str=>str.replace( new RegExp("{[^{}]*?}","gis"),uDark.edit_dynamic_colors_no_chunk),
-        edit_str:function(str)
+        edit_str:function(str,cssStyleSheet,verifyIntegrity=false)
         {
-          let nochunk = !str.includes("{");
-          str = nochunk
-            ?uDark.edit_str_named_colors_no_chunk(str)
-            :uDark.edit_str_named_colors(str)
-          str = uDark.prefix_fg_vars(str);
-
-          str = nochunk
-            ?uDark.edit_dynamic_colors_no_chunk(str)
-            :uDark.edit_dynamic_colors(str)
-          //str = uDark.edit_dynamic_colors(str)
+          if(!cssStyleSheet)
+          {
+            cssStyleSheet = new CSSStyleSheet()
+            cssStyleSheet.replaceSync(str+"\n.integrity_rule{}");
+          } 
+   
+          nochunk = !cssStyleSheet.cssRules.length;
+          if(nochunk)
+          {
+            str = uDark.edit_str_named_colors_no_chunk(str)
+            str = uDark.edit_dynamic_colors_no_chunk(str)
+          }
+          else{
+            if(verifyIntegrity)
+            {  
+              let rejected=cssStyleSheet.cssRules[cssStyleSheet.cssRules.length-1].selectorText!=".integrity_rule";
+              
+              if(verifyIntegrity && rejected)
+              {
+                let rejectError =  new Error("Rejected integrity rule");
+                //console.log(rejectError.stack)
+                return rejectError;
+              }
+            }
+            str = uDark.edit_str_named_colors(str)
+            str = uDark.prefix_fg_vars(str);
+            
+            str = uDark.edit_dynamic_colors(str)
+            
+          }
+         
           str = uDark.restore_color(str);
-          return str; 
+          return str;
         },
         getallBgimages:function(adocument,acondition=(elem,url)=>true){
            var url, B= [], A= adocument.body.querySelectorAll('*:not([ud-backgrounded])');
@@ -1012,7 +1044,7 @@ html_element.querySelectorAll("style").forEach(astyle=>{
            dv.getComputedStyle(who,"").getPropertyValue(css) || '';
           },
           send_data_image_to_parser: function(str, details) {
-            if (str.includes('data:')) {
+            if (str.includes('data:') && !uDark.userSettings.disable_image_edition ) {
               str=str.replace(/(?<!(base64IMG=))(data:image\/(png|jpe?g|svg\+xml);base64,([^\"]*?))([)'"]|$)/g,"https://data-image.com?base64IMG=$&")
            } 
             return str;
@@ -1023,7 +1055,7 @@ html_element.querySelectorAll("style").forEach(astyle=>{
         uDark.variableRegex2 = /(^|[^a-z0-9-])(--[a-z0-9-]+)(?:[\s\t]*?:)[\s\t]*(([^;}])*)/gi,
         //uDark.variableBasedRegex = /(^|[^a-z0-9-])var[\s\t]*?\([\s\t]*?(--[a-z0-9-]+)[\s\t]*?\)/gi,
        // uDark.interventRegex = /(^|[^a-z0-9-])(color|background(-color|-image)?)[\s\t]*?:[\s\t]*?[\n]*?([^;}]*?)([^;}]*?['"].*['"][^;}]*?)*?[\s\t]*?(![\s\t]*?important)?[\s\t]*?($|[;}\n\\])/gi
-        uDark.dynamicColorRegex = /(?<!(^|[^a-z0-9-])(--[a-zA-Z0-9-]+|color|fill)(?:[\s\t]*?:)[\s\t]*?)(#[0-9a-f]{3,8}|(rgb|hsl)a?\([%0-9, .]+?\))/gi // Any color .. if not preceded by color attribute or is not a var() already edited:)
+        uDark.dynamicColorRegex = /(?<!(^|[^a-z0-9-])(--[a-zA-Z0-9-]+|color|fill)(?:[\s\t]*?:)[\s\t]*?)(#[0-9a-f]{3,8}|(rgb|hsl)a?\([%0-9, .]+?\))/gi // Any color .. if not preceded by color attribute or is not a --xyz already edited:)
         uDark.dynamicAllColorRegex = /(#[0-9a-f]{3,8}|(rgb|hsl)a?\([%0-9, .]+?\))/gi // Use in proerty values
       
         //uDark.urlBGRegex = /(^|[^a-z0-9-])(background(-image)?)[\s\t]*?:[\s\t]*?(url\(["']?(.+?)["']?\))/g
@@ -1039,27 +1071,38 @@ html_element.querySelectorAll("style").forEach(astyle=>{
     editBeforeRequest:function(details)
     {
       //console.log(details)
-      if(details.originUrl && details.originUrl.startsWith("moz-extension://")||
+      if(details.originUrl && (details.originUrl.startsWith("moz-extension://"))||
         (details.documentUrl || details.url).match(uDark.userSettings.exclude_regex)) {
         return {}
       }
       details.isStyleSheet = ["stylesheet"].includes(details.type)
       details.isImage = ["image"].includes(details.type)
-      if (details.isImage) {
+      if (details.isImage && !uDark.userSettings.disable_image_edition) {
         return uDark.edit_an_image(details);
       }
       let filter = browser.webRequest.filterResponseData(details.requestId);
       let decoder=new TextDecoder()
       let encoder = new TextEncoder();
       details.datacount = 0;
+      details.rejectedValues = "";
       filter.ondata = event => {
 
-        details.datacount++
-        var str = decoder.decode(event.data, {stream: true});
-       
-          str = uDark.edit_str(str);
-          str = uDark.send_data_image_to_parser(str, details);
-          filter.write(encoder.encode(str));
+          details.datacount++
+          var str = decoder.decode(event.data, {stream: true});      
+          transformResult = uDark.edit_str(details.rejectedValues + str,false,true);
+          if(transformResult.message)
+          {
+            //console.log(details,transformResult.message)
+            details.rejectedValues += str;
+            filter.write(encoder.encode(""));
+          }
+          else{
+            
+            //console.log(details,"Accepted integrity rule")
+            details.rejectedValues = "";
+            transformResult = uDark.send_data_image_to_parser(transformResult, details);
+            filter.write(encoder.encode(transformResult));
+          }
         }
       filter.onstop = event => {
         filter.disconnect(); // Low perf if not disconnected !
@@ -1078,7 +1121,7 @@ html_element.querySelectorAll("style").forEach(astyle=>{
       while (n--) {
         details.headersLow[details.responseHeaders[n].name.toLowerCase()] = details.responseHeaders[n].value;
       }
-      if(!(details.headersLow["content-type"]||"text/").includes("text/")) return {}
+      if(!(details.headersLow["content-type"]||"text/html").includes("text/html")) return {}
       details.charset = ((details.headersLow["content-type"]||"").match(/charset=([0-9A-Z-]+)/i) || ["","utf-8"])[1]
       if(details.url.startsWith("https://data-image.com/?base64IMG="))
       {
