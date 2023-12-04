@@ -40,6 +40,8 @@ window.dark_object = {
           //setInterval(function()
           //{
             var docscrollW = document.body.scrollWidth;
+
+          // TODO: ITS DISABLED FOR NOW IDK WHAT TO DO WITH IT
           window.disabled && uDark.getallBgimages(
             document,(elem,url)=>!url.includes("#ud-background")
             && elem.scrollWidth/docscrollW>.4
@@ -143,8 +145,8 @@ uDark.valuePrototypeEditor(CSS2Properties,"background",(elem,value)=>{
 })
 
 
-uDark.valuePrototypeEditor(CSSRule,"cssText",(elem,value)=>console.log("CSSTEXT OF",elem,"=>",value)||uDark.edit_str(value))
-uDark.valuePrototypeEditor(CSSStyleDeclaration,"cssText",(elem,value)=>console.log("CSSTEXT OF",elem,"=>",value)||uDark.edit_str(value))
+uDark.valuePrototypeEditor(CSSRule,"cssText",(elem,value)=>console.log("CSSTEXT OF",elem,"=>",value)||uDark.edit_str(value),(elem,value)=>!elem.is_easy_get)
+uDark.valuePrototypeEditor(CSSStyleDeclaration,"cssText",(elem,value)=>console.log("CSSTEXT OF",elem,"=>",value)||uDark.edit_str(value),(elem,value)=>!elem.is_easy_get)
 
 
 uDark.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.addRule,(elem,args)=> [args[0], uDark.edit_str(args[1])])
@@ -744,7 +746,7 @@ html_element.querySelectorAll("style").forEach(astyle=>{
   both: {
     install: function() {
       document.o_createElement = document.createElement;
-      const CSS_COLOR_NAMES = ["AliceBlue", "AntiqueWhite", "Aqua", "Aquamarine", "Azure", "Beige", "Bisque", "Black", "BlanchedAlmond", "Blue", "BlueViolet", "Brown", "BurlyWood", "CadetBlue", "Chartreuse", "Chocolate", "Coral", "CornflowerBlue", "Cornsilk", "Crimson", "Cyan", "DarkBlue", "DarkCyan", "DarkGoldenRod", "DarkGray", "DarkGrey", "DarkGreen", "DarkKhaki", "DarkMagenta", "DarkOliveGreen", "DarkOrange", "DarkOrchid", "DarkRed", "DarkSalmon", "DarkSeaGreen", "DarkSlateBlue", "DarkSlateGray", "DarkSlateGrey", "DarkTurquoise", "DarkViolet", "DeepPink", "DeepSkyBlue", "DimGray", "DimGrey", "DodgerBlue", "FireBrick", "FloralWhite", "ForestGreen", "Fuchsia", "Gainsboro", "GhostWhite", "Gold", "GoldenRod", "Gray", "Grey", "Green", "GreenYellow", "HoneyDew", "HotPink", "IndianRed", "Indigo", "Ivory", "Khaki", "Lavender", "LavenderBlush", "LawnGreen", "LemonChiffon", "LightBlue", "LightCoral", "LightCyan", "LightGoldenRodYellow", "LightGray", "LightGrey", "LightGreen", "LightPink", "LightSalmon", "LightSeaGreen", "LightSkyBlue", "LightSlateGray", "LightSlateGrey", "LightSteelBlue", "LightYellow", "Lime", "LimeGreen", "Linen", "Magenta", "Maroon", "MediumAquaMarine", "MediumBlue", "MediumOrchid", "MediumPurple", "MediumSeaGreen", "MediumSlateBlue", "MediumSpringGreen", "MediumTurquoise", "MediumVioletRed", "MidnightBlue", "MintCream", "MistyRose", "Moccasin", "NavajoWhite", "Navy", "OldLace", "Olive", "OliveDrab", "Orange", "OrangeRed", "Orchid", "PaleGoldenRod", "PaleGreen", "PaleTurquoise", "PaleVioletRed", "PapayaWhip", "PeachPuff", "Peru", "Pink", "Plum", "PowderBlue", "Purple", "RebeccaPurple", "Red", "RosyBrown", "RoyalBlue", "SaddleBrown", "Salmon", "SandyBrown", "SeaGreen", "SeaShell", "Sienna", "Silver", "SkyBlue", "SlateBlue", "SlateGray", "SlateGrey", "Snow", "SpringGreen", "SteelBlue", "Tan", "Teal", "Thistle", "Tomato", "Turquoise", "Violet", "Wheat", "White", "WhiteSmoke", "Yellow", "YellowGreen", ]
+      const CSS_COLOR_NAMES = ["inherit","AliceBlue", "AntiqueWhite", "Aqua", "Aquamarine", "Azure", "Beige", "Bisque", "Black", "BlanchedAlmond", "Blue", "BlueViolet", "Brown", "BurlyWood", "CadetBlue", "Chartreuse", "Chocolate", "Coral", "CornflowerBlue", "Cornsilk", "Crimson", "Cyan", "DarkBlue", "DarkCyan", "DarkGoldenRod", "DarkGray", "DarkGrey", "DarkGreen", "DarkKhaki", "DarkMagenta", "DarkOliveGreen", "DarkOrange", "DarkOrchid", "DarkRed", "DarkSalmon", "DarkSeaGreen", "DarkSlateBlue", "DarkSlateGray", "DarkSlateGrey", "DarkTurquoise", "DarkViolet", "DeepPink", "DeepSkyBlue", "DimGray", "DimGrey", "DodgerBlue", "FireBrick", "FloralWhite", "ForestGreen", "Fuchsia", "Gainsboro", "GhostWhite", "Gold", "GoldenRod", "Gray", "Grey", "Green", "GreenYellow", "HoneyDew", "HotPink", "IndianRed", "Indigo", "Ivory", "Khaki", "Lavender", "LavenderBlush", "LawnGreen", "LemonChiffon", "LightBlue", "LightCoral", "LightCyan", "LightGoldenRodYellow", "LightGray", "LightGrey", "LightGreen", "LightPink", "LightSalmon", "LightSeaGreen", "LightSkyBlue", "LightSlateGray", "LightSlateGrey", "LightSteelBlue", "LightYellow", "Lime", "LimeGreen", "Linen", "Magenta", "Maroon", "MediumAquaMarine", "MediumBlue", "MediumOrchid", "MediumPurple", "MediumSeaGreen", "MediumSlateBlue", "MediumSpringGreen", "MediumTurquoise", "MediumVioletRed", "MidnightBlue", "MintCream", "MistyRose", "Moccasin", "NavajoWhite", "Navy", "OldLace", "Olive", "OliveDrab", "Orange", "OrangeRed", "Orchid", "PaleGoldenRod", "PaleGreen", "PaleTurquoise", "PaleVioletRed", "PapayaWhip", "PeachPuff", "Peru", "Pink", "Plum", "PowderBlue", "Purple", "RebeccaPurple", "Red", "RosyBrown", "RoyalBlue", "SaddleBrown", "Salmon", "SandyBrown", "SeaGreen", "SeaShell", "Sienna", "Silver", "SkyBlue", "SlateBlue", "SlateGray", "SlateGrey", "Snow", "SpringGreen", "SteelBlue", "Tan", "Teal", "Thistle", "Tomato", "Turquoise", "Violet", "Wheat", "White", "WhiteSmoke", "Yellow", "YellowGreen", ]
       .sort(function(a, b){  return b.length - a.length;});  // ASC  -> a.length - b.length   // DESC -> b.length - a.length
       const CSS_COLOR_NAMES_RGX = "(" + (CSS_COLOR_NAMES.join("|")) + ")([,;\\s\\n!\"})]|$)"
 
@@ -809,7 +811,6 @@ html_element.querySelectorAll("style").forEach(astyle=>{
           
         },
         revert_rgba: function(r, g, b, a,render) {
-
           a = typeof a == "number" ? a : 1
 
           var mincol = uDark.min(r, g, b);
@@ -839,35 +840,45 @@ html_element.querySelectorAll("style").forEach(astyle=>{
         escapeRegExp: function(string) {
           return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
         },
-        eget_color: function(anycolor, force1 = "color", force2 = "color") {
-          return uDark.get_color(force1 + ":" + anycolor, force2,false,anycolor)
-        },
-        get_color: function(colorprop, whatget = "background-color", thespanp = false,anycolor=false) {
-          if(anycolor=="none") // linkedin ???????? does not work
+        eget_color: function(anycolor,editColorF=false, groups=[],glue=",") {
+          if(anycolor.includes("var(--bs-primary-text-rgb"))
           {
-          //  console.log(colorprop)
-            //return [0,0,0,0]
+            console.log(new Error("eget_color called with var(--bs-primary-text-rgb)"));
           }
-          if (!uDark.userSettings.disable_cache && !thespanp && uDark.knownvariables[colorprop + whatget]) {
-            return uDark.knownvariables[colorprop + whatget];
-          }
-          let thespan = thespanp || document.o_createElement("meta")
-          thespan.is_easy_get = true; 
-          if('o_ud_set_cssText' in thespan.style)
+          if(groups.length && groups[1])
+          // In this case we should return a string (with edits or not)
           {
-            thespan.style.o_ud_set_cssText=colorprop;
+            groups=groups.map(x=>x||"")
+            
+            let [g1,g2,g3]=groups
+            let theColor = uDark.is_color(`rgba(${g2})`,true,false)
+            if(!theColor)
+            {
+              return anycolor
+            }
+            theColorFilled = theColor.concat(Array(4-theColor.length).fill(1))
+            if(editColorF)
+            {
+             // console.log(theColorFilled,editColorF,editColorF(...theColorFilled,z=>[g1,theColor,g3].join(glue)))
+              return editColorF(...theColorFilled,(...args)=>`${g1}${args.slice(0,theColor.length).join(glue)}${g3}` )
+            }
+            return theColorFilled;
           }
-          else{
-            thespan.style.cssText=colorprop;
+
+          let theColor = uDark.is_color(anycolor)
+          if(!theColor)
+          {
+            // otherwise if it is not a color, we should warn as its a bug in regexpes
+            console.error(anycolor + " is not a color")
+            return [4,3,2,1]
           }
-          document.head.appendChild(thespan)
-          var style = getComputedStyle(thespan)
-          var returnvalue = [...[...(style[whatget].matchAll(/[0-9\.]+/g))].map(x => parseFloat(x)), 1].splice(0, 4)
-          thespan.remove();
-          if (!uDark.userSettings.disable_cache) {
-            uDark.knownvariables[colorprop + whatget] = returnvalue;
+          if(editColorF)
+          {
+            // Caller asks us to apply a transformation, probably rgba, hex or revert_rgba
+            return editColorF(...theColor)
           }
-          return returnvalue
+          return theColor
+          
         },
         get_inject_css_suggested_tag:x=>"<style id='ud-style'>"+uDark.inject_css_suggested+"</style>",
         inject_inject_css_suggested_tag:function(str)
@@ -878,21 +889,47 @@ html_element.querySelectorAll("style").forEach(astyle=>{
               :uDark.get_inject_css_suggested_tag()+str
             return str
         },
-        is_color: function(possiblecolor) {
-          //if(possiblecolor.match(/^(rgba?\([0,.\s\t]+?\))/))
-          //{
-          //     return possiblecolor.match(/((rgb)|,)/g).map(x=>0)
-          // }
+        is_color: function(possiblecolor,as_float=true,fill=false,spanp=false) {
+          let cache_key=`${possiblecolor}${as_float}${fill}`
+          if (!uDark.userSettings.disable_cache && !spanp && uDark.knownvariables[cache_key]) {
+            return uDark.knownvariables[cache_key];
+          }
+          
           if(!possiblecolor)
             {return false}
-          let testresult = uDark.eget_color(possiblecolor, "background", "background-color")
-          return testresult.filter(x => x).length ? testresult : false
+          let markerColor=  "rgba(1, 2, 4, 0.99)"
+          spanp = spanp||document.o_createElement("meta")
+          spanp.is_easy_get = true;
+          let colorprop = `background:${markerColor}; background-color :${possiblecolor};`
+          document.head.appendChild(spanp);
+
+          'o_ud_set_cssText' in spanp.style?
+          (spanp.style.o_ud_set_cssText=colorprop)
+          :(spanp.style.cssText=colorprop)
+          let keptColor = getComputedStyle(spanp).backgroundColor;
+          spanp.remove();
+          let result = keptColor!= markerColor?keptColor:false;
+          if(result && as_float)
+          {
+            result = result.match(/[0-9\.]+/g).map(parseFloat)
+            if(fill)
+            {            
+              result=result.concat(Array(4-result.length).fill(1))
+            } 
+          }
+          
+          if (!uDark.userSettings.disable_cache) {
+            uDark.knownvariables[cache_key] = result;
+          }
+          return result;
         },
 
         restore_all_color: function(str) {
-          return str.replace(uDark.restoreAllColorRegex,match=>
-            uDark.revert_rgba(...uDark.eget_color(match))
-          ).replace(/(^|[^a-z0-9-])--([a-z0-9-])/g,"$1--ud-fg--$2")
+
+          return str.replace(uDark.restoreAllColorRegex,(match,...args)=>
+          {
+              return uDark.eget_color(match,uDark.revert_rgba,args)
+          }).replace(/(^|[^a-z0-9-])--([a-z0-9-])/g,"$1--ud-fg--$2")
         },
         
 
@@ -902,9 +939,10 @@ html_element.querySelectorAll("style").forEach(astyle=>{
             (match,g1,g2,g3,g4,g5)=>
             {
               //console.log([match,g1,g2,g3]);
-              let possiblecolor = uDark.is_color(g2)
-              let result = g1+":"
-              +(possiblecolor?uDark.revert_rgba(...uDark.eget_color(g2)):
+              let possiblecolor = uDark.is_color(g2,false)
+              possiblecolor = possiblecolor && possiblecolor!="rgba(0, 0, 0, 0)";
+
+              let result = g1+":"+(possiblecolor?uDark.revert_rgba(...uDark.eget_color(g2)):
                 g2.replace(/--/g,"--ud-fg--"))+g3
 
               //console.log(possiblecolor,result)
@@ -912,7 +950,6 @@ html_element.querySelectorAll("style").forEach(astyle=>{
             })
         },
         do_css_rules: function(cssRules) {
-
           return [...cssRules].map(rule => {
             
 
@@ -921,10 +958,13 @@ html_element.querySelectorAll("style").forEach(astyle=>{
             }
             else if(rule.style){  
                 let variables = Object.values(rule.style).filter(x=>x.startsWith("--"))
+                
                 variables.forEach(variableName=>{
+
                       let value=rule.style.getPropertyValue(variableName)
                       let newName = "--ud-fg"+ variableName ;
                       rule.style.setProperty(variableName,uDark.edit_all_dynamic_colors(value));
+               //       console.log(variableName,value,newName)  
                       rule.style.setProperty(newName,uDark.restore_all_color(value) );
                 });
                 
@@ -983,7 +1023,17 @@ html_element.querySelectorAll("style").forEach(astyle=>{
             })  
          },
         edit_dynamic_colors_no_chunk:str=>str.replace(uDark.dynamicColorRegex,(match,g1,g2,g3)=>uDark.rgba(...uDark.eget_color(match))),
-        edit_all_dynamic_colors:str=>str.replace(uDark.dynamicAllColorRegex,(match)=>uDark.rgba(...uDark.eget_color(match))),
+
+
+        edit_all_dynamic_colors: function(str) {
+          return str.replace(uDark.dynamicAllColorRegex,(match,...args)=>
+          {
+            //console.log(match,args,uDark.eget_color(match,uDark.revert_rgba,args))
+            return uDark.eget_color(match,uDark.rgba,args)
+          
+            })
+        },
+
         edit_dynamic_colors:str=>str.replace( new RegExp("{[^{}]*?}","gis"),uDark.edit_dynamic_colors_no_chunk),
         edit_str:function(str,cssStyleSheet,verifyIntegrity=false)
         {
@@ -1052,15 +1102,15 @@ html_element.querySelectorAll("style").forEach(astyle=>{
 
       }
       //uDark.radiusRegex = /(^|[^a-z0-9-])(border-((top|bottom)-(left|right)-)?radius?[\s\t]*?:[\s\t]*?([5-9]|[1-9][0-9]|[1-9][0-9][0-9])[a-zA-Z\s\t%]+)($|["}\n;])/gi,
-        uDark.variableRegex2 = /(^|[^a-z0-9-])(--[a-z0-9-]+)(?:[\s\t]*?:)[\s\t]*(([^;}])*)/gi,
+       // uDark.variableRegex2 = /(^|[^a-z0-9-])(--[a-z0-9-]+)(?:[\s\t]*?:)[\s\t]*(([^;}])*)/gi,
         //uDark.variableBasedRegex = /(^|[^a-z0-9-])var[\s\t]*?\([\s\t]*?(--[a-z0-9-]+)[\s\t]*?\)/gi,
        // uDark.interventRegex = /(^|[^a-z0-9-])(color|background(-color|-image)?)[\s\t]*?:[\s\t]*?[\n]*?([^;}]*?)([^;}]*?['"].*['"][^;}]*?)*?[\s\t]*?(![\s\t]*?important)?[\s\t]*?($|[;}\n\\])/gi
         uDark.dynamicColorRegex = /(?<!(^|[^a-z0-9-])(--[a-zA-Z0-9-]+|color|fill)(?:[\s\t]*?:)[\s\t]*?)(#[0-9a-f]{3,8}|(rgb|hsl)a?\([%0-9, .]+?\))/gi // Any color .. if not preceded by color attribute or is not a --xyz already edited:)
-        uDark.dynamicAllColorRegex = /(#[0-9a-f]{3,8}|(rgb|hsl)a?\([%0-9, .]+?\))/gi // Use in proerty values
+        uDark.dynamicAllColorRegex = /(?:#[0-9a-f]{3,8}|(?:rgb|hsl)a?\([%0-9, .\/]+?\))|^(\()?([%0-9, .\/]{5,25})(\))?$/gi// Use in property values
       
         //uDark.urlBGRegex = /(^|[^a-z0-9-])(background(-image)?)[\s\t]*?:[\s\t]*?(url\(["']?(.+?)["']?\))/g
         uDark.restoreColorRegex = /(?<![a-z0-9-])(color|fill)[\s\t]*?:[\s\t]*(.+?)($|[;\n\r}!])/gi // var edits are done in the prefix 
-        uDark.restoreAllColorRegex = /(?:#[0-9a-f]{3,8}|(?:rgb|hsl)a?\([%0-9, .]+?\))/gi // var edit is in the function
+        uDark.restoreAllColorRegex = /(?:#[0-9a-f]{3,8}|(?:rgb|hsl)a?\([%0-9, .\/]+?\))|^(\()?([%0-9, .\/]{5,25})(\))?$/gi // var edit is in the function
         //Variables can use other variables :
         //uDark.restoreVarRegex = /([^a-z0-9-])(--ud-fg--[a-zA-Z0-9]+|color|fill)[\s\t]*?:[\s\t]*?var[\s\t]*?\(.*?($|["}\n;!])/g
         //uDark.matchStylePart=new RegExp(["{[^}]+?((",[uDark.radiusRegex,uDark.variableRegex,uDark.interventRegex ].map(x=>x.source).join(")|("),"))[^}]+?}"].join(""),"gi");
@@ -1077,9 +1127,9 @@ html_element.querySelectorAll("style").forEach(astyle=>{
       }
       details.isStyleSheet = ["stylesheet"].includes(details.type)
       details.isImage = ["image"].includes(details.type)
-      if (details.isImage && !uDark.userSettings.disable_image_edition) {
-        return uDark.edit_an_image(details);
-      }
+      if (details.isImage) {
+        return uDark.userSettings.disable_image_edition? {}:uDark.edit_an_image(details);
+       }
       let filter = browser.webRequest.filterResponseData(details.requestId);
       let decoder=new TextDecoder()
       let encoder = new TextEncoder();
