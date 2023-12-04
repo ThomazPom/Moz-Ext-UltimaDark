@@ -706,7 +706,7 @@ html_element.querySelectorAll("style").forEach(astyle=>{
                     })
                     //I would prefer clear cache one rather than killing it
                     html_element.querySelectorAll("link[rel='stylesheet']")
-                    .forEach(x=>x.setAttribute("href",x.getAttribute("href")+"#cachekiller=1"+uDark.fixedRandom)); // 1 as cache killer is better than random :)
+                    .forEach(x=>x.setAttribute("href",x.getAttribute("href").trim()+"#cachekiller=1"+uDark.fixedRandom)); // 1 as cache killer is better than random :)
                     ///
 
                     html_element.querySelectorAll("[fill],[color],path,[bgcolor]").forEach(coloreditem=>{
@@ -1061,6 +1061,7 @@ html_element.querySelectorAll("style").forEach(astyle=>{
                 return rejectError;
               }
             }
+            
             str = uDark.edit_str_named_colors(str)
             str = uDark.prefix_fg_vars(str);
             
