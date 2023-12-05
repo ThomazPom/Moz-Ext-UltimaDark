@@ -746,7 +746,7 @@ html_element.querySelectorAll("style").forEach(astyle=>{
   both: {
     install: function() {
       document.o_createElement = document.createElement;
-      const CSS_COLOR_NAMES = ["inherit","AliceBlue", "AntiqueWhite", "Aqua", "Aquamarine", "Azure", "Beige", "Bisque", "Black", "BlanchedAlmond", "Blue", "BlueViolet", "Brown", "BurlyWood", "CadetBlue", "Chartreuse", "Chocolate", "Coral", "CornflowerBlue", "Cornsilk", "Crimson", "Cyan", "DarkBlue", "DarkCyan", "DarkGoldenRod", "DarkGray", "DarkGrey", "DarkGreen", "DarkKhaki", "DarkMagenta", "DarkOliveGreen", "DarkOrange", "DarkOrchid", "DarkRed", "DarkSalmon", "DarkSeaGreen", "DarkSlateBlue", "DarkSlateGray", "DarkSlateGrey", "DarkTurquoise", "DarkViolet", "DeepPink", "DeepSkyBlue", "DimGray", "DimGrey", "DodgerBlue", "FireBrick", "FloralWhite", "ForestGreen", "Fuchsia", "Gainsboro", "GhostWhite", "Gold", "GoldenRod", "Gray", "Grey", "Green", "GreenYellow", "HoneyDew", "HotPink", "IndianRed", "Indigo", "Ivory", "Khaki", "Lavender", "LavenderBlush", "LawnGreen", "LemonChiffon", "LightBlue", "LightCoral", "LightCyan", "LightGoldenRodYellow", "LightGray", "LightGrey", "LightGreen", "LightPink", "LightSalmon", "LightSeaGreen", "LightSkyBlue", "LightSlateGray", "LightSlateGrey", "LightSteelBlue", "LightYellow", "Lime", "LimeGreen", "Linen", "Magenta", "Maroon", "MediumAquaMarine", "MediumBlue", "MediumOrchid", "MediumPurple", "MediumSeaGreen", "MediumSlateBlue", "MediumSpringGreen", "MediumTurquoise", "MediumVioletRed", "MidnightBlue", "MintCream", "MistyRose", "Moccasin", "NavajoWhite", "Navy", "OldLace", "Olive", "OliveDrab", "Orange", "OrangeRed", "Orchid", "PaleGoldenRod", "PaleGreen", "PaleTurquoise", "PaleVioletRed", "PapayaWhip", "PeachPuff", "Peru", "Pink", "Plum", "PowderBlue", "Purple", "RebeccaPurple", "Red", "RosyBrown", "RoyalBlue", "SaddleBrown", "Salmon", "SandyBrown", "SeaGreen", "SeaShell", "Sienna", "Silver", "SkyBlue", "SlateBlue", "SlateGray", "SlateGrey", "Snow", "SpringGreen", "SteelBlue", "Tan", "Teal", "Thistle", "Tomato", "Turquoise", "Violet", "Wheat", "White", "WhiteSmoke", "Yellow", "YellowGreen", ]
+      const CSS_COLOR_NAMES = ["AliceBlue", "AntiqueWhite", "Aqua", "Aquamarine", "Azure", "Beige", "Bisque", "Black", "BlanchedAlmond", "Blue", "BlueViolet", "Brown", "BurlyWood", "CadetBlue", "Chartreuse", "Chocolate", "Coral", "CornflowerBlue", "Cornsilk", "Crimson", "Cyan", "DarkBlue", "DarkCyan", "DarkGoldenRod", "DarkGray", "DarkGrey", "DarkGreen", "DarkKhaki", "DarkMagenta", "DarkOliveGreen", "DarkOrange", "DarkOrchid", "DarkRed", "DarkSalmon", "DarkSeaGreen", "DarkSlateBlue", "DarkSlateGray", "DarkSlateGrey", "DarkTurquoise", "DarkViolet", "DeepPink", "DeepSkyBlue", "DimGray", "DimGrey", "DodgerBlue", "FireBrick", "FloralWhite", "ForestGreen", "Fuchsia", "Gainsboro", "GhostWhite", "Gold", "GoldenRod", "Gray", "Grey", "Green", "GreenYellow", "HoneyDew", "HotPink", "IndianRed", "Indigo", "Ivory", "Khaki", "Lavender", "LavenderBlush", "LawnGreen", "LemonChiffon", "LightBlue", "LightCoral", "LightCyan", "LightGoldenRodYellow", "LightGray", "LightGrey", "LightGreen", "LightPink", "LightSalmon", "LightSeaGreen", "LightSkyBlue", "LightSlateGray", "LightSlateGrey", "LightSteelBlue", "LightYellow", "Lime", "LimeGreen", "Linen", "Magenta", "Maroon", "MediumAquaMarine", "MediumBlue", "MediumOrchid", "MediumPurple", "MediumSeaGreen", "MediumSlateBlue", "MediumSpringGreen", "MediumTurquoise", "MediumVioletRed", "MidnightBlue", "MintCream", "MistyRose", "Moccasin", "NavajoWhite", "Navy", "OldLace", "Olive", "OliveDrab", "Orange", "OrangeRed", "Orchid", "PaleGoldenRod", "PaleGreen", "PaleTurquoise", "PaleVioletRed", "PapayaWhip", "PeachPuff", "Peru", "Pink", "Plum", "PowderBlue", "Purple", "RebeccaPurple", "Red", "RosyBrown", "RoyalBlue", "SaddleBrown", "Salmon", "SandyBrown", "SeaGreen", "SeaShell", "Sienna", "Silver", "SkyBlue", "SlateBlue", "SlateGray", "SlateGrey", "Snow", "SpringGreen", "SteelBlue", "Tan", "Teal", "Thistle", "Tomato", "Turquoise", "Violet", "Wheat", "White", "WhiteSmoke", "Yellow", "YellowGreen", ]
       .sort(function(a, b){  return b.length - a.length;});  // ASC  -> a.length - b.length   // DESC -> b.length - a.length
       const CSS_COLOR_NAMES_RGX = "(" + (CSS_COLOR_NAMES.join("|")) + ")([,;\\s\\n!\"})]|$)"
 
@@ -757,13 +757,15 @@ html_element.querySelectorAll("style").forEach(astyle=>{
         min: Math.min,
         max: Math.max,
         round: Math.round,
-        minbright: 150,
-        minbrightbg: 30,
+        minbright: 53, // Min text brightness, 0 is black, 100 is white
+        maxbright: 100, // Max text brightness, 0 is black
+        hueShiftfg: 0, // Hue shift for text, 0 is no shift, 360 is full shift
+        satBostfg: 1.1, // Saturation boost for text, 0 is no boost, 5 a nice boost
+        satBostbg: 1, // Saturation boost for background, 0 is no boost, 5 a nice boost
+        hueShiftbg: 0, // Hue shift for background, 0 is no shift, 360 is full shift
+        minbrightbg: 10, // Min background brightness, 100 is fully white, 50 keeps all colors
         nonBreakScriptIdent: "§§IDENTIFIER§§",
-        maxbright: 255, // Max text brightness
-        maxbrightbg: 145, // main bgcolor
-        maxbrighttrigger: 135, // nice colors from 135
-        logo_light_trigger: 100,
+        maxbrightbg: 45, // Max background brightness, 0 is black, 50 keeps all colors
         knownvariables: {},
         background_match:/(footer[^\/\\]*$)|background|(bg|box|panel|fond|fundo|bck)[._-]/i,
         rgba_val: function(r, g, b, a) {
@@ -779,72 +781,69 @@ html_element.querySelectorAll("style").forEach(astyle=>{
           +(a==1?"":(a*255).toString(16).padStart(2,"0"))
         },
 
-        set_oricolor: (ori, sri) => "/*ori*" + ori + "*eri*/" + sri + "/*sri*/",
-        res_oricolor: x => x.match(/\/\*ori\*(.*?)\*eri\*\//)[1],
-        revert_mode2: (x, multiplier) => uDark.min(uDark.round(x * multiplier), 255),
-        rgba_mode1: (x, delta) => uDark.max(x - delta, uDark.minbrightbg),
-        rgba_mode2: (x, multiplier) => uDark.max(x * multiplier, uDark.minbrightbg),
-        rgba_mode3: (x, multiplier) => uDark.round(x * multiplier + uDark.minbrightbg),
-        rgba: function(r, g, b, a,render=false) {
-          a = typeof a == "number" ? a : 1
-          //  var trigger = uDark.max(r,g,b);
-          var trigger = (r + g + b) / 3;
-          var mincol = uDark.min(r, g, b);
-          //    if(maxcol<=200){return "rgba("+max(r,200)+","+max(g,200)+","+max(b,200)+","+(a)+")";}
-          if (trigger < uDark.maxbrighttrigger) {
-            //   return uDark.rgba_val(...[r,g,b].map(x => x),a); // Keep same dark
-            return (render||uDark.rgba_val)(...[r, g, b].map(x => x + uDark.minbrightbg), a); // Pre Light(better contrast) 
-            //  return uDark.rgba_val(...[r,g,b].map(x => uDark.max(uDark.minbrightbg,x)),a); // Set at minimum brightness of background colors
-          }
-          //         return uDark.rgba_val(...[r,g,b].map(x => uDark.rgba_mode1(x,maxcol-uDark.maxbrightbg)),a);
-          // return uDark.rgba_val(...[r,g,b].map(x => uDark.rgba_mode2(x,uDark.maxbrightbg/maxcol)),a);
-          //return uDark.rgba_val(...[r,g,b].map(x => uDark.rgba_mode3(x,(uDark.maxbrightbg-uDark.minbrightbg)/maxcol)),a);
-          //a=uDark.min(a,Math.pow((r+g+b)/-3+255,1.25))
-          ;
+        HSLToRGB:(h, s, l) => {
+          s /= 100;
+          l /= 100;
+          const k = n => (n + h / 30) % 12;
+          const a = s * Math.min(l, 1 - l);
+          const f = n =>
+            l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+          return [255 * f(0), 255 * f(8), 255 * f(4)];
+        },
+        RGBToHSL :(r, g, b) => {
+          r /= 255;
+          g /= 255;
+          b /= 255;
+          const l = Math.max(r, g, b);
+          const s = l - Math.min(r, g, b);
+          const h = s
+            ? l === r
+              ? (g - b) / s
+              : l === g
+              ? 2 + (b - r) / s
+              : 4 + (r - g) / s
+            : 0;
+          return [
+            60 * h < 0 ? 60 * h + 360 : 60 * h,
+            100 * (s ? (l <= 0.5 ? s / (2 * l - s) : s / (2 - (2 * l - s))) : 0),
+            (100 * (2 * l - s)) / 2,
+          ];
+        },
+        
 
-          var delta = mincol;
-          var delta2 = uDark.min(255 - mincol /*keep original contrast*/ , mincol /*do not revert already dark backgrounds*/ );
-          var rgbarr=[r, g, b].map(x => (uDark.maxbrightbg - uDark.minbrightbg) / 255 * (x - delta) + uDark.minbrightbg + delta2);
-          rgbarr=rgbarr.map(x=>uDark.round(Math.pow(x,1.02))); /*little secret, better contrast*/
-          
-          return (render||uDark.rgba_val)(...rgbarr,a);
-          
+        rgba: function(r, g, b, a,render=false) {
+          // hsl L rule :x<50?x:100-x
+            render = (render||uDark.rgba_val)
+            a = typeof a == "number" ? a : 1
+            let [h,s,l] = uDark.RGBToHSL(r, g, b)
+            
+            l=l<50?l:100-l
+            if(l>uDark.maxbrightbg||l<uDark.maxbrightbg)
+            {
+              let range = uDark.maxbrightbg-uDark.minbrightbg
+              l=(l*range/50)+uDark.minbrightbg;
+            }
+            let [r2,g2,b2] = uDark.HSLToRGB(h+uDark.hueShiftbg ,s*uDark.satBostbg,l)
+            return render(...[r2,g2,b2],a); 
+
         },
         revert_rgba: function(r, g, b, a,render) {
+          render = (render||uDark.rgba_val)
           a = typeof a == "number" ? a : 1
+          let [h,s,l] = uDark.RGBToHSL(r, g, b)
+          l=l<50?100-l:l
+          
+            if(l>uDark.maxbright||l<uDark.minbright)
+            {
+              let range = uDark.maxbright-uDark.minbright
+              l=(l*range/100)+uDark.minbright;
+            }
 
-          var mincol = uDark.min(r, g, b);
-         
-          if (mincol >= uDark.minbright) {
-            return (render||uDark.rgba_val)(r, g, b, a)
-          }
-/*
-          var rgbarr=[r,g,b].map(x=>(uDark.maxbright-uDark.minbright)/255*x);
-          var maxcol=uDark.max(...rgbarr);
-          var delta =  uDark.maxbright-maxcol;
-          return uDark.rgba_val(...rgbarr.map(x => Math.round(x+delta)), a)
-  */
-          //var avg = (r+ g+ b)/3;
-          
-          var delta = uDark.minbright - mincol;
-          r = r + delta;
-          g = g + delta;
-          b = b + delta;
-          var multiplier = uDark.maxbright / uDark.max(r, g, b)
-          return (render||uDark.rgba_val)(...[r, g, b].map(x => uDark.revert_mode2(x, multiplier)), a)
-          
-        },
-        onlyUnique: function(value, index, self) {
-          return self.indexOf(value) === index;
-        },
-        escapeRegExp: function(string) {
-          return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+          let [r2,g2,b2] = uDark.HSLToRGB(h+uDark.hueShiftfg ,s*uDark.satBostfg,l)
+          return render(...[r2,g2,b2],a); 
         },
         eget_color: function(anycolor,editColorF=false, groups=[],glue=",") {
-          if(anycolor.includes("var(--bs-primary-text-rgb"))
-          {
-            console.log(new Error("eget_color called with var(--bs-primary-text-rgb)"));
-          }
+         
           if(groups.length && groups[1])
           // In this case we should return a string (with edits or not)
           {
@@ -880,15 +879,6 @@ html_element.querySelectorAll("style").forEach(astyle=>{
           return theColor
           
         },
-        get_inject_css_suggested_tag:x=>"<style id='ud-style'>"+uDark.inject_css_suggested+"</style>",
-        inject_inject_css_suggested_tag:function(str)
-        {
-            var head_tag = str.match(/<head ?.*?>/);
-            str=head_tag?
-              str.replace(head_tag[0],head_tag[0]+uDark.get_inject_css_suggested_tag())
-              :uDark.get_inject_css_suggested_tag()+str
-            return str
-        },
         is_color: function(possiblecolor,as_float=true,fill=false,spanp=false) {
           let cache_key=`${possiblecolor}${as_float}${fill}`
           if (!uDark.userSettings.disable_cache && !spanp && uDark.knownvariables[cache_key]) {
@@ -915,7 +905,7 @@ html_element.querySelectorAll("style").forEach(astyle=>{
             if(fill)
             {            
               result=result.concat(Array(4-result.length).fill(1))
-            } 
+            }
           }
           
           if (!uDark.userSettings.disable_cache) {
@@ -985,12 +975,6 @@ html_element.querySelectorAll("style").forEach(astyle=>{
             cssStyleSheet.replaceSync(str);
           }
           return uDark.do_css_rules(cssStyleSheet.cssRules).map(r=>r.cssText).join("\n");
-          
-        },
-        restore_var_color: function(str) { 
-
-          return str.replace(uDark.restoreVarRegex,match=>match.replace(/--/g,"--ud-fg--"))
-          .replace(/\/\*evi\*\/(.*?)\/\*svi\*\//g,match=>uDark.revert_rgba(...uDark.eget_color(match)))
           
         },
         set_the_round_border: function(str) {
