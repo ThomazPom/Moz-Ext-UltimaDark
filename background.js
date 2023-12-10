@@ -953,7 +953,7 @@ html_element.querySelectorAll("style").forEach(astyle=>{
           if(!theColor)
           {
             // otherwise if it is not a color, we should warn as its a bug in regexpes
-            console.error(anycolor + " is not a color")
+            console.error(anycolor + " is not a color",{theColor,anycolor,editColorF,groups,glue})
             return [4,3,2,1]
           }
           if(editColorF)
@@ -968,7 +968,8 @@ html_element.querySelectorAll("style").forEach(astyle=>{
           
           if(!possiblecolor)
           {return false}
-          if(possiblecolor=="rgba(0, 0, 0, 0)")
+          let black_rgba="rgba(0, 0, 0, 0)"
+          if(possiblecolor==black_rgba)
           {
             return [0,0,0,0]
           }
@@ -990,7 +991,7 @@ html_element.querySelectorAll("style").forEach(astyle=>{
             return false;
           }
           // rgba(0, 0, 0, 0) is a valid color but not a valid background, browser set it to none
-          if(style.backgroundColor==possiblecolor); 
+          if(style.backgroundColor==possiblecolor && style.backgroundColor!="rgba(0, 0, 0, 0)"); 
           {
             // Browser said it is a color but doubt it is a valid one, we need a further check
             document.head.appendChild(option);
