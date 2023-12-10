@@ -1,5 +1,6 @@
 # target path
 del ./UltimaDark.zip
+del ./UltimaDark
 $path = "./"
 # construct archive path
 $DateTime = (Get-Date -Format "yyyyMMddHHmmss")

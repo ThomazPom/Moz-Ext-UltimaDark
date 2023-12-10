@@ -192,9 +192,13 @@ html_element.querySelectorAll("style").forEach(astyle=>{
       astyle.setAttribute("style",uDark.edit_str(astyle.getAttribute("style")));
     });
     return html_element.innerHTML;
- },(elem,value)=>value && value.toString().includes('style')
-        ||elem instanceof HTMLStyleElement); //toString : sombe object can redefine tostring to generate thzir inner
-        console.log("UltimaDark is loaded",window);
+ },
+ (elem,value)=>value && value.toString().includes('style')    ||elem instanceof HTMLStyleElement); //toString : sombe object can redefine tostring to generate thzir inner
+  
+ 
+ console.log("UltimaDark is loaded",window);
+    
+
     }
   },
   background: {
@@ -548,16 +552,16 @@ html_element.querySelectorAll("style").forEach(astyle=>{
               {
                 continue imgDataLoop;
               }*/
-              var maxcol = uDark.max(r, g, b) // Local max col
+              var maxcol = Math.max(r, g, b) // Local max col
               var delta = 255 - maxcol // 255 is the future logo brightness; can be configurable
               if (delta2 && a && (r + g + b) < 1) {
                 delta -= delta2; // Experimental : if pic has black and white do not set black entirely white
               
               }
                        
-            r = uDark.min(Math.pow(r + delta,1.05),255);
-            g = uDark.min(Math.pow(g + delta,1.05),255);
-            b = uDark.min(Math.pow(b + delta,1.05),255); // experimental power up whites in logos; but how much ?
+            r = Math.min(Math.pow(r + delta,1.05),255);
+            g = Math.min(Math.pow(g + delta,1.05),255);
+            b = Math.min(Math.pow(b + delta,1.05),255); // experimental power up whites in logos; but how much ?
 
            /*   r = r + delta;
               g = g + delta;
@@ -607,9 +611,9 @@ html_element.querySelectorAll("style").forEach(astyle=>{
                   var a = (number >> 24) & 0xff
                   //if((r+g+b)/3>200)
                   //{
-                    r= uDark.round(r*0.7)
-                    g=uDark.round(g*0.7)
-                    b=uDark.round(b*0.7)
+                    r= Math.round(r*0.7)
+                    g=Math.round(g*0.7)
+                    b=Math.round(b*0.7)
                   //}
                   var newColor = ((a << 24)) | (b << 16) | (g << 8) | r;
                   theImageDataUint32TMP[n] = newColor;
@@ -640,7 +644,7 @@ html_element.querySelectorAll("style").forEach(astyle=>{
               //continue imgDataLoop; //does not work with gradients
               var a = (number >> 24) & max_a
               var oa = a;
-              // var rgbarr = [r,g,b].map(x => uDark.maxbrightbg *(x/uDark.max(r,g,b)));
+              // var rgbarr = [r,g,b].map(x => uDark.max_bright_bg *(x/uDark.max(r,g,b)));
               //r=uDark.max( r-100,0)//rgbarr[0];
               //g=uDark.max( g-100,0)//rgbarr[1];
               //b=uDark.max( b-100,0)//rgbarr[2];
@@ -649,10 +653,10 @@ html_element.querySelectorAll("style").forEach(astyle=>{
               //b=rgbarr[2];
               //  a=Math.abs(uDark.max(r,g,b)-255);
               //a=uDark.min(a,(r+g+b)/-3+255); // linear
-              a = uDark.min(a, Math.pow((r + g + b) / -3 + 255, 1.25)); // pow, solves gradients & keeps colors; 0 means full dark;
+              a = Math.min(a, Math.pow((r + g + b) / -3 + 255, 1.25)); // pow, solves gradients & keeps colors; 0 means full dark;
               //cant fully alpha : if text is on white(to alpha) div and div on an image, text will be hard to read
               if (a < 1) {
-                r = g = b = uDark.minbrightbg;
+                r = g = b = uDark.min_bright_bg_trigger;
                 a = oa;
                 // r=g=b=0;
               }
@@ -754,18 +758,15 @@ html_element.querySelectorAll("style").forEach(astyle=>{
         userSettings:{},
         colorRegex:new RegExp(CSS_COLOR_NAMES_RGX, "gi"),
         CSS_COLOR_NAMES_RGX:"(" + (CSS_COLOR_NAMES.join("|")) + ")",
-        min: Math.min,
-        max: Math.max,
-        round: Math.round,
-        minbright: 53, // Min text brightness, 0 is black, 100 is white
-        maxbright: 100, // Max text brightness, 0 is black
+        min_bright_fg: 50, // Text with luminace under this value will be brightened from this value up to max_bright_fg_trigger
+        max_bright_fg_trigger: 127, // Text with luminace over this value will be kept as is.
         hueShiftfg: 0, // Hue shift for text, 0 is no shift, 360 is full shift
         satBostfg: 1.1, // Saturation boost for text, 0 is no boost, 5 a nice boost
         satBostbg: 1, // Saturation boost for background, 0 is no boost, 5 a nice boost
         hueShiftbg: 0, // Hue shift for background, 0 is no shift, 360 is full shift
-        minbrightbg: 10, // Min background brightness, 100 is fully white, 50 keeps all colors
+        min_bright_bg_trigger: 0.1, // backgrounds with luminace under this value will remain as is
         nonBreakScriptIdent: "§§IDENTIFIER§§",
-        maxbrightbg: 45, // Max background brightness, 0 is black, 50 keeps all colors
+        max_bright_bg: 0.4, // backgrounds with luminace over this value will be darkened from this value down to min_bright_bg_trigger
         knownvariables: {},
         background_match:/(footer[^\/\\]*$)|background|(bg|box|panel|fond|fundo|bck)[._-]/i,
         rgba_val: function(r, g, b, a) {
@@ -781,66 +782,178 @@ html_element.querySelectorAll("style").forEach(astyle=>{
           +(a==1?"":(a*255).toString(16).padStart(2,"0"))
         },
 
-        HSLToRGB:(h, s, l) => {
-          s /= 100;
-          l /= 100;
-          const k = n => (n + h / 30) % 12;
-          const a = s * Math.min(l, 1 - l);
-          const f = n =>
-            l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
-          return [255 * f(0), 255 * f(8), 255 * f(4)];
-        },
-        RGBToHSL :(r, g, b) => {
-          r /= 255;
-          g /= 255;
-          b /= 255;
-          const l = Math.max(r, g, b);
-          const s = l - Math.min(r, g, b);
-          const h = s
-            ? l === r
-              ? (g - b) / s
-              : l === g
-              ? 2 + (b - r) / s
-              : 4 + (r - g) / s
-            : 0;
-          return [
-            60 * h < 0 ? 60 * h + 360 : 60 * h,
-            100 * (s ? (l <= 0.5 ? s / (2 * l - s) : s / (2 - (2 * l - s))) : 0),
-            (100 * (2 * l - s)) / 2,
-          ];
+         hslToRgb:(h, s, l)=>{
+          let r, g, b;
+        
+          if (s === 0) {
+            r = g = b = l; // achromatic
+          } else {
+            const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+            const p = 2 * l - q;
+            r = uDark.hueToRgb(p, q, h + 1/3);
+            g = uDark.hueToRgb(p, q, h);
+            b = uDark.hueToRgb(p, q, h - 1/3);
+          }
+        
+          return [Math.round(r * 255),Math. round(g * 255), Math.round(b * 255)];
         },
         
+        hueToRgb:(p, q, t)=>{
+          if (t < 0) t += 1;
+          if (t > 1) t -= 1;
+          if (t < 1/6) return p + (q - p) * 6 * t;
+          if (t < 1/2) return q;
+          if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+          return p;
+        },
+        rgbToHsl:(r, g, b)=>{
+          (r /= 255), (g /= 255), (b /= 255);
+          const vmax = Math.max(r, g, b), vmin = Math.min(r, g, b);
+          let h, s, l = (vmax + vmin) / 2;
+        
+          if (vmax === vmin) {
+            return [0, 0, l]; // achromatic
+          }
+        
+          const d = vmax - vmin;
+          s = l > 0.5 ? d / (2 - vmax - vmin) : d / (vmax + vmin);
+          if (vmax === r) h = (g - b) / d + (g < b ? 6 : 0);
+          if (vmax === g) h = (b - r) / d + 2;
+          if (vmax === b) h = (r - g) / d + 4;
+          h /= 6;
+        
+          return [h, s, l];
+        },
+        RGBToLightness:(r,g,b)=>{
+	
+          const l = Math.max(r, g, b);
+          const s = l - Math.min(r, g, b);
+          return (2 * l - s) / 2;
+        },
+         sRGBtoLin:(colorChannel)=> {
+          // Send this function a decimal sRGB gamma encoded color value
+          // between 0.0 and 1.0, and it returns a linearized value.
+  
+      if ( colorChannel <= 0.04045 ) {
+              return colorChannel / 12.92;
+          }
+          else {
+              return Math.pow((( colorChannel + 0.055)/1.055),2.4);
+          }
+      },
+      
+      getLuminance:(r,g,b)=>
+      {
+        return (0.2126 * uDark.sRGBtoLin(r/255) + 0.7152 * uDark.sRGBtoLin(g/255) + 0.0722 * uDark.sRGBtoLin(b/255));
+      },
+      getPerceivedLigtness:(r,g,b)=>{
+        return uDark.YtoLstar(uDark.getLuminance(r,g,b));
+      },
+      YtoLstar:(Y) =>{
+        // Send this function a luminance value between 0.0 and 1.0,
+        // and it returns L* which is "perceptual lightness"
 
-        rgba: function(r, g, b, a,render=false) {
-          // hsl L rule :x<50?x:100-x
+        if ( Y <= (216/24389)) {       // The CIE standard states 0.008856 but 216/24389 is the intent for 0.008856451679036
+                return Y * (24389/27);  // The CIE standard states 903.3, but 24389/27 is the intent, making 903.296296296296296
+            } else {
+                return Math.pow(Y,(1/3)) * 116 - 16;
+            }
+        },
+        calcMaxPerceiveidLigtness:() =>
+        { 
+          console.log("Processing max perceveid light with actual settings, please wait ...")
+          let actualPerceivedLigtness=0;
+          let last_text="";
+          for (var hue = 0; hue<=360; hue+=1) {
+            for (var lum = 0; lum<=100; lum+=1/3) {
+                let rgb_arr1 = uDark.hslToRgb(hue/360 ,1,lum/100);
+                let rgb_arr= uDark.rgba(...rgb_arr1,1,(...args)=>args);
+                let calcMaxPerceiveidLigtness= uDark.getPerceivedLigtness(...rgb_arr);
+                if(calcMaxPerceiveidLigtness>actualPerceivedLigtness)
+                {
+                  last_text=["hsl",hue,lum,"= rgb",rgb_arr1,">",rgb_arr,"is brighter than",actualPerceivedLigtness,"with",calcMaxPerceiveidLigtness,"lum"]
+                  actualPerceivedLigtness=calcMaxPerceiveidLigtness;
+                }
+            }
+          }
+          console.log(...last_text);
+          
+          return last_text.filter(x=>!x.bold);
+        },
+        rgba: (r, g, b, a,render=false)=> {
+            // Lets remove any brightness from the color
             render = (render||uDark.rgba_val)
             a = typeof a == "number" ? a : 1
-            let [h,s,l] = uDark.RGBToHSL(r, g, b)
+            //https://www.desmos.com/calculator/5u9ipi2neg
+            // Keeps blacks, boosts intermediate colors, and kills color with too much lightness
+            let B=uDark.min_bright_bg_trigger;
+            let [h,s,l] = uDark.rgbToHsl(r, g, b); 
             
-            l=l<50?l:100-l
-            if(l>uDark.maxbrightbg||l<uDark.maxbrightbg)
+            if(l>B)
             {
-              let range = uDark.maxbrightbg-uDark.minbrightbg
-              l=(l*range/50)+uDark.minbrightbg;
+              
+              if(l>0.5)
+              {
+                l=1-l; // Invert the lightness for bightest colors
+              }
+               let A=uDark.max_bright_bg
+               l = Math.sin(Math.PI*l)*(A-B)+B;
             }
-            let [r2,g2,b2] = uDark.HSLToRGB(h+uDark.hueShiftbg ,s*uDark.satBostbg,l)
-            return render(...[r2,g2,b2],a); 
+              
+            
+          
+            
+                      
+            
+            [r,g,b] = uDark.hslToRgb(h ,s,l);
+            return render(...[r,g,b],a);
 
         },
         revert_rgba: function(r, g, b, a,render) {
           render = (render||uDark.rgba_val)
           a = typeof a == "number" ? a : 1
-          let [h,s,l] = uDark.RGBToHSL(r, g, b)
-          l=l<50?100-l:l
           
-            if(l>uDark.maxbright||l<uDark.minbright)
+          let ligthness = uDark.RGBToLightness(r,g,b);
+          if(ligthness<uDark.max_bright_fg_trigger) // Above this value, we will not touch the color, as it is already bright
+          {
+            if(ligthness<128) // Reuse the ligthness value to avoid a second calculation,
+            // plus half the time, we will not need to do the calculation as the color is already in the bright range
             {
-              let range = uDark.maxbright-uDark.minbright
-              l=(l*range/100)+uDark.minbright;
+              let [h,s,l] = uDark.rgbToHsl(r, g, b);
+                if(l<50)
+                {
+                  l=1-l; // Invert the lightness for darkest colors
+                }
+                [r,g,b] = uDark.hslToRgb(h ,s,l);
             }
+            if(ligthness<uDark.min_bright_fg)
+            {
+              
+            }
+            //   {
+            //     let range = uDark.max_bright_fg_trigger-uDark.min_bright_fg;
+            //     [r,g,b] = [r,g,b].map(x=>x*range/255);
+            //   }
+            // [r,g,b] = [r,g,b].map(x=>x-uDark.min_bright_bg_trigger);
 
-          let [r2,g2,b2] = uDark.HSLToRGB(h+uDark.hueShiftfg ,s*uDark.satBostfg,l)
-          return render(...[r2,g2,b2],a); 
+          }
+          // let [h,s,l] = uDark.RGBToHSL(r, g, b)
+
+          // if(l<uDark.max_bright_fg_trigger)
+          // {
+          //   l=l<50?l:100-l ;
+          //   if(l<uDark.min_bright_fg)
+          //   {
+          //     let range = uDark.max_bright_fg_trigger-uDark.min_bright_fg
+          //     l=(l*range/100);
+          //   }
+          //   l+=uDark.min_bright_fg;
+          //   [r,g,b] = uDark.HSLToRGB(h+uDark.hueShiftfg ,s*uDark.satBostfg,l)
+
+          // }
+
+          
+          return render(...[r,g,b],a); 
         },
         eget_color: function(anycolor,editColorF=false, groups=[],glue=",") {
          
@@ -880,25 +993,42 @@ html_element.querySelectorAll("style").forEach(astyle=>{
           
         },
         is_color: function(possiblecolor,as_float=true,fill=false,spanp=false) {
+          
+          if(!possiblecolor)
+          {return false}
+          if(possiblecolor=="rgba(0, 0, 0, 0)")
+          {
+            return [0,0,0,0]
+          }
+          
           let cache_key=`${possiblecolor}${as_float}${fill}`
           if (!uDark.userSettings.disable_cache && !spanp && uDark.knownvariables[cache_key]) {
             return uDark.knownvariables[cache_key];
           }
-          
-          if(!possiblecolor)
-            {return false}
-          let markerColor=  "rgba(1, 2, 4, 0.99)"
-          spanp = spanp||document.o_createElement("meta")
-          spanp.is_easy_get = true;
-          let colorprop = `background:${markerColor}; background-color :${possiblecolor};`
-          document.head.appendChild(spanp);
-
-          'o_ud_set_cssText' in spanp.style?
-          (spanp.style.o_ud_set_cssText=colorprop)
-          :(spanp.style.cssText=colorprop)
-          let keptColor = getComputedStyle(spanp).backgroundColor;
-          spanp.remove();
-          let result = keptColor!= markerColor?keptColor:false;
+          possiblecolor = possiblecolor.trim().toLowerCase();
+          let option=new Option();
+          let style = option.style;
+          'o_ud_set_backgroundColor' in style?
+          (style.o_ud_set_backgroundColor=possiblecolor)
+          :(style.backgroundColor = possiblecolor); // Must be instructions inside parenthesis to ensure it is taken in account
+          let result = style.backgroundColor; // Must be done in 2 steps to avoid same value as possiblecolor
+          if(!style.backgroundColor)
+          {
+            // Impossible color : browser said so
+            return false;
+          }
+          // rgba(0, 0, 0, 0) is a valid color but not a valid background, browser set it to none
+          if(style.backgroundColor==possiblecolor); 
+          {
+            // Browser said it is a color but doubt it is a valid one, we need a further check
+            document.head.appendChild(option);
+            result = getComputedStyle(option).background // On invalid colors, background will be none here
+            option.remove();
+            if(result=="none") // On invalid colors or not fully filled variables colors, background will be none here
+            {
+              return false;
+            }
+          }
           if(result && as_float)
           {
             result = result.match(/[0-9\.]+/g).map(parseFloat)
@@ -953,9 +1083,9 @@ html_element.querySelectorAll("style").forEach(astyle=>{
 
                       let value=rule.style.getPropertyValue(variableName)
                       let newName = "--ud-fg"+ variableName ;
-                      rule.style.setProperty(variableName,uDark.edit_all_dynamic_colors(value));
-               //       console.log(variableName,value,newName)  
-                      rule.style.setProperty(newName,uDark.restore_all_color(value) );
+                     rule.style.setProperty(variableName,uDark.edit_all_dynamic_colors(value));
+                    //  console.log(variableName,value,newName)  
+                     rule.style.setProperty(newName,uDark.restore_all_color(value) );
                 });
                 
             }
@@ -974,8 +1104,10 @@ html_element.querySelectorAll("style").forEach(astyle=>{
             cssStyleSheet = new CSSStyleSheet();
             cssStyleSheet.replaceSync(str);
           }
-          return uDark.do_css_rules(cssStyleSheet.cssRules).map(r=>r.cssText).join("\n");
-          
+          let rules=uDark.do_css_rules(cssStyleSheet.cssRules).map(r=>r.cssText);
+          imports=str.match(/@import.+?(;|$|\n)/gmi)||[];
+          // console.log( imports.concat(rules).join("\n"));
+          return imports.concat(rules).join("\n");
         },
         set_the_round_border: function(str) {
           return str.replace(uDark.radiusRegex, "$1;filter:brightness(0.95);box-shadow: 0 0 5px 1px rgba(0,0,0,0)!important;border:1px solid rgba(255,255,255,0.2)!important;$2$7");
@@ -1002,7 +1134,7 @@ html_element.querySelectorAll("style").forEach(astyle=>{
                 {
                   return match;
                 }
-                return uDark.rgba_val(...uDark.eget_color(g1))+g2;
+                return uDark.rgba_val(...uDark.eget_color(g1,))+g2;
               })
             })  
          },
@@ -1012,7 +1144,7 @@ html_element.querySelectorAll("style").forEach(astyle=>{
         edit_all_dynamic_colors: function(str) {
           return str.replace(uDark.dynamicAllColorRegex,(match,...args)=>
           {
-            //console.log(match,args,uDark.eget_color(match,uDark.revert_rgba,args))
+            // console.log(match,args,uDark.eget_color(match,uDark.revert_rgba,args))
             return uDark.eget_color(match,uDark.rgba,args)
           
             })
@@ -1041,7 +1173,6 @@ html_element.querySelectorAll("style").forEach(astyle=>{
               if(verifyIntegrity && rejected)
               {
                 let rejectError =  new Error("Rejected integrity rule");
-                //console.log(rejectError.stack)
                 return rejectError;
               }
             }
@@ -1090,12 +1221,12 @@ html_element.querySelectorAll("style").forEach(astyle=>{
        // uDark.variableRegex2 = /(^|[^a-z0-9-])(--[a-z0-9-]+)(?:[\s\t]*?:)[\s\t]*(([^;}])*)/gi,
         //uDark.variableBasedRegex = /(^|[^a-z0-9-])var[\s\t]*?\([\s\t]*?(--[a-z0-9-]+)[\s\t]*?\)/gi,
        // uDark.interventRegex = /(^|[^a-z0-9-])(color|background(-color|-image)?)[\s\t]*?:[\s\t]*?[\n]*?([^;}]*?)([^;}]*?['"].*['"][^;}]*?)*?[\s\t]*?(![\s\t]*?important)?[\s\t]*?($|[;}\n\\])/gi
-        uDark.dynamicColorRegex = /(?<!(^|[^a-z0-9-])(--[a-zA-Z0-9-]+|color|fill)(?:[\s\t]*?:)[\s\t]*?)(#[0-9a-f]{3,8}|(rgb|hsl)a?\([%0-9, .]+?\))/gi // Any color .. if not preceded by color attribute or is not a --xyz already edited:)
-        uDark.dynamicAllColorRegex = /(?:#[0-9a-f]{3,8}|(?:rgb|hsl)a?\([%0-9, .\/]+?\))|^(\()?([%0-9, .\/]{5,25})(\))?$/gi// Use in property values
+        uDark.dynamicColorRegex = /(?<!(^|[^a-z0-9-])(--[a-zA-Z0-9-]+|color|fill)(?:[\s\t]*?:)[\s\t]*?)(#[0-9a-f]{3,4}(?:[0-9a-f]{2})?(?:[0-9a-f]{2})?|(rgb|hsl)a?\([%0-9, .]+?\))/gi // Any color .. if not preceded by color attribute or is not a --xyz already edited:)
+        uDark.dynamicAllColorRegex = /(?:#[0-9a-f]{3,4}(?:[0-9a-f]{2})?(?:[0-9a-f]{2})?|(?:rgb|hsl)a?\([%0-9, .\/]+?\))|^(\()?([%0-9, .\/]{5,25})(\))?$/gi// Use in property values
       
         //uDark.urlBGRegex = /(^|[^a-z0-9-])(background(-image)?)[\s\t]*?:[\s\t]*?(url\(["']?(.+?)["']?\))/g
         uDark.restoreColorRegex = /(?<![a-z0-9-])(color|fill)[\s\t]*?:[\s\t]*(.+?)($|[;\n\r}!])/gi // var edits are done in the prefix 
-        uDark.restoreAllColorRegex = /(?:#[0-9a-f]{3,8}|(?:rgb|hsl)a?\([%0-9, .\/]+?\))|^(\()?([%0-9, .\/]{5,25})(\))?$/gi // var edit is in the function
+        uDark.restoreAllColorRegex = /(?:#[0-9a-f]{3,4}(?:[0-9a-f]{2})?(?:[0-9a-f]{2})?|(?:rgb|hsl)a?\([%0-9, .\/]+?\))|^(\()?([%0-9, .\/]{5,25})(\))?$/gi // var edit is in the function
         //Variables can use other variables :
         //uDark.restoreVarRegex = /([^a-z0-9-])(--ud-fg--[a-zA-Z0-9]+|color|fill)[\s\t]*?:[\s\t]*?var[\s\t]*?\(.*?($|["}\n;!])/g
         //uDark.matchStylePart=new RegExp(["{[^}]+?((",[uDark.radiusRegex,uDark.variableRegex,uDark.interventRegex ].map(x=>x.source).join(")|("),"))[^}]+?}"].join(""),"gi");
@@ -1133,13 +1264,14 @@ html_element.querySelectorAll("style").forEach(astyle=>{
           }
           else{
             
-            //console.log(details,"Accepted integrity rule")
+            // console.log(details,"Accepted integrity rule")
             details.rejectedValues = "";
             transformResult = uDark.send_data_image_to_parser(transformResult, details);
             filter.write(encoder.encode(transformResult));
           }
         }
       filter.onstop = event => {
+        filter.write(encoder.encode(uDark.edit_str(details.rejectedValues))); // Write the last chunk if any, trying to get the last rules to be applied, there is proaby invalid content at the end of the CSS;
         filter.disconnect(); // Low perf if not disconnected !
       }
         //must not return this closes filter//
