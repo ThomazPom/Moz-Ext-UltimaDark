@@ -758,8 +758,9 @@ html_element.querySelectorAll("style").forEach(astyle=>{
         userSettings:{},
         colorRegex:new RegExp(CSS_COLOR_NAMES_RGX, "gi"),
         CSS_COLOR_NAMES_RGX:"(" + (CSS_COLOR_NAMES.join("|")) + ")",
-        min_bright_fg: 50, // Text with luminace under this value will be brightened from this value up to max_bright_fg_trigger
-        max_bright_fg_trigger: 127, // Text with luminace over this value will be kept as is.
+        min_bright_fg: 0.75, // Text with luminace under this value will be brightened
+        max_bright_fg: 0.85, // Text over this value will be darkened
+        vivid_colors_threshold_fg: 0.4, // Colors with good saturation and good luminace should not be brightened, because thay are already bright and will loose saturation if brightened
         hueShiftfg: 0, // Hue shift for text, 0 is no shift, 360 is full shift
         satBostfg: 1.1, // Saturation boost for text, 0 is no boost, 5 a nice boost
         satBostbg: 1, // Saturation boost for background, 0 is no boost, 5 a nice boost
@@ -884,8 +885,8 @@ html_element.querySelectorAll("style").forEach(astyle=>{
             // Lets remove any brightness from the color
             render = (render||uDark.rgba_val)
             a = typeof a == "number" ? a : 1
-            //https://www.desmos.com/calculator/5u9ipi2neg
-            // Keeps blacks, boosts intermediate colors, and kills color with too much lightness
+
+            // https://www.desmos.com/calculator/oqqi9nzonh
             let B=uDark.min_bright_bg_trigger;
             let [h,s,l] = uDark.rgbToHsl(r, g, b); 
             
@@ -897,14 +898,9 @@ html_element.querySelectorAll("style").forEach(astyle=>{
                 l=1-l; // Invert the lightness for bightest colors
               }
                let A=uDark.max_bright_bg
-               l = Math.sin(Math.PI*l)*(A-B)+B;
+              //  l = Math.sin(Math.PI*l)*(A-B)+B;
+              l=Math.min(2*l,-2*l+2)*(A-B)+B;
             }
-              
-            
-          
-            
-                      
-            
             [r,g,b] = uDark.hslToRgb(h ,s,l);
             return render(...[r,g,b],a);
 
@@ -912,51 +908,27 @@ html_element.querySelectorAll("style").forEach(astyle=>{
         revert_rgba: function(r, g, b, a,render) {
           render = (render||uDark.rgba_val)
           a = typeof a == "number" ? a : 1
+          let [h,s,l] = uDark.rgbToHsl(r, g, b);
+          let A=uDark.min_bright_fg
+          let B=uDark.max_bright_fg
+          // https://www.desmos.com/calculator/ymclzvucdb
           
-          let ligthness = uDark.RGBToLightness(r,g,b);
-          if(ligthness<uDark.max_bright_fg_trigger) // Above this value, we will not touch the color, as it is already bright
-          {
-            if(ligthness<128) // Reuse the ligthness value to avoid a second calculation,
-            // plus half the time, we will not need to do the calculation as the color is already in the bright range
-            {
-              let [h,s,l] = uDark.rgbToHsl(r, g, b);
-                if(l<50)
-                {
-                  l=1-l; // Invert the lightness for darkest colors
-                }
-                [r,g,b] = uDark.hslToRgb(h ,s,l);
-            }
-            if(ligthness<uDark.min_bright_fg)
-            {
-              
-            }
-            //   {
-            //     let range = uDark.max_bright_fg_trigger-uDark.min_bright_fg;
-            //     [r,g,b] = [r,g,b].map(x=>x*range/255);
-            //   }
-            // [r,g,b] = [r,g,b].map(x=>x-uDark.min_bright_bg_trigger);
-
-          }
-          // let [h,s,l] = uDark.RGBToHSL(r, g, b)
-
-          // if(l<uDark.max_bright_fg_trigger)
-          // {
-          //   l=l<50?l:100-l ;
-          //   if(l<uDark.min_bright_fg)
-          //   {
-          //     let range = uDark.max_bright_fg_trigger-uDark.min_bright_fg
-          //     l=(l*range/100);
-          //   }
-          //   l+=uDark.min_bright_fg;
-          //   [r,g,b] = uDark.HSLToRGB(h+uDark.hueShiftfg ,s*uDark.satBostfg,l)
-
-          // }
-
+            
+          // l = Math.sin(Math.PI*l)*(A-B)+B;
+          l=Math.min(2*l,-2*l+2)*(A-B)+B;
+          // if saturation is high, we should not brighten too much the color
+          l=l-s*0.2;
           
+          [r,g,b] = uDark.hslToRgb(h ,s,l);
+
+
           return render(...[r,g,b],a); 
         },
         eget_color: function(anycolor,editColorF=false, groups=[],glue=",") {
-         
+          
+          
+
+
           if(groups.length && groups[1])
           // In this case we should return a string (with edits or not)
           {
@@ -1084,7 +1056,7 @@ html_element.querySelectorAll("style").forEach(astyle=>{
                       let value=rule.style.getPropertyValue(variableName)
                       let newName = "--ud-fg"+ variableName ;
                      rule.style.setProperty(variableName,uDark.edit_all_dynamic_colors(value));
-                    //  console.log(variableName,value,newName)  
+                
                      rule.style.setProperty(newName,uDark.restore_all_color(value) );
                 });
                 
@@ -1179,7 +1151,6 @@ html_element.querySelectorAll("style").forEach(astyle=>{
             
             str = uDark.edit_str_named_colors(str)
             str = uDark.prefix_fg_vars(str);
-            
             str = uDark.edit_dynamic_colors(str)
             
           }
@@ -1221,7 +1192,7 @@ html_element.querySelectorAll("style").forEach(astyle=>{
        // uDark.variableRegex2 = /(^|[^a-z0-9-])(--[a-z0-9-]+)(?:[\s\t]*?:)[\s\t]*(([^;}])*)/gi,
         //uDark.variableBasedRegex = /(^|[^a-z0-9-])var[\s\t]*?\([\s\t]*?(--[a-z0-9-]+)[\s\t]*?\)/gi,
        // uDark.interventRegex = /(^|[^a-z0-9-])(color|background(-color|-image)?)[\s\t]*?:[\s\t]*?[\n]*?([^;}]*?)([^;}]*?['"].*['"][^;}]*?)*?[\s\t]*?(![\s\t]*?important)?[\s\t]*?($|[;}\n\\])/gi
-        uDark.dynamicColorRegex = /(?<!(^|[^a-z0-9-])(--[a-zA-Z0-9-]+|color|fill)(?:[\s\t]*?:)[\s\t]*?)(#[0-9a-f]{3,4}(?:[0-9a-f]{2})?(?:[0-9a-f]{2})?|(rgb|hsl)a?\([%0-9, .]+?\))/gi // Any color .. if not preceded by color attribute or is not a --xyz already edited:)
+        uDark.dynamicColorRegex = /(?<!(^|[^a-z0-9-])(--[a-zA-Z0-9_-]+|color|fill)(?:[\s\t]*?:)[\s\t]*?)(#[0-9a-f]{3,4}(?:[0-9a-f]{2})?(?:[0-9a-f]{2})?|(rgb|hsl)a?\([%0-9, .]+?\))/gi // Any color .. if not preceded by color attribute or is not a --xyz wich are already edited:)
         uDark.dynamicAllColorRegex = /(?:#[0-9a-f]{3,4}(?:[0-9a-f]{2})?(?:[0-9a-f]{2})?|(?:rgb|hsl)a?\([%0-9, .\/]+?\))|^(\()?([%0-9, .\/]{5,25})(\))?$/gi// Use in property values
       
         //uDark.urlBGRegex = /(^|[^a-z0-9-])(background(-image)?)[\s\t]*?:[\s\t]*?(url\(["']?(.+?)["']?\))/g
