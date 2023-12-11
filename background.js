@@ -14,7 +14,7 @@ window.dark_object = {
           });
         }
         uDark.functionPrototypeEditor = function(leType, laFonction, watcher = x => x, conditon = (elem, value) => 1,do_on_result=x=>x) {
-    //         console.log(leType,leType.name,leType.prototype,laFonction,laFonction.name)
+            //  console.log(leType,leType.name,leType.prototype,laFonction,laFonction.name)
           var originalFunction = Object.getOwnPropertyDescriptor(leType.prototype, laFonction.name).value;
           Object.defineProperty(leType.prototype, "o_ud_"+laFonction.name, {value:originalFunction,writable:true});
           Object.defineProperty(leType.prototype, laFonction.name, 
@@ -31,6 +31,25 @@ window.dark_object = {
             }}[laFonction.name]
           });
         }
+        uDark.frontEditHTML=(elem,value)=>{
+          if(elem instanceof HTMLStyleElement)
+          {
+            return uDark.edit_str(value)
+          }
+             var parser = new DOMParser();
+              var html_element = parser.parseFromString(  value,"text/html").documentElement;
+         
+        html_element.querySelectorAll("style").forEach(astyle=>{
+              astyle.innerHTML=uDark.edit_str(astyle.innerHTML);
+              astyle.classList.add("ud-edited-background")
+            });
+              html_element.querySelectorAll("[style]").forEach(astyle=>{
+              astyle.setAttribute("style",uDark.edit_str(astyle.getAttribute("style")));
+            });
+            return html_element.innerHTML;
+         }
+
+
      window.addEventListener('load', (event) => {
           var bodycolor = getComputedStyle(document.body)["backgroundColor"]
           if(bodycolor!="rgba(0, 0, 0, 0)")
@@ -41,19 +60,9 @@ window.dark_object = {
           //{
             var docscrollW = document.body.scrollWidth;
 
-          // TODO: ITS DISABLED FOR NOW IDK WHAT TO DO WITH IT
-          window.disabled && uDark.getallBgimages(
-            document,(elem,url)=>!url.includes("#ud-background")
-            && elem.scrollWidth/docscrollW>.4
-            && !uDark.background_match.test(url)).forEach(x=>{
-              var styleelem = getComputedStyle(x[0]);
-              if(styleelem["background-size"].includes(styleelem["width"])){
-                x[0].style.backgroundImage="url('"+x[1]+"#ud-background-magic')";
-              }
-              x[0].setAttribute("ud-backgrounded",1)
-            })
+        
 
-
+          // Adds an overlay to big backgrounded elements
           uDark.getallBgimages(
             document,(elem,url)=>
             elem.scrollWidth/docscrollW>.5 // Is a big object
@@ -63,6 +72,7 @@ window.dark_object = {
               var styleelem = getComputedStyle(x[0]);
 
               if(styleelem["background-size"].includes(styleelem["width"])){
+                  // alert("Found a big image")
                   var stylebefore = getComputedStyle(x[0],":before");
                   var className="ud-background-overlay-"
                   +(stylebefore.backgroundColor=="rgba(0, 0, 0, 0)"?"before":"after")
@@ -115,7 +125,8 @@ uDark.functionPrototypeEditor(CSSStyleDeclaration,CSSStyleDeclaration.prototype.
 
 uDark.functionPrototypeEditor(Document,Document.prototype.createElement,function(elem,args){
   //console.log(elem,args,new Error);
-  return args},
+  return args
+},
    (elem,args)=>args[0]=="style",
    (result)=>
    {console.log(result);return result})
@@ -132,11 +143,21 @@ uDark.functionPrototypeEditor(Document,Document.prototype.createElement,function
 uDark.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.replace,(elem,args)=>{ // Needed to manage it some day, now done :)
   args[0]=uDark.edit_str(args[0]);
   return args;
-},x=>true)
+})
 uDark.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.replaceSync,(elem,args)=>{ // Needed to manage it some day, now done :)
   args[0]=uDark.edit_str(args[0]);
   return args;
-},x=>true)
+})
+
+//This is the one youtube uses
+uDark.valuePrototypeEditor( Element,    "innerHTML", uDark.frontEditHTML, (elem,value)=>value && value.toString().includes('style')    ||elem instanceof HTMLStyleElement); //toString : sombe object can redefine tostring to generate thzir inner
+  
+//This is the one google uses
+uDark.functionPrototypeEditor(Element,Element.prototype.insertAdjacentHTML,(elem,args)=>{
+  args[1]=uDark.edit_str(args[1]);
+  return args;
+},(elem,args)=>args[1].includes("style"))
+
 
 
 //UserStyles.org append text nodes to style elements 
@@ -155,8 +176,8 @@ uDark.valuePrototypeEditor(CSS2Properties,"background",(elem,value)=>{
 })
 
 
-uDark.valuePrototypeEditor(CSSRule,"cssText",(elem,value)=>console.log("CSSTEXT OF",elem,"=>",value)||uDark.edit_str(value),(elem,value)=>!elem.is_easy_get)
-uDark.valuePrototypeEditor(CSSStyleDeclaration,"cssText",(elem,value)=>console.log("CSSTEXT OF",elem,"=>",value)||uDark.edit_str(value),(elem,value)=>!elem.is_easy_get)
+uDark.valuePrototypeEditor(CSSRule,"cssText",(elem,value)=>uDark.edit_str(value))
+uDark.valuePrototypeEditor(CSSStyleDeclaration,"cssText",(elem,value)=>uDark.edit_str(value))
 
 
 uDark.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.addRule,(elem,args)=> [args[0], uDark.edit_str(args[1])])
@@ -170,41 +191,10 @@ uDark.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.insertRule,(
 uDark.valuePrototypeEditor(CSS2Properties,"backgroundColor",(elem,value)=>uDark.rgba(...uDark.eget_color(value)))
 uDark.valuePrototypeEditor(CSS2Properties,"background-color",(elem,value)=>uDark.rgba(...uDark.eget_color(value)))
 uDark.valuePrototypeEditor(CSS2Properties,"color",(elem,value)=>uDark.revert_rgba(...uDark.eget_color(value)))
-uDark.valuePrototypeEditor(HTMLElement,"style",(elem,value)=>uDark.edit_str(value),(elem,value)=>!elem.is_easy_get)// Care with "style and eget, this cause recursions"
+uDark.valuePrototypeEditor(HTMLElement,"style",(elem,value)=>uDark.edit_str(value))// Care with "style and eget, this cause recursions"
 
-uDark.valuePrototypeEditor( HTMLElement,"innerText",
-  (elem,value)=>{
-      return uDark.edit_str(value)
-  },(elem,value)=>value && elem instanceof HTMLStyleElement);
-//This is the one youtube uses
-uDark.valuePrototypeEditor( Element,    "innerHTML", (elem,value)=>{
-  if(elem instanceof HTMLStyleElement)
-  {
-    return uDark.edit_str(value)
-  }
-     var parser = new DOMParser();
-                  var html_element = parser.parseFromString(
-                    value//.replace(/&([a-zA-Z0-9#]+?);/g,"&UD-Disabled-$1;",/*XSS PROTECTION*/)
-                  .replace(/<noscript ?.*?>.*?<\/noscript>/gi,"")
-                    ,"text/html").documentElement;
-//value= value.replace(/(<style ?.*?>)((.|[\r\n])*?)(<\/style>)/g,(match, g1, g2, g3,g4)=>[g1,uDark.edit_str(value),g4].join(''))
-  //.replace(/[\s\t\r\n]style[\s\t]*?=[\s\t]*?(".*?"|'.*?')/g,(match,g1)=>" style="+uDark.edit_str(g1))
- 
-  //console.log(value)
-html_element.querySelectorAll("style").forEach(astyle=>{
-      astyle.innerHTML=uDark.edit_str(astyle.innerHTML);
-      astyle.classList.add("ud-edited-background")
-      //astyle.innerHTML=uDark.send_data_image_to_parser(astyle.innerHTML,details);
-    });
-      html_element.querySelectorAll("[style]").forEach(astyle=>{
-      //console.log(details,astyle,astyle.innerHTML,astyle.innerHTML.includes(`button,[type="reset"],[type="button"],button:hover,[type="button"],[type="submit"],button:active:hover,[type="button"],[type="submi`))
-      astyle.setAttribute("style",uDark.edit_str(astyle.getAttribute("style")));
-    });
-    return html_element.innerHTML;
- },
- (elem,value)=>value && value.toString().includes('style')    ||elem instanceof HTMLStyleElement); //toString : sombe object can redefine tostring to generate thzir inner
-  
- 
+uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      return uDark.edit_str(value)  },(elem,value)=>value && elem instanceof HTMLStyleElement);
+
  console.log("UltimaDark is loaded",window);
     
 
@@ -677,7 +667,6 @@ html_element.querySelectorAll("style").forEach(astyle=>{
           }
           ,
           parse_and_edit_html3:function(str,details){
-
             details.requestScripts=details.requestScripts||[]
             if(uDark.debugFirstLoad=false)
             {
@@ -695,8 +684,7 @@ html_element.querySelectorAll("style").forEach(astyle=>{
                   //html_element.innerHTML=str.replace(/<\/?html.*?>/g,"")
                   var parser = new DOMParser();
                   var html_element = parser.parseFromString(
-                    str//.replace(/&([a-zA-Z0-9#]+?);/g,"&UD-Disabled-$1;",/*XSS PROTECTION*/)
-                  .replace(/<noscript ?.*?>.*?<\/noscript>/gi,"")
+                    str
                     ,"text/html").documentElement;
                   // The code
 //              console.log(html_element)
@@ -936,6 +924,10 @@ html_element.querySelectorAll("style").forEach(astyle=>{
         eget_color: function(anycolor,editColorF=false, groups=[],glue=",") {
           
           
+          if(!anycolor)
+          {
+            return anycolor;
+          }
 
 
           if(groups.length && groups[1])
@@ -1140,6 +1132,10 @@ html_element.querySelectorAll("style").forEach(astyle=>{
         },
 
         edit_dynamic_colors:str=>str.replace( new RegExp("{[^{}]*?}","gis"),uDark.edit_dynamic_colors_no_chunk),
+        
+        remove_multiply:(str,replace)=>{
+          return str.replaceAll("mix-blend-mode: multiply;",`mix-blend-mode: ${replace};`)
+        },
         edit_str:function(str,cssStyleSheet,verifyIntegrity=false)
         {
           if(!cssStyleSheet)
@@ -1152,8 +1148,12 @@ html_element.querySelectorAll("style").forEach(astyle=>{
           nochunk = !cssStyleSheet.cssRules.length;
           if(nochunk)
           {
+            str=`z{${str}}`;
+            cssStyleSheet.o_ud_replaceSync?cssStyleSheet.o_ud_replaceSync(str):cssStyleSheet.replaceSync(str);
+            str = cssStyleSheet.cssRules[0].cssText.slice(4,-2);
             str = uDark.edit_str_named_colors_no_chunk(str)
             str = uDark.edit_dynamic_colors_no_chunk(str)
+            str = uDark.remove_multiply(str,"normal");
           }
           else{
             if(verifyIntegrity)
@@ -1170,6 +1170,7 @@ html_element.querySelectorAll("style").forEach(astyle=>{
             str = uDark.edit_str_named_colors(str)
             str = uDark.prefix_fg_vars(str);
             str = uDark.edit_dynamic_colors(str)
+            str = uDark.remove_multiply(str,"normal");
             
           }
          
