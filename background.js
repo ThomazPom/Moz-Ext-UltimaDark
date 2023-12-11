@@ -129,6 +129,16 @@ uDark.functionPrototypeEditor(Document,Document.prototype.createElement,function
 //
 
 
+uDark.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.replace,(elem,args)=>{ // Needed to manage it some day, now done :)
+  args[0]=uDark.edit_str(args[0]);
+  return args;
+},x=>true)
+uDark.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.replaceSync,(elem,args)=>{ // Needed to manage it some day, now done :)
+  args[0]=uDark.edit_str(args[0]);
+  return args;
+},x=>true)
+
+
 //UserStyles.org append text nodes to style elements 
 uDark.functionPrototypeEditor(Node,Node.prototype.appendChild,(elem,args)=>{(args[0].textContent=uDark.edit_str(args[0].textContent));return args},(elem,value)=>elem instanceof HTMLStyleElement)
 uDark.functionPrototypeEditor(Node,Node.prototype.insertBefore,(elem,args)=>{(args[0].textContent=uDark.edit_str(args[0].textContent));return args},(elem,value)=>elem instanceof HTMLStyleElement)
@@ -160,7 +170,7 @@ uDark.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.insertRule,(
 uDark.valuePrototypeEditor(CSS2Properties,"backgroundColor",(elem,value)=>uDark.rgba(...uDark.eget_color(value)))
 uDark.valuePrototypeEditor(CSS2Properties,"background-color",(elem,value)=>uDark.rgba(...uDark.eget_color(value)))
 uDark.valuePrototypeEditor(CSS2Properties,"color",(elem,value)=>uDark.revert_rgba(...uDark.eget_color(value)))
-uDark.valuePrototypeEditor(HTMLElement,"style",(elem,value)=>uDark.edit_str(value,true),(elem,value)=>!elem.is_easy_get)// Care with "style and eget, this cause recursions"
+uDark.valuePrototypeEditor(HTMLElement,"style",(elem,value)=>uDark.edit_str(value),(elem,value)=>!elem.is_easy_get)// Care with "style and eget, this cause recursions"
 
 uDark.valuePrototypeEditor( HTMLElement,"innerText",
   (elem,value)=>{
@@ -168,7 +178,6 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",
   },(elem,value)=>value && elem instanceof HTMLStyleElement);
 //This is the one youtube uses
 uDark.valuePrototypeEditor( Element,    "innerHTML", (elem,value)=>{
-
   if(elem instanceof HTMLStyleElement)
   {
     return uDark.edit_str(value)
@@ -917,7 +926,7 @@ html_element.querySelectorAll("style").forEach(astyle=>{
           // l = Math.sin(Math.PI*l)*(A-B)+B;
           l=Math.min(2*l,-2*l+2)*(A-B)+B;
           // if saturation is high, we should not brighten too much the color
-          l=l-s*0.2;
+          // l=l-s*0.2;
           
           [r,g,b] = uDark.hslToRgb(h ,s,l);
 
@@ -981,21 +990,26 @@ html_element.querySelectorAll("style").forEach(astyle=>{
           possiblecolor = possiblecolor.trim().toLowerCase();
           let option=new Option();
           let style = option.style;
+
           'o_ud_set_backgroundColor' in style?
           (style.o_ud_set_backgroundColor=possiblecolor)
           :(style.backgroundColor = possiblecolor); // Must be instructions inside parenthesis to ensure it is taken in account
+          
           let result = style.backgroundColor; // Must be done in 2 steps to avoid same value as possiblecolor
+          
           if(!style.backgroundColor)
           {
             // Impossible color : browser said so
             return false;
           }
+          
           // rgba(0, 0, 0, 0) is a valid color but not a valid background, browser set it to none
-          if(style.backgroundColor==possiblecolor && style.backgroundColor!="rgba(0, 0, 0, 0)"); 
+          if(style.backgroundColor==possiblecolor && style.backgroundColor!=black_rgba)
           {
             // Browser said it is a color but doubt it is a valid one, we need a further check
             document.head.appendChild(option);
-            result = getComputedStyle(option).background // On invalid colors, background will be none here
+            let computedStyle = getComputedStyle(option) // On invalid colors, background will be none here
+            result = computedStyle.backgroundColor || possiblecolor; // Sometimes on frontend, computedStyle is empty, idk why. Looks like a bug in browser 
             option.remove();
             if(result=="none") // On invalid colors or not fully filled variables colors, background will be none here
             {
@@ -1003,7 +1017,7 @@ html_element.querySelectorAll("style").forEach(astyle=>{
             }
           }
           if(result && as_float)
-          {
+          { 
             result = result.match(/[0-9\.]+/g).map(parseFloat)
             if(fill)
             {            
@@ -1070,12 +1084,14 @@ html_element.querySelectorAll("style").forEach(astyle=>{
           return rule;
           })
         },
+        
         prefix_fg_vars: function(str,cssStyleSheet) { 
          
           if(!cssStyleSheet)
           {
             cssStyleSheet = new CSSStyleSheet();
-            cssStyleSheet.replaceSync(str);
+            
+            cssStyleSheet.o_ud_replaceSync?cssStyleSheet.o_ud_replaceSync(str):cssStyleSheet.replaceSync(str);
           }
           let rules=uDark.do_css_rules(cssStyleSheet.cssRules).map(r=>r.cssText);
           imports=str.match(/@import.+?(;|$|\n)/gmi)||[];
@@ -1129,9 +1145,10 @@ html_element.querySelectorAll("style").forEach(astyle=>{
           if(!cssStyleSheet)
           {
             cssStyleSheet = new CSSStyleSheet()
-            cssStyleSheet.replaceSync(str+"\n.integrity_rule{}");
+            let valueReplace=str+"\n.integrity_rule{}";
+            cssStyleSheet.o_ud_replaceSync?cssStyleSheet.o_ud_replaceSync(valueReplace):cssStyleSheet.replaceSync(valueReplace);
+            
           } 
-   
           nochunk = !cssStyleSheet.cssRules.length;
           if(nochunk)
           {
