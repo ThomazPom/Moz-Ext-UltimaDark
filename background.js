@@ -887,16 +887,22 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
             let B=uDark.min_bright_bg_trigger;
             let [h,s,l] = uDark.rgbToHsl(r, g, b); 
             
+
             if(l>B)
             {
               
+               let A=uDark.max_bright_bg
+              // let scaleToA = uDark.userSettings.noScaleToA && l<A;
               if(l>0.5)
               {
                 l=1-l; // Invert the lightness for bightest colors
               }
-               let A=uDark.max_bright_bg
               //  l = Math.sin(Math.PI*l)*(A-B)+B;
-              l=Math.min(2*l,-2*l+2)*(A-B)+B;
+              
+              // if(!scaleToA)
+              // {
+                l=Math.min(2*l,-2*l+2)*(A-B)+B;
+              // }
             }
             [r,g,b] = uDark.hslToRgb(h ,s,l);
             return render(...[r,g,b],a);
@@ -1144,8 +1150,12 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
             let valueReplace=str+"\n.integrity_rule{}";
             cssStyleSheet.o_ud_replaceSync?cssStyleSheet.o_ud_replaceSync(valueReplace):cssStyleSheet.replaceSync(valueReplace);
             
-          } 
-          nochunk = !cssStyleSheet.cssRules.length;
+          }
+          else if(!cssStyleSheet.rules.length)
+          {
+            return str; // Empty styles from domparser can't be edited as they are not "constructed"
+          }
+          let nochunk = !cssStyleSheet.cssRules.length;
           if(nochunk)
           {
             str=`z{${str}}`;
