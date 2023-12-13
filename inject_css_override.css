@@ -4,6 +4,8 @@
 
   --secondary-color: black;
 }
+.test{  background-color:lime;}
+.test2{  background-color:#00ff00;}
 ::placeholder{
 
   opacity: 1;

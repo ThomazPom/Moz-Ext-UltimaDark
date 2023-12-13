@@ -1,11 +1,12 @@
 window.dark_object = {
   foreground: {
     inject: function() {
+        uDark.is_foreground=true;
         uDark.valuePrototypeEditor = function(leType, atName, watcher = x => x, conditon = (elem, value) => 1) {
        //   console.log(leType,atName)
           var originalSet = Object.getOwnPropertyDescriptor(leType.prototype, atName).set;
           Object.defineProperty(leType.prototype, "o_ud_set_"+atName, {set:originalSet});
-          //uDark.knownvariables["o_ud_set_"+atName]=originalSet
+          //uDark.general_cache["o_ud_set_"+atName]=originalSet
           Object.defineProperty(leType.prototype, atName, {
             set: function(value) {
               var new_value = conditon(this, value) ? watcher(this, value) : value;
@@ -22,6 +23,7 @@ window.dark_object = {
               value:{[laFonction.name]:function() {
                   if(conditon(this, arguments))
                   {
+                    // console.log(leType,laFonction,this,arguments[0],watcher(this, arguments)[0])
                     return do_on_result(originalFunction.apply(this, watcher(this, arguments)));
                   }
                   else
@@ -154,7 +156,7 @@ uDark.valuePrototypeEditor( Element,    "innerHTML", uDark.frontEditHTML, (elem,
   
 //This is the one google uses
 uDark.functionPrototypeEditor(Element,Element.prototype.insertAdjacentHTML,(elem,args)=>{
-  args[1]=uDark.edit_str(args[1]);
+  args[1]=uDark.frontEditHTML(elem,args[1]);
   return args;
 },(elem,args)=>args[1].includes("style"))
 
@@ -216,7 +218,7 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
         uDark.userSettings.exclude_regex = (res.black_list || dark_object.background.defaultRegexes.black_list).split("\n").map(x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // Sanitize regex
           .replace(/(^<all_urls>|\\\*)/g, "(.*?)") // Allow wildcards
           .replace(/^(.*)$/g, "^$1$")).join("|") // User multi match)
-        uDark.knownvariables = {};
+        uDark.general_cache = {};
         uDark.fixedRandom = Math.random();
         browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editBeforeData);
         browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.editBeforeRequest);
@@ -260,6 +262,7 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
 
     },
     install: function() {
+      uDark.is_background=true;
       uDark.injectscripts = [dark_object.both.install, dark_object.foreground.inject].map(code => {
         var script = document.createElement("script");
         script.innerHTML = "(" + code.toString() + ")()";
@@ -693,7 +696,7 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
                     //    anoscript.remove();
                     //});
                     html_element.querySelectorAll("style").forEach(astyle=>{
-                      astyle.innerHTML=uDark.edit_str(astyle.innerHTML,astyle.sheet);
+                      astyle.innerHTML=uDark.edit_str(astyle.innerHTML);//,astyle.sheet);
                       astyle.classList.add("ud-edited-background")
                       astyle.innerHTML=uDark.send_data_image_to_parser(astyle.innerHTML,details);
                     });
@@ -747,14 +750,10 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
   both: {
     install: function() {
       document.o_createElement = document.createElement;
-      const CSS_COLOR_NAMES = ["AliceBlue", "AntiqueWhite", "Aqua", "Aquamarine", "Azure", "Beige", "Bisque", "Black", "BlanchedAlmond", "Blue", "BlueViolet", "Brown", "BurlyWood", "CadetBlue", "Chartreuse", "Chocolate", "Coral", "CornflowerBlue", "Cornsilk", "Crimson", "Cyan", "DarkBlue", "DarkCyan", "DarkGoldenRod", "DarkGray", "DarkGrey", "DarkGreen", "DarkKhaki", "DarkMagenta", "DarkOliveGreen", "DarkOrange", "DarkOrchid", "DarkRed", "DarkSalmon", "DarkSeaGreen", "DarkSlateBlue", "DarkSlateGray", "DarkSlateGrey", "DarkTurquoise", "DarkViolet", "DeepPink", "DeepSkyBlue", "DimGray", "DimGrey", "DodgerBlue", "FireBrick", "FloralWhite", "ForestGreen", "Fuchsia", "Gainsboro", "GhostWhite", "Gold", "GoldenRod", "Gray", "Grey", "Green", "GreenYellow", "HoneyDew", "HotPink", "IndianRed", "Indigo", "Ivory", "Khaki", "Lavender", "LavenderBlush", "LawnGreen", "LemonChiffon", "LightBlue", "LightCoral", "LightCyan", "LightGoldenRodYellow", "LightGray", "LightGrey", "LightGreen", "LightPink", "LightSalmon", "LightSeaGreen", "LightSkyBlue", "LightSlateGray", "LightSlateGrey", "LightSteelBlue", "LightYellow", "Lime", "LimeGreen", "Linen", "Magenta", "Maroon", "MediumAquaMarine", "MediumBlue", "MediumOrchid", "MediumPurple", "MediumSeaGreen", "MediumSlateBlue", "MediumSpringGreen", "MediumTurquoise", "MediumVioletRed", "MidnightBlue", "MintCream", "MistyRose", "Moccasin", "NavajoWhite", "Navy", "OldLace", "Olive", "OliveDrab", "Orange", "OrangeRed", "Orchid", "PaleGoldenRod", "PaleGreen", "PaleTurquoise", "PaleVioletRed", "PapayaWhip", "PeachPuff", "Peru", "Pink", "Plum", "PowderBlue", "Purple", "RebeccaPurple", "Red", "RosyBrown", "RoyalBlue", "SaddleBrown", "Salmon", "SandyBrown", "SeaGreen", "SeaShell", "Sienna", "Silver", "SkyBlue", "SlateBlue", "SlateGray", "SlateGrey", "Snow", "SpringGreen", "SteelBlue", "Tan", "Teal", "Thistle", "Tomato", "Turquoise", "Violet", "Wheat", "White", "WhiteSmoke", "Yellow", "YellowGreen", ]
-      .sort(function(a, b){  return b.length - a.length;});  // ASC  -> a.length - b.length   // DESC -> b.length - a.length
-      const CSS_COLOR_NAMES_RGX = "(" + (CSS_COLOR_NAMES.join("|")) + ")([,;\\s\\n!\"})]|$)"
-
+      const CSS_COLOR_NAMES = ["AliceBlue", "AntiqueWhite", "Aqua", "Aquamarine", "Azure", "Beige", "Bisque", "Black", "BlanchedAlmond", "Blue", "BlueViolet", "Brown", "BurlyWood", "CadetBlue", "Chartreuse", "Chocolate", "Coral", "CornflowerBlue", "Cornsilk", "Crimson", "Cyan", "DarkBlue", "DarkCyan", "DarkGoldenRod", "DarkGray", "DarkGrey", "DarkGreen", "DarkKhaki", "DarkMagenta", "DarkOliveGreen", "DarkOrange", "DarkOrchid", "DarkRed", "DarkSalmon", "DarkSeaGreen", "DarkSlateBlue", "DarkSlateGray", "DarkSlateGrey", "DarkTurquoise", "DarkViolet", "DeepPink", "DeepSkyBlue", "DimGray", "DimGrey", "DodgerBlue", "FireBrick", "FloralWhite", "ForestGreen", "Fuchsia", "Gainsboro", "GhostWhite", "Gold", "GoldenRod", "Gray", "Grey", "Green", "GreenYellow", "HoneyDew", "HotPink", "IndianRed", "Indigo", "Ivory", "Khaki", "Lavender", "LavenderBlush", "LawnGreen", "LemonChiffon", "LightBlue", "LightCoral", "LightCyan", "LightGoldenRodYellow", "LightGray", "LightGrey", "LightGreen", "LightPink", "LightSalmon", "LightSeaGreen", "LightSkyBlue", "LightSlateGray", "LightSlateGrey", "LightSteelBlue", "LightYellow", "Lime", "LimeGreen", "Linen", "Magenta", "Maroon", "MediumAquaMarine", "MediumBlue", "MediumOrchid", "MediumPurple", "MediumSeaGreen", "MediumSlateBlue", "MediumSpringGreen", "MediumTurquoise", "MediumVioletRed", "MidnightBlue", "MintCream", "MistyRose", "Moccasin", "NavajoWhite", "Navy", "OldLace", "Olive", "OliveDrab", "Orange", "OrangeRed", "Orchid", "PaleGoldenRod", "PaleGreen", "PaleTurquoise", "PaleVioletRed", "PapayaWhip", "PeachPuff", "Peru", "Pink", "Plum", "PowderBlue", "Purple", "RebeccaPurple", "Red", "RosyBrown", "RoyalBlue", "SaddleBrown", "Salmon", "SandyBrown", "SeaGreen", "SeaShell", "Sienna", "Silver", "SkyBlue", "SlateBlue", "SlateGray", "SlateGrey", "Snow", "SpringGreen", "SteelBlue", "Tan", "Teal", "Thistle", "Tomato", "Turquoise", "Violet", "Wheat", "White", "WhiteSmoke", "Yellow", "YellowGreen" ]
       window.uDark = {
         userSettings:{},
-        colorRegex:new RegExp(CSS_COLOR_NAMES_RGX, "gi"),
-        CSS_COLOR_NAMES_RGX:"(" + (CSS_COLOR_NAMES.join("|")) + ")",
+        namedColorsRegex: (new RegExp(`(^|[^A-Z])(${CSS_COLOR_NAMES.join("|")})($|[^A-Z])`, "gmi")),
         min_bright_fg: 0.75, // Text with luminace under this value will be brightened
         max_bright_fg: 0.85, // Text over this value will be darkened
         vivid_colors_threshold_fg: 0.4, // Colors with good saturation and good luminace should not be brightened, because thay are already bright and will loose saturation if brightened
@@ -762,10 +761,13 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
         satBostfg: 1.1, // Saturation boost for text, 0 is no boost, 5 a nice boost
         satBostbg: 1, // Saturation boost for background, 0 is no boost, 5 a nice boost
         hueShiftbg: 0, // Hue shift for background, 0 is no shift, 360 is full shift
-        min_bright_bg_trigger: 0.1, // backgrounds with luminace under this value will remain as is
+        min_bright_bg_trigger: 0.2, // backgrounds with luminace under this value will remain as is
         nonBreakScriptIdent: "§§IDENTIFIER§§",
-        max_bright_bg: 0.4, // backgrounds with luminace over this value will be darkened from this value down to min_bright_bg_trigger
-        knownvariables: {},
+        
+        min_bright_bg: 0.1, // background with value over min_bright_bg_trigger will be darkened from this value up to max_bright_bg
+        max_bright_bg: 0.4, // background with value over min_bright_bg_trigger will be darkened from min_bright_bg up to this value
+        general_cache: {},
+        css_variables: {},
         background_match:/(footer[^\/\\]*$)|background|(bg|box|panel|fond|fundo|bck)[._-]/i,
         rgba_val: function(r, g, b, a) {
           a = typeof a == "number" ? a : 1
@@ -883,15 +885,15 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
             render = (render||uDark.rgba_val)
             a = typeof a == "number" ? a : 1
 
-            // https://www.desmos.com/calculator/oqqi9nzonh
-            let B=uDark.min_bright_bg_trigger;
             let [h,s,l] = uDark.rgbToHsl(r, g, b); 
             
 
-            if(l>B)
+            if(l>uDark.min_bright_bg_trigger)
             {
               
-               let A=uDark.max_bright_bg
+              // https://www.desmos.com/calculator/oqqi9nzonh
+              let B=uDark.min_bright_bg;
+              let A=uDark.max_bright_bg
               // let scaleToA = uDark.userSettings.noScaleToA && l<A;
               if(l>0.5)
               {
@@ -934,27 +936,32 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
           {
             return anycolor;
           }
-
-
-          if(groups.length && groups[1])
-          // In this case we should return a string (with edits or not)
-          {
-            groups=groups.map(x=>x||"")
-            
-            let [g1,g2,g3]=groups
-            let theColor = uDark.is_color(`rgba(${g2})`,true,false)
-            if(!theColor)
-            {
-              return anycolor
-            }
-            theColorFilled = theColor.concat(Array(4-theColor.length).fill(1))
-            if(editColorF)
-            {
-             // console.log(theColorFilled,editColorF,editColorF(...theColorFilled,z=>[g1,theColor,g3].join(glue)))
-              return editColorF(...theColorFilled,(...args)=>`${g1}${args.slice(0,theColor.length).join(glue)}${g3}` )
-            }
-            return theColorFilled;
+          if(anycolor.includes("var(")){
+            for(variableName in    anycolor.match(/--[a-z0-9_-]+/g))
+               {
+                console.log(variableName);
+               }
           }
+
+          // if(groups.length && groups[1])
+          // // In this case we should return a string (with edits or not)
+          // {
+          //   groups=groups.map(x=>x||"")
+            
+          //   let [g1,g2,g3]=groups
+          //   let theColor = uDark.is_color(`rgba(${g2})`,true,false)
+          //   if(!theColor)
+          //   {
+          //     return anycolor
+          //   }
+          //   theColorFilled = theColor.concat(Array(4-theColor.length).fill(1))
+          //   if(editColorF)
+          //   {
+          //    // console.log(theColorFilled,editColorF,editColorF(...theColorFilled,z=>[g1,theColor,g3].join(glue)))
+          //     return editColorF(...theColorFilled,(...args)=>`${g1}${args.slice(0,theColor.length).join(glue)}${g3}` )
+          //   }
+          //   return theColorFilled;
+          // }
 
           let theColor = uDark.is_color(anycolor)
           if(!theColor)
@@ -982,8 +989,8 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
           }
           
           let cache_key=`${possiblecolor}${as_float}${fill}`
-          if (!uDark.userSettings.disable_cache && !spanp && uDark.knownvariables[cache_key]) {
-            return uDark.knownvariables[cache_key];
+          if (!uDark.userSettings.disable_cache && !spanp && uDark.general_cache[cache_key]) {
+            return uDark.general_cache[cache_key];
           }
           possiblecolor = possiblecolor.trim().toLowerCase();
           let option=new Option();
@@ -1024,7 +1031,7 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
           }
           
           if (!uDark.userSettings.disable_cache) {
-            uDark.knownvariables[cache_key] = result;
+            uDark.general_cache[cache_key] = result;
           }
           return result;
         },
@@ -1063,7 +1070,11 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
             }
             else if(rule.style){  
                 let variables = Object.values(rule.style).filter(x=>x.startsWith("--"))
-                
+                // variables.forEach(variableName=>{
+                //   let value=rule.style.getPropertyValue(variableName)
+                //   uDark.css_variables[variableName]=value;
+
+                // })
                 variables.forEach(variableName=>{
 
                       let value=rule.style.getPropertyValue(variableName)
@@ -1104,27 +1115,6 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
           return str.replace(/(^|[^a-z0-9-])(repeat(-[xy])?)($|["}\n;,)! ])/g, "$1no-repeat;background-color:rgba(0,0,0,0.5);noprop:$4")
         },
 
-        edit_str_named_colors_no_chunk: function(chunk) {
-           return chunk.replace(uDark.colorRegex,(match,g1,g2,pos)=>{
-                if(!(/[,(:\s\t\r\n]/).test(chunk[pos-1]))
-                {
-                  return match;
-                }
-                return uDark.rgba_val(...uDark.eget_color(g1))+g2;
-              })
-              
-         },
-        edit_str_named_colors: function(str) {
-           return str.replace( new RegExp("{[^{}]*?"+uDark.CSS_COLOR_NAMES_RGX+"[^{}]*}","gis"),chunk=>{
-              return chunk.replace(uDark.colorRegex,(match,g1,g2,pos)=>{
-                if(!(/[,(:\s\t\r\n]/).test(chunk[pos-1]))
-                {
-                  return match;
-                }
-                return uDark.rgba_val(...uDark.eget_color(g1,))+g2;
-              })
-            })  
-         },
         edit_dynamic_colors_no_chunk:str=>str.replace(uDark.dynamicColorRegex,(match,g1,g2,g3)=>uDark.rgba(...uDark.eget_color(match))),
 
 
@@ -1142,12 +1132,100 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
         remove_multiply:(str,replace)=>{
           return str.replaceAll("mix-blend-mode: multiply;",`mix-blend-mode: ${replace};`)
         },
+        edit_cssRules(cssRules,mapFunction=x=>x) {
+          [...cssRules].forEach(cssRule=>{
+          
+            if(cssRule.cssRules && cssRule.cssRules.length){
+              return uDark.edit_cssRules(cssRule.cssRules);
+            }
+            else if(cssRule.style)
+            {  
+              uDark.edit_cssProperties(cssRule);
+            }
+          })        
+        },
+        css_properties_wording_replace_dict:      {
+            "mix-blend-mode":["multiply","normal"]
+        },
+        css_properties_wording_replace: function(cssRule,keys) {
+            keys.forEach(key=>{
+            let value=cssRule.style.getPropertyValue(key)||""
+            let replace=uDark.css_properties_wording_replace_dict[key]||["",""]
+            cssRule.style.setProperty(key,value.replaceAll(replace[0],replace[1]));
+          });
+        },
+        edit_named_colors: function(value,transformation,render) {
+          return value.replaceAll(uDark.namedColorsRegex, (match, g1, g2,g3) => {
+              return [g1,transformation(...uDark.eget_color(g2),render),g3].join("");
+          });
+        },
+        
+        hexadecimalColorsRegex: /#[0-9a-f]{3,4}(?:[0-9a-f]{2})?(?:[0-9a-f]{2})?/gmi,
+        edit_hex_colors: function(value,transformation,render) {
+          return value.replaceAll(uDark.hexadecimalColorsRegex, (match) => {
+              return transformation(...uDark.eget_color(match),render);
+          });
+        },
+        rgb_a_colorsRegex: /rgba?\([0-9., ]+\)/gmi,
+        edit_rgb_a_colors: function(value,transformation,render) {
+          return value.replaceAll(uDark.rgb_a_colorsRegex, (match) => {
+              return transformation(...uDark.eget_color(match),render);
+          });
+        },
+        hsl_a_colorsRegex: /hsla?\(([%0-9., \/=]|deg|turn|tetha)+\)/gmi,
+        edit_hsl_a_colors: function(value,transformation,render) {
+          return value.replaceAll(uDark.hsl_a_colorsRegex, (match) => {
+              return transformation(...uDark.eget_color(match),render);
+          });
+        },
+        foreground_color_css_properties:["color","fill"],
+        background_color_css_properties_regex:/color|fill|box-shadow/,
+        edit_all_cssRule_colors(cssRule,keys,transformation,render){
+          render = (render||uDark.rgba_val);
+          keys.forEach(key=>{
+            let cssStyle=cssRule.style;
+            let value=cssStyle.getPropertyValue(key)||""
+            if(value){
+              let priority = cssStyle.getPropertyPriority(key);
+
+              
+              value = uDark.edit_rgb_a_colors(value,transformation,render);
+              value = uDark.edit_hsl_a_colors(value,transformation,render);
+              value = uDark.edit_named_colors(value,transformation,render);
+              value = uDark.edit_hex_colors(value,transformation,render);
+
+              cssRule.style.setProperty(key,value,priority);
+              
+              // console.log("cssKey Color",cssRule,key,value,priority,cssRule.cssText);
+            }
+          });
+        },
+        edit_cssProperties: function(cssRule) {
+          // console.log(cssRule);
+          let valueList=Object.values(cssRule.style);
+          foreground_items=valueList.filter(x=>uDark.foreground_color_css_properties.includes(x))
+          variables_items=valueList.filter(x=>x.startsWith("--"));
+          
+          background_items=valueList.filter(x=> (
+            !x.startsWith("--")
+            && !foreground_items.includes(x))
+            &&x.match(uDark.background_color_css_properties_regex));
+          wording_replace=valueList.filter(x=>uDark.css_properties_wording_replace_dict[x]);
+          uDark.css_properties_wording_replace(cssRule,wording_replace);
+          uDark.edit_all_cssRule_colors(cssRule,background_items,uDark.rgba,uDark.rgba_val)
+          uDark.edit_all_cssRule_colors(cssRule,foreground_items,uDark.revert_rgba,uDark.rgba_val)
+          // console.log(cssRule,foreground_items,background_items,variables_items,wording_replace);
+        },
+
+        edit_css: function(cssStyleSheet) {
+          uDark.edit_cssRules(cssStyleSheet.cssRules);
+        },
         edit_str:function(str,cssStyleSheet,verifyIntegrity=false)
         {
           if(!cssStyleSheet)
           {
             cssStyleSheet = new CSSStyleSheet()
-            let valueReplace=str+"\n.integrity_rule{}";
+            let valueReplace=str+(verifyIntegrity?"\n.integrity_rule{}":"");
             cssStyleSheet.o_ud_replaceSync?cssStyleSheet.o_ud_replaceSync(valueReplace):cssStyleSheet.replaceSync(valueReplace);
             
           }
@@ -1155,15 +1233,16 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
           {
             return str; // Empty styles from domparser can't be edited as they are not "constructed"
           }
+          uDark.edit_css(cssStyleSheet);
           let nochunk = !cssStyleSheet.cssRules.length;
           if(nochunk)
           {
             str=`z{${str}}`;
             cssStyleSheet.o_ud_replaceSync?cssStyleSheet.o_ud_replaceSync(str):cssStyleSheet.replaceSync(str);
+            
+            uDark.edit_css(cssStyleSheet);
             str = cssStyleSheet.cssRules[0].cssText.slice(4,-2);
-            str = uDark.edit_str_named_colors_no_chunk(str)
-            str = uDark.edit_dynamic_colors_no_chunk(str)
-            str = uDark.remove_multiply(str,"normal");
+            
           }
           else{
             if(verifyIntegrity)
@@ -1176,15 +1255,12 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
                 return rejectError;
               }
             }
-            
-            str = uDark.edit_str_named_colors(str)
-            str = uDark.prefix_fg_vars(str);
-            str = uDark.edit_dynamic_colors(str)
-            str = uDark.remove_multiply(str,"normal");
-            
+            uDark.edit_css(cssStyleSheet)
+            let imports=str.match(/@import.+?(;|$|\n)/gmi)||[];
+            let rules=[...cssStyleSheet.cssRules].map(r=>r.cssText);
+            str=imports.concat(rules).join("\n");
           }
          
-          str = uDark.restore_color(str);
           return str;
         },
         getallBgimages:function(adocument,acondition=(elem,url)=>true){
