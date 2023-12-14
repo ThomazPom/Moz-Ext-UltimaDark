@@ -2,26 +2,35 @@ window.dark_object = {
   foreground: {
     inject: function() {
         uDark.is_foreground=true;
-        uDark.valuePrototypeEditor = function(leType, atName, watcher = x => x, conditon = (elem, value) => 1) {
+        uDark.valuePrototypeEditor = function(leType, atName, watcher = x => x, conditon=x=>x,aftermath=false) {
        //   console.log(leType,atName)
           var originalSet = Object.getOwnPropertyDescriptor(leType.prototype, atName).set;
           Object.defineProperty(leType.prototype, "o_ud_set_"+atName, {set:originalSet});
           //uDark.general_cache["o_ud_set_"+atName]=originalSet
           Object.defineProperty(leType.prototype, atName, {
             set: function(value) {
-              var new_value = conditon(this, value) ? watcher(this, value) : value;
-              return originalSet.call(this, new_value||value);
+              var new_value = conditon && conditon(this, value) ? watcher(this, value) : value;
+              let call_result = originalSet.call(this, new_value||value);
+              aftermath && aftermath(this, value, new_value);
+              return call_result;
             }
           });
         }
-        uDark.functionPrototypeEditor = function(leType, laFonction, watcher = x => x, conditon = (elem, value) => 1,do_on_result=x=>x) {
+        uDark.functionPrototypeEditor = function(leType, laFonction, watcher = x => x, conditon = x=>x ,do_on_result=x=>x) {
             //  console.log(leType,leType.name,leType.prototype,laFonction,laFonction.name)
+          if(laFonction.concat)
+          {
+            return laFonction.forEach(aFonction=>{
+              uDark.functionPrototypeEditor(leType,aFonction,watcher,conditon,do_on_result)
+            })
+          }
+          console.log(laFonction.name,leType,laFonction,watcher,conditon,do_on_result)
           var originalFunction = Object.getOwnPropertyDescriptor(leType.prototype, laFonction.name).value;
           Object.defineProperty(leType.prototype, "o_ud_"+laFonction.name, {value:originalFunction,writable:true});
           Object.defineProperty(leType.prototype, laFonction.name, 
             {
               value:{[laFonction.name]:function() {
-                  if(conditon(this, arguments))
+                  if(conditon && conditon(this, arguments))
                   {
                     // console.log(leType,laFonction,this,arguments[0],watcher(this, arguments)[0])
                     return do_on_result(originalFunction.apply(this, watcher(this, arguments)));
@@ -41,6 +50,9 @@ window.dark_object = {
              var parser = new DOMParser();
               var html_element = parser.parseFromString(  value,"text/html").documentElement;
          
+              html_element.querySelectorAll("link").forEach(alink=>{
+                console.log(alink.href);
+            }); 
         html_element.querySelectorAll("style").forEach(astyle=>{
               astyle.innerHTML=uDark.edit_str(astyle.innerHTML);
               astyle.classList.add("ud-edited-background")
@@ -110,7 +122,7 @@ uDark.functionPrototypeEditor(DOMTokenList,DOMTokenList.prototype.add,(elem,args
 /*done*/uDark.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.insertRule,(elem,args)=>{console.log(elem,args); return [".have-border { border: 1px solid black;}",0]})
 
 //Youtube uses this one
-uDark.functionPrototypeEditor(CSSStyleDeclaration,CSSStyleDeclaration.prototype.setProperty,(elem,args)=>{console.log(elem,args);return args})
+uDark.functionPrototypeEditor(CSSStyleDeclaration,CSSStyleDeclaration.prototype.setProperty,(elem,args)=>{console.log("CSSStyleDeclaration setProperty",elem,args);return args})
 
 // should not be usefull
 
@@ -142,15 +154,14 @@ uDark.functionPrototypeEditor(Document,Document.prototype.createElement,function
 //
 
 
-uDark.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.replace,(elem,args)=>{ // Needed to manage it some day, now done :)
+uDark.functionPrototypeEditor(CSSStyleSheet,
+  [
+    CSSStyleSheet.prototype.replace,
+    CSSStyleSheet.prototype.replaceSync
+  ],(elem,args)=>{ // Needed to manage it some day, now done :)
   args[0]=uDark.edit_str(args[0]);
   return args;
 })
-uDark.functionPrototypeEditor(CSSStyleSheet,CSSStyleSheet.prototype.replaceSync,(elem,args)=>{ // Needed to manage it some day, now done :)
-  args[0]=uDark.edit_str(args[0]);
-  return args;
-})
-
 //This is the one youtube uses
 uDark.valuePrototypeEditor( Element,    "innerHTML", uDark.frontEditHTML, (elem,value)=>value && value.toString().includes('style')    ||elem instanceof HTMLStyleElement); //toString : sombe object can redefine tostring to generate thzir inner
   
@@ -159,6 +170,30 @@ uDark.functionPrototypeEditor(Element,Element.prototype.insertAdjacentHTML,(elem
   args[1]=uDark.frontEditHTML(elem,args[1]);
   return args;
 },(elem,args)=>args[1].includes("style"))
+
+// if(uDark.enable_remote_links_rewrite)
+// { // the idea was to rewrite links urls from remote origins to local origins, allowing uDark to bypass CORS, but it is not that simple, and it is not that usefull
+// // but even with uDark as proxy, CORS is not bypassed
+//   let base_rewrite = `${document.location.protocol}//${document.location.host}/?ud-remote-link=`;
+//   uDark.valuePrototypeEditor(HTMLLinkElement,"href",
+//   (elem,value)=>console.log(base_rewrite+encodeURIComponent(elem.href))||base_rewrite+encodeURI(elem.href),
+//   (elem,value)=>{
+//     let anchor =document.createElement("a");
+//     anchor.href=value;
+//     elem.o_ud_set_href=anchor.href;
+//     return anchor.host!=document.location.host;
+//   });
+
+// }
+if(checkDomEdit=false)
+{
+  
+  uDark.functionPrototypeEditor(Node,[Node.prototype.insertBefore,Node.prototype.appendChild],(elem,args)=>{  console.log(elem,args);  return args;})
+  uDark.functionPrototypeEditor(Node,Node.prototype.appendChild,(elem,args)=>{  console.log(elem,args);  return args;})
+  uDark.functionPrototypeEditor(Element,Element.prototype.after,(elem,args)=>{ console.log(elem,args);  return args;})
+  uDark.functionPrototypeEditor(Document,Document.prototype.createElement,(elem,args)=>{ console.log(elem,args);  return args;})
+
+}
 
 
 
@@ -195,6 +230,10 @@ uDark.valuePrototypeEditor(CSS2Properties,"background-color",(elem,value)=>uDark
 uDark.valuePrototypeEditor(CSS2Properties,"color",(elem,value)=>uDark.revert_rgba(...uDark.eget_color(value)))
 uDark.valuePrototypeEditor(HTMLElement,"style",(elem,value)=>uDark.edit_str(value))// Care with "style and eget, this cause recursions"
 
+uDark.valuePrototypeEditor(CSS2Properties,"position",false,false,(elem,value,new_value)=>{
+  uDark.css_properties_wording_action(elem,["position"])
+  return value;
+})
 uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      return uDark.edit_str(value)  },(elem,value)=>value && elem instanceof HTMLStyleElement);
 
  console.log("UltimaDark is loaded",window);
@@ -695,8 +734,15 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
                     //html_element.querySelectorAll("noscript").forEach(anoscript=>{
                     //    anoscript.remove();
                     //});
+                    
+                    html_element.querySelectorAll("link").forEach(alink=>{
+                      console.log(alink.href);
+                  }); 
                     html_element.querySelectorAll("style").forEach(astyle=>{
-                      astyle.innerHTML=uDark.edit_str(astyle.innerHTML);//,astyle.sheet);
+                      astyle.innerHTML=uDark.edit_str(astyle.innerHTML);
+                      // According to https://stackoverflow.com/questions/55895361/how-do-i-change-the-innerhtml-of-a-global-style-element-with-cssrule ,
+                      // it is not possible to edit a style element innerHTML with its cssStyleSheet alone
+                      // astyle.innerHTML=uDark.edit_css(astyle.innerHTML,astyle.sheet);
                       astyle.classList.add("ud-edited-background")
                       astyle.innerHTML=uDark.send_data_image_to_parser(astyle.innerHTML,details);
                     });
@@ -753,7 +799,7 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
       const CSS_COLOR_NAMES = ["AliceBlue", "AntiqueWhite", "Aqua", "Aquamarine", "Azure", "Beige", "Bisque", "Black", "BlanchedAlmond", "Blue", "BlueViolet", "Brown", "BurlyWood", "CadetBlue", "Chartreuse", "Chocolate", "Coral", "CornflowerBlue", "Cornsilk", "Crimson", "Cyan", "DarkBlue", "DarkCyan", "DarkGoldenRod", "DarkGray", "DarkGrey", "DarkGreen", "DarkKhaki", "DarkMagenta", "DarkOliveGreen", "DarkOrange", "DarkOrchid", "DarkRed", "DarkSalmon", "DarkSeaGreen", "DarkSlateBlue", "DarkSlateGray", "DarkSlateGrey", "DarkTurquoise", "DarkViolet", "DeepPink", "DeepSkyBlue", "DimGray", "DimGrey", "DodgerBlue", "FireBrick", "FloralWhite", "ForestGreen", "Fuchsia", "Gainsboro", "GhostWhite", "Gold", "GoldenRod", "Gray", "Grey", "Green", "GreenYellow", "HoneyDew", "HotPink", "IndianRed", "Indigo", "Ivory", "Khaki", "Lavender", "LavenderBlush", "LawnGreen", "LemonChiffon", "LightBlue", "LightCoral", "LightCyan", "LightGoldenRodYellow", "LightGray", "LightGrey", "LightGreen", "LightPink", "LightSalmon", "LightSeaGreen", "LightSkyBlue", "LightSlateGray", "LightSlateGrey", "LightSteelBlue", "LightYellow", "Lime", "LimeGreen", "Linen", "Magenta", "Maroon", "MediumAquaMarine", "MediumBlue", "MediumOrchid", "MediumPurple", "MediumSeaGreen", "MediumSlateBlue", "MediumSpringGreen", "MediumTurquoise", "MediumVioletRed", "MidnightBlue", "MintCream", "MistyRose", "Moccasin", "NavajoWhite", "Navy", "OldLace", "Olive", "OliveDrab", "Orange", "OrangeRed", "Orchid", "PaleGoldenRod", "PaleGreen", "PaleTurquoise", "PaleVioletRed", "PapayaWhip", "PeachPuff", "Peru", "Pink", "Plum", "PowderBlue", "Purple", "RebeccaPurple", "Red", "RosyBrown", "RoyalBlue", "SaddleBrown", "Salmon", "SandyBrown", "SeaGreen", "SeaShell", "Sienna", "Silver", "SkyBlue", "SlateBlue", "SlateGray", "SlateGrey", "Snow", "SpringGreen", "SteelBlue", "Tan", "Teal", "Thistle", "Tomato", "Turquoise", "Violet", "Wheat", "White", "WhiteSmoke", "Yellow", "YellowGreen" ]
       window.uDark = {
         userSettings:{},
-        namedColorsRegex: (new RegExp(`(^|[^A-Z])(${CSS_COLOR_NAMES.join("|")})($|[^A-Z])`, "gmi")),
+        namedColorsRegex: (new RegExp(`\\b(${CSS_COLOR_NAMES.join("|")})\\b`, "gmi")),
         min_bright_fg: 0.75, // Text with luminace under this value will be brightened
         max_bright_fg: 0.85, // Text over this value will be darkened
         vivid_colors_threshold_fg: 0.4, // Colors with good saturation and good luminace should not be brightened, because thay are already bright and will loose saturation if brightened
@@ -763,7 +809,6 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
         hueShiftbg: 0, // Hue shift for background, 0 is no shift, 360 is full shift
         min_bright_bg_trigger: 0.2, // backgrounds with luminace under this value will remain as is
         nonBreakScriptIdent: "§§IDENTIFIER§§",
-        
         min_bright_bg: 0.1, // background with value over min_bright_bg_trigger will be darkened from this value up to max_bright_bg
         max_bright_bg: 0.4, // background with value over min_bright_bg_trigger will be darkened from min_bright_bg up to this value
         general_cache: {},
@@ -943,25 +988,6 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
                }
           }
 
-          // if(groups.length && groups[1])
-          // // In this case we should return a string (with edits or not)
-          // {
-          //   groups=groups.map(x=>x||"")
-            
-          //   let [g1,g2,g3]=groups
-          //   let theColor = uDark.is_color(`rgba(${g2})`,true,false)
-          //   if(!theColor)
-          //   {
-          //     return anycolor
-          //   }
-          //   theColorFilled = theColor.concat(Array(4-theColor.length).fill(1))
-          //   if(editColorF)
-          //   {
-          //    // console.log(theColorFilled,editColorF,editColorF(...theColorFilled,z=>[g1,theColor,g3].join(glue)))
-          //     return editColorF(...theColorFilled,(...args)=>`${g1}${args.slice(0,theColor.length).join(glue)}${g3}` )
-          //   }
-          //   return theColorFilled;
-          // }
 
           let theColor = uDark.is_color(anycolor)
           if(!theColor)
@@ -1061,52 +1087,8 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
               return result
             })
         },
-        do_css_rules: function(cssRules) {
-          return [...cssRules].map(rule => {
-            
 
-              if(rule.cssRules && rule.cssRules.length){
-                uDark.do_css_rules(rule.cssRules);
-            }
-            else if(rule.style){  
-                let variables = Object.values(rule.style).filter(x=>x.startsWith("--"))
-                // variables.forEach(variableName=>{
-                //   let value=rule.style.getPropertyValue(variableName)
-                //   uDark.css_variables[variableName]=value;
-
-                // })
-                variables.forEach(variableName=>{
-
-                      let value=rule.style.getPropertyValue(variableName)
-                      let newName = "--ud-fg"+ variableName ;
-                     rule.style.setProperty(variableName,uDark.edit_all_dynamic_colors(value));
-                
-                     rule.style.setProperty(newName,uDark.restore_all_color(value) );
-                });
-                
-            }
-            else{
-              // If a rule is not edited or empty it ends here
-              // console.log("RULE",rule)
-            }
-
-          return rule;
-          })
-        },
-        
-        prefix_fg_vars: function(str,cssStyleSheet) { 
-         
-          if(!cssStyleSheet)
-          {
-            cssStyleSheet = new CSSStyleSheet();
-            
-            cssStyleSheet.o_ud_replaceSync?cssStyleSheet.o_ud_replaceSync(str):cssStyleSheet.replaceSync(str);
-          }
-          let rules=uDark.do_css_rules(cssStyleSheet.cssRules).map(r=>r.cssText);
-          imports=str.match(/@import.+?(;|$|\n)/gmi)||[];
-          // console.log( imports.concat(rules).join("\n"));
-          return imports.concat(rules).join("\n");
-        },
+      
         set_the_round_border: function(str) {
           return str.replace(uDark.radiusRegex, "$1;filter:brightness(0.95);box-shadow: 0 0 5px 1px rgba(0,0,0,0)!important;border:1px solid rgba(255,255,255,0.2)!important;$2$7");
         },
@@ -1144,65 +1126,104 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
             }
           })        
         },
-        css_properties_wording_replace_dict:      {
-            "mix-blend-mode":["multiply","normal"]
+        css_properties_wording_action_dict:      {
+            "mix-blend-mode":{ replace:["multiply","normal"]},
+            "position":{ stickConcatToPropery: {sValue:"fixed",rKey:"filter", stick:"contrast(110%)"}},
         },
-        css_properties_wording_replace: function(cssRule,keys) {
+        css_properties_wording_action: function(cssStyle,keys,cssRule) {
             keys.forEach(key=>{
-            let value=cssRule.style.getPropertyValue(key)||""
-            let replace=uDark.css_properties_wording_replace_dict[key]||["",""]
-            cssRule.style.setProperty(key,value.replaceAll(replace[0],replace[1]));
+            let action = uDark.css_properties_wording_action_dict[key];
+            if(action)
+            {
+              
+              let value=cssStyle.getPropertyValue(key)||""
+              if(action.replace)
+              {
+                value = cssStyle.setProperty(key,value.replaceAll(...action.replace));
+              }
+              if(action.stickConcatToPropery)
+              {
+              let vars = action.stickConcatToPropery
+                
+                value = value||cssStyle.getPropertyValue(key)
+                let new_value=cssStyle.getPropertyValue(vars.rKey)||""
+                if(value && value.includes(vars.sValue))
+                {
+                  new_value+=" "+vars.stick;
+                }
+                else{
+                  new_value=new_value.replaceAll(vars.stick,"");
+                }
+                cssStyle.setProperty(vars.rKey,new_value);
+                
+              }
+            }
+
           });
         },
-        edit_named_colors: function(value,transformation,render) {
-          return value.replaceAll(uDark.namedColorsRegex, (match, g1, g2,g3) => {
-              return [g1,transformation(...uDark.eget_color(g2),render),g3].join("");
+
+        edit_with_regex: function(value,regex,transformation,render) 
+        {
+          return value.replaceAll(regex, (match) => {
+            return transformation(...uDark.eget_color(match),render);
           });
         },
         
-        hexadecimalColorsRegex: /#[0-9a-f]{3,4}(?:[0-9a-f]{2})?(?:[0-9a-f]{2})?/gmi,
-        edit_hex_colors: function(value,transformation,render) {
-          return value.replaceAll(uDark.hexadecimalColorsRegex, (match) => {
-              return transformation(...uDark.eget_color(match),render);
-          });
+        hexadecimalColorsRegex: /#[0-9a-f]{3,4}(?:[0-9a-f]{2})?(?:[0-9a-f]{2})?/gmi, //hexadecimal colors
+        rgb_a_colorsRegex: /rgba?\([0-9., ]+\)/gmi, // rgba vals without variables involved
+        hsl_a_colorsRegex: /hsla?\(([%0-9., \/=]|deg|turn|tetha)+\)/gmi, // hsla vals without variables involved
+        unResovableVarsRegex: /(?:hsl|rgb)a?[ ]*\([^)]*\(/, // vars that can't be resolved by the background
+        foreground_color_css_properties:["color","fill"], // css properties that are foreground colors
+        background_color_css_properties_regex:/color|fill|box-shadow/, // css properties that are background colors
+        edit_prefix_fg_vars: function(value,actions) {
+          if(!value.includes("var("))
+          {
+            return value; // No variables to edit;
+          }
+          return value.replace(/(^|[^a-z0-9-])--([a-z0-9-])/g,"$1--ud-fg--$2")
         },
-        rgb_a_colorsRegex: /rgba?\([0-9., ]+\)/gmi,
-        edit_rgb_a_colors: function(value,transformation,render) {
-          return value.replaceAll(uDark.rgb_a_colorsRegex, (match) => {
-              return transformation(...uDark.eget_color(match),render);
-          });
-        },
-        hsl_a_colorsRegex: /hsla?\(([%0-9., \/=]|deg|turn|tetha)+\)/gmi,
-        edit_hsl_a_colors: function(value,transformation,render) {
-          return value.replaceAll(uDark.hsl_a_colorsRegex, (match) => {
-              return transformation(...uDark.eget_color(match),render);
-          });
-        },
-        foreground_color_css_properties:["color","fill"],
-        background_color_css_properties_regex:/color|fill|box-shadow/,
-        edit_all_cssRule_colors(cssRule,keys,transformation,render){
-          render = (render||uDark.rgba_val);
+        edit_all_cssRule_colors(idk_mode,cssRule,keys,transformation,render,key_prefix="",actions={}){
+          // render = (render||uDark.rgba_val);
+          // console.log(idk_mode,cssRule,keys,transformation,render,key_prefix,actions);
           keys.forEach(key=>{
+            let key_idk=(idk_mode?"--ud-idk_":"")+key;
             let cssStyle=cssRule.style;
-            let value=cssStyle.getPropertyValue(key)||""
+            let value=cssStyle.getPropertyValue(key_idk)||""
+            
             if(value){
-              let priority = cssStyle.getPropertyPriority(key);
-
               
-              value = uDark.edit_rgb_a_colors(value,transformation,render);
-              value = uDark.edit_hsl_a_colors(value,transformation,render);
-              value = uDark.edit_named_colors(value,transformation,render);
-              value = uDark.edit_hex_colors(value,transformation,render);
-
-              cssRule.style.setProperty(key,value,priority);
+              let priority = cssStyle.getPropertyPriority(key_idk);
+              if(uDark.is_background && uDark.unResovableVarsRegex.test(value))
+              {
+                console.log(uDark.is_background,key,value,"has unresolvable vars, skipping");
+                cssStyle.removeProperty(key)
+                cssStyle.setProperty("--ud-idk_"+key,value,priority);
+                return;
+              }
+              else if(idk_mode){
+                cssStyle.removeProperty(key_idk);
+              }
+              value = uDark.edit_with_regex(value,uDark.rgb_a_colorsRegex,      transformation,render); // edit_rgb_a_colors
+              value = uDark.edit_with_regex(value,uDark.hsl_a_colorsRegex,      transformation,render); // edit_hsl_a_colors
+              value = uDark.edit_with_regex(value,uDark.namedColorsRegex,       transformation,render); // edit_named_colors
+              value = uDark.edit_with_regex(value,uDark.hexadecimalColorsRegex, transformation,render); // edit_hex_colors // The browser auto converts hex to rgb, but some times not like in  var(--123,#00ff00) as it cant resolve the var
+              cssStyle.setProperty(key_prefix+key,value,priority);
               
               // console.log("cssKey Color",cssRule,key,value,priority,cssRule.cssText);
             }
           });
         },
-        edit_cssProperties: function(cssRule) {
+        
+        edit_cssProperties: function(cssRule,idk_mode=false) {
           // console.log(cssRule);
+
+          // Referencing eligible keys starts here
           let valueList=Object.values(cssRule.style);
+          
+          // console.log(valueList);
+          if(idk_mode){
+            valueList=valueList.filter(x=>x.startsWith("--ud-idk_")).map(x=>x.slice(9));
+          }
           foreground_items=valueList.filter(x=>uDark.foreground_color_css_properties.includes(x))
           variables_items=valueList.filter(x=>x.startsWith("--"));
           
@@ -1210,14 +1231,21 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
             !x.startsWith("--")
             && !foreground_items.includes(x))
             &&x.match(uDark.background_color_css_properties_regex));
-          wording_replace=valueList.filter(x=>uDark.css_properties_wording_replace_dict[x]);
-          uDark.css_properties_wording_replace(cssRule,wording_replace);
-          uDark.edit_all_cssRule_colors(cssRule,background_items,uDark.rgba,uDark.rgba_val)
-          uDark.edit_all_cssRule_colors(cssRule,foreground_items,uDark.revert_rgba,uDark.rgba_val)
-          // console.log(cssRule,foreground_items,background_items,variables_items,wording_replace);
+          wording_action=valueList.filter(x=>uDark.css_properties_wording_action_dict[x]);
+
+
+          // Editing values starts here
+          wording_action.length && uDark.css_properties_wording_action(cssRule.style,wording_action,cssRule);
+          background_items.length && uDark.edit_all_cssRule_colors(idk_mode,cssRule,background_items,uDark.rgba,uDark.rgba_val)
+          foreground_items.length && uDark.edit_all_cssRule_colors(idk_mode,cssRule,foreground_items,uDark.revert_rgba,uDark.rgba_val,"",{ prefix_fg_vars:true   })
+          variables_items.length && [ uDark.edit_all_cssRule_colors(idk_mode,cssRule,variables_items,uDark.revert_rgba,uDark.rgba_val,"--ud-fg",{ prefix_fg_vars:true   })
+                                    , uDark.edit_all_cssRule_colors(idk_mode,cssRule,variables_items,uDark.rgba,uDark.rgba_val)]
+          
+          // console.log(cssRule,foreground_items,background_items,variables_items,wording_action);
         },
 
         edit_css: function(cssStyleSheet) {
+          console.log
           uDark.edit_cssRules(cssStyleSheet.cssRules);
         },
         edit_str:function(str,cssStyleSheet,verifyIntegrity=false)
@@ -1233,7 +1261,6 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
           {
             return str; // Empty styles from domparser can't be edited as they are not "constructed"
           }
-          uDark.edit_css(cssStyleSheet);
           let nochunk = !cssStyleSheet.cssRules.length;
           if(nochunk)
           {
@@ -1297,12 +1324,12 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
        // uDark.variableRegex2 = /(^|[^a-z0-9-])(--[a-z0-9-]+)(?:[\s\t]*?:)[\s\t]*(([^;}])*)/gi,
         //uDark.variableBasedRegex = /(^|[^a-z0-9-])var[\s\t]*?\([\s\t]*?(--[a-z0-9-]+)[\s\t]*?\)/gi,
        // uDark.interventRegex = /(^|[^a-z0-9-])(color|background(-color|-image)?)[\s\t]*?:[\s\t]*?[\n]*?([^;}]*?)([^;}]*?['"].*['"][^;}]*?)*?[\s\t]*?(![\s\t]*?important)?[\s\t]*?($|[;}\n\\])/gi
-        uDark.dynamicColorRegex = /(?<!(^|[^a-z0-9-])(--[a-zA-Z0-9_-]+|color|fill)(?:[\s\t]*?:)[\s\t]*?)(#[0-9a-f]{3,4}(?:[0-9a-f]{2})?(?:[0-9a-f]{2})?|(rgb|hsl)a?\([%0-9, .]+?\))/gi // Any color .. if not preceded by color attribute or is not a --xyz wich are already edited:)
-        uDark.dynamicAllColorRegex = /(?:#[0-9a-f]{3,4}(?:[0-9a-f]{2})?(?:[0-9a-f]{2})?|(?:rgb|hsl)a?\([%0-9, .\/]+?\))|^(\()?([%0-9, .\/]{5,25})(\))?$/gi// Use in property values
+        //uDark.dynamicColorRegex = /(?<!(^|[^a-z0-9-])(--[a-zA-Z0-9_-]+|color|fill)(?:[\s\t]*?:)[\s\t]*?)(#[0-9a-f]{3,4}(?:[0-9a-f]{2})?(?:[0-9a-f]{2})?|(rgb|hsl)a?\([%0-9, .]+?\))/gi // Any color .. if not preceded by color attribute or is not a --xyz wich are already edited:)
+        //uDark.dynamicAllColorRegex = /(?:#[0-9a-f]{3,4}(?:[0-9a-f]{2})?(?:[0-9a-f]{2})?|(?:rgb|hsl)a?\([%0-9, .\/]+?\))|^(\()?([%0-9, .\/]{5,25})(\))?$/gi// Use in property values
       
         //uDark.urlBGRegex = /(^|[^a-z0-9-])(background(-image)?)[\s\t]*?:[\s\t]*?(url\(["']?(.+?)["']?\))/g
-        uDark.restoreColorRegex = /(?<![a-z0-9-])(color|fill)[\s\t]*?:[\s\t]*(.+?)($|[;\n\r}!])/gi // var edits are done in the prefix 
-        uDark.restoreAllColorRegex = /(?:#[0-9a-f]{3,4}(?:[0-9a-f]{2})?(?:[0-9a-f]{2})?|(?:rgb|hsl)a?\([%0-9, .\/]+?\))|^(\()?([%0-9, .\/]{5,25})(\))?$/gi // var edit is in the function
+        //uDark.restoreColorRegex = /(?<![a-z0-9-])(color|fill)[\s\t]*?:[\s\t]*(.+?)($|[;\n\r}!])/gi // var edits are done in the prefix 
+        //uDark.restoreAllColorRegex = /(?:#[0-9a-f]{3,4}(?:[0-9a-f]{2})?(?:[0-9a-f]{2})?|(?:rgb|hsl)a?\([%0-9, .\/]+?\))|^(\()?([%0-9, .\/]{5,25})(\))?$/gi // var edit is in the function
         //Variables can use other variables :
         //uDark.restoreVarRegex = /([^a-z0-9-])(--ud-fg--[a-zA-Z0-9]+|color|fill)[\s\t]*?:[\s\t]*?var[\s\t]*?\(.*?($|["}\n;!])/g
         //uDark.matchStylePart=new RegExp(["{[^}]+?((",[uDark.radiusRegex,uDark.variableRegex,uDark.interventRegex ].map(x=>x.source).join(")|("),"))[^}]+?}"].join(""),"gi");
@@ -1317,6 +1344,17 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
         (details.documentUrl || details.url).match(uDark.userSettings.exclude_regex)) {
         return {}
       }
+      // if(uDark.enable_remote_links_rewrite) // In frontend we cant edit CSS Stylesheets from links with a remote origin (CORS)
+      // { // Script edits the links to be local, so we can edit them, but we need to rewrite the links to be remote again
+      // And this is not working, as the browser is still applying CORS rules to the link, even if it is rewritten to be local
+      //   if(details.url.includes("ud-remote-link"))
+      //   {
+      //     let rewriteUrl = decodeURI([...new URLSearchParams(details.url)][0][1]);
+      //     console.log("Rewriting remote link to",rewriteUrl);
+      //     return {redirectUrl:rewriteUrl}
+      //   }
+      // }
+
       details.isStyleSheet = ["stylesheet"].includes(details.type)
       details.isImage = ["image"].includes(details.type)
       if (details.isImage) {
@@ -1359,6 +1397,7 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
         (details.documentUrl || details.url).match(uDark.userSettings.exclude_regex)) {
         return {}
       }
+      
       var n = details.responseHeaders.length;
       details.headersLow={}
       while (n--) {
