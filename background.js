@@ -56,10 +56,14 @@ window.dark_object = {
               astyle.innerHTML=uDark.edit_str(astyle.innerHTML);
               astyle.classList.add("ud-edited-background")
             });
+            if(!uDark.disableCorsCSSEdit)
+            {
+              html_element.querySelectorAll("link").forEach(alink=>{
+                alink.crossOrigin="anonymous"; // Allow CORS access for IDK mode
+              }); 
+            }
               html_element.querySelectorAll("[style]").forEach(astyle=>{
-                html_element.querySelectorAll("link").forEach(alink=>{
-                  alink.crossOrigin="anonymous"; // Allow CORS access for IDK mode
-                }); 
+               
                 
             // console.log(html_element,astyle.getAttribute("style"));
               astyle.setAttribute("style",uDark.edit_str(astyle.getAttribute("style")));
@@ -67,62 +71,10 @@ window.dark_object = {
             return html_element.innerHTML;
          }
 
-    //  Observer for applying IDK mode, still needs some work : disabling on load, relaying to addRule, etc
-          {
-            let observerCounter=0;
-            let validObserverCounter=0;
-                var observer = new MutationObserver(function(mutations, observer) {
-                  for(aMutationRecord of mutations)
-                  {
-                    observerCounter++;
-                    for(aNode of aMutationRecord.addedNodes)
-                    {
-                      if(aNode instanceof HTMLStyleElement)
-                      {
-                        validObserverCounter++;
-                        
-                        console.log("Precision:",  validObserverCounter,observerCounter,Math.round(validObserverCounter/observerCounter*10000)/100);
-                        return uDark.do_idk_mode();
-                      }
-                      else if(aNode instanceof HTMLLinkElement && aNode.rel.toLowerCase().trim()=="stylesheet" && aNode.href)
-                      {
-                        validObserverCounter++;
-                        console.log("Precision:",  validObserverCounter,observerCounter,Math.round(validObserverCounter/observerCounter*10000)/100);
-                        return uDark.do_idk_mode();
-                      }
-                    }
-                  }
 
-                  // let cssMutated=mutations.filter(a=>
-                  //   a.tagName=="STYLE"
-                  //   || a.tagName=="LINK" && a.rel.toLowerCase().trim()=="stylesheet" && a.href)
-                  // if(cssMutated?.length)
-                  // {
-                  //   uDark.do_idk_mode();
-                  // }
-
-              });
-              // // setTimeout(uDark.do_idk_mode,0 );
-              // // uDark.do_idk_mode();
-              // // define what element should be observed by the observer
-              // // and what types of mutations trigger the callback
-              // observer.observe(document, {
-              //   childList: true,
-              // subtree: true,
-              
-              // });
-          }
-          if(!uDark.disable_idk_mode){
-              uDark.do_idk_mode_timed();
-          }
-        // { // Do idk mode n times  
-        //   uDark.do_idk_mode_n_times=(repeat,interval)=>{
-        //       uDark.do_idk_mode();
-        //       console.log("IDK mode",repeat,interval,"ms");
-        //       repeat>0 && setTimeout(z=>uDark.do_idk_mode_n_times(repeat-1,interval),interval );
-        //   };
-        //   uDark.do_idk_mode_n_times(20,500);
-        // };
+      if(!uDark.disable_idk_mode){ // Use of an observer was consuming too much ressources
+          uDark.do_idk_mode_timed();
+      }
      window.addEventListener('load', (event) => {
       uDark.do_idk_mode();
           var bodycolor = getComputedStyle(document.body)["backgroundColor"]
@@ -235,8 +187,12 @@ uDark.functionPrototypeEditor(Element,Element.prototype.insertAdjacentHTML,(elem
 // Optimisation is done in do_idk_mode, witha boolean called idk_mode_ok which is lost on href edits, so it is not a problem to do it several times
 uDark.valuePrototypeEditor(HTMLLinkElement,"href",  (elem,value)=>value,  (elem,value)=>{return true;},(elem,value,new_value)=>uDark.do_idk_mode_timed(5000,300))
 
+if(!uDark.disableCorsCSSEdit)
+{
+  
 // Disallow any other value than anonymous for crossOrigin for IDK mode to work;
 uDark.valuePrototypeEditor(HTMLLinkElement,"crossOrigin",  (elem,value)=>"anonymous",  (elem,value)=>{return true;})
+}
 
 // if(uDark.enable_remote_links_rewrite)
 // { // the idea was to rewrite links urls from remote origins to local origins, allowing uDark to bypass CORS, but it is not that simple, and it is not that usefull
@@ -327,6 +283,8 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
         uDark.general_cache = {};
         uDark.fixedRandom = Math.random();
         browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editBeforeData);
+        
+        browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editBeforeResponseStylesheets);
         browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.editBeforeRequest);
         if (uDark.regiteredCS) {
           uDark.regiteredCS.unregister();
@@ -334,10 +292,15 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
         }
         if (!res.disable_webext && uDark.userSettings.properWhiteList.length) {
           browser.webRequest.onHeadersReceived.addListener(dark_object.misc.editBeforeData, {
-              urls: uDark.userSettings.properWhiteList,
-              types: [ "main_frame", "sub_frame"]
-            },
-            ["blocking", "responseHeaders"]);
+            urls: uDark.userSettings.properWhiteList,
+            types: [ "main_frame", "sub_frame"]
+          },
+          ["blocking", "responseHeaders"]);
+          browser.webRequest.onHeadersReceived.addListener(dark_object.misc.editBeforeResponseStylesheets, {
+            urls: uDark.userSettings.properWhiteList,
+            types: [ "stylesheet","image"]
+          },
+          ["blocking", "responseHeaders"]);
           browser.webRequest.onBeforeRequest.addListener(dark_object.misc.editBeforeRequest, {
               urls: uDark.userSettings.properWhiteList,
               types: ["stylesheet", "image"]
@@ -825,10 +788,12 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
                     // html_element.querySelectorAll("noscript").forEach(anoscript=>{
                     //    anoscript.remove();
                     // });
-                    
-                    html_element.querySelectorAll("link").forEach(alink=>{
-                       alink.crossOrigin="anonymous"; // Allow CORS access early for IDK mode
-                    }); 
+                    if(!uDark.disableCorsCSSEdit)
+                    {
+                      html_element.querySelectorAll("link").forEach(alink=>{
+                        alink.crossOrigin="anonymous"; // Allow CORS access early for IDK mode
+                      });
+                    } 
                     html_element.querySelectorAll("style").forEach(astyle=>{
                       astyle.innerHTML=uDark.edit_str(astyle.innerHTML);
                       // According to https://stackoverflow.com/questions/55895361/how-do-i-change-the-innerhtml-of-a-global-style-element-with-cssrule ,
@@ -890,6 +855,7 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
       const CSS_COLOR_NAMES = ["AliceBlue", "AntiqueWhite", "Aqua", "Aquamarine", "Azure", "Beige", "Bisque", "Black", "BlanchedAlmond", "Blue", "BlueViolet", "Brown", "BurlyWood", "CadetBlue", "Chartreuse", "Chocolate", "Coral", "CornflowerBlue", "Cornsilk", "Crimson", "Cyan", "DarkBlue", "DarkCyan", "DarkGoldenRod", "DarkGray", "DarkGrey", "DarkGreen", "DarkKhaki", "DarkMagenta", "DarkOliveGreen", "DarkOrange", "DarkOrchid", "DarkRed", "DarkSalmon", "DarkSeaGreen", "DarkSlateBlue", "DarkSlateGray", "DarkSlateGrey", "DarkTurquoise", "DarkViolet", "DeepPink", "DeepSkyBlue", "DimGray", "DimGrey", "DodgerBlue", "FireBrick", "FloralWhite", "ForestGreen", "Fuchsia", "Gainsboro", "GhostWhite", "Gold", "GoldenRod", "Gray", "Grey", "Green", "GreenYellow", "HoneyDew", "HotPink", "IndianRed", "Indigo", "Ivory", "Khaki", "Lavender", "LavenderBlush", "LawnGreen", "LemonChiffon", "LightBlue", "LightCoral", "LightCyan", "LightGoldenRodYellow", "LightGray", "LightGrey", "LightGreen", "LightPink", "LightSalmon", "LightSeaGreen", "LightSkyBlue", "LightSlateGray", "LightSlateGrey", "LightSteelBlue", "LightYellow", "Lime", "LimeGreen", "Linen", "Magenta", "Maroon", "MediumAquaMarine", "MediumBlue", "MediumOrchid", "MediumPurple", "MediumSeaGreen", "MediumSlateBlue", "MediumSpringGreen", "MediumTurquoise", "MediumVioletRed", "MidnightBlue", "MintCream", "MistyRose", "Moccasin", "NavajoWhite", "Navy", "OldLace", "Olive", "OliveDrab", "Orange", "OrangeRed", "Orchid", "PaleGoldenRod", "PaleGreen", "PaleTurquoise", "PaleVioletRed", "PapayaWhip", "PeachPuff", "Peru", "Pink", "Plum", "PowderBlue", "Purple", "RebeccaPurple", "Red", "RosyBrown", "RoyalBlue", "SaddleBrown", "Salmon", "SandyBrown", "SeaGreen", "SeaShell", "Sienna", "Silver", "SkyBlue", "SlateBlue", "SlateGray", "SlateGrey", "Snow", "SpringGreen", "SteelBlue", "Tan", "Teal", "Thistle", "Tomato", "Turquoise", "Violet", "Wheat", "White", "WhiteSmoke", "Yellow", "YellowGreen" ]
       window.uDark = {
         userSettings:{},
+        disableCorsCSSEdit:true,
         namedColorsRegex: (new RegExp(`(?<![_a-z0-9-])(${CSS_COLOR_NAMES.join("|")})(?![_a-z0-9-])`, "gmi")),
         min_bright_fg: 0.75, // Text with luminace under this value will be brightened
         max_bright_fg: 0.85, // Text over this value will be darkened
@@ -1163,7 +1129,7 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
         },
         no_repeat_backgrounds: function(str) {
           //    return str.replace(/\/\*(.|\n)*?[^oes][^r][^i]\*\// g,"");
-          return str.replace(/(^|[^a-z0-9-])(repeat(-[xy])?)($|["}\n;,)! ])/g, "$1no-repeat;background-color:rgba(0,0,0,0.5);noprop:$4")
+          return str.replace(/(?<![_a-z0-9-])(repeat(-[xy])?)($|["}\n;,)! ])/g, "no-repeat;background-color:rgba(0,0,0,0.5);noprop:$4")
         },
         remove_multiply:(str,replace)=>{
           return str.replaceAll("mix-blend-mode: multiply;",`mix-blend-mode: ${replace};`)
@@ -1232,7 +1198,7 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
           {
             return value; // No variables to edit;
           }
-          return value.replace(/(^|[^a-z0-9-])--([a-z0-9-])/g,"$1--ud-fg--$2")
+          return value.replace(/(?<!a-z0-^9-_])--([a-z0-9-_])/g,"--ud-fg--$1")
         },
         restore_idk_vars: function(idk_mode,value) {
           if(idk_mode){
@@ -1251,11 +1217,11 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
             if(value){
               
               let priority = cssStyle.getPropertyPriority(key_idk);
-             
+         
               if(uDark.is_background && uDark.unResovableVarsRegex.test(value))
               {
                 // console.log(uDark.is_background,key,value,"has unresolvable vars, skipping");
-                cssStyle.removeProperty(key)
+  
                 cssStyle.setProperty("--ud-idk_"+key,value,priority);
                 uDark.on_idk_missing=="remove" && cssStyle.removeProperty(key)
                 uDark.on_idk_missing=="fill_black" && cssStyle.setProperty(key,transformation(0,0,0,1,render),priority); 
@@ -1270,9 +1236,18 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
                   }
                 }
               }
+              if(debug=cssRule.cssText.includes(uDark.searchedCssText))
+              {
+                console.log("Catched 1.1", idk_mode,cssRule.cssText,key_idk,key,value,actions,uDark.is_background && uDark.unResovableVarsRegex.test(value)) 
+              }
               if(actions.prefix_fg_vars)
               {
                 value=uDark.edit_prefix_fg_vars(idk_mode,value,actions);
+              }
+
+              if(debug=cssRule.cssText.includes(uDark.searchedCssText))
+              {
+                console.log("Catched 1.2", idk_mode,cssRule.cssText,key_idk,key,value,actions,uDark.is_background && uDark.unResovableVarsRegex.test(value)) 
               }
               value = uDark.edit_with_regex(idk_mode,value,uDark.rgb_a_colorsRegex,      transformation,render,idk_mode?cssRule:false); // edit_rgb_a_colors
               value = uDark.edit_with_regex(idk_mode,value,uDark.hsl_a_colorsRegex,      transformation,render,idk_mode?cssRule:false); // edit_hsl_a_colors
@@ -1289,7 +1264,7 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
         
         edit_cssProperties: function(cssRule,idk_mode=false) {
           // console.log(cssRule);
-          uDark.searchedCssText=".f-label._muted, label.f-label._muted { color: var(--black-400); }"
+          uDark.searchedCssText="ary--content-title a:visited { color: var(--_ps-content-title-a-fc-visited); }"
           // Referencing eligible keys starts here
           let valueList=Object.values(cssRule.style);
           
@@ -1306,13 +1281,21 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
             &&x.match(uDark.background_color_css_properties_regex));
           wording_action=valueList.filter(x=>uDark.css_properties_wording_action_dict[x]);
           // Editing values starts here
+          if(debug=cssRule.cssText.includes(uDark.searchedCssText))
+          {
+            console.log("Catched",cssRule.cssText,foreground_items,background_items,variables_items,wording_action)
+          }
+
           wording_action.length && uDark.css_properties_wording_action(cssRule.style,wording_action,cssRule);
           background_items.length && uDark.edit_all_cssRule_colors(idk_mode,cssRule,background_items,uDark.rgba,uDark.rgba_val)
           foreground_items.length && uDark.edit_all_cssRule_colors(idk_mode,cssRule,foreground_items,uDark.revert_rgba,uDark.rgba_val,"",{ prefix_fg_vars:true   })
           variables_items.length && [ uDark.edit_all_cssRule_colors(idk_mode,cssRule,variables_items,uDark.revert_rgba,uDark.rgba_val,"--ud-fg",{ prefix_fg_vars:true   })
                                     , uDark.edit_all_cssRule_colors(idk_mode,cssRule,variables_items,uDark.rgba,uDark.rgba_val)]
           
-         
+          if(debug=cssRule.cssText.includes(uDark.searchedCssText))
+          {
+            console.log("Catched ITE",cssRule.cssText,foreground_items,background_items,variables_items,wording_action)
+          }
           // console.log(cssRule,foreground_items,background_items,variables_items,wording_action);
         },
         do_idk_mode_timed: function(duration,interval) {
@@ -1344,6 +1327,10 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
             }
             let styleSheetHref = (new URL(styleSheet.href))
             let is_cross_domain = styleSheetHref.host!=document.location.host;
+            if(is_cross_domain && uDark.disableCorsCSSEdit)
+            {
+              return false;
+            }
             if(is_cross_domain&&!["","anonymous"].includes(styleSheet.ownerNode.crossOrigin))
             {
               styleSheet.ownerNode.crossOrigin="anonymous"; // Allow CORS access for IDK mode
@@ -1369,13 +1356,12 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
             cssStyleSheet = new CSSStyleSheet()
             let valueReplace=str+(verifyIntegrity?"\n.integrity_rule{}":"");
             cssStyleSheet.o_ud_replaceSync?cssStyleSheet.o_ud_replaceSync(valueReplace):cssStyleSheet.replaceSync(valueReplace);
-            
           }
           else if(!cssStyleSheet.rules.length)
           {
             return str; // Empty styles from domparser can't be edited as they are not "constructed"
           }
-          let nochunk = !cssStyleSheet.cssRules.length;
+          let nochunk = !verifyIntegrity && !cssStyleSheet.cssRules.length; // if we want to check integrity, it means we have a chunked css
           if(nochunk)
           {
             str=`z{${str}}`;
@@ -1386,8 +1372,17 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
             
           }
           else{
+
+              // Exists the rare case where css only do imports, no rules with {} and integrity cant be verified because it does not close the import with a ";"
+            let returnAsIs=(!cssStyleSheet.cssRules.length&&!str.includes("{")) 
+            if(returnAsIs){
+               return str; //don't even try to edit it .
+               // Fortunately it is not a common case, easy to detect with zero cssRules, and it mostly are short strings testables with includes
+            };
+
             if(verifyIntegrity)
             {  
+              
               let rejected=cssStyleSheet.cssRules[cssStyleSheet.cssRules.length-1].selectorText!=".integrity_rule";
               
               if(verifyIntegrity && rejected)
@@ -1396,6 +1391,8 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
                 return rejectError;
               }
             }
+
+            
             uDark.edit_css(cssStyleSheet)
             let imports=str.match(/@import.+?(;|$|\n)/gmi)||[];
             let rules=[...cssStyleSheet.cssRules].map(r=>r.cssText);
@@ -1437,6 +1434,19 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
     }
   },
   misc: {
+    
+    editBeforeResponseStylesheets: function(details) {
+      let headerName="access-control-allow-origin";
+      let headerValue = "*";
+      if(!uDark.disableCorsCSSEdit)
+      {
+        
+      let header = details.responseHeaders.filter(x=>x.name.toLowerCase().trim==headerName);
+      header.length?(header[0].value=headerValue):(details.responseHeaders.push({name:headerName,value:headerValue}));
+      }
+      // console.log(details.responseHeaders);
+      return {responseHeaders:details.responseHeaders}
+    },
     editBeforeRequest:function(details)
     {
       // console.log(details)
@@ -1444,6 +1454,46 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
         (details.documentUrl || details.url).match(uDark.userSettings.exclude_regex)) {
         return {}
       }
+
+      details.isStyleSheet = ["stylesheet"].includes(details.type)
+      details.isImage = ["image"].includes(details.type)
+
+      if( details.isStyleSheet&&details.originUrl.startsWith("https://www.thezeitgeistmovement.com"))
+      {// Chaos method to find the right css to edit
+        
+          
+let csses =[
+  ".css",
+// "stylesheet.css",
+// "common.css"
+// ,"links.css"
+// ,"content.css"
+// ,"buttons.css"
+// ,"cp.css"
+// ,"forms.css"
+// ,"colours.css"
+// ,"imageset.css"
+]
+for(let css of csses)
+{
+  if(details.url.includes(css))
+        {
+          return {};
+        }
+}
+
+        
+        if(Math.random()<0.1)
+        {
+          console.log("Not editing",details.url);
+          return {};
+        }
+        else{
+          // console.log("Editing",details.url,details) ;
+        }
+      }
+
+
       // if(uDark.enable_remote_links_rewrite) // In frontend we cant edit CSS Stylesheets from links with a remote origin (CORS)
       // { // Script edits the links to be local, so we can edit them, but we need to rewrite the links to be remote again
       // And this is not working, as the browser is still applying CORS rules to the link, even if it is rewritten to be local
@@ -1454,8 +1504,6 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
       //     return {redirectUrl:rewriteUrl}
       //   }
       // }
-      details.isStyleSheet = ["stylesheet"].includes(details.type)
-      details.isImage = ["image"].includes(details.type)
       if (details.isImage) {
         return uDark.userSettings.disable_image_edition? {}:uDark.edit_an_image(details);
        }
