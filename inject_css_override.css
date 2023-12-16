@@ -23,6 +23,7 @@ font[color] {
     /*filter: brightness(20) saturate(0.5);*/
 }
 html:not(.ud-loaded){
+  /* Just in case */
    background:var(--main-bgcolor);
    background-color:var(--main-bgcolor);
    color: var(--secondary-color);
