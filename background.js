@@ -896,6 +896,7 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
         nonBreakScriptIdent: "§§IDENTIFIER§§",
         min_bright_bg: 0.1, // background with value over min_bright_bg_trigger will be darkened from this value up to max_bright_bg
         max_bright_bg: 0.4, // background with value over min_bright_bg_trigger will be darkened from min_bright_bg up to this value
+        on_idk_missing:"fill_black",
         general_cache: {},
         css_variables: {},
         background_match:/(footer[^\/\\]*$)|background|(bg|box|panel|fond|fundo|bck)[._-]/i,
@@ -1249,7 +1250,10 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
               {
                 // console.log(uDark.is_background,key,value,"has unresolvable vars, skipping");
                 cssStyle.removeProperty(key)
+                
                 cssStyle.setProperty("--ud-idk_"+key,value,priority);
+                uDark.on_idk_missing=="remove" && cssStyle.removeProperty(key)
+                uDark.on_idk_missing=="fill_black" && cssStyle.setProperty(key,transformation(0,0,0,1,render),priority); 
                 return;
               }
               else if(idk_mode){
