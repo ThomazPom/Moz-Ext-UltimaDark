@@ -2,7 +2,7 @@ window.dark_object = {
   foreground: {
     inject: function() {
         uDark.is_foreground=true;
-        uDark.rgb_a_colorsRegex= /rgba?\([0-9., a-z-]+\)/gmi, // rgba vals without variables involved
+        uDark.rgb_a_colorsRegex= /rgba?\([0-9., \/a-z-]+\)/gmi, // rgba vals without variables involved
         uDark.hsl_a_colorsRegex= /hsla?\(([%0-9., \/=a-z-]|deg|turn|tetha)+\)/gmi, // hsla vals without variables involved
         uDark.valuePrototypeEditor = function(leType, atName, watcher = x => x, conditon=x=>x,aftermath=false) {
        //   console.log(leType,atName)
@@ -369,7 +369,7 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
     },
     install: function() {
       uDark.is_background=true;
-      uDark.rgb_a_colorsRegex= /rgba?\([0-9., ]+\)/gmi, // rgba vals without variables involved
+      uDark.rgb_a_colorsRegex= /rgba?\([0-9., \/]+\)/gmi, // rgba vals without variables involved
       uDark.hsl_a_colorsRegex= /hsla?\(([%0-9., \/=]|deg|turn|tetha)+\)/gmi, // hsla vals without variables involved
       uDark.injectscripts = [dark_object.both.install, dark_object.foreground.inject].map(code => {
         var script = document.createElement("script");
