@@ -57,6 +57,9 @@ window.dark_object = {
               astyle.classList.add("ud-edited-background")
             });
               html_element.querySelectorAll("[style]").forEach(astyle=>{
+                html_element.querySelectorAll("link").forEach(alink=>{
+                  alink.crossOrigin="anonymous"; // Allow CORS access for IDK mode
+                }); 
                 
             // console.log(html_element,astyle.getAttribute("style"));
               astyle.setAttribute("style",uDark.edit_str(astyle.getAttribute("style")));
@@ -230,7 +233,10 @@ uDark.functionPrototypeEditor(Element,Element.prototype.insertAdjacentHTML,(elem
 
 // Do IDK mode for a while if a script is added or edited ( We don't know when it will be aded to the page, 5000ms is enough)
 // Optimisation is done in do_idk_mode, witha boolean called idk_mode_ok which is lost on href edits, so it is not a problem to do it several times
-  uDark.valuePrototypeEditor(HTMLLinkElement,"href",  (elem,value)=>value,  (elem,value)=>{return true;},(elem,value,new_value)=>uDark.do_idk_mode_timed(5000,300))
+uDark.valuePrototypeEditor(HTMLLinkElement,"href",  (elem,value)=>value,  (elem,value)=>{return true;},(elem,value,new_value)=>uDark.do_idk_mode_timed(5000,300))
+
+// Disallow any other value than anonymous for crossOrigin for IDK mode to work;
+uDark.valuePrototypeEditor(HTMLLinkElement,"crossOrigin",  (elem,value)=>"anonymous",  (elem,value)=>{return true;})
 
 // if(uDark.enable_remote_links_rewrite)
 // { // the idea was to rewrite links urls from remote origins to local origins, allowing uDark to bypass CORS, but it is not that simple, and it is not that usefull
@@ -820,9 +826,9 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
                     //    anoscript.remove();
                     // });
                     
-                  //   html_element.querySelectorAll("link").forEach(alink=>{
-                  //     console.log(alink.href);
-                  // }); 
+                    html_element.querySelectorAll("link").forEach(alink=>{
+                       alink.crossOrigin="anonymous"; // Allow CORS access early for IDK mode
+                    }); 
                     html_element.querySelectorAll("style").forEach(astyle=>{
                       astyle.innerHTML=uDark.edit_str(astyle.innerHTML);
                       // According to https://stackoverflow.com/questions/55895361/how-do-i-change-the-innerhtml-of-a-global-style-element-with-cssrule ,
@@ -1250,7 +1256,6 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
               {
                 // console.log(uDark.is_background,key,value,"has unresolvable vars, skipping");
                 cssStyle.removeProperty(key)
-                
                 cssStyle.setProperty("--ud-idk_"+key,value,priority);
                 uDark.on_idk_missing=="remove" && cssStyle.removeProperty(key)
                 uDark.on_idk_missing=="fill_black" && cssStyle.setProperty(key,transformation(0,0,0,1,render),priority); 
@@ -1331,9 +1336,23 @@ uDark.valuePrototypeEditor( HTMLElement,"innerText",  (elem,value)=>{      retur
             if(styleSheet.idk_mode_ok){
               return false; // This one is still OK
             }
-
+            if(!styleSheet.href) // It hasnt beeen put in fDK mode and will not be
+            {
+              
+              styleSheet.idk_mode_ok=true; // This attribute is lost if the stylesheet is edited, so we can ignore this CSS
+              return false;
+            }
+            let styleSheetHref = (new URL(styleSheet.href))
+            let is_cross_domain = styleSheetHref.host!=document.location.host;
+            if(is_cross_domain&&!["","anonymous"].includes(styleSheet.ownerNode.crossOrigin))
+            {
+              styleSheet.ownerNode.crossOrigin="anonymous"; // Allow CORS access for IDK mode
+              styleSheetHref.hash+="-idk";
+              styleSheet.ownerNode.href=styleSheetHref.href;
+              return false; // This one will be for the next tour
+            }
             styleSheet.idk_mode_ok=true; // This attribute is lost if the stylesheet is edited, so we can ignore this CSS
-            return	!styleSheet.href || (new URL(styleSheet.href)).host==document.location.host
+            return true;
           })
           
           editableStyleSheets.forEach(styleSheet=>{
