@@ -244,20 +244,6 @@ window.dark_object = {
 
 
 
-      // if(uDark.enable_remote_links_rewrite)
-      // { // the idea was to rewrite links urls from remote origins to local origins, allowing uDark to bypass CORS, but it is not that simple, and it is not that usefull
-      // // but even with uDark as proxy, CORS is not bypassed
-      //   let base_rewrite = `${document.location.protocol}// ${document.location.host}/?ud-remote-link=`;
-      //   uDark.valuePrototypeEditor(HTMLLinkElement,"href",
-      //   (elem,value)=>console.log(base_rewrite+encodeURIComponent(elem.href))||base_rewrite+encodeURI(elem.href),
-      //   (elem,value)=>{
-      //     let anchor =document.createElement("a");
-      //     anchor.href=value;
-      //     elem.o_ud_set_href=anchor.href;
-      //     return anchor.host!=document.location.host;
-      //   });
-
-      // }
       if (checkDomEdit = false) {
 
         uDark.functionPrototypeEditor(Node, [Node.prototype.insertBefore, Node.prototype.appendChild], (elem, args) => {
