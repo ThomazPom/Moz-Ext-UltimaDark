@@ -945,7 +945,7 @@ window.dark_object = {
         nonBreakScriptIdent: "§§IDENTIFIER§§",
         min_bright_bg: 0.1, // background with value over min_bright_bg_trigger will be darkened from this value up to max_bright_bg
         max_bright_bg: 0.4, // background with value over min_bright_bg_trigger will be darkened from min_bright_bg up to this value
-        on_idk_missing: "fill_green",
+        on_idk_missing: "fill_minimum",
         idk_minimum_editor: 0.2,
         general_cache: {},
         connected_cs_ports: {},
@@ -1269,7 +1269,7 @@ window.dark_object = {
         restore_idk_vars: function(idk_mode, value) {
           if (idk_mode) {
             value = value.replaceAll("..1..", "var(").replaceAll("..2..", ")");
-            value = CSS_COLOR_NAMES[Math.floor(Math.random() * CSS_COLOR_NAMES.length)];
+            // value = CSS_COLOR_NAMES[Math.floor(Math.random() * CSS_COLOR_NAMES.length)];
           }
           return value;
         },
@@ -1402,7 +1402,7 @@ window.dark_object = {
             return oStylesheetURL.origin == oStylesheetURL2.origin
              && oStylesheetURL.pathname == oStylesheetURL2.pathname;
           }).forEach(styleSheet => {
-            console.log("Refreshing", styleSheet.href);
+            // console.log("Refreshing", styleSheet.href);
             url = new URL(styleSheet.href);
             url.searchParams.set("refresh", Math.random());
             let cloneNoFlickering = styleSheet.ownerNode.cloneNode();
