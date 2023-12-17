@@ -5,7 +5,7 @@ var defaultValues={
 }
 
 
-var myPort = browser.runtime.connect({name:"port-from-cs"});
+let myPort = browser.runtime.connect({name:"port-from-popup"});
 
 
 window.onload=function()

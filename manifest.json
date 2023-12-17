@@ -20,13 +20,13 @@
         "default_popup": "popup.html"
   },
   "background": {
-    "scripts": ["magic-wand.js","background.js"]
+    "scripts": ["MurmurHash3.js","background.js"]
   },
       "content_scripts" : [{
             "all_frames": true,
         "run_at":"document_start",
         "matches" : [ "<all_urls>"]
-       ,"js" : ["foreground.js"]
+       ,"js" : ["MurmurHash3.js","content_script.js"]
     //    "css" : ["override.css"]
     }]
 
