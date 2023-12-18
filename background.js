@@ -524,6 +524,7 @@ window.dark_object = {
             var canvas = document.createElement('canvas');
             var myImage = new Image;
 
+
             if (theUrl.pathname.match(/\.svg$/) || details.isSvgDataUrl) {
               return new Promise((resolve, reject) => { // on my way to do a reaaal svg url parsing
                 let svgSupport = function(text) {
@@ -531,6 +532,11 @@ window.dark_object = {
                   div.innerHTML = text;
                   document.body.appendChild(div)
                   var svg = div.querySelector('svg')
+                  if(!svg)
+                  { // Problem for later me
+                    console.warn("No svg found in "+details.url,text)
+                    return reject("No svg found in "+details.url,text);
+                  }
                   var {
                     width,
                     height
