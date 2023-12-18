@@ -428,7 +428,7 @@ window.dark_object = {
         }
         if (p.name == "port-from-popup") {
           portFromCS.onMessage.addListener(function(m) {
-            // browser.storage.local.set(m, dark_object.background.setListener);
+            browser.storage.local.set(m, dark_object.background.setListener);
           });
         }
       }
