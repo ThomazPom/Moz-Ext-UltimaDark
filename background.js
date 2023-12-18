@@ -401,18 +401,34 @@ window.dark_object = {
         portFromCS = p;
         // console.log("connected", p);
         if (p.name == "port-from-cs") {
-          p.owned_cache_keys=[];
+          p.used_cache_keys=new Set();
           uDark.connected_cs_ports[`port-from-cs-${p.sender.tab.id}-${p.sender.frameId}`] = p;
           portFromCS.onDisconnect.addListener(p => {
-            console.log("Disonnected:",p, "deleting"  ,p.owned_cache_keys)
-            p.owned_cache_keys.forEach(x=>delete uDark.general_cache[x]);
+            console.log("Disconnected:",p, "Checking"  ,p.used_cache_keys)
+            if(p.used_cache_keys.size)
+            { // We time it to avoid deleting the cache before the page is loaded (Like on link clicks)
+              setTimeout(x=>
+                {
+                  let owned_cache_keys = new Set()
+                  Object.values(uDark.connected_cs_ports).forEach(x=>x.used_cache_keys.forEach(y=>owned_cache_keys.add(y)))
+                  
+                  p.used_cache_keys.forEach(x=>{
+                    if(!owned_cache_keys.has(x))
+                    {
+                      console.log("Deleting",x)
+                      delete uDark.idk_cache[x]
+                    }
+                    else(console.log("Not deleting",x, "because it is still used by another port"))
+                  })
+                },5000);
+            }
             delete uDark.connected_cs_ports[`port-from-cs-${p.sender.tab.id}-${p.sender.frameId}`]
           });
           portFromCS.onMessage.addListener(uDark.handleMessageFromCS);
         }
         if (p.name == "port-from-popup") {
           portFromCS.onMessage.addListener(function(m) {
-            browser.storage.local.set(m, dark_object.background.setListener);
+            // browser.storage.local.set(m, dark_object.background.setListener);
           });
         }
       }
@@ -832,6 +848,9 @@ window.dark_object = {
           resolvedIDKVars_action: function(data) {
             // console.log("Remote content override save", data, (new Date()) / 1)
             uDark.general_cache[data.chunk_hash] = data.chunk;
+
+            // The magic here is that we are already after chunk put in memory so this is done ony once per cors CSS
+            browser.browsingData.removeCache({since:3000}).then(x => console.info(`Browser last seconds cache flushed, allowing new load of CSS`), error => console.error(`Error: ${error}`));
           },
           parse_and_edit_html3: function(str, details) {
             details.requestScripts = details.requestScripts || []
@@ -1110,12 +1129,9 @@ window.dark_object = {
           let theColor = uDark.is_color(anycolor, as_float = true, fill = false, cssRule)
           if (!theColor) {
             // otherwise if it is not a color, we should warn as its a bug in regexpes
-            console.error(anycolor + " is not a color", {
-              theColor,
-              anycolor,
-              editColorF
-            })
-            return [4, 3, 2, 1]
+            // or frontend does not define a color correctly
+            console.info(anycolor," is not a color (It's ok if frontent does not define a color correctly)")
+            return editColorF?editColorF(...[0, 0, 0, 1]):[0, 0, 0, 1];
           }
           if (editColorF) {
             // Caller asks us to apply a transformation, probably rgba, hex or revert_rgba
@@ -1400,7 +1416,7 @@ window.dark_object = {
              && oStylesheetURL.pathname == oStylesheetURL2.pathname;
           }).forEach(styleSheet => {
             // console.log("Refreshing", styleSheet.href);
-            url = new URL(styleSheet.href);
+            let url = new URL(styleSheet.href);
             url.searchParams.set("refresh", Math.random());
             let cloneNoFlickering = styleSheet.ownerNode.cloneNode();
             cloneNoFlickering.href = url.href;
@@ -1524,7 +1540,6 @@ window.dark_object = {
   },
   misc: {
     editBeforeRequest: function(details) {
-      // console.log(details)
       if (details.originUrl && (details.originUrl.startsWith("moz-extension://")) ||
         (details.documentUrl || details.url).match(uDark.userSettings.exclude_regex)) {
         return {}
@@ -1533,6 +1548,7 @@ window.dark_object = {
       details.isStyleSheet = ["stylesheet"].includes(details.type)
       details.isImage = ["image"].includes(details.type)
 
+      details.isStyleSheet&&console.log(details)
       
 
       if (details.isImage) {
@@ -1550,7 +1566,7 @@ window.dark_object = {
         var str = decoder.decode(event.data, {
           stream: true
         }); //str,cssStyleSheet,verifyIntegrity=false,details
-
+        
         transformResult = uDark.edit_str(details.rejectedValues + str, false, true, details);
         if (transformResult.message) {
           // console.log(details,transformResult.message)
@@ -1569,6 +1585,7 @@ window.dark_object = {
       }
       filter.onstop = event => {
 
+        details.isStyleSheet&&console.log(details)
         if (details.rejectedValues.length) {
           transformResult = uDark.edit_str(details.rejectedValues, false, false, details);
           transformResult = uDark.send_data_image_to_parser(transformResult, details);
@@ -1594,14 +1611,15 @@ window.dark_object = {
           }
         }
         let chunk_hash = fMurmurHash3Hash(chunk);
+        
+        content_script_port=uDark.connected_cs_ports[`port-from-cs-${details.tabId}-${details.frameId}`];
+        content_script_port.used_cache_keys.add(chunk_hash);
         if (uDark.general_cache[chunk_hash]) {
-          // console.log(chunk_hash, "seems to be in cache", details.url)
+          console.log(chunk_hash, "seems to be in cache", details.url)
           return uDark.general_cache[chunk_hash];
         }
         // console.log("Sending chunk to parser", chunk_hash, details.url, chunk)
         uDark.general_cache[chunk_hash] = chunk;
-        content_script_port=uDark.connected_cs_ports[`port-from-cs-${details.tabId}-${details.frameId}`];
-        content_script_port.owned_cache_keys.push(chunk_hash);
         content_script_port.postMessage({
           havingIDKVars: {
             details,
