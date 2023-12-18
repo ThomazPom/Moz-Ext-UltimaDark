@@ -401,8 +401,11 @@ window.dark_object = {
         portFromCS = p;
         // console.log("connected", p);
         if (p.name == "port-from-cs") {
+          p.owned_cache_keys=[];
           uDark.connected_cs_ports[`port-from-cs-${p.sender.tab.id}-${p.sender.frameId}`] = p;
           portFromCS.onDisconnect.addListener(p => {
+            console.log("Disonnected:",p, "deleting"  ,p.owned_cache_keys)
+            p.owned_cache_keys.forEach(x=>delete uDark.general_cache[x]);
             delete uDark.connected_cs_ports[`port-from-cs-${p.sender.tab.id}-${p.sender.frameId}`]
           });
           portFromCS.onMessage.addListener(uDark.handleMessageFromCS);
@@ -917,6 +920,7 @@ window.dark_object = {
         disable_edit_str_cache: true,
         unResovableVarsRegex: /(?:hsl|rgb)a?[ ]*\([^)]*\(/, // vars that can't be resolved by the background script
         userSettings: {},
+        keepIdkProperties: true,
         chunk_stylesheets_idk_only_cors: true, // Asking front trough a message to get the css can be costly so we only do it when it's absolutely necessary: when the cors does not allow us to get the css directly;
         disableCorsCSSEdit: true,
         namedColorsRegex: (new RegExp(`(?<![_a-z0-9-])(${CSS_COLOR_NAMES.join("|")})(?![_a-z0-9-])`, "gmi")),
@@ -1127,10 +1131,6 @@ window.dark_object = {
           if (!possiblecolor) {
             return false
           }
-          let black_rgba = "rgba(0, 0, 0, 0)"
-          if (possiblecolor == black_rgba) {
-            return [0, 0, 0, 0]
-          }
 
           let cache_key = `${possiblecolor}${as_float}${fill}`
           if (!uDark.userSettings.disable_cache && !spanp && uDark.general_cache[cache_key]) {
@@ -1145,44 +1145,51 @@ window.dark_object = {
               style.setProperty(x, cssRule.style.getPropertyValue(x))
             })
           }
+          
+          style.floodColor = possiblecolor; 
+          let result = style.floodColor; // Must be done in 2 steps to avoid same value as possiblecolor
 
-          'o_ud_set_backgroundColor' in style ?
-            (style.o_ud_set_backgroundColor = possiblecolor) :
-            (style.backgroundColor = possiblecolor); // Must be instructions inside parenthesis to ensure it is taken in account
-
-          let result = style.backgroundColor; // Must be done in 2 steps to avoid same value as possiblecolor
-
-          if (!style.backgroundColor) {
+          if (!style.floodColor) {
             // Impossible color : browser said so
             return false;
           }
-
-          // rgba(0, 0, 0, 0) is a valid color but not a valid background, browser set it to none
-          if (style.backgroundColor == possiblecolor && style.backgroundColor != black_rgba) {
+          if (style.floodColor == possiblecolor) {
             // Browser said it is a color but doubt it is a valid one, we need a further check
             document.head.appendChild(option);
-            let computedStyle = getComputedStyle(option) // On invalid colors, background will be none here
-            result = computedStyle.backgroundColor || possiblecolor; // Sometimes on frontend, computedStyle is empty, idk why. Looks like a bug in browser 
-            option.remove();
-
-            if (result == "none") // On invalid colors or not fully filled variables colors, background will be none here
+            if("o_ud_set_backgroundColor" in style) // Only working way to do it so far
             {
-              return false;
+              style.o_ud_set_backgroundColor = possiblecolor;
             }
+            else{
+              style.backgroundColor = possiblecolor;
+            }
+            let computedStyle = getComputedStyle(option); // On invalid colors, background will be none here
+            result = computedStyle.floodColor || possiblecolor; // Sometimes on frontend, computedStyle is empty, idk why. Looks like a bug in browser 
+            
+            if (computedStyle.floodColor!=computedStyle.backgroundColor) // Probably an invalid color
+            { // backgroundColor is the only poperty wich returns rgba(0, 0, 0, 0) an alpha value on unresolved vars/invalid colors
+              result=false;
+            }
+            
+            option.remove();
           }
-          if (result && as_float) {
-            result = result.match(/[0-9\.]+/g).map(parseFloat)
-            if (fill) {
-              result = result.concat(Array(4 - result.length).fill(1))
+          if (result) {
+
+            if(as_float)
+            {
+              result = result.match(/[0-9\.]+/g).map(parseFloat)
+              if (fill) {
+                result = result.concat(Array(4 - result.length).fill(1))
+              }
+            }
+            
+            if (!uDark.userSettings.disable_cache) {
+              uDark.general_cache[cache_key] = result;
             }
           }
 
-          if (!uDark.userSettings.disable_cache) {
-            uDark.general_cache[cache_key] = result;
-          }
           return result;
         },
-
 
         set_the_round_border: function(str) {
           return str.replace(uDark.radiusRegex, "$1;filter:brightness(0.95);box-shadow: 0 0 5px 1px rgba(0,0,0,0)!important;border:1px solid rgba(255,255,255,0.2)!important;$2$7");
@@ -1245,7 +1252,8 @@ window.dark_object = {
 
         hexadecimalColorsRegex: /#[0-9a-f]{3,4}(?:[0-9a-f]{2})?(?:[0-9a-f]{2})?/gmi, // hexadecimal colors
         foreground_color_css_properties: ["color", "fill"], // css properties that are foreground colors
-        background_color_css_properties_regex: /color|fill|box-shadow/, // css properties that are background colors
+        // Gradients can be set in background-image
+        background_color_css_properties_regex: /color|fill|box-shadow|background-image/, // css properties that are background colors
         edit_prefix_fg_vars: function(idk_mode, value, actions) {
           if (!value.includes("var(") && !idk_mode) {
             return value; // No variables to edit;
@@ -1284,8 +1292,11 @@ window.dark_object = {
                 return;
               } else if (idk_mode) {
 
-                cssStyle.removeProperty(key_idk);
                 {
+                  if(!uDark.keepIdkProperties){
+                    cssStyle.removeProperty(key_idk);
+                  }
+                  
                   for (let i = 0; i < 4; i++) {
                     value = value.replaceAll(/var\([^()]+\)/g, match => match.replaceAll("var(", "..1..").replaceAll(")", "..2.."))
                   }
@@ -1589,7 +1600,9 @@ window.dark_object = {
         }
         // console.log("Sending chunk to parser", chunk_hash, details.url, chunk)
         uDark.general_cache[chunk_hash] = chunk;
-        uDark.connected_cs_ports[`port-from-cs-${details.tabId}-${details.frameId}`].postMessage({
+        content_script_port=uDark.connected_cs_ports[`port-from-cs-${details.tabId}-${details.frameId}`];
+        content_script_port.owned_cache_keys.push(chunk_hash);
+        content_script_port.postMessage({
           havingIDKVars: {
             details,
             chunk: chunk,

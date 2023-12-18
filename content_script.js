@@ -18,9 +18,9 @@ function resolveIDKVars(data) {
 //   console.log("In content script, resolved IDK vars: ", data);
   setTimeout(()=>{
     window.wrappedJSObject.uDark.refresh_stylesheet(data.details.url);
-},0)
+},500)
     }
-    ,100);
+    ,500);
 }
 
 
