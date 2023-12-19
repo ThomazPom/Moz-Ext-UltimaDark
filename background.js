@@ -1491,7 +1491,10 @@ window.dark_object = {
             };
 
             if (verifyIntegrity) {
-
+              if(!cssStyleSheet.cssRules.length)
+              {
+                console.log(str,details)
+              }
               let rejected = cssStyleSheet.cssRules[cssStyleSheet.cssRules.length - 1].selectorText != ".integrity_rule";
 
               if (verifyIntegrity && rejected) {
