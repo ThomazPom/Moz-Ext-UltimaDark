@@ -20,7 +20,8 @@ function resolveIDKVars(data) {
     window.wrappedJSObject.uDark.refresh_stylesheet(data.details.url);
 },0)
     }
-    ,100);
+    ,100); // 100s should be enough, as in fact the page is already almost loaded :
+    // We are here because link tags are already loaded, (so stylesheets are OK) and we are only waiting for all of this to be put in context wich is short 
 }
 
 

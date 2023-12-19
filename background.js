@@ -1426,8 +1426,9 @@ window.dark_object = {
             url.searchParams.set("refresh", Math.random());
             let cloneNoFlickering = styleSheet.ownerNode.cloneNode();
             cloneNoFlickering.href = url.href;
-            styleSheet.ownerNode.after(cloneNoFlickering); // <3 No flickeing !
-            setTimeout(() => {styleSheet.ownerNode.remove();}, 3000); // 3 seconds should be enough to load the new stylesheet
+            styleSheet.ownerNode.after(cloneNoFlickering); // <3 No flickeing ! // Using after overrides the old stylesheet
+            // styleSheet.ownerNode.parentNode.insertBefore(cloneNoFlickering, styleSheet.ownerNode); // InsertBefore does not override the old stylesheet
+            setTimeout(() => {styleSheet.ownerNode.remove();}, 10000); // 3 seconds was not enough to load the new stylesheet
           });
         },
         do_idk_mode: function() {
