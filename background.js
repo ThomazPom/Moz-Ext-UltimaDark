@@ -1112,6 +1112,7 @@ window.dark_object = {
 
           // l = Math.sin(Math.PI*l)*(A-B)+B;
           // l = Math.min(2 * l, -2 * l + 2) * (A - B) + B; // Was a good one, but we may boost saturation as 2 folowing lines shows
+          // Still not sure about the best way to do it ^ has implicity while indeed a saturation boost might be nice
           l = Math.pow(Math.min(2 * l, -2 * l + 2),E) * (A - B) + B;
           s=1-Math.pow(1-s,1/E); // Boost saturation proportionnaly as brightness decrease, but we could have a separate setting for saturation boost
 
