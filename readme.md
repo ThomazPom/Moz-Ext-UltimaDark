@@ -24,7 +24,7 @@ For lightness values above B, the edit ensures it never exceeds a maximum lightn
 - Lightness values from 0.5 to 1 are reversed and then scaled from A to B. 
   - This implies lightness values of 1 (white) are then equals to B (not reversed to black !), ensuring good contrast with colors at point ².
 
-You can review the transformation function here: [Desmos Transformation Function](https://www.desmos.com/calculator/oqqi9nzonh).
+You can review the transformation function here: [Desmos Background Transformation Function](https://www.desmos.com/calculator/oafbbrdz1g) and here [Desmos Foreground Transformation Function](https://www.desmos.com/calculator/pgrt69yreq).
 
 UltimaDark also has the capability to edit pixels in images, although this feature is currently experimental and not fully functional. An example of the broken functionality can be seen on the Apple support page: [Broken Example](https://support.apple.com/fr-fr/HT205189). On the other hand, the feature works better on the Sushi Spirit website: [Not-So-Bad Example](https://www.sushispirit.com/).
 

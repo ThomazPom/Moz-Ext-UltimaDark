@@ -945,19 +945,15 @@ window.dark_object = {
         disable_edit_str_cache: true,
         unResovableVarsRegex: /(?:hsl|rgb)a?[ ]*\([^)]*\(/, // vars that can't be resolved by the background script
         userSettings: {},
-        keepIdkProperties: true,
+        keepIdkProperties: false,
         chunk_stylesheets_idk_only_cors: true, // Asking front trough a message to get the css can be costly so we only do it when it's absolutely necessary: when the cors does not allow us to get the css directly;
         disableCorsCSSEdit: true,
         namedColorsRegex: (new RegExp(`(?<![_a-z0-9-])(${CSS_COLOR_NAMES.join("|")})(?![_a-z0-9-])`, "gmi")),
         min_bright_fg: 0.75, // Text with luminace under this value will be brightened
         max_bright_fg: 0.85, // Text over this value will be darkened
-        vivid_colors_threshold_fg: 0.4, // Colors with good saturation and good luminace should not be brightened, because thay are already bright and will loose saturation if brightened
+        brightness_peak_editor_fg: 0.5,// Reduce the brightness of texts with intermediate luminace, tying to achieve better saturation
         hueShiftfg: 0, // Hue shift for text, 0 is no shift, 360 is full shift
-        satBostfg: 1.1, // Saturation boost for text, 0 is no boost, 5 a nice boost
-        satBostbg: 1, // Saturation boost for background, 0 is no boost, 5 a nice boost
-        hueShiftbg: 0, // Hue shift for background, 0 is no shift, 360 is full shift
         min_bright_bg_trigger: 0.2, // backgrounds with luminace under this value will remain as is
-        nonBreakScriptIdent: "§§IDENTIFIER§§",
         min_bright_bg: 0.1, // background with value over min_bright_bg_trigger will be darkened from this value up to max_bright_bg
         max_bright_bg: 0.4, // background with value over min_bright_bg_trigger will be darkened from min_bright_bg up to this value
         on_idk_missing: "fill_minimum",
@@ -1111,13 +1107,18 @@ window.dark_object = {
           let [h, s, l] = uDark.rgbToHsl(r, g, b);
           let A = uDark.min_bright_fg
           let B = uDark.max_bright_fg
-          // https://www.desmos.com/calculator/ymclzvucdb
-
+          let E = uDark.brightness_peak_editor_fg
+          
 
           // l = Math.sin(Math.PI*l)*(A-B)+B;
-          l = Math.min(2 * l, -2 * l + 2) * (A - B) + B;
-          // if saturation is high, we should not brighten too much the color
-          // l=l-s*0.2;
+          // l = Math.min(2 * l, -2 * l + 2) * (A - B) + B; // Was a good one, but we may boost saturation as 2 folowing lines shows
+          l = Math.pow(Math.min(2 * l, -2 * l + 2),E) * (A - B) + B;
+          s=1-Math.pow(1-s,1/E); // Boost saturation proportionnaly as brightness decrease, but we could have a separate setting for saturation boost
+
+          
+      
+          
+          
 
           [r, g, b] = uDark.hslToRgb(h, s, l);
 
@@ -1635,7 +1636,8 @@ window.dark_object = {
       return {}
     },
     chunk_manage_idk: function(details, chunk) {
-      if (details.unresolvableChunks && details.unresolvableChunks[details.datacount]) {
+      
+      if (!uDark.disableCorsCSSEdit && details.unresolvableChunks && details.unresolvableChunks[details.datacount]) {
         if (uDark.chunk_stylesheets_idk_only_cors) {
           let aUrl = new URL(details.url);
           let bUrl = new URL(details.documentUrl);
