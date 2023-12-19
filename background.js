@@ -1501,9 +1501,12 @@ window.dark_object = {
             }
 
             uDark.edit_css(cssStyleSheet, idk_mode, details);
-            let imports = str.match(/@import.+?(;|$|\n)/gmi) || [];
+            
             let rules = [...cssStyleSheet.cssRules].map(r => r.cssText);
-            str = imports.concat(rules).join("\n");
+            
+            uDark.edit_str_restore_imports_all_way(str, rules);
+            
+            str = rules.join("\n");
           }
 
 
@@ -1511,6 +1514,32 @@ window.dark_object = {
             uDark.general_cache[details.str_hash] = str;
           }
           return str;
+        },
+        edit_str_restore_imports_header_way:function(str, rules) {
+          let cssHeader=str.split("{",1)[0];
+          // Restore the header as it often contains important information like @import @namespace etc
+          // Breaks if the header contains a comment including "{" but it is not a common case
+          // Fixable by removing comments before splitting
+          rules[0]=cssHeader+(rules.length?"{"+rules[0].split("{",2)[1]:"");
+        },
+        // At-rules : https://developer.mozilla.org/fr/docs/Web/CSS/At-rule
+        // @charset, @import or @namespace, followed by some space or \n, followed by some content, followed by ; or end of STRING
+        // Surpisingly and fortunately end of LINE does not delimits the end of the at-rule and forces devs & minifers either to add a ; or end of STRING 
+        // which and fortunately simplifies a LOT the handling 
+        // Content must not be interupted while between quotes or parenthesis.
+        // Breaks on url like this one("te\"st") or this one('te\'st') but it is not a common case
+        //-------------------v-Rule name----space or-CR--v-----v--Protected values-v----v-the content dot
+        cssAtRulesRegex: /@(charset|import|namespace)(\n|\s)+((\(.+?\))|(".+?")|('.+?')|.)+?(;|$)/gs,
+        edit_str_restore_imports_all_way: function(str, rules) {
+            // This regexp seems a bit complex
+            // because @import url("") can includes ";" which is also the css instruction separator like in following example
+            // @charset "UTF-8";@import url("https://use.typekit.net/lls1fmf.css");
+            // @import url("https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap");
+            // .primary-1{ color: rgb(133, 175, 255); }
+          let imports = str.match(uDark.cssAtRulesRegex) || [];
+          rules.unshift(...imports);
+        
+
         },
         getallBgimages: function(adocument, acondition = (elem, url) => true) {
           var url, B = [],
@@ -1555,7 +1584,6 @@ window.dark_object = {
       details.isStyleSheet = ["stylesheet"].includes(details.type)
       details.isImage = ["image"].includes(details.type)
 
-      details.isStyleSheet&&console.log(details)
       
 
       if (details.isImage) {
@@ -1592,7 +1620,6 @@ window.dark_object = {
       }
       filter.onstop = event => {
 
-        details.isStyleSheet&&console.log(details)
         if (details.rejectedValues.length) {
           transformResult = uDark.edit_str(details.rejectedValues, false, false, details);
           transformResult = uDark.send_data_image_to_parser(transformResult, details);
