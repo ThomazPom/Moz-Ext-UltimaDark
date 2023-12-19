@@ -1337,10 +1337,10 @@ window.dark_object = {
                   }
                 }
               }
-              if(debug=cssRule.cssText.includes(uDark.searchedCssText))
-              {
-                console.log("Catched 1.1", idk_mode,cssRule.cssText,key_idk,key,value,actions,uDark.is_background && uDark.unResovableVarsRegex.test(value)) 
-              }
+              // if(debug=cssRule.cssText.includes(uDark.searchedCssText))
+              // {
+              //   console.log("Catched 1.1", idk_mode,cssRule.cssText,key_idk,key,value,actions,uDark.is_background && uDark.unResovableVarsRegex.test(value)) 
+              // }
               if (actions.prefix_fg_vars) {
                 value = uDark.edit_prefix_fg_vars(idk_mode, value, actions);
               }
@@ -1364,7 +1364,7 @@ window.dark_object = {
 
         edit_cssProperties: function(cssRule, idk_mode = false, details) {
           // console.log(cssRule);
-          uDark.searchedCssText = ".partial_recruiter_list-item-single { background: var(--blank-color,#fff); border: 1px solid "
+          // uDark.searchedCssText = ".partial_recruiter_list-item-single { background: var(--blank-color,#fff); border: 1px solid "
           // Referencing eligible keys starts here
           let valueList = Object.values(cssRule.style);
 
@@ -1382,10 +1382,10 @@ window.dark_object = {
 
           wording_action = valueList.filter(x => uDark.css_properties_wording_action_dict[x]);
           // Editing values starts here
-          if(debug=cssRule.cssText.includes(uDark.searchedCssText))
-          {
-            console.log("Catched",idk_mode,cssRule.cssText,foreground_items,background_items,variables_items,wording_action,cssRule.style.background,cssRule)
-          }
+          // if(debug=cssRule.cssText.includes(uDark.searchedCssText))
+          // {
+          //   console.log("Catched",idk_mode,cssRule.cssText,foreground_items,background_items,variables_items,wording_action,cssRule.style.background,cssRule)
+          // }
           let hasUnresolvedVars = {
             has: false
           }; // Passed by reference. // request details are shared so we use a new object. We could have emedded it into details though
