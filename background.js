@@ -901,8 +901,11 @@ window.dark_object = {
             })
             // I think killing cache this way may be more efficient than cleaning the cache
             // cache key is unique for each browser session
-            html_element.querySelectorAll("link[rel='stylesheet']")
-              .forEach(x => x.setAttribute("href", (x.getAttribute("href") || "").trim() + "#ud_ck=1" + uDark.fixedRandom)); // 1 as cache killer is better than random :)
+            html_element.querySelectorAll("link[rel='stylesheet'][href]")
+              .forEach(x =>{
+                let hasHref=x.getAttribute("href").trim() 
+                hasHref && x.setAttribute("href",hasHref+ "#ud_ck=1" + uDark.fixedRandom);
+              } ); 
             // /
 
             html_element.querySelectorAll("[fill],[color],path,[bgcolor]").forEach(coloreditem => {
@@ -949,8 +952,8 @@ window.dark_object = {
         chunk_stylesheets_idk_only_cors: true, // Asking front trough a message to get the css can be costly so we only do it when it's absolutely necessary: when the cors does not allow us to get the css directly;
         disableCorsCSSEdit: true,
         namedColorsRegex: (new RegExp(`(?<![_a-z0-9-])(${CSS_COLOR_NAMES.join("|")})(?![_a-z0-9-])`, "gmi")),
-        min_bright_fg: 0.75, // Text with luminace under this value will be brightened
-        max_bright_fg: 0.85, // Text over this value will be darkened
+        min_bright_fg: 0.65, // Text with luminace under this value will be brightened
+        max_bright_fg: 0.9, // Text over this value will be darkened
         brightness_peak_editor_fg: 0.5,// Reduce the brightness of texts with intermediate luminace, tying to achieve better saturation
         hueShiftfg: 0, // Hue shift for text, 0 is no shift, 360 is full shift
         min_bright_bg_trigger: 0.2, // backgrounds with luminace under this value will remain as is
@@ -1111,10 +1114,12 @@ window.dark_object = {
           
 
           // l = Math.sin(Math.PI*l)*(A-B)+B;
-          // l = Math.min(2 * l, -2 * l + 2) * (A - B) + B; // Was a good one, but we may boost saturation as 2 folowing lines shows
+          l = Math.min(2 * l, -2 * l + 2) * (A - B) + B; // Was a good one, but we may boost saturation as folowing lines shows
           // Still not sure about the best way to do it ^ has implicity while indeed a saturation boost might be nice
-          l = Math.pow(Math.min(2 * l, -2 * l + 2),E) * (A - B) + B;
-          s=1-Math.pow(1-s,1/E); // Boost saturation proportionnaly as brightness decrease, but we could have a separate setting for saturation boost
+          // l = Math.pow(Math.min(2 * l, -2 * l + 2),E) * (A - B) + B;
+
+          // i dont like how saturation boost gives a blue color to some texts like gitlab's ones.
+          // s=1-Math.pow(1-s,1/E); // Boost saturation proportionnaly as brightness decrease, but we could have a separate setting for saturation boost
 
           
       

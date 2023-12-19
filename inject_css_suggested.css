@@ -19,7 +19,7 @@ color:rgb(0, 0, 238);
 */
 
 svg:not([fill]):not([color]):not([mask]), svg :not([fill]):not([color]):not([mask]) {
-    /*fill: none;*/
+    /* fill: inherit; */
     /*Does not override  svg or path with fill or style, but defaults to white, perfect */
 }
 svg text
@@ -29,9 +29,9 @@ svg text
 }
 :not([fill]):not([color]):not([mask])>path:not([fill]):not([color]):not([mask])
 {
-
+/* 
   color: white;
-  fill: white;
+  fill: white; */
 }
 path,svg {
    /* fill: var(--secondary-color);
