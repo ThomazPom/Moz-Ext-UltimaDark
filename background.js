@@ -6,6 +6,7 @@ window.dark_object = {
         uDark.hsl_a_colorsRegex = /hsla?\(([%0-9., \/=a-z-]|deg|turn|tetha)+\)/gmi, // hsla vals without variables involved
         uDark.valuePrototypeEditor = function(leType, atName, watcher = x => x, conditon = x => x, aftermath = false) {
           //   console.log(leType,atName)
+        if(conditon)        {console.log("VAdding condtition to",leType,leType.name,conditon, conditon.toString())}
           var originalSet = Object.getOwnPropertyDescriptor(leType.prototype, atName).set;
           Object.defineProperty(leType.prototype, "o_ud_set_" + atName, {
             set: originalSet
@@ -27,6 +28,7 @@ window.dark_object = {
             uDark.functionPrototypeEditor(leType, aFonction, watcher, conditon, result_editor)
           })
         }
+        if(conditon)        {console.log("Adding condtition to",leType,leType.name,laFonction,conditon,conditon.toString())}
         var originalFunction = Object.getOwnPropertyDescriptor(leType.prototype, laFonction.name).value;
         Object.defineProperty(leType.prototype, "o_ud_" + laFonction.name, {
           value: originalFunction,
@@ -268,18 +270,23 @@ window.dark_object = {
 
 
       // UserStyles.org append text nodes to style elements 
-      uDark.functionPrototypeEditor(Node, Node.prototype.appendChild, (elem, args) => {
-        (args[0].textContent = uDark.edit_str(args[0].textContent));
-        return args
-      }, (elem, value) => elem instanceof HTMLStyleElement)
-      uDark.functionPrototypeEditor(Node, Node.prototype.insertBefore, (elem, args) => {
+      uDark.functionPrototypeEditor(Node, [
+        Node.prototype.appendChild,
+        Node.prototype.insertBefore
+      ], (elem, args) => {
         (args[0].textContent = uDark.edit_str(args[0].textContent));
         return args
       }, (elem, value) => elem instanceof HTMLStyleElement)
 
 
       // FINALLY CNN Use this one (webpack)!!!!
-      uDark.valuePrototypeEditor(Node, "textContent", (elem, value) => uDark.send_data_image_to_parser(uDark.edit_str(value)), (elem, value) => elem instanceof HTMLStyleElement)
+      uDark.valuePrototypeEditor(Node, "textContent", (elem, value) =>
+      {
+        let str = uDark.edit_str(value)
+        // TODO: Remove the call from here and do it in css edit
+        return uDark.send_data_image_to_parser(str);
+      }, (elem, value) => elem instanceof HTMLStyleElement)
+      
 
 
       uDark.valuePrototypeEditor(CSS2Properties, "background", (elem, value) => {
@@ -289,15 +296,16 @@ window.dark_object = {
       })
 
 
-      uDark.valuePrototypeEditor(CSSRule, "cssText", (elem, value) => uDark.edit_str(value))
-      uDark.valuePrototypeEditor(CSSStyleDeclaration, "cssText", (elem, value) => uDark.edit_str(value))
+      // uDark.valuePrototypeEditor(CSSRule, "cssText", (elem, value) => uDark.edit_str(value)) // As far as I know, this is not affects to edit css text directly on CSSRule
+      uDark.valuePrototypeEditor(CSSStyleDeclaration, "cssText", (elem, value) => uDark.edit_str(value)) // However this one does
 
 
-      uDark.functionPrototypeEditor(CSSStyleSheet, CSSStyleSheet.prototype.addRule, (elem, args) => [args[0], uDark.edit_str(args[1])])
+      // Facebook classic uses insertRule
+      uDark.functionPrototypeEditor(CSSStyleSheet, [
+        CSSStyleSheet.prototype.addRule, // Suporting deprecated methods to: world wild web <3
+        CSSStyleSheet.prototype.insertRule
+      ], (elem, args) => [args[0], uDark.edit_str(args[1])])
 
-      // Facebook classic uses this one
-
-      uDark.functionPrototypeEditor(CSSStyleSheet, CSSStyleSheet.prototype.insertRule, (elem, args) => [uDark.edit_str(args[0]), args[1] || 0])
 
       // W3C uses this one
 
@@ -305,7 +313,7 @@ window.dark_object = {
       uDark.valuePrototypeEditor(CSS2Properties, "background-color", (elem, value) => uDark.rgba(...uDark.eget_color(value)))
       uDark.valuePrototypeEditor(CSS2Properties, "color", (elem, value) => uDark.revert_rgba(...uDark.eget_color(value)))
       uDark.valuePrototypeEditor(HTMLElement, "style", (elem, value) => uDark.edit_str(value)) // Care with "style and eget, this cause recursions"
-
+      // TODO: Support CSS url(data-image) in all image relevant CSS properties like background-image etc
       uDark.valuePrototypeEditor(CSS2Properties, "position", false, false, (elem, value, new_value) => {
         uDark.css_properties_wording_action(elem, ["position"])
         return value;
@@ -889,14 +897,15 @@ window.dark_object = {
               // it is not possible to edit a style element innerHTML with its cssStyleSheet alone
               // astyle.innerHTML=uDark.edit_css(astyle.innerHTML,astyle.sheet);
               astyle.classList.add("ud-edited-background")
-              astyle.innerHTML = uDark.send_data_image_to_parser(astyle.innerHTML, details);
+              // TODO: Remove the call from here and do it in css edit
+              // astyle.innerHTML = uDark.send_data_image_to_parser(astyle.innerHTML, details);
             });
             html_element.querySelectorAll("[style]").forEach(astyle => {
               // console.log(details,astyle,astyle.innerHTML,astyle.innerHTML.includes(`button,[type="reset"],[type="button"],button:hover,[type="button"],[type="submit"],button:active:hover,[type="button"],[type="submi`))
               astyle.setAttribute("style", uDark.edit_str(astyle.getAttribute("style")));
             });
             html_element.querySelectorAll("img[src*=data]").forEach(image => {
-              // console.log(html_element,image,uDark.send_data_image_to_parser(image.src,details))
+              // console.log(html_element,image,uDark.send_data_image_to_parser(image.src,details)) 
               image.src = uDark.send_data_image_to_parser(image.src, details)
             })
             // I think killing cache this way may be more efficient than cleaning the cache
@@ -950,7 +959,7 @@ window.dark_object = {
         userSettings: {},
         keepIdkProperties: false,
         chunk_stylesheets_idk_only_cors: true, // Asking front trough a message to get the css can be costly so we only do it when it's absolutely necessary: when the cors does not allow us to get the css directly;
-        disableCorsCSSEdit: true,
+        disableCorsCSSEdit: false,
         namedColorsRegex: (new RegExp(`(?<![_a-z0-9-])(${CSS_COLOR_NAMES.join("|")})(?![_a-z0-9-])`, "gmi")),
         min_bright_fg: 0.65, // Text with luminace under this value will be brightened
         max_bright_fg: 0.9, // Text over this value will be darkened
@@ -1363,24 +1372,64 @@ window.dark_object = {
         },
 
         edit_cssProperties: function(cssRule, idk_mode = false, details) {
+     
+          
+            let foreground_items=[],variables_items=[],background_items=[],wording_action=[];
+            for (let x of cssRule.style){
+                  if(idk_mode){
+                      if(x.startsWith("--ud-idk_")){x = x.slice(9);}
+                      else{continue;}
+                  }
+                  
+                  if(x.startsWith("--")){ variables_items.push(x);continue;} // Eliminate Variables, i don't think its usefull to test them againt regexes
+                  if(uDark.css_properties_wording_action_dict[x]){wording_action.push(x);} // Check if some wording action is needed
+                  if(uDark.foreground_color_css_properties.includes(x)){ foreground_items.push(x); continue;} // Do foreground items first as its faster to check a list
+                  if( x.match(uDark.background_color_css_properties_regex)){	 background_items.push(x); continue;} // Do background regex match
+            
+            }
+          let hasUnresolvedVars = {
+            has: false
+          }; // Passed by reference. // request details are shared so we use a new object. We could have emedded it into details though
+          wording_action.length && uDark.css_properties_wording_action(cssRule.style, wording_action, cssRule);
+          background_items.length && uDark.edit_all_cssRule_colors(idk_mode, cssRule, background_items, uDark.rgba, uDark.rgba_val, hasUnresolvedVars)
+          foreground_items.length && uDark.edit_all_cssRule_colors(idk_mode, cssRule, foreground_items, uDark.revert_rgba, uDark.rgba_val, hasUnresolvedVars, "", {
+            prefix_fg_vars: true
+          })
+          variables_items.length && [uDark.edit_all_cssRule_colors(idk_mode, cssRule, variables_items, uDark.revert_rgba, uDark.rgba_val, hasUnresolvedVars, "--ud-fg", {
+            prefix_fg_vars: true
+          }), uDark.edit_all_cssRule_colors(idk_mode, cssRule, variables_items, uDark.rgba, uDark.rgba_val, hasUnresolvedVars)]
+
+          if (details && hasUnresolvedVars.has) {
+
+            details.unresolvableChunks = details.unresolvableChunks || [];
+            details.unresolvableChunks[details.datacount] = true;
+          }
+        },
           // console.log(cssRule);
           // uDark.searchedCssText = ".partial_recruiter_list-item-single { background: var(--blank-color,#fff); border: 1px solid "
           // Referencing eligible keys starts here
           let valueList = Object.values(cssRule.style);
 
           // console.log(valueList);
-          if (idk_mode) {
-            valueList = valueList.filter(x => x.startsWith("--ud-idk_")).map(x => x.slice(9));
-          }
-          foreground_items = valueList.filter(x => uDark.foreground_color_css_properties.includes(x))
-          variables_items = valueList.filter(x => x.startsWith("--"));
+          
+            if (idk_mode) {
+              valueList = valueList.filter(x => x.startsWith("--ud-idk_")).map(x => x.slice(9));
+            }
+            let foreground_items = valueList.filter(x => uDark.foreground_color_css_properties.includes(x))
+            let variables_items = valueList.filter(x => x.startsWith("--"));
+  
+            let background_items = valueList.filter(x => (
+                !x.startsWith("--") &&
+                !foreground_items.includes(x)) &&
+              x.match(uDark.background_color_css_properties_regex));
+  
+              let wording_action = valueList.filter(x => uDark.css_properties_wording_action_dict[x]);
+          
+          // console.log("Catched",idk_mode,cssRule.cssText,foreground_items,background_items,variables_items,wording_action,cssRule.style.background,cssRule)
+          
+            // console.log("Catched",idk_mode,cssRule.cssText,foreground_items,background_items,variables_items,wording_action,cssRule.style.background,cssRule)
 
-          background_items = valueList.filter(x => (
-              !x.startsWith("--") &&
-              !foreground_items.includes(x)) &&
-            x.match(uDark.background_color_css_properties_regex));
 
-          wording_action = valueList.filter(x => uDark.css_properties_wording_action_dict[x]);
           // Editing values starts here
           // if(debug=cssRule.cssText.includes(uDark.searchedCssText))
           // {
@@ -1625,6 +1674,7 @@ window.dark_object = {
 
           // console.log(details,"Accepted integrity rule")
           details.rejectedValues = "";
+          // TODO: Remove the call from here and do it in css edit
           transformResult = uDark.send_data_image_to_parser(transformResult, details);
           transformResult = dark_object.misc.chunk_manage_idk(details, transformResult);
 
@@ -1636,6 +1686,7 @@ window.dark_object = {
 
         if (details.rejectedValues.length) {
           transformResult = uDark.edit_str(details.rejectedValues, false, false, details);
+          // TODO: Remove the call from here and do it in css edit
           transformResult = uDark.send_data_image_to_parser(transformResult, details);
           transformResult = dark_object.misc.chunk_manage_idk(details, transformResult);
           filter.write(encoder.encode(transformResult)); // Write the last chunk if any, trying to get the last rules to be applied, there is proaby invalid content at the end of the CSS;
