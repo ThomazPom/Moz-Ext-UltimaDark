@@ -1405,61 +1405,6 @@ window.dark_object = {
             details.unresolvableChunks[details.datacount] = true;
           }
         },
-          // console.log(cssRule);
-          // uDark.searchedCssText = ".partial_recruiter_list-item-single { background: var(--blank-color,#fff); border: 1px solid "
-          // Referencing eligible keys starts here
-          let valueList = Object.values(cssRule.style);
-
-          // console.log(valueList);
-          
-            if (idk_mode) {
-              valueList = valueList.filter(x => x.startsWith("--ud-idk_")).map(x => x.slice(9));
-            }
-            let foreground_items = valueList.filter(x => uDark.foreground_color_css_properties.includes(x))
-            let variables_items = valueList.filter(x => x.startsWith("--"));
-  
-            let background_items = valueList.filter(x => (
-                !x.startsWith("--") &&
-                !foreground_items.includes(x)) &&
-              x.match(uDark.background_color_css_properties_regex));
-  
-              let wording_action = valueList.filter(x => uDark.css_properties_wording_action_dict[x]);
-          
-          // console.log("Catched",idk_mode,cssRule.cssText,foreground_items,background_items,variables_items,wording_action,cssRule.style.background,cssRule)
-          
-            // console.log("Catched",idk_mode,cssRule.cssText,foreground_items,background_items,variables_items,wording_action,cssRule.style.background,cssRule)
-
-
-          // Editing values starts here
-          // if(debug=cssRule.cssText.includes(uDark.searchedCssText))
-          // {
-          //   console.log("Catched",idk_mode,cssRule.cssText,foreground_items,background_items,variables_items,wording_action,cssRule.style.background,cssRule)
-          // }
-          let hasUnresolvedVars = {
-            has: false
-          }; // Passed by reference. // request details are shared so we use a new object. We could have emedded it into details though
-          wording_action.length && uDark.css_properties_wording_action(cssRule.style, wording_action, cssRule);
-          background_items.length && uDark.edit_all_cssRule_colors(idk_mode, cssRule, background_items, uDark.rgba, uDark.rgba_val, hasUnresolvedVars)
-          foreground_items.length && uDark.edit_all_cssRule_colors(idk_mode, cssRule, foreground_items, uDark.revert_rgba, uDark.rgba_val, hasUnresolvedVars, "", {
-            prefix_fg_vars: true
-          })
-          variables_items.length && [uDark.edit_all_cssRule_colors(idk_mode, cssRule, variables_items, uDark.revert_rgba, uDark.rgba_val, hasUnresolvedVars, "--ud-fg", {
-            prefix_fg_vars: true
-          }), uDark.edit_all_cssRule_colors(idk_mode, cssRule, variables_items, uDark.rgba, uDark.rgba_val, hasUnresolvedVars)]
-
-          if (details && hasUnresolvedVars.has) {
-
-            details.unresolvableChunks = details.unresolvableChunks || [];
-            details.unresolvableChunks[details.datacount] = true;
-            // console.log("Here we are, unresolvableVarArray",unresolvableVarArray);
-            // console.log("Do we have something in details wich may help us to resolve this ?",details);
-          }
-          // if(debug=cssRule.cssText.includes(uDark.searchedCssText))
-          // {
-          //   console.log("Catched ITE",cssRule.cssText,foreground_items,background_items,variables_items,wording_action)
-          // }
-          // console.log(cssRule,foreground_items,background_items,variables_items,wording_action);
-        },
         do_idk_mode_timed: function(duration, interval) {
 
           // Repeat IDK mode every n ms for a certain time
