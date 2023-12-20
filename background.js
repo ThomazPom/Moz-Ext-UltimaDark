@@ -1258,6 +1258,8 @@ window.dark_object = {
           "mix-blend-mode": {
             replace: ["multiply", "normal"]
           },
+          "mask-image":{ stickConcatToPropery: {sValue:"url(",rKey:"filter", stick:"brightness(10)"}}, // Not good for wayback machine time selector
+          // "color":{ stickConcatToPropery: {sValue:"(",rKey:"mix-blend-mode", stick:"difference"}}, // Not good for wayback machine time selector
           // "position":{ stickConcatToPropery: {sValue:"fixed",rKey:"filter", stick:"contrast(110%)"}}, // Not good for wayback machine time selector
         },
         css_properties_wording_action: function(cssStyle, keys, cssRule) {
