@@ -73,6 +73,7 @@ window.dark_object = {
       if (!uDark.disable_idk_mode) { // Use of an observer was consuming too much ressources
         uDark.do_idk_mode_timed();
       }
+      
       window.addEventListener('load', (event) => {
         var bodycolor = getComputedStyle(document.body)["backgroundColor"]
         if (bodycolor != "rgba(0, 0, 0, 0)") {
@@ -300,11 +301,15 @@ window.dark_object = {
       uDark.valuePrototypeEditor(CSSStyleDeclaration, "cssText", (elem, value) => uDark.edit_str(value)) // However this one does
 
 
-      // Facebook classic uses insertRule
-      uDark.functionPrototypeEditor(CSSStyleSheet, [
-        CSSStyleSheet.prototype.addRule, // Suporting deprecated methods to: world wild web <3
-        CSSStyleSheet.prototype.insertRule
-      ], (elem, args) => [args[0], uDark.edit_str(args[1])])
+
+      { // Note the difference in wich arg is edited in following functions: we-cant-group-them !
+        
+        uDark.functionPrototypeEditor(CSSStyleSheet, CSSStyleSheet.prototype.addRule, (elem, args) => [args[0], uDark.edit_str(args[1])])
+        // Facebook classic uses insertRule
+        uDark.functionPrototypeEditor(CSSStyleSheet, CSSStyleSheet.prototype.insertRule, (elem, args) => [uDark.edit_str(args[0]), args[1] || 0])
+
+      }
+
 
 
       // W3C uses this one
@@ -1372,7 +1377,10 @@ window.dark_object = {
         },
 
         edit_cssProperties: function(cssRule, idk_mode = false, details) {
-     
+          if(cssRule.cssText.includes(".jiofnV"))
+          {
+            console.log("Catched",idk_mode,cssRule.cssText,new Error());
+          }
           
             let foreground_items=[],variables_items=[],background_items=[],wording_action=[];
             for (let x of cssRule.style){

@@ -1,6 +1,3 @@
-
-
-
 let myPort = browser.runtime.connect({name:"port-from-cs"});
 
 function csOverrideRemoteContent(url,content) {

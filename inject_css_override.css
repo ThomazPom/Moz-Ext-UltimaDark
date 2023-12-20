@@ -24,7 +24,7 @@ font[color] {
 }
 html:not(.ud-loaded){
   /* Just in case */
-   /* background:var(--main-bgcolor);
+   background:var(--main-bgcolor);
    background-color:var(--main-bgcolor);
-   color: var(--secondary-color); */
+   color: var(--secondary-color);
 }
