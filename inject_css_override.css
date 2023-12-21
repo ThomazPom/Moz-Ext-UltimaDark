@@ -4,27 +4,12 @@
 
   --secondary-color: black;
 }
-.test{  background-color:lime;}
-.test2{  background-color:#00ff00;}
 ::placeholder{
+  color: var(--secondary-color);
+}
 
-  opacity: 1;
-  color:var(--main-color);
-}
-img,video
-{
-  border-radius: 5px;
-}
-path {
-  filter: brightness(1.4);
-    /*fill: var(--secondary-color);*/
-}
-font[color] {
-    /*filter: brightness(20) saturate(0.5);*/
-}
-html:not(.ud-loaded){
+html,input{
   /* Just in case */
-   background:var(--main-bgcolor);
    background-color:var(--main-bgcolor);
    color: var(--secondary-color);
 }
