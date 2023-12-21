@@ -977,8 +977,17 @@ window.dark_object = {
               udScript.innerHTML = uDark.injectscripts_str;
               udScript.id = "ud-script"
               html_element.querySelector("head").prepend(udScript);
-            }
+              
+              var udMetaDark = document.createElement("meta")
+              udMetaDark.id = "ud-meta-dark"
+              udMetaDark.name="color-scheme";
+              udMetaDark.content="dark light";
+              html_element.querySelector("head").prepend(udMetaDark);
 
+            }
+            // <meta name="color-scheme" content="dark light"> Telling broswer order preference for colors 
+            // Makes input type checkboxes and radio buttons to be darkened
+            
 
             var outer_edited = "<!doctype html>" + html_element.outerHTML
             outer_edited = outer_edited.replace(/[\s\t]integrity=/g, " nointegrity=")
