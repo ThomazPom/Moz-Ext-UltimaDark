@@ -447,13 +447,15 @@ window.dark_object = {
       }
       browser.runtime.onConnect.addListener(connected);
       // Promises before starting :
-      function getIjectCSS(resourcePath, actions = {}) {
-
-        aCSSsrc = new CSSStyleSheet();
-        return fetch(resourcePath).then(r => r.text()).then(t => aCSSsrc.replace(t)).then(z => {
+      function getInjectCSS(resourcesPaths, actions = {}) {
+        if(typeof resourcesPaths == "string") resourcesPaths = [resourcesPaths]
+        return Promise.all(resourcesPaths.map(resourcePath =>
+        fetch(resourcePath).then(r => r.text()).then(t =>{
+          let aCSSsrc = new CSSStyleSheet();
+          aCSSsrc.replaceSync(t)
+          return aCSSsrc;
+        }).then(aCSSsrc => {
           uDark.edit_cssRules(aCSSsrc.cssRules, false, false, function(rule) {
-
-
             // It's important to use Object.values as it retrieves values that could be ignored by "for var of rules.style"
             for (key of Object.values(rule.style)) {
 
@@ -467,12 +469,15 @@ window.dark_object = {
 
               if (actions.detectRareColors) {
 
-                value = value.replace(/[^ ]+/g, function(match) {
-
+                  value = value.replace(/[a-z-0-9]+/g, function(match) {
                   let is_color = uDark.is_color(match);
                   return is_color ? uDark.rgba(...is_color, uDark.rgba_val) : match
                 })
-
+                if(actions.unsetMode=="fill_minimum"  && value=="unset" &&["color","background-color"].includes(key))
+                {
+                  console.log("found unset in",rule)
+                  value=uDark.hsla_val(0, 0, uDark.max_bright_bg * uDark.idk_minimum_editor,1)
+                }
                 let priority = rule.style.getPropertyPriority(key);
                 rule.style.setProperty(key, value, priority);
 
@@ -492,7 +497,7 @@ window.dark_object = {
             item[key] = (item[key] || "") + text
 
           }
-        });
+        })));
       }
 
       window.uDark = {
@@ -983,37 +988,44 @@ window.dark_object = {
           }
         }
       }
-      getIjectCSS("/gre-resources/forms.css", actions = {
+      Promise.all([
+        getInjectCSS(["/gre-resources/forms.css",
+        "/gre-resources/ua.css",
+        "/gre-resources/html.css"], actions = {
           append: {
             inject_css_suggested: uDark
           },
           edit_css: true,
+          unsetMode:"fill_minimum",
           detectRareColors: true,
           removeNonColors: true
-        })
-        .then(p => getIjectCSS("/inject_css_suggested.css", actions = {
+        }),
+        getInjectCSS("/inject_css_suggested.css", actions = {
           append: {
             inject_css_suggested: uDark,
             edit_css: true
           }
-        }))
-        .then(p => getIjectCSS("/inject_css_suggested_no_edit.css", actions = {
+        }),
+        getInjectCSS("/inject_css_suggested_no_edit.css", actions = {
           append: {
             inject_css_suggested: uDark
           }
-        }))
-        .then(p => getIjectCSS("/inject_css_override.css", actions = {
+        }),
+        getInjectCSS("/inject_css_override.css", actions = {
           append: {
             inject_css_override: uDark
           },
           edit_css: true
-        }))
-        .then(p => getIjectCSS("/inject_css_override_no_edit.css", actions = {
+        }),
+        getInjectCSS("/inject_css_override_no_edit.css", actions = {
           append: {
             inject_css_override: uDark
           }
-        }))
-        .then(dark_object.background.setListener).then(console.log("CSS processed"))
+        })
+      ]).then(x=>console.log("CSS processed")).then(dark_object.background.setListener)
+
+      
+      
     }
   },
   both: {
@@ -1276,7 +1288,7 @@ window.dark_object = {
             option.remove();
           }
           if (result) {
-
+            
             if (as_float) {
               result = result.match(/[0-9\.]+/g).map(parseFloat)
               if (fill) {
@@ -1307,7 +1319,7 @@ window.dark_object = {
 
             if (cssRule.cssRules && cssRule.cssRules.length) {
               return uDark.edit_cssRules(cssRule.cssRules, idk_mode, details);
-            } else if (cssRule.style) {
+            } else if (cssRule.style && cssRule.__proto__.constructor.name!="CSSFontFaceRule") {
               callBack(cssRule, idk_mode, details);
             }
           })

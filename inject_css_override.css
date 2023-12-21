@@ -10,6 +10,6 @@
 
 html,input{
   /* Just in case */
-   background-color:var(--main-bgcolor);
-   color: var(--secondary-color);
+   /* background-color:var(--main-bgcolor);
+   color: var(--secondary-color); */
 }
