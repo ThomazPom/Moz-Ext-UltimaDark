@@ -477,7 +477,6 @@ window.dark_object = {
                 })
                 if(actions.unsetMode=="fill_minimum"  && value=="unset" &&["color","background-color"].includes(key))
                 {
-                  console.log("found unset in",rule)
                   value=uDark.hsla_val(0, 0, uDark.max_bright_bg * uDark.idk_minimum_editor,1)
                 }
                 let priority = rule.style.getPropertyPriority(key);
@@ -1037,7 +1036,7 @@ window.dark_object = {
             inject_css_override: uDark
           }
         })
-      ]).then(x=>console.log("CSS processed")).then(dark_object.background.setListener)
+      ]).then(x=>console.info("CSS processed")).then(dark_object.background.setListener)
 
       
       
