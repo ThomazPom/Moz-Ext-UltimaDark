@@ -1330,7 +1330,6 @@ window.dark_object = {
         },
         edit_cssRules(cssRules, idk_mode = false, details, callBack = uDark.edit_cssProperties) {
           [...cssRules].forEach(cssRule => {
-            console.log(cssRule);
             if (cssRule.cssRules && cssRule.cssRules.length) {
               return uDark.edit_cssRules(cssRule.cssRules, idk_mode, details);
             } else if (cssRule.style && cssRule.constructor.name!="CSSFontFaceRule") {
