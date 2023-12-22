@@ -1003,17 +1003,17 @@ window.dark_object = {
         }
       }
       Promise.all([
-        getInjectCSS(["/gre-resources/forms.css", // No so usefull since meta tag
-        "/gre-resources/ua.css",
-        "/gre-resources/html.css"], actions = {
-          append: {
-            inject_css_suggested: uDark
-          },
-          edit_css: true,
-          unsetMode:"fill_minimum",
-          detectRareColors: true,
-          removeNonColors: true
-        }),
+        // getInjectCSS(["/gre-resources/forms.css", // No  usefull since meta tag and forces links colors to be set at rgba
+        // "/gre-resources/ua.css",
+        // "/gre-resources/html.css"], actions = {
+        //   append: {
+        //     inject_css_suggested: uDark
+        //   },
+        //   edit_css: true,
+        //   // unsetMode:"fill_minimum",
+        //   detectRareColors: true,
+        //   removeNonColors: true
+        // }),
         getInjectCSS("/inject_css_suggested.css", actions = {
           append: {
             inject_css_suggested: uDark,
