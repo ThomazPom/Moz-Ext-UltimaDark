@@ -6,7 +6,7 @@
 }
 
 html{ 
-  /* Just in case meta tag is not working ?*/
-   /* background-color:var(--main-bgcolor); */
+  /* Just in case meta tag  is not working ? */
+   background-color:var(--main-bgcolor); 
    /* color: var(--secondary-color); */
 }

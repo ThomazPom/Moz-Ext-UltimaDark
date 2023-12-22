@@ -236,6 +236,8 @@ window.dark_object = {
         })
       // This is the one youtube uses
       uDark.valuePrototypeEditor(Element, "innerHTML", uDark.frontEditHTML, (elem, value) => value && value.toString().includes('style') || elem instanceof HTMLStyleElement); // toString : sombe object can redefine tostring to generate thzir inner
+      //geo.fr uses this one
+      uDark.valuePrototypeEditor(Element, "outerHTML", uDark.frontEditHTML, (elem, value) => value && value.toString().includes('style') || elem instanceof HTMLStyleElement); // toString : sombe object can redefine tostring to generate thzir inner
 
       // This is the one google uses
       uDark.functionPrototypeEditor(Element, Element.prototype.insertAdjacentHTML, (elem, args) => {
@@ -920,15 +922,17 @@ window.dark_object = {
               });
 
             }
+            str=str.replace(/<(\/)?noscript/g,"<$1ud_secure_a_noscript");
             // var html_element = document.createElement("html")
             // html_element.innerHTML=str.replace(/<\/?html.*?>/g,"")
             var parser = new DOMParser();
             var html_element = parser.parseFromString(
               str, "text/html").documentElement;
+            
             // The code
             //              console.log(html_element)
 
-            // html_element.querySelectorAll("noscript").forEach(anoscript=>{
+            // html_element.querySelectorAll("noscript").forEach(anoscript=>{ // This is too late to edit noscript as as thei are aleready parsed
             //    anoscript.remove();
             // });
 
@@ -991,6 +995,7 @@ window.dark_object = {
 
             var outer_edited = "<!doctype html>" + html_element.outerHTML
             outer_edited = outer_edited.replace(/[\s\t]integrity=/g, " nointegrity=")
+            outer_edited = outer_edited.replaceAll("ud_secure_a_noscript","noscript")
 
 
             return outer_edited;
@@ -998,7 +1003,7 @@ window.dark_object = {
         }
       }
       Promise.all([
-        getInjectCSS(["/gre-resources/forms.css",
+        getInjectCSS(["/gre-resources/forms.css", // No so usefull since meta tag
         "/gre-resources/ua.css",
         "/gre-resources/html.css"], actions = {
           append: {
@@ -1325,10 +1330,10 @@ window.dark_object = {
         },
         edit_cssRules(cssRules, idk_mode = false, details, callBack = uDark.edit_cssProperties) {
           [...cssRules].forEach(cssRule => {
-
+            console.log(cssRule);
             if (cssRule.cssRules && cssRule.cssRules.length) {
               return uDark.edit_cssRules(cssRule.cssRules, idk_mode, details);
-            } else if (cssRule.style && cssRule.__proto__.constructor.name!="CSSFontFaceRule") {
+            } else if (cssRule.style && cssRule.constructor.name!="CSSFontFaceRule") {
               callBack(cssRule, idk_mode, details);
             }
           })
