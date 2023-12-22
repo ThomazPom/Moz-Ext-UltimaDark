@@ -985,7 +985,6 @@ window.dark_object = {
               aDocument.head.prepend(udScript);
 
               var udMetaDark = aDocument.querySelector("meta[name='color-scheme']") ||  document.createElement("meta")
-              console.log(udMetaDark);
               udMetaDark.id = "ud-meta-dark"
               udMetaDark.name="color-scheme";
               udMetaDark.content="dark";
