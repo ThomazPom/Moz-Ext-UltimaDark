@@ -58,19 +58,19 @@ window.dark_object = {
           return uDark.edit_str(value)
         }
         var parser = new DOMParser();
-        var html_element = parser.parseFromString(value, "text/html").documentElement;
-        html_element.querySelectorAll("style").forEach(astyle => {
+        var documentElement = parser.parseFromString(value, "text/html").documentElement;
+        documentElement.querySelectorAll("style").forEach(astyle => {
           astyle.innerHTML = uDark.edit_str(astyle.innerHTML);
           astyle.classList.add("ud-edited-background")
         });
 
-        html_element.querySelectorAll("[style]").forEach(astyle => {
+        documentElement.querySelectorAll("[style]").forEach(astyle => {
 
 
-          // console.log(html_element,astyle.getAttribute("style"));
+          // console.log(documentElement,astyle.getAttribute("style"));
           astyle.setAttribute("style", uDark.edit_str(astyle.getAttribute("style")));
         });
-        return html_element.innerHTML;
+        return documentElement.innerHTML;
       }
 
 
@@ -923,46 +923,48 @@ window.dark_object = {
 
             }
             str=str.replace(/<(\/)?noscript/g,"<$1ud_secure_a_noscript");
-            // var html_element = document.createElement("html")
-            // html_element.innerHTML=str.replace(/<\/?html.*?>/g,"")
+            // var documentElement = document.createElement("html")
+            // documentElement.innerHTML=str.replace(/<\/?html.*?>/g,"")
             var parser = new DOMParser();
-            var html_element = parser.parseFromString(
-              str, "text/html").documentElement;
+            let aDocument = parser.parseFromString(
+              str, "text/html");
+            let documentElement=aDocument.documentElement;
             
             // The code
-            //              console.log(html_element)
+            //              console.log(documentElement)
 
-            // html_element.querySelectorAll("noscript").forEach(anoscript=>{ // This is too late to edit noscript as as thei are aleready parsed
+            // documentElement.querySelectorAll("noscript").forEach(anoscript=>{ // This is too late to edit noscript as as thei are aleready parsed
             //    anoscript.remove();
             // });
 
-            html_element.querySelectorAll("style").forEach(astyle => {
+            aDocument.querySelectorAll("style").forEach(astyle => {
               astyle.innerHTML = uDark.edit_str(astyle.innerHTML);
               // According to https://stackoverflow.com/questions/55895361/how-do-i-change-the-innerhtml-of-a-global-style-element-with-cssrule ,
               // it is not possible to edit a style element innerHTML with its cssStyleSheet alone
+              // As long as we are returing a STR, we have to edit the style element innerHTML;
               // astyle.innerHTML=uDark.edit_css(astyle.innerHTML,astyle.sheet);
               astyle.classList.add("ud-edited-background")
               // TODO: Remove the call from here and do it in css edit
               // astyle.innerHTML = uDark.send_data_image_to_parser(astyle.innerHTML, details);
             });
-            html_element.querySelectorAll("[style]").forEach(astyle => {
+            aDocument.querySelectorAll("[style]").forEach(astyle => {
               // console.log(details,astyle,astyle.innerHTML,astyle.innerHTML.includes(`button,[type="reset"],[type="button"],button:hover,[type="button"],[type="submit"],button:active:hover,[type="button"],[type="submi`))
               astyle.setAttribute("style", uDark.edit_str(astyle.getAttribute("style")));
             });
-            html_element.querySelectorAll("img[src*=data]").forEach(image => {
-              // console.log(html_element,image,uDark.send_data_image_to_parser(image.src,details)) 
+            aDocument.querySelectorAll("img[src*=data]").forEach(image => {
+              // console.log(documentElement,image,uDark.send_data_image_to_parser(image.src,details)) 
               image.src = uDark.send_data_image_to_parser(image.src, details)
             })
             // I think killing cache this way may be more efficient than cleaning the cache
             // cache key is unique for each browser session
-            html_element.querySelectorAll("link[rel='stylesheet'][href]")
+            aDocument.querySelectorAll("link[rel='stylesheet'][href]")
               .forEach(x => {
                 let hasHref = x.getAttribute("href").trim()
                 hasHref && x.setAttribute("href", hasHref + "#ud_ck=1" + uDark.fixedRandom);
               });
             // /
 
-            html_element.querySelectorAll("[fill],[color],path,[bgcolor]").forEach(coloreditem => {
+            aDocument.querySelectorAll("[fill],[color],path,[bgcolor]").forEach(coloreditem => {
               for (const [key, afunction] of Object.entries(uDark.attfunc_map)) {
                 var possiblecolor = uDark.is_color(coloreditem.getAttribute(key))
                 if (possiblecolor) {
@@ -975,25 +977,25 @@ window.dark_object = {
               var udStyle = document.createElement("style")
               udStyle.innerHTML = uDark.inject_css_suggested;
               udStyle.id = "ud-style"
-              html_element.querySelector("head").prepend(udStyle);
+              aDocument.head.prepend(udStyle);
 
               var udScript = document.createElement("script")
               udScript.innerHTML = uDark.injectscripts_str;
               udScript.id = "ud-script"
-              html_element.querySelector("head").prepend(udScript);
-              
-              var udMetaDark = document.createElement("meta")
+              aDocument.head.prepend(udScript);
+
+              var udMetaDark = aDocument.querySelector("meta[name='color-scheme']") ||  document.createElement("meta")
+              console.log(udMetaDark);
               udMetaDark.id = "ud-meta-dark"
               udMetaDark.name="color-scheme";
-              udMetaDark.content="dark light";
-              html_element.querySelector("head").prepend(udMetaDark);
+              udMetaDark.content="dark";
+              aDocument.head.prepend(udMetaDark);
 
             }
             // <meta name="color-scheme" content="dark light"> Telling broswer order preference for colors 
             // Makes input type checkboxes and radio buttons to be darkened
             
-
-            var outer_edited = "<!doctype html>" + html_element.outerHTML
+            var outer_edited = "<!doctype html>" +  documentElement.outerHTML
             outer_edited = outer_edited.replace(/[\s\t]integrity=/g, " nointegrity=")
             outer_edited = outer_edited.replaceAll("ud_secure_a_noscript","noscript")
 
@@ -1341,6 +1343,7 @@ window.dark_object = {
           "mix-blend-mode": {
             replace: ["multiply", "normal"]
           },
+          "color-scheme":{ replace: ["light", "dark"] },
           "mask-image": {
             stickConcatToPropery: {
               sValue: "url(",
