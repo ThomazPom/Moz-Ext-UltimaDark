@@ -2,13 +2,13 @@ window.dark_object = {
   foreground: {
     inject: function() {
       uDark.is_foreground = true;
-      uDark.rgb_a_colorsRegex = /rgba?\([0-9., \/a-z-]+\)/gmi, // rgba vals without variables involved  #rgba(255 255 255 / 0.1) is valid color
+      uDark.rgb_a_colorsRegex = /rgba?\([0-9., \/a-z_-]+\)/gmi, // rgba vals with variables names involved  #rgba(255 255 255 / 0.1) is valid color
         uDark.hsl_a_colorsRegex = /hsla?\(([%0-9., \/=a-z-]|deg|turn|tetha)+\)/gmi, // hsla vals without variables involved
         uDark.valuePrototypeEditor = function(leType, atName, watcher = x => x, conditon = x => x, aftermath = false) {
           //   console.log(leType,atName)
-          if (conditon) {
-            console.log("VAdding condtition to", leType, leType.name, conditon, conditon.toString())
-          }
+          // if (conditon) {
+          //   console.log("VAdding condtition to", leType, leType.name, conditon, conditon.toString())
+          // }
           var originalSet = Object.getOwnPropertyDescriptor(leType.prototype, atName).set;
           Object.defineProperty(leType.prototype, "o_ud_set_" + atName, {
             set: originalSet
@@ -30,9 +30,9 @@ window.dark_object = {
             uDark.functionPrototypeEditor(leType, aFonction, watcher, conditon, result_editor)
           })
         }
-        if (conditon) {
-          console.log("Adding condtition to", leType, leType.name, laFonction, conditon, conditon.toString())
-        }
+        // if (conditon) {
+        //   console.log("Adding condtition to", leType, leType.name, laFonction, conditon, conditon.toString())
+        // }
         var originalFunction = Object.getOwnPropertyDescriptor(leType.prototype, laFonction.name).value;
         Object.defineProperty(leType.prototype, "o_ud_" + laFonction.name, {
           value: originalFunction,
@@ -315,7 +315,11 @@ window.dark_object = {
 
       }
 
-
+      // uDark.valuePrototypeEditor(HTMLImageElement, "src", (elem, value) => {
+      //   console.log(elem, value,"src","edited");
+      //   uDark.registerBackgroundItem(false, `img[src='${value}']`,false)
+      //   return value;
+      // });
 
       // W3C uses this one
 
@@ -324,10 +328,7 @@ window.dark_object = {
       uDark.valuePrototypeEditor(CSS2Properties, "color", (elem, value) => uDark.revert_rgba(...uDark.eget_color(value)))
       uDark.valuePrototypeEditor(HTMLElement, "style", (elem, value) => uDark.edit_str(value)) // Care with "style and eget, this cause recursions"
       // TODO: Support CSS url(data-image) in all image relevant CSS properties like background-image etc
-      uDark.valuePrototypeEditor(CSS2Properties, "position", false, false, (elem, value, new_value) => {
-        uDark.css_properties_wording_action(elem, ["position"])
-        return value;
-      })
+      
       uDark.valuePrototypeEditor(HTMLElement, "innerText", (elem, value) => {
         return uDark.edit_str(value)
       }, (elem, value) => value && elem instanceof HTMLStyleElement);
@@ -937,7 +938,7 @@ window.dark_object = {
             // });
 
             aDocument.querySelectorAll("style").forEach(astyle => {
-              astyle.innerHTML = uDark.edit_str(astyle.innerHTML);
+              astyle.innerHTML = uDark.edit_str(astyle.innerHTML, false,false, details);
               // According to https://stackoverflow.com/questions/55895361/how-do-i-change-the-innerhtml-of-a-global-style-element-with-cssrule ,
               // it is not possible to edit a style element innerHTML with its cssStyleSheet alone
               // As long as we are returing a STR, we have to edit the style element innerHTML;
@@ -948,12 +949,18 @@ window.dark_object = {
             });
             aDocument.querySelectorAll("[style]").forEach(astyle => {
               // console.log(details,astyle,astyle.innerHTML,astyle.innerHTML.includes(`button,[type="reset"],[type="button"],button:hover,[type="button"],[type="submit"],button:active:hover,[type="button"],[type="submi`))
-              astyle.setAttribute("style", uDark.edit_str(astyle.getAttribute("style")));
+              astyle.setAttribute("style", uDark.edit_str(astyle.getAttribute("style"), false,false, details));
             });
+
+
             aDocument.querySelectorAll("img[src*=data]").forEach(image => {
               // console.log(documentElement,image,uDark.send_data_image_to_parser(image.src,details)) 
               image.src = uDark.send_data_image_to_parser(image.src, details)
             })
+            
+            // aDocument.querySelectorAll("img[src]").forEach(image => { // We catch images later, not here
+            //   uDark.registerBackgroundItem(false,{selectorText:`img[src='${image.src}']`}, details)
+            // })
             // I think killing cache this way may be more efficient than cleaning the cache
             // cache key is unique for each browser session
             aDocument.querySelectorAll("link[rel='stylesheet'][href]")
@@ -1337,34 +1344,101 @@ window.dark_object = {
             }
           })
         },
-        css_properties_wording_action_dict: {
-          "mix-blend-mode": {
-            replace: ["multiply", "normal"]
+        encode_backgroundItemForLiveRegister: function(cssStyle, cssRule,details,property="background-image") {
+          // Instead of registering the image as a background, we will encode the selector in the URL 
+          // and register the image as a background image only when it is downloaded, in the filter script
+          cssStyle[property]=cssStyle[property].
+              replace(/url\(((\\\)|.)+?)\)/g,(match,g1)=>{
+                
+                let link=g1.trim();
+              
+                let usedChar=link.includes("?")?"&":"?"
+                let lastChar=link.slice(-1);
+                let isQuoted=["'",'"'].includes(lastChar)
+                link=link.slice(0,-1*(isQuoted))+usedChar+"uDark_cssClass="+encodeURIComponent(cssRule.selectorText)+(isQuoted?lastChar:"");
+                return "url("+link+")";
+            });
+            
+          // console.log("Found a background image via property",property,cssRule.selectorText,`'${cssStyle[property]}'`);
           },
-          "color-scheme":{ replace: ["light", "dark"] },
-          "mask-image": {
-            stickConcatToPropery: {
-              sValue: "url(",
-              rKey: "filter",
-              stick: "brightness(10)"
+        restoreTextsOnBackgroundItems()
+        {
+          let bgItems = [...document.querySelectorAll([...uDark.backgroundItemsSelectors].join(","))]
+          .filter(imagedItem=>imagedItem.offsetWidth>50 || imagedItem.offsetHeight>50)
+          .map(imagedItem=>{
+                  let boundingRect = imagedItem.getBoundingClientRect();
+                  return {
+                    item:imagedItem,
+                    t1:boundingRect.top+window.scrollY,
+                    t2:boundingRect.left+window.scrollX,
+                    b1:boundingRect.top+window.scrollY+imagedItem.offsetHeight,
+                    b2:boundingRect.left+window.scrollX+imagedItem.offsetWidth,
+                  }
+                });
+          document.querySelectorAll("body *").forEach(textItem=>{
+            let boundingRect = getBoundingClientRect=textItem.getBoundingClientRect();
+            boundingRect= {
+              t1:boundingRect.top+window.scrollY,
+              t2:boundingRect.left+window.scrollX,
+              b1:boundingRect.top+window.scrollY+textItem.offsetHeight,
+              b2:boundingRect.left+window.scrollX+textItem.offsetWidth,
             }
-          }, // Not good for wayback machine time selector
-          // "color":{ stickConcatToPropery: {sValue:"(",rKey:"mix-blend-mode", stick:"difference"}}, // Not good for wayback machine time selector
-          // "position":{ stickConcatToPropery: {sValue:"fixed",rKey:"filter", stick:"contrast(110%)"}}, // Not good for wayback machine time selector
+            bgItems.forEach(bgItem=>{
+              if(boundingRect.t1>bgItem.t1 && boundingRect.t2>bgItem.t2 && boundingRect.b1<bgItem.b1 && boundingRect.b2<bgItem.b2)
+              {
+                textItem.style.color="magenta";
+              }
+
+            })
+
+          })
+            
         },
-        css_properties_wording_action: function(cssStyle, keys, cssRule) {
+        registerBackgroundItem: function(cssStyle, cssRule,details,timing=0) {
+          if(cssStyle){
+            if((cssStyle.backgroundImage+" "+cssStyle.background).includes("url(")){
+              return uDark.registerBackgroundItem(false,cssRule,details); // We validated we will register the background property
+            }
+            return false; // No Url to register here;
+          }
+          
+          if(uDark.is_foreground)
+          { 
+            if(typeof cssRule=="string")
+            {
+              cssRule={selectorText:cssRule} 
+            }
+            // console.log("Found a class of background image item",cssRule.selectorText);
+            uDark.backgroundItemsSelectors = uDark.backgroundItemsSelectors || new Set();
+            uDark.backgroundItemsSelectors.add(cssRule.selectorText);
+          }
+          else if(uDark.is_background)
+          {
+            if(["main_frame","sub_frame"].includes(details.type))
+            {
+              timing=100; // We need to wait for the content script to be loaded;
+            }
+            setTimeout(() => { 
+              let content_script_port = uDark.connected_cs_ports[`port-from-cs-${details.tabId}-${details.frameId}`];
+      
+              content_script_port.postMessage({registerBackgroundItem:cssRule.selectorText});
+            } , timing);
+          }
+        },
+        css_properties_wording_action: function(cssStyle, keys, cssRule,details) {
           keys.forEach(key => {
             let action = uDark.css_properties_wording_action_dict[key];
+           
             if (action) {
 
-              let value = cssStyle.getPropertyValue(key) || ""
+              
               if (action.replace) {
-                value = cssStyle.setProperty(key, value.replaceAll(...action.replace));
+                let value = cssStyle.getPropertyValue(key); 
+                cssStyle.setProperty(key, value.replaceAll(...action.replace)); 
               }
               if (action.stickConcatToPropery) {
-                let vars = action.stickConcatToPropery
-
-                value = value || cssStyle.getPropertyValue(key)
+                let vars = action.stickConcatToPropery;
+                let value = cssStyle.getPropertyValue(key) 
                 let new_value = cssStyle.getPropertyValue(vars.rKey) || ""
                 if (value && value.includes(vars.sValue)) {
                   new_value += " " + vars.stick;
@@ -1373,6 +1447,9 @@ window.dark_object = {
                 }
                 cssStyle.setProperty(vars.rKey, new_value);
 
+              }
+              if (action.callBack) {
+                action.callBack(cssStyle, cssRule,details);
               }
             }
 
@@ -1465,9 +1542,9 @@ window.dark_object = {
               // }
               value = uDark.edit_with_regex(idk_mode, value, uDark.rgb_a_colorsRegex, transformation, render, idk_mode ? cssRule : false); // edit_rgb_a_colors
               value = uDark.edit_with_regex(idk_mode, value, uDark.hsl_a_colorsRegex, transformation, render, idk_mode ? cssRule : false); // edit_hsl_a_colors
-              value = uDark.restore_idk_vars(idk_mode, value);
+              value = uDark.restore_idk_vars(idk_mode, value); // Restore alone vars: color: var(--color_8)
               value = uDark.edit_with_regex(false /*The namedColorsRegex is not affected*/ , value, uDark.namedColorsRegex, transformation, render); // edit_named_colors
-              value = uDark.edit_with_regex(false, /*The hexadecimalColorsRegex is not affected*/ value, uDark.hexadecimalColorsRegex, transformation, render); // edit_hex_colors // The browser auto converts hex to rgb, but some times not like in  var(--123,#00ff00) as it cant resolve the var
+              value = uDark.edit_with_regex(false /*The hexadecimalColorsRegex is not affected*/,  value, uDark.hexadecimalColorsRegex, transformation, render); // edit_hex_colors // The browser auto converts hex to rgb, but some times not like in  var(--123,#00ff00) as it cant resolve the var
 
               cssStyle.setProperty(key_prefix + key, value, priority);
 
@@ -1513,7 +1590,7 @@ window.dark_object = {
           }; // Passed by reference. // request details are shared so we use a new object. We could have emedded it into details though
 
           // console.log("cssRule",cssRule,foreground_items,background_items,variables_items,wording_action)
-          wording_action.length && uDark.css_properties_wording_action(cssRule.style, wording_action, cssRule);
+          wording_action.length && uDark.css_properties_wording_action(cssRule.style, wording_action, cssRule,details);
           background_items.length && uDark.edit_all_cssRule_colors(idk_mode, cssRule, background_items, uDark.rgba, uDark.rgba_val, hasUnresolvedVars)
           foreground_items.length && uDark.edit_all_cssRule_colors(idk_mode, cssRule, foreground_items, uDark.revert_rgba, uDark.rgba_val, hasUnresolvedVars, "", {
             prefix_fg_vars: true
@@ -1611,7 +1688,7 @@ window.dark_object = {
             str = `z{${str}}`;
             cssStyleSheet.o_ud_replaceSync ? cssStyleSheet.o_ud_replaceSync(str) : cssStyleSheet.replaceSync(str);
 
-            uDark.edit_css(cssStyleSheet);
+            uDark.edit_css(cssStyleSheet,false,details);
             str = cssStyleSheet.cssRules[0].cssText.slice(4, -2);
 
           } else {
@@ -1659,10 +1736,12 @@ window.dark_object = {
         // @charset, @import or @namespace, followed by some space or \n, followed by some content, followed by ; or end of STRING
         // Surpisingly and fortunately end of LINE does not delimits the end of the at-rule and forces devs & minifers either to add a ; or end of STRING 
         // which and fortunately simplifies a LOT the handling 
+        // 'm' flag is not set on purpose to avoid matching $ as a line end, and keeping it at end of STRING
         // Content must not be interupted while between quotes or parenthesis.
-        // Breaks on url like this one("te\"st") or this one('te\'st') but it is not a common case
+        // It wont break on string ("te\"st") or this one('te\'st') or @import ('abc\)d;s'); thanks to
+        // priority matches (\\\)) and (\\') and (\\")  
         //-------------------v-Rule name----space or-CR--v-----v--Protected values-v----v-the content dot
-        cssAtRulesRegex: /@(charset|import|namespace)(\n|\s)+((\(.+?\))|(".+?")|('.+?')|.)+?(;|$)/gs,
+        cssAtRulesRegex: /@(charset|import|namespace)(\n|\s)+((\((\\\)|.)+?\))|("(\\"|.)+?")|('(\\'|.)+?')|.)+?(;|$)/gs,
         edit_str_restore_imports_all_way: function(str, rules) {
           // This regexp seems a bit complex
           // because @import url("") can includes ";" which is also the css instruction separator like in following example
@@ -1705,6 +1784,26 @@ window.dark_object = {
         }
 
       }
+      window.uDark.css_properties_wording_action_dict = {
+        "mix-blend-mode": {
+          replace: ["multiply", "normal"]
+        },
+        "color-scheme":{ replace: ["light", "dark"] },
+        "mask-image": {
+          stickConcatToPropery: {
+            sValue: "url(",
+            rKey: "filter",
+            stick: "brightness(10)"
+          }
+        },
+        "background-image": {callBack:uDark.encode_backgroundItemForLiveRegister}, // TODO: Encode selector and capture it later  
+        "background": {callBack:uDark.encode_backgroundItemForLiveRegister},
+
+
+         // Not good for wayback machine time selector
+        // "color":{ stickConcatToPropery: {sValue:"(",rKey:"mix-blend-mode", stick:"difference"}}, // Not good for wayback machine time selector
+        // "position":{ stickConcatToPropery: {sValue:"fixed",rKey:"filter", stick:"contrast(110%)"}}, // Not good for wayback machine time selector
+      };
     }
   },
   misc: {
@@ -1720,7 +1819,30 @@ window.dark_object = {
 
 
       if (details.isImage) {
-        return uDark.userSettings.disable_image_edition ? {} : uDark.edit_an_image(details);
+        // Here we catch any image, including data:images <3 ( in the form of data-image.com)
+        let resultEdit = uDark.userSettings.disable_image_edition ? {} : uDark.edit_an_image(details);
+        // If resultEdit is a promise, image will be edited (foreground or background), otherwise it may be a big background image to include under text
+        // Lets inform the content script about it
+        if(!resultEdit.then)
+        {
+          // uDark.registerBackgroundItem(false,{selectorText:`img[src='${details.url}']`},details);
+          let imageURLObject = new URL(details.url);
+          if(imageURLObject.searchParams.has("uDark_cssClass"))
+          {
+            let cssClass=decodeURIComponent(imageURLObject.searchParams.get("uDark_cssClass"));
+            // console.log("Found a background image via property",cssClass);
+            uDark.registerBackgroundItem(false,{selectorText:cssClass},details);
+            imageURLObject.searchParams.delete("uDark_cssClass");
+            imageURLObject.searchParams.set("c",uDark.fixedRandom);
+            return {redirectUrl:imageURLObject.href};
+          }
+          else if (!imageURLObject.searchParams.has("c"))
+          {
+            // console.log("Found an img element",details.url)
+            uDark.registerBackgroundItem(false,{selectorText:`img[src='${details.url}']`},details);
+          }
+        }
+        return resultEdit;
       }
       let filter = browser.webRequest.filterResponseData(details.requestId); // After this instruction, browser espect us to write data to the filter and close it
       let decoder = new TextDecoder()
