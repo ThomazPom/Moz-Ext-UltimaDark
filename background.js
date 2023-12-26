@@ -419,7 +419,7 @@ window.dark_object = {
 
       function connected(p) {
         portFromCS = p;
-        // console.log("connected", p);
+        console.log("connected", p);
         if (p.name == "port-from-cs") {
           p.used_cache_keys = new Set();
           uDark.connected_cs_ports[`port-from-cs-${p.sender.tab.id}-${p.sender.frameId}`] = p;
@@ -1414,13 +1414,8 @@ window.dark_object = {
           }
           else if(uDark.is_background)
           {
-            if(["main_frame","sub_frame"].includes(details.type))
-            {
-              timing=100; // We need to wait for the content script to be loaded;
-            }
             setTimeout(() => { 
-              let content_script_port = uDark.connected_cs_ports[`port-from-cs-${details.tabId}-${details.frameId}`];
-      
+              let content_script_port = uDark.get_the_remote_port(details);
               content_script_port.postMessage({registerBackgroundItem:cssRule.selectorText});
             } , timing);
           }
@@ -1725,6 +1720,18 @@ window.dark_object = {
           }
           return str;
         },
+        get_the_remote_port(details) {
+      
+          content_script_port = uDark.connected_cs_ports[`port-from-cs-${details.tabId}-${details.frameId}`];
+          if (!content_script_port) {
+            for(ancestor of details.frameAncestors)
+            {
+              content_script_port = uDark.connected_cs_ports[`port-from-cs-${details.tabId}-${ancestor.frameId}`];
+              if(content_script_port) break;
+            }
+          }
+          return content_script_port;
+        },
         edit_str_restore_imports_header_way: function(str, rules) {
           let cssHeader = str.split("{", 1)[0];
           // Restore the header as it often contains important information like @import @namespace etc
@@ -1815,8 +1822,7 @@ window.dark_object = {
 
       details.isStyleSheet = ["stylesheet"].includes(details.type)
       details.isImage = ["image"].includes(details.type)
-
-
+      
 
       if (details.isImage) {
         // Here we catch any image, including data:images <3 ( in the form of data-image.com)
@@ -1839,6 +1845,7 @@ window.dark_object = {
           else if (!imageURLObject.searchParams.has("c"))
           {
             // console.log("Found an img element",details.url)
+            // console.log(details.url,"is not a background image, but an img element",details)
             uDark.registerBackgroundItem(false,{selectorText:`img[src='${details.url}']`},details);
           }
         }
@@ -1904,7 +1911,7 @@ window.dark_object = {
         }
         let chunk_hash = fMurmurHash3Hash(chunk);
 
-        content_script_port = uDark.connected_cs_ports[`port-from-cs-${details.tabId}-${details.frameId}`];
+        content_script_port = uDark.get_the_remote_port(details);
         content_script_port.used_cache_keys.add(chunk_hash);
         if (uDark.general_cache[chunk_hash]) {
           console.log(chunk_hash, "seems to be in cache", details.url)
