@@ -953,9 +953,9 @@ window.dark_object = {
             });
 
 
-            aDocument.querySelectorAll("img[src*=data]").forEach(image => {
+            aDocument.querySelectorAll("img[src*='data']").forEach(image => {
               // console.log(documentElement,image,uDark.send_data_image_to_parser(image.src,details)) 
-              image.src = uDark.send_data_image_to_parser(image.src, details)
+              image.src = uDark.send_data_image_to_parser(image.getAttribute("src"), details)
             })
             
             // aDocument.querySelectorAll("img[src]").forEach(image => { // We catch images later, not here
@@ -1720,7 +1720,7 @@ window.dark_object = {
           }
           return str;
         },
-        get_the_remote_port(details) {
+        get_the_remote_port(details,level_try=5) {
       
           content_script_port = uDark.connected_cs_ports[`port-from-cs-${details.tabId}-${details.frameId}`];
           if (!content_script_port) {
@@ -1729,6 +1729,10 @@ window.dark_object = {
               content_script_port = uDark.connected_cs_ports[`port-from-cs-${details.tabId}-${ancestor.frameId}`];
               if(content_script_port) break;
             }
+          }
+          if(!content_script_port&&level_try>0){
+            console.log("Could not find the remote port, retrying",details,level_try)
+            return uDark.get_the_remote_port(details,level_try-1);
           }
           return content_script_port;
         },
@@ -1784,9 +1788,9 @@ window.dark_object = {
             dv.getComputedStyle(who, "").getPropertyValue(css) || '';
         },
         send_data_image_to_parser: function(str, details) {
-          if (str.includes('data:') && !uDark.userSettings.disable_image_edition) {
-            str = str.replace(/(?<!(base64IMG=))(data:image\/(png|jpe?g|svg\+xml);base64,([^\"]*?))([)'"]|$)/g, "https://data-image.com?base64IMG=$&")
-          }
+          // if (str.trim().toLowerCase().startsWith('data:') && !uDark.userSettings.disable_image_edition) {
+          //   str = str.replace(/(?<!(base64IMG=))(data:image\/(png|jpe?g|svg\+xml);base64,([^\"]*?))([)'"]|$)/g, "https://data-image.com?base64IMG=$&")
+          // }
           return str;
         }
 
@@ -1912,6 +1916,10 @@ window.dark_object = {
         let chunk_hash = fMurmurHash3Hash(chunk);
 
         content_script_port = uDark.get_the_remote_port(details);
+        if(!content_script_port)
+        {
+          console.log("No port found for",details);
+        }
         content_script_port.used_cache_keys.add(chunk_hash);
         if (uDark.general_cache[chunk_hash]) {
           console.log(chunk_hash, "seems to be in cache", details.url)

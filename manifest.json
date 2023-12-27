@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "UltimaDark",
-  "version": "1.5.19",
+  "version": "1.5.20",
   "description": "The extension uses agressive techniques to get a dark mode everywhere on internet\nThis is still highly experimental so it can also ruin your internet experience",
   "homepage_url": "https://github.com/ThomazPom/Moz-Ext-UltimaDark",
   "icons": {
@@ -27,6 +27,7 @@
         "run_at":"document_start",
         "matches" : [ "<all_urls>"]
        ,"js" : ["MurmurHash3.js","content_script.js"]
+       
     //    "css" : ["override.css"]
     }]
 
