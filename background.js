@@ -1221,16 +1221,22 @@ window.dark_object = {
           let B = uDark.max_bright_fg
           let E = uDark.brightness_peak_editor_fg
 
+          let ol=l;
 
           // l = Math.sin(Math.PI*l)*(A-B)+B;
           l = Math.min(2 * l, -2 * l + 2) * (A - B) + B; // Was a good one, but we may boost saturation as folowing lines shows
           // Still not sure about the best way to do it ^ has implicity while indeed a saturation boost might be nice
           // l = Math.pow(Math.min(2 * l, -2 * l + 2),E) * (A - B) + B;
-
+          if(l>.60 && h>0.66 && h<0.72)
+          {
+            
+            // FIXME: EXPERIMENTAL:
+            h+=0.66-0.72; // Avoid blueish colors being purple 
+          }
           // i dont like how saturation boost gives a blue color to some texts like gitlab's ones.
           // s=1-Math.pow(1-s,1/E); // Boost saturation proportionnaly as brightness decrease, but we could have a separate setting for saturation boost
-
-
+       
+          // h=h-(l-ol)/4; // Keep the same hue, but we could have a separate setting for hue shift
 
 
           [r, g, b] = uDark.hslToRgb(h, s, l);
@@ -1361,8 +1367,14 @@ window.dark_object = {
             
           // console.log("Found a background image via property",property,cssRule.selectorText,`'${cssStyle[property]}'`);
           },
+        isInsideSquare(squareTop,squareBottom,squareLeft,squareRight,pointTop,pointLeft)
+        {
+          return pointTop>=squareTop && pointTop<=squareBottom && pointLeft>=squareLeft && pointLeft<=squareRight;
+
+        },
         restoreTextsOnBackgroundItems()
         {
+          let all_tems = [...document.querySelectorAll("*")];
           let bgItems = [...document.querySelectorAll([...uDark.backgroundItemsSelectors].join(","))]
           .filter(imagedItem=>imagedItem.offsetWidth>50 || imagedItem.offsetHeight>50)
           .map(imagedItem=>{
@@ -1370,24 +1382,106 @@ window.dark_object = {
                   return {
                     item:imagedItem,
                     t1:boundingRect.top+window.scrollY,
-                    t2:boundingRect.left+window.scrollX,
-                    b1:boundingRect.top+window.scrollY+imagedItem.offsetHeight,
-                    b2:boundingRect.left+window.scrollX+imagedItem.offsetWidth,
+                    l1:boundingRect.left+window.scrollX,
+                    t2:boundingRect.top+window.scrollY+imagedItem.offsetHeight,
+                    l2:boundingRect.left+window.scrollX+imagedItem.offsetWidth,
                   }
                 });
-          document.querySelectorAll("body *").forEach(textItem=>{
+          let bgColorItem = [...document.querySelectorAll("[style*=background],[class]")]
+          .filter(coloredItem=>coloredItem.offsetWidth>50 || coloredItem.offsetHeight>50)
+          .filter(x=>getComputedStyle(x).backgroundColor!="rgba(0, 0, 0, 0)" && !getComputedStyle(x).backgroundImage.includes("url("))
+          .map(imagedItem=>{
+                  let boundingRect = imagedItem.getBoundingClientRect();
+                  return {
+                    item:imagedItem,
+                    t1:boundingRect.top+window.scrollY,
+                    l1:boundingRect.left+window.scrollX,
+                    t2:boundingRect.top+window.scrollY+imagedItem.offsetHeight,
+                    l2:boundingRect.left+window.scrollX+imagedItem.offsetWidth,
+                  }
+                });
+          [...document.querySelectorAll("body *:not(:empty)")].filter(x=>getComputedStyle(x).backgroundColor=="rgba(0, 0, 0, 0)").forEach(textItem=>{
             let boundingRect = getBoundingClientRect=textItem.getBoundingClientRect();
             boundingRect= {
               t1:boundingRect.top+window.scrollY,
-              t2:boundingRect.left+window.scrollX,
-              b1:boundingRect.top+window.scrollY+textItem.offsetHeight,
-              b2:boundingRect.left+window.scrollX+textItem.offsetWidth,
+              l1:boundingRect.left+window.scrollX,
+              t2:boundingRect.top+window.scrollY+textItem.offsetHeight,
+              l2:boundingRect.left+window.scrollX+textItem.offsetWidth,
             }
             bgItems.forEach(bgItem=>{
-              if(boundingRect.t1>bgItem.t1 && boundingRect.t2>bgItem.t2 && boundingRect.b1<bgItem.b1 && boundingRect.b2<bgItem.b2)
+              if(bgItem.item==window.b1 && textItem == window.f1)
               {
-                textItem.style.color="magenta";
+                console.log("Found a match",bgItem.item,textItem,bgItem,boundingRect);
               }
+              textItem.overImage=new Set();
+              if(uDark.isInsideSquare(bgItem.t1,bgItem.t2,bgItem.l1,bgItem.l2,boundingRect.t1,boundingRect.l1))
+              {
+                textItem.overImage.add("ud_overImage_c1");
+              }
+              if(uDark.isInsideSquare(bgItem.t1,bgItem.t2,bgItem.l1,bgItem.l2,boundingRect.t1,boundingRect.l2))
+              {
+                textItem.overImage.add("ud_overImage_c2");
+              }
+              if(uDark.isInsideSquare(bgItem.t1,bgItem.t2,bgItem.l1,bgItem.l2,boundingRect.t2,boundingRect.l1))
+              {
+                textItem.overImage.add("ud_overImage_c3");
+              }
+              if(uDark.isInsideSquare(bgItem.t1,bgItem.t2,bgItem.l1,bgItem.l2,boundingRect.t2,boundingRect.l2))
+              {
+                textItem.overImage.add("ud_overImage_c4");
+              }
+
+
+
+              if(textItem.overImage.size)
+              {  
+                let clone = textItem.cloneNode(true)
+                clone.querySelectorAll("*").forEach(x=>x.remove())
+                if(clone.textContent.trim())
+                {
+                  bgColorItem.forEach(bgColorItem=>{
+                    let zIndexColor = parseInt(getComputedStyle(bgColorItem.item).zIndex)||0;
+                    let zIndexBg = parseInt(getComputedStyle(bgItem.item).zIndex)||0;
+                    if(zIndexBg==zIndexColor)
+                    {
+                      zIndexColor=all_tems.indexOf(bgColorItem.item);
+                      zIndexBg=all_tems.indexOf(bgItem.item);
+                    }
+                    if(zIndexColor<zIndexBg)
+                    {
+                      return;
+                    }
+
+
+
+                    if(uDark.isInsideSquare(bgColorItem.t1,bgColorItem.t2,bgColorItem.l1,bgColorItem.l2,boundingRect.t1,boundingRect.l1))
+                    {
+                      textItem.overImage.delete("ud_overImage_c1");
+                    }
+                    if(uDark.isInsideSquare(bgColorItem.t1,bgColorItem.t2,bgColorItem.l1,bgColorItem.l2,boundingRect.t1,boundingRect.l2))
+                    {
+                      textItem.overImage.delete("ud_overImage_c2");
+                    }
+                    if(uDark.isInsideSquare(bgColorItem.t1,bgColorItem.t2,bgColorItem.l1,bgColorItem.l2,boundingRect.t2,boundingRect.l1))
+                    {
+                      textItem.overImage.delete("ud_overImage_c3");
+                    }
+                    if(uDark.isInsideSquare(bgColorItem.t1,bgColorItem.t2,bgColorItem.l1,bgColorItem.l2,boundingRect.t2,boundingRect.l2))
+                    {
+                      textItem.overImage.delete("ud_overImage_c4");
+                    }
+                  })
+
+                  if(textItem.overImage.size)
+                  { 
+                    textItem.classList.add("ud_overImage",...textItem.overImage);
+                  }
+                }
+              }
+
+
+
+              
 
             })
 
@@ -1663,7 +1757,7 @@ window.dark_object = {
           uDark.edit_cssRules(cssStyleSheet.cssRules, idk_mode, details);
         },
         edit_str: function(str, cssStyleSheet, verifyIntegrity = false, details, idk_mode = false) {
-
+          let rejected_str = false;
           if (!uDark.disable_edit_str_cache && details) {
 
             details.str_hash = fMurmurHash3Hash(details.url + str + idk_mode);
@@ -1696,12 +1790,23 @@ window.dark_object = {
             };
 
             if (verifyIntegrity) {
-
-              let rejected = cssStyleSheet.cssRules[cssStyleSheet.cssRules.length - 1].selectorText != ".integrity_rule";
-
-              if (verifyIntegrity && rejected) {
-                let rejectError = new Error("Rejected integrity rule");
-                return rejectError;
+              let last_rule=cssStyleSheet.cssRules[cssStyleSheet.cssRules.length - 1];
+              let is_rejected = last_rule.selectorText != ".integrity_rule";
+              if (is_rejected) {
+                  if(enableLiveChunkRepair=true) // We accept CSS until it breaks, and cut it from there
+                  {
+                    let search=(last_rule.selectorText||last_rule.cssText).split(/[ ,]/,2)[0]
+                    let search_index=str.lastIndexOf(search)
+                    
+                    if(search_index!=-1){
+                      rejected_str=str.substring(search_index)
+                      str=str.substring(0,search_index)
+                    }
+                  } 
+                  else{ // We reject the whole CSS if it broken
+                    let rejectError = new Error("Rejected integrity rule");
+                    return rejectError;
+                  }
               }
             }
 
@@ -1718,9 +1823,15 @@ window.dark_object = {
           if (!uDark.disable_edit_str_cache && details) {
             uDark.general_cache[details.str_hash] = str;
           }
+          if(rejected_str){
+            str={
+              str:str,
+              rejected:rejected_str,
+            }
+          }
           return str;
         },
-        get_the_remote_port(details,level_try=5) {
+        get_the_remote_port(details,level_try=0) {
       
           content_script_port = uDark.connected_cs_ports[`port-from-cs-${details.tabId}-${details.frameId}`];
           if (!content_script_port) {
@@ -1872,14 +1983,19 @@ window.dark_object = {
         if (transformResult.message) {
           // console.log(details,transformResult.message)
           details.rejectedValues += str;
-          // console.log("Rejected integrity_rule",details.url,details.rejectedValues.length);
+          
+          console.log("Rejected integrity_rule",details.url,details.rejectedValues.length);
         } else {
 
-          // console.log(details,"Accepted integrity rule")
           details.rejectedValues = "";
+          // console.log(details,"Accepted integrity rule")
+          if(transformResult.rejected){
+            details.rejectedValues=transformResult.rejected;
+            transformResult=transformResult.str;
+          }
           // TODO: Remove the call from here and do it in css edit
           transformResult = uDark.send_data_image_to_parser(transformResult, details);
-          transformResult = dark_object.misc.chunk_manage_idk(details, transformResult);
+          transformResult = dark_object.misc.chunk_manage_idk(details, transformResult,false);
 
           filter.write(encoder.encode(transformResult));
           // console.log("Accepted integrity_rule",details.url,transformResult)
@@ -1902,7 +2018,7 @@ window.dark_object = {
       // must not return this closes filter//
       return {}
     },
-    chunk_manage_idk: function(details, chunk) {
+    chunk_manage_idk: function(details, chunk,refresh_stylesheet=false) {
 
       if (!uDark.disableCorsCSSEdit && details.unresolvableChunks && details.unresolvableChunks[details.datacount]) {
         if (uDark.chunk_stylesheets_idk_only_cors) {
@@ -1931,7 +2047,8 @@ window.dark_object = {
           havingIDKVars: {
             details,
             chunk: chunk,
-            chunk_hash
+            chunk_hash,
+            refresh_stylesheet:refresh_stylesheet,
           }
         });
       }
@@ -1967,7 +2084,6 @@ window.dark_object = {
 
       filter.ondata = event => {
         details.datacount++
-        // Cant do both, next step would be to truly parse str ;
         details.writeEnd += decoder.decode(event.data, {
           stream: true
         });
