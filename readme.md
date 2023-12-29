@@ -3,9 +3,9 @@ This repository stores the source code for the UltimaDark Firefox extension
 The extension uses agressive techniques to get a dark mode everywhere on internet
 This is still highly experimental so it can also ruin your internet experience
 
-UltimaDark stands out from other extensions in its category by altering colors even before the Firefox renderer processes them. The UltimaDark code intercepts the page content at an early stage, right after it is fetched from the remote website. This preemptive editing prevents the renderer from displaying the default bright colors of the website before applying the dark theme, eliminating the jarring white flash during page loading.
+UltimaDark stands out from other extensions in its category by altering colors even before the renderer (Gecko) processes them, which considerably improves performance. The UltimaDark code intercepts the page content at an early stage, right after it is fetched from the remote website. This preemptive editing prevents Gecko from displaying the default bright colors of the website before applying the dark theme, eliminating the jarring white flash during page loading.
 
-During this initial edit, nothing has been parsed by the Firefox renderer yet—all values are still character strings. The challenge lies in identifying colors within these character strings and determining whether they will be used as background or foreground. This distinction is not an exact science, adding complexity to the process.
+During this initial edit, nothing has been parsed by Gecko yet — all values are still character strings. The challenge lies in identifying colors within these character strings and determining whether they will be used as background or foreground. This distinction is not an exact science, adding complexity to the process.
 
 Once a color is detected, it undergoes the appropriate transformation, either darkening or brightening. After the transformation is complete, the original value is replaced in the character string, ready to be read by the renderer.
 
@@ -26,14 +26,14 @@ For lightness values above B, the edit ensures it never exceeds a maximum lightn
 
 You can review the transformation function here: [Desmos Background Transformation Function](https://www.desmos.com/calculator/oafbbrdz1g) and here [Desmos Foreground Transformation Function](https://www.desmos.com/calculator/v6eiisqdzc).
 
-UltimaDark also has the capability to edit pixels in images, although this feature is currently experimental and not fully functional. An example of the broken functionality can be seen on the Apple support page: [Broken Example](https://support.apple.com/fr-fr/HT205189). On the other hand, the feature works better on the Sushi Spirit website: [Not-So-Bad Example](https://www.sushispirit.com/).
+UltimaDark also has the capability to edit pixels in images ("Image Edition" toggle), although this feature is currently experimental and not fully functional. An example of the broken functionality can be seen on the Apple support page: [Broken Example](https://support.apple.com/fr-fr/HT205189). On the other hand, the feature works better on the Sushi Spirit website: [Not-So-Bad Example](https://www.sushispirit.com/).
 
 # Compatibility
 - Firefox Quantum 48+
 
 # Versions
 
-- 1.0
+- Currently on 1.5.x
 # Downloads
 - [Download with firefox](https://addons.mozilla.org/fr/firefox/addon/UltimaDark/)
 
@@ -45,4 +45,13 @@ git clone https://github.com/ThomazPom/Moz-Ext-UltimaDark
 # Prerequisite
 
 - No script has to be executed
-- You only need Firefox installed on any platform
+- Any Gecko based browser that maintains full WebExtension support on it's respective platform
+
+# Bug Reporting 
+
+Bug reports help developers to find out about issues they may not have experienced - it is impossible to test an extension synthetically in every way that users will. 
+
+- Please make sure you are testing on the latest verison of the extension by manually checking for updates from the "manage extensions" page or verifying the version number against the most recent merge. 
+- Search for the site name on the issue tracker to make sure it has not already been reported 
+- Disable other extensions that may be interfering with the layout of the site eg. content blockers before testing
+- Take screenshots of the behavior and specify what Browser, Release Channel, and Version you are on along with providing a link to the offending site 
