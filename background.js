@@ -23,36 +23,7 @@ window.dark_object = {
             }
           });
         }
-      uDark.functionPrototypeEditor = function(leType, laFonction, watcher = x => x, conditon = x => x, result_editor = x => x) {
-        //  console.log(leType,leType.name,leType.prototype,laFonction,laFonction.name)
-        if (laFonction.concat) {
-          return laFonction.forEach(aFonction => {
-            uDark.functionPrototypeEditor(leType, aFonction, watcher, conditon, result_editor)
-          })
-        }
-        // if (conditon) {
-        //   console.log("Adding condtition to", leType, leType.name, laFonction, conditon, conditon.toString())
-        // }
-        var originalFunction = Object.getOwnPropertyDescriptor(leType.prototype, laFonction.name).value;
-        Object.defineProperty(leType.prototype, "o_ud_" + laFonction.name, {
-          value: originalFunction,
-          writable: true
-        });
-        Object.defineProperty(leType.prototype, laFonction.name, {
-          value: {
-            [laFonction.name]: function() {
-              if (conditon && conditon(this, arguments)) {
-                // console.log(leType,laFonction,this,arguments[0],watcher(this, arguments)[0])
-                let watcher_result = watcher(this, arguments);
-                let result = originalFunction.apply(this, watcher_result)
-                return result_editor(result, this, arguments, watcher_result);
-              } else {
-                return (originalFunction.apply(this, arguments));
-              }
-            }
-          } [laFonction.name]
-        });
-      }
+      
       uDark.frontEditHTML = (elem, value) => {
         if (elem instanceof HTMLStyleElement) {
           return uDark.edit_str(value)
@@ -202,11 +173,7 @@ window.dark_object = {
         })
 
         // Youtube uses this one
-        uDark.functionPrototypeEditor(CSSStyleDeclaration, CSSStyleDeclaration.prototype.setProperty, (elem, args) => {
-          console.log(elem, args);
-          return args
-        })
-
+    
         uDark.functionPrototypeEditor(Document, Document.prototype.createElement, function(elem, args) {
             // console.log(elem,args,new Error);
             return args
@@ -221,6 +188,7 @@ window.dark_object = {
 
 
       // experimental zone
+
 
 
       //
@@ -1229,7 +1197,6 @@ window.dark_object = {
           // l = Math.pow(Math.min(2 * l, -2 * l + 2),E) * (A - B) + B;
           if(l>.60 && h>0.66 && h<0.72)
           {
-            
             // FIXME: EXPERIMENTAL:
             h+=0.66-0.72; // Avoid blueish colors being purple 
           }
@@ -1514,7 +1481,7 @@ window.dark_object = {
             } , timing);
           }
         },
-        css_properties_wording_action: function(cssStyle, keys, cssRule,details) {
+        css_properties_wording_action: function(cssStyle, keys, details, cssRule) {
           keys.forEach(key => {
             let action = uDark.css_properties_wording_action_dict[key];
            
@@ -1571,7 +1538,6 @@ window.dark_object = {
         edit_all_cssRule_colors(idk_mode, cssRule, keys, transformation, render, hasUnresolvedVars, key_prefix = "", actions = {}) {
           // render = (render||uDark.rgba_val);
           // console.log(idk_mode,cssRule,keys,transformation,render,key_prefix,actions);
-          
           let cssStyle = cssRule.style;
           keys.forEach(key => {
             let key_idk = (idk_mode ? "--ud-idk_" : "") + key;
@@ -1590,8 +1556,7 @@ window.dark_object = {
               }
             }
             if (value) {
-              cssRule[key]="done";
-
+              cssRule[key]="done"; // Used right above to avoid reprocessing, already deleted once by mistake, this is why this comment exists now :)
               let priority = cssStyle.getPropertyPriority(key_idk);
 
               if (uDark.is_background && uDark.unResovableVarsRegex.test(value)) {
@@ -1634,9 +1599,9 @@ window.dark_object = {
               value = uDark.restore_idk_vars(idk_mode, value); // Restore alone vars: color: var(--color_8)
               value = uDark.edit_with_regex(false /*The namedColorsRegex is not affected*/ , value, uDark.namedColorsRegex, transformation, render); // edit_named_colors
               value = uDark.edit_with_regex(false /*The hexadecimalColorsRegex is not affected*/,  value, uDark.hexadecimalColorsRegex, transformation, render); // edit_hex_colors // The browser auto converts hex to rgb, but some times not like in  var(--123,#00ff00) as it cant resolve the var
-
-              cssStyle.setProperty(key_prefix + key, value, priority);
-
+              
+              cssStyle.setProperty(key_prefix + key, value, priority); // Unexpected recursion even using setProperty WHY ?
+              // console.log("end",key,value)
               // console.log("cssKey Color",cssRule,key,value,priority,cssRule.cssText);
             }
           });
@@ -1679,7 +1644,7 @@ window.dark_object = {
           }; // Passed by reference. // request details are shared so we use a new object. We could have emedded it into details though
 
           // console.log("cssRule",cssRule,foreground_items,background_items,variables_items,wording_action)
-          wording_action.length && uDark.css_properties_wording_action(cssRule.style, wording_action, cssRule,details);
+          wording_action.length && uDark.css_properties_wording_action(cssRule.style, wording_action, details,cssRule);
           background_items.length && uDark.edit_all_cssRule_colors(idk_mode, cssRule, background_items, uDark.rgba, uDark.rgba_val, hasUnresolvedVars)
           foreground_items.length && uDark.edit_all_cssRule_colors(idk_mode, cssRule, foreground_items, uDark.revert_rgba, uDark.rgba_val, hasUnresolvedVars, "", {
             prefix_fg_vars: true
@@ -1791,21 +1756,48 @@ window.dark_object = {
 
             if (verifyIntegrity) {
               let last_rule=cssStyleSheet.cssRules[cssStyleSheet.cssRules.length - 1];
-              let is_rejected = last_rule.selectorText != ".integrity_rule";
+              let is_rejected = !last_rule || last_rule.selectorText != ".integrity_rule";
+              
+              // console.log(cssStyleSheet,last_rule,is_rejected)
               if (is_rejected) {
-                  if(enableLiveChunkRepair=true) // We accept CSS until it breaks, and cut it from there
+                
+                  //
+                  let can_iterate = cssStyleSheet.cssRules.length > 1; // If there is only one rule, and it's rejected, we dont'have to find the previous one
+                  if(can_iterate && (enableLiveChunkRepair=true)) // We accept CSS until it breaks, and cut it from there
                   {
-                    let search=(last_rule.selectorText||last_rule.cssText).split(/[ ,]/,2)[0]
-                    let search_index=str.lastIndexOf(search)
-                    
-                    if(search_index!=-1){
-                      rejected_str=str.substring(search_index)
-                      str=str.substring(0,search_index)
+                    rejected_str=""; // Pass from false to empty string
+                    let max_iterations=30; // Fix a limit for timing reasons
+                    for(let i=1;i<=max_iterations;i++) 
+                    {
+
+                      // Lets find the last significant bracket.
+                      // If we are in any part of the string we don't care about the last char as it is either not a bracket or not one that will permit us
+                      // to fix the CSS. ( As it is in a broken state already)
+                      let last_bracket_index=str.lastIndexOf("}",str.length-2); // Doing what said above 
+
+                      // Reject CSS as a whole if we can't find a bracket for whaterver messed up CSS we have
+                      if(last_bracket_index == -1){return new Error("Rejected integrity rule from live chunk repair")}
+                      
+
+                      // Now we have two parts, the one we keep and the one we reject
+                      rejected_str=str.substring(last_bracket_index+1)+rejected_str;
+                      
+                      str=str.substring(0,last_bracket_index+1)
+                      
+                      // Do we have a valid CSS now ? lets add an integrity rule to check it
+                      let valueReplace = str + "\n.integrity_rule{}";
+                      cssStyleSheet.replaceSync(valueReplace); // Asumig only background script will edit CSS with integrity verification, using replaceSync is ok
+                      let last_rule=cssStyleSheet.cssRules[cssStyleSheet.cssRules.length - 1];
+                      if(last_rule&&last_rule.selectorText == ".integrity_rule") // We found our rule again, no need to iterate more, this means we have a valid CSS in str
+                      {
+                        break;
+                      } 
+                      else if(i==max_iterations){return new Error("Rejected integrity rule from live chunk repair, max iterations reached")}
                     }
                   } 
-                  else{ // We reject the whole CSS if it broken
-                    let rejectError = new Error("Rejected integrity rule");
-                    return rejectError;
+                  else{ // We reject the whole CSS if it broken for any reason.( @media cut in midle of name like @medi.integrity rule), str sarting with a bracket, etc.
+                     // Reasons are endless and if Firefox said the CSS is broken, we trust it.
+                    return  new Error("Rejected integrity rule as a whole");
                   }
               }
             }
@@ -1875,6 +1867,36 @@ window.dark_object = {
 
 
         },
+        functionPrototypeEditor: function(leType, laFonction, watcher = x => x, conditon = x => x, result_editor = x => x) {
+          //  console.log(leType,leType.name,leType.prototype,laFonction,laFonction.name)
+          if (laFonction.concat) {
+            return laFonction.forEach(aFonction => {
+              uDark.functionPrototypeEditor(leType, aFonction, watcher, conditon, result_editor)
+            })
+          }
+          // if (conditon) {
+          //   console.log("Adding condtition to", leType, leType.name, laFonction, conditon, conditon.toString())
+          // }
+          var originalFunction = Object.getOwnPropertyDescriptor(leType.prototype, laFonction.name).value;
+          Object.defineProperty(leType.prototype, "o_ud_" + laFonction.name, {
+            value: originalFunction,
+            writable: true
+          });
+          Object.defineProperty(leType.prototype, laFonction.name, {
+            value: {
+              [laFonction.name]: function() {
+                if (conditon && conditon(this, arguments)) {
+                  // console.log(leType,laFonction,this,arguments[0],watcher(this, arguments)[0])
+                  let watcher_result = watcher(this, arguments);
+                  let result = originalFunction.apply(this, watcher_result)
+                  return result_editor(result, this, arguments, watcher_result);
+                } else {
+                  return (originalFunction.apply(this, arguments));
+                }
+              }
+            } [laFonction.name]
+          });
+        },
         getallBgimages: function(adocument, acondition = (elem, url) => true) {
           var url, B = [],
             A = adocument.body.querySelectorAll('*:not([ud-backgrounded])');
@@ -1906,6 +1928,42 @@ window.dark_object = {
         }
 
       }
+
+      // Shared funtion prototype editors :
+      
+      //This allows to use the same code for foreground and background : setProperty : No costly need to check if it is a background or foreground
+      // uDark.functionPrototypeEditor(CSSStyleDeclaration, CSSStyleDeclaration.prototype.setProperty, (elem, args) => {
+      //   return args
+      // },(elem,args)=>{
+      //   if(`o_ud_${args[0]}` in elem) // If the property is edited by uDark, we let uDark handle it
+      //   {
+      //     elem[args[0]]=args[1]; // Benefits the intended change
+      //     elem.setProperty(args[0],elem.getPropertyValue(args[0]),args[2]/*Adds important flag if specified*/); 
+      //     return false; // No need for further processing
+      //   }
+      //   return true; // Continue processing,  see you in aftermath
+
+
+      // }, (result, elem, args, watcher_result) => {
+      //   // Any thing could have been done to this poor little CSSStyleDeclaration, we are here aftermath, lets run a full check on it.
+      //   // We don't even know if it has a CSSRule or not, let try to emulate this.
+      //   if(elem.parentRule)
+      //   {
+      //     // console.log("Go go 1",elem,elem.parentRule)
+      //     // return uDark.edit_cssProperties(elem.parentRule,false);
+      //   }
+      //   //   else if(!elem.parentRule)
+      //   //   {
+      //   //     console.log("Go go 2")
+      //   //     return uDark.edit_cssProperties({
+      //   //       "selectorText":"EmulatedRule",
+      //   //       "style":elem
+      //   //     },false);
+          
+      //   // }
+      // })
+      /// end of shared funtion prototype editors
+
       window.uDark.css_properties_wording_action_dict = {
         "mix-blend-mode": {
           replace: ["multiply", "normal"]
@@ -1984,7 +2042,7 @@ window.dark_object = {
           // console.log(details,transformResult.message)
           details.rejectedValues += str;
           
-          console.log("Rejected integrity_rule",details.url,details.rejectedValues.length);
+          console.info(transformResult.message,details.url,details.rejectedValues.length);
         } else {
 
           details.rejectedValues = "";
