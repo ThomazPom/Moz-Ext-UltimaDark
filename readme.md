@@ -30,6 +30,7 @@ UltimaDark also has the capability to edit pixels in images ("Image Edition" tog
 
 # Compatibility
 - Firefox Quantum 48+
+- [Mercury](https://thorium.rocks/mercury)
 
 # Versions
 
