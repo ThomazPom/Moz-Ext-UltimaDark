@@ -31,6 +31,7 @@ UltimaDark also has the capability to edit pixels in images ("Image Edition" tog
 # Compatibility
 - Currently running on Firefox 102.15.1 ESR and higher
 - [Mercury](https://thorium.rocks/mercury)
+- [Waterfox G6.0.7 or higher](https://www.waterfox.net/) 
 
 # Versions
 
