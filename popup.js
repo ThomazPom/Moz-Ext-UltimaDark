@@ -7,17 +7,23 @@ var defaultValues={
 
 let myPort = browser.runtime.connect({name:"port-from-popup"});
 
+let usedMode = new URL(document.location.href).searchParams.get("mode")
+if(usedMode)
+{document.documentElement.classList.add(usedMode);}
 
 window.onload=function()
 {
+  fetch("manifest.json").then(x=>x.json()).then(x=>document.querySelectorAll(".version").forEach(z=>z.innerText=x.version))
 var updatefunction = function(event){
   console.log("Popup will ask background to update status and list because of",event)
   var checkbox_status =  Object.fromEntries( [...disable_checkboxes].map( x => [x.id, x.checked]) );
   var action_lists_status =  Object.fromEntries( [blacklist,whitelist,precision_number].map( x => [x.id, x.value||defaultValues[x.id]]) );
     myPort.postMessage(
         {
-          ...action_lists_status,
-          ...checkbox_status
+          updateSettings:{
+            ...action_lists_status,
+            ...checkbox_status
+          }
         }
       );
  }
@@ -89,5 +95,50 @@ var updateexcludetext=function(){
 
   });
 
+  document.addEventListener("click",function(e){
+    if(e.target.classList.contains("close_window"))
+    {
+      setTimeout(()=>window.close(),100); 
+    }
+  })
 
+  function loadURL(strUrl)
+  {
+  try{
+    let objUrl = new URL(strUrl);
+
+    myPort.postMessage(
+      {
+        allowFraming:true,
+      }
+    );
+    websitePickerIframe.src=objUrl.href;
+      
+  }
+  catch(e)
+  {
+    console.error(e)
+  }
+}
+  websitePicker.addEventListener("change",function(e){
+    websitePickerText.value=this.value;
+    loadURL(this.value);
+  })
+  document.querySelector("[data-editProperty]").addEventListener("change",function(e){ 
+    let splited = (this.getAttribute("data-editProperty").split("|",2));
+    let [selector,property]=splited
+    console.log(selector,property)
+    document.querySelectorAll(selector).forEach(x=>{
+      x.style[property]=this.value;
+    })
+
+  });
+  {
+    let shiftSelector = document.querySelector(".shiftSelector");
+      
+    for(i=1;i<=5;i++)
+    {
+      shiftSelector.parentNode.appendChild(shiftSelector.cloneNode(true));
+    }
+  }
 }
