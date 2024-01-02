@@ -29,7 +29,11 @@ You can review the transformation function here: [Desmos Background Transformati
 UltimaDark also has the capability to edit pixels in images ("Image Edition" toggle), although this feature is currently experimental and not fully functional. An example of the broken functionality can be seen on the Apple support page: [Broken Example](https://support.apple.com/fr-fr/HT205189). On the other hand, the feature works better on the Sushi Spirit website: [Not-So-Bad Example](https://www.sushispirit.com/).
 
 # Compatibility
-- Firefox Quantum 48+
+- Currently running on Firefox 102.15.1 ESR and higher
+- [Mercury](https://thorium.rocks/mercury)
+- [Waterfox G6.0.7 or higher](https://www.waterfox.net/) 
+- [LibreWolf](https://librewolf.net/)
+- [Floorp](https://floorp.app/en/)
 
 # Versions
 
@@ -45,7 +49,7 @@ git clone https://github.com/ThomazPom/Moz-Ext-UltimaDark
 # Prerequisite
 
 - No script has to be executed
-- Any Gecko based browser that maintains full WebExtension support on it's respective platform
+- Any Gecko based browser that maintains current Firefox WebExtension support on it's respective platform
 
 # Bug Reporting 
 
