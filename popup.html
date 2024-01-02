@@ -1,406 +1,238 @@
 <!doctype html>
-<html>
-    <head>
+<html lang="en">
+<head lang="en">
+	<meta prefe></meta>
+	<title>UltimaDark options</title>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+	<link rel="stylesheet" type="text/css" href="options_styles.css">
+</head>
+<body class="scroller">
+	<h1 class="welcome">UltimaDark <span class="version">1.5.2</span></h1>
+	<div class="uDark-popup">
+		<div class="label  label-standalone">   	
+			<input class="disable_something" id="disable_webext" type="checkbox" >
+			<label for="disable_webext">UtimaDark is <span><span class="bawl"></span><span class='text'>&nbsp;</span></span></label>
+		</div>
+		<div class="content content-centered">
+			<a href="/popup.html" target="_blank" class="btn right">
+				<span  class="left title close_window"><span class="arrow-left"></span>Advanced settings</span>
+				<span class="right icon close_window">⚙️</span>
+			</a>
+		</div>
+		<div class="content content-centered">
+			<a href="https://github.com/ThomazPom/Moz-Ext-UltimaDark" class="btn left">
+				<span style="color:orange" class="left icon">&lt; /&gt;</span>
+				<span class="right title close_window"><span class="arrow-right close_window"></span>Sources & Updates</span>
+			</a>
+		</div>
+		<div class="content content-centered">
+			<a href="https://www.paypal.me/ThomazPom" class="btn right">
+				<span  class="left title close_window"><span class="arrow-left close_window"></span>Donate</span>
+				<span class="right icon">🧡</span>
+			</a>
+		</div>
+		<div class="content content-centered">
+			<a href="https://addons.mozilla.org/fr/firefox/addon/UltimaDark/" class="btn left">
+				<span  class="right title close_window"><span class="arrow-right close_window"></span>Rate & About</span>
+				<span class="left icon">⭐</span>
+			</a>
+		</div>
+		<span class="label">Exclude these websites (Black list)</span>
+		<textarea class="listextarea" id="black_list"></textarea>
+		<span class="label label-after"><br><span id="donotdarken" class="visible_button"> Exclude </span> <br><br>
+		<span>Precision<input id="precision_number" class="numberinput" type="number" value="2" min="2" max="10"></span></span>
+		<a class="label label-standalone" href="https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Match_patterns">&gt;Match patterns reference&lt;<br></a>    
+		<span class="label">Darken these websites (White list)</span>
+		<textarea class="listextarea" id="white_list"></textarea>
+		<div class="label  label-standalone">   	
+			<input class="disable_something" id="disable_cache" type="checkbox" >
+			<label for="disable_cache">Cache system is <span><span class="bawl"></span><span class='text'>&nbsp;</span></span></label>
+		</div>
+		<div class="label  label-standalone">   	
+			<input class="disable_something" id="disable_image_edition" type="checkbox" >
+			<label for="disable_image_edition">Image edition is <span><span class="bawl"></span><span class='text'>&nbsp;</span></span>
+			</label>
+		</div>
+	</div>
 
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    </head>
-    <body>
-    	<style type="text/css">
-    		body
-    		{
-    			width:345px;
-    			font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
-    			overflow-x: hidden;
-    			background: url("bg.jpg");
-				background-size: cover;
-    		}
+	<div class="uDark-options">
+		<h2>Welcome to UltimaDark advanced options</h2>
+		<h1 style="color: crimson;"> Warning ! Nothing here works at all, This in research phase </h1>
+						<h2 style="color: rgb(220, 113, 20);"> Please report any ideas to @VintageMotors or @atomGit <a target="_blank" href="https://github.com/ThomazPom/Moz-Ext-UltimaDark/issues/19">Here</a> or <a target="_blank" href="https://github.com/ThomazPom/Moz-Ext-UltimaDark/issues/53">Here</a>  </h2>
+						
+		<table class="cols alignTop">
+			<tr><td class="alignTop">
+				
+				<div class="content content-left-margin">
+					
+						
+
+						<h3>Colors options</h3>
+						
+						<h4 class="standOut">Foreground colors options:</h4>
+						
+						<p>UltimaDark is able to dynamically edit foreground colors given variables values</p>
+						<p>You'll find there a sandbox to set your values and see the result in the right pane</p>
+
+						<div class="sliderContainer">
+							<span>Minimum text lightness </span><input type="range" id="volume" name="volume1" min="0" max="100" />
+							
+						</div>
+						<div class="sliderContainer">
+							<span>Maximum text lightness </span><input type="range" id="volume" name="volume1" min="0" max="100" />
+							
+						</div>
+
+						<h4 class="standOut2">Choosen colors and:</h4>
+						<p>These colors will be applied only if you edit them</p>
+						<p>Without any edit, the colors will</p>
+						<div>
+							
+							<input type="color"  name="backgroundColor" value="#0000ff" /> 
+							<label for="backgroundColor"><button>Disable & reset</button>  Links color</label>
+						</div>
+
+						<div>
+							
+							<input type="color"  name="backgroundColor" value="#0000aa" /> 
+							<label for="backgroundColor"><button>Disable & reset</button> Already visited links color</label>
+						</div>
+					
+
+				
+						<h4 class="standOut">Background color options:</h4>
+						<p>UltimaDark is able to dynamically edit background colors given variables values</p>
+						<p>You'll find there a sandbox to set your values and see the result in the right panel</p>
+					
+						<div class="sliderContainer">
+							<span>Minimum background lightness </span><input type="range" id="volume" name="volume1" min="0" max="100" />
+							
+						</div>
+						<div class="sliderContainer">
+							<span>Maximum background lightness </span><input type="range" id="volume" name="volume1" min="0" max="100" />
+							
+						</div>
+						<p>You also can pick a color from the color picker to see how it renders in the box</p>
+						<input type="color" data-editProperty="#aBox1|background-color" name="backgroundColor" value="#808000" /> 
+						
+						
+						<label for="backgroundColor">background color</label>
+						
+
+						<p>Human eye perceives lightness in a non linear way</p>
+						<p>This is why given your Settings of a maximum background lightness of XX% (Linear)
+							the maximum lightness you'll percive is in fact XX% with the folllowing color:
+							<span style="background-color: yellow;">     </span> <button>Put this color in the box</button>
+							
+						</p>
+						<p>If this color does not suit you, you may want to specify the "Maximum background perceived lightness" (This will change linear maximum background lightness setting) </p>
+						
+						<div class="sliderContainer">
+							<span>Maximum perceived background lightness </span><input type="range" id="volume" name="volume1" min="0" max="100" />
+							
+						</div>
+					</div>
+				</td>
+				<td width="60%" class="alignTop ">
+					<div class="colorSandbox" style="top:0px">
+					<div style="height: 65vh;">
+						
+						<p><b>Website tester</b></p>
+						<div style="height: 5%;">Test current values on : <input type="text" id="websitePickerText"  value="https://hslpicker.com/"/> <button>🔄</button>
+						<select id="websitePicker">
+							<option value="https://hslpicker.com/">https://hslpicker.com/</option>
+							<option value="https://commons.wikimedia.org/">https://commons.wikimedia.org/</option>
+							<option value="https://losangeles.craigslist.org/">https://losangeles.craigslist.org/</option>
+							<option value="https://www.google.com/">https://www.google.com/</option>
+							<option value="https://www.youtube.com/">https://www.youtube.com/</option>
+							<option value="https://www.facebook.com/">https://www.facebook.com/</option>
+							<option value="https://www.amazon.com/">https://www.amazon.com/</option>
+							<option value="https://www.ebay.com/">https://www.ebay.com/</option>
+							<option value="https://www.wikipedia.org/">https://www.wikipedia.org/</option>
+							<option value="https://www.reddit.com/">https://www.reddit.com/</option>
+							<option value="https://www.yahoo.com/">https://www.yahoo.com/</option>
+							<option value="https://www.twitter.com/">https://www.twitter.com/</option>
+							<option value="https://www.instagram.com/">https://www.instagram.com/</option>
+							<option value="https://www.linkedin.com/">https://www.linkedin.com/</option>
+							<option value="https://www.pinterest.com/">https://www.pinterest.com/</option>
+							<option value="https://www.tumblr.com/">https://www.tumblr.com/</option>
+							<option value="https://www.netflix.com/">https://www.netflix.com/</option>
+							<option value="https://www.microsoft.com/">https://www.microsoft.com/</option>
+							<option value="https://www.apple.com/">https://www.apple.com/</option>
+							<option value="https://www.paypal.com/">https://www.paypal.com/</option>
+							<option value="https://www.wordpress.com/">https://www.wordpress.com/</option>
+							<option value="https://www.imgur.com/">https://www.imgur.com/</option>
+							<option value="https://www.imdb.com/">https://www.imdb.com/</option>
+							<option value="https://www.stackoverflow.com/">https://www.stackoverflow.com/</option>
+							<option value="https://www.twitch.tv/">https://www.twitch.tv/</option>
+							<option value="https://www.bing.com/">https://www.bing.com/</option>
+							<option value="https://www.wordpress.org/">https://www.wordpress.org/</option>
+							<option value="https://www.adobe.com/">https://www.adobe.com/</option>
+							<option value="https://www.whatsapp.com/">https://www.whatsapp.com/</option>
+							<option value="https://www.blogger.com/">https://www.blogger.com/</option>
+							
+						</select>
+						</div>
+						<iframe id="websitePickerIframe"  height="85%" width="100%"></iframe>
+					</div>
+					<div>
+						
+						<p><b>The box</b></p>
+						<div id=aBox1 class="aBox" >
+							<p>The text in the box</p>
+	
+						</div>
+					</div>
+				</div>
+				</td>
+				</tr>
+				
+			</table>
+			<h1>Other options here or tabs system</h1>
+			<h4 class="standOut2">Shifts:</h4>
+			<div class="label left-label label-standalone">   	
+				<input class="disable_something" id="disable_shifts" type="checkbox" >
+				<label for="disable_shifts">Shifts are<span><span class="bawl"></span><span class='text'>&nbsp;</span></span>
+				</label>
+			</div>
+			<p>Some colors are not pleasant to read on some background like folllowing example shows</p>
+			<span style="padding:10px;background-color: rgb(26, 26, 26);color:#5757ff">Quick brown fox </span>
+			<p>especially for when you know the original color was this</p>
+			<span style="padding:10px;background-color: rgb(255, 255, 255);color:#0000ff">Quick brown fox </span>
+			<p>The shift provided as an example shifts hue if linear lightness is above 60% and if hue is between 237 and 259 and gives the following result</p>
+			<span style="padding:10px;background-color: rgb(26, 26, 26); color:#5792ff">Quick brown fox </span>
+		
+			<p>This is why shifts options exists: It permits you to take few ranges of colors you don't like to read and shift either their lightness, hue or saturation</p>						
+			
+			<div class="shiftSelectors">
+				
+				<div class="shiftSelector">
+					<p>If hue is between <input type="number"> and <input type="number"></p>
+					<p>And saturation is between <input type="number"> and <input type="number"></p>
+					<p>And lightness between <input type="number"> and <input type="number"></p>
+					<p>Then shift hue,saturation and brightness by</p>
+					<p><input type="number">,<input type="number">and<input type="number"> </p>
+
+				</div>
 
 
-html, body, div, span, applet, object, iframe, h1, h2, h3, h4, h5, h6, p, blockquote, pre, a, abbr, acronym, address, big, cite, code, del, dfn, em, img, ins, kbd, q, s, samp, small, strike, strong, sub, sup, tt, var, b, u, i, center, dl, dt, dd, ol, ul, li, fieldset, form, label, legend, table, caption, tbody, tfoot, thead, tr, th, td, article, aside, canvas, details, embed, figure, figcaption, footer, header, hgroup, menu, nav, output, ruby, section, summary, time, mark, audio, video {
-	margin: 0;
-	padding: 0;
-	border: 0;
-	font-size: 100%;
-	font: inherit;
-	vertical-align: baseline;
-}
+			</div>
 
-article, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, section {
-	display: block;
-}
+			<div style="clear: both;"></div>
 
-body {
-	line-height: 1;
-}
+			<h4 class="standOut">Inject your CSS</h4>
+			<div><p>Please note if you want to inject your own CSS,
+				 UltimaDark is not the right WebExtension for this, as Stylus does a very good job at this</p>
+				<p> It has a full featured editor, per domain edition and more</p>
+				<p>However, if you want to inject a few lines of CSS in all visited websites, you can do it here</p>
+				<p>Thanks to the way these lines will be injected, it will be higly prioritized, and will never be overriden by a site specific style<p>
+				<textarea class="listextarea"></textarea>
+				<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><h2>End of page</h1>
+		</div>
 
-ol, ul {
-	list-style: none;
-}
-
-blockquote, q {
-	quotes: none;
-}
-
-blockquote:before, blockquote:after, q:before, q:after {
-	content: '';
-	content: none;
-}
-
-table {
-	border-collapse: collapse;
-	border-spacing: 0;
-}
-
-body, html {
-	height: 100%;
-}
-.disable_something{
-	display:none;	
-}
-
-.disable_something:checked+label>span{
-    border: solid /*ori*crimson*/rgba(60,11,11,1)/*sri*/ 3px;
-    background-color: /*ori*red*/rgba(60,11,11,1)/*sri*/;
-}
-
-.disable_something+label .text::before{
-	content:'enabled';
-}
-.disable_something:checked+label .text::before{
-	content:'disabled';
-}
-.disable_something+label>span{
-
-	cursor: pointer;
-    background-color: #0ebf0e;
-    border-radius: 50px;
-    color: /*ori*white*/rgba(60,60,60,1)/*sri*/;
-    padding: 1px 1px 1px 1px;
-    border: solid /*ori*green*/rgba(11,128,11,1)/*sri*/ 3px;
-    text-align:center;
-    display:inline-block;
-    width:100px;
-
-}
-.disable_something+label>span .bawl{
-background-color:/*ori*white*/rgba(60,60,60,1)/*sri*/;
-height: 20px;
-width: 20px;
-display:inline-block;
-float:right;
-border-radius:100%;
-}
-.disable_something:checked+label>span .bawl{
-float:left;
-}
-body {
-	color: #fff;
-	margin: 0 auto;
-	font: 1em/1.3em Montserrat, Helvetica, sans-serif;
-}
-
-.clearfix {
-	clear: both;
-}
-
-.container {
-	padding-top: 20px;
-	height: 100%;
-	width: 100%;
-	text-align: center;
-	background-color: #ddd;
-}
-
-h1 {
-	margin: 40px 0;
-	font-size: 40px;
-	line-height: 40px;
-	font-weight: bold;
-	text-shadow: 0px 1px 1px #888;
-}
-
-a {
-	text-decoration: none;
-	color: #fff;
-	margin: 0 10px;
-}
-
-.btn {
-	box-sizing: border-box;
-	-moz-box-sizing: border-box;
-	-webkit-box-sizing: border-box;
-	position: relative;
-	display: inline-block;
-	overflow: hidden;
-	height: 53px;
-	border-radius: 6px;
-	-moz-border-radius: 6px;
-	-webkit-border-radius: 6px;
-	line-height: 30px;
-	font-size: 16px;
-	font-weight: bold;
-	text-shadow: 0px 1px 1px #888;
-}
-
-.btn span.icon, .btn span.title {
-	display: block;
-	position: relative;
-	line-height: 50px;
-	padding: 0 30px;
-	border-radius: 6px;
-	-moz-border-radius: 6px;
-	-webkit-border-radius: 6px;
-}
-
-.btn span.left {
-	float: left;
-	border-radius: 6px 0 0 6px;
-	-moz-border-radius: 6px 0 0 6px;
-	-webkit-border-radius: 6px 0 0 6px;
-  width: 40px;
-}
-
-.btn span.right {
-	float: right;
-	border-radius: 0 6px 6px 0;
-	-moz-border-radius: 0 6px 6px 0;
-	-webkit-border-radius: 0 6px 6px 0;
-  width: 40px;
-}
-
-.btn span.icon {
-	font-size: 23px;
-	background-color: #00967f;
-	-webkit-box-shadow: 0 3px 0 0 #007261;
-	box-shadow: 0 3px 0 0 #007261;
-	text-shadow: 0px 1px 1px #888;
-}
-
-.btn span.title {
-	width: 150px;
-	-webkit-box-shadow: 0 3px 0 0 #00ae94;
-	box-shadow: 0 3px 0 0 #00ae94;
-	background-color: #00cdae;
-}
-
-.btn span.arrow-left, .btn span.arrow-right {
-	position: absolute;
-	width: 0;
-	height: 0;
-	border-top: 25px solid transparent;
-	border-bottom: 25px solid transparent;
-	-webkit-transition: all .15s;
-	-transition: all .15s;
-	-webkit-transition-property: left, right;
-	transition-property: left, right;
-}
-
-.btn.left span.arrow-left {
-	right: 0;
-	-webkit-box-shadow: 10px 0 0 0 #00cdae, 10px 3px 0 0 #00ae94;
-	box-shadow: 10px 0 0 0 #00cdae, 10px 3px 0 0 #00ae94;
-	border-right: 10px solid #00cdae;
-}
-
-.btn.right span.arrow-left {
-	right: 0;
-	-webkit-box-shadow: 10px 0 0 0 #00967f, 10px 3px 0 0 #007261;
-	box-shadow: 10px 0 0 0 #00967f, 10px 3px 0 0 #007261;
-	border-right: 10px solid #00967f;
-}
-
-.btn.left span.arrow-right {
-	left: 0;
-	-webkit-box-shadow: -10px 0 0 0 #00967f, -10px 3px 0 0 #007261;
-	box-shadow: -10px 0 0 0 #00967f, -10px 3px 0 0 #007261;
-	border-left: 10px solid #00967f;
-}
-
-.btn.right span.arrow-right {
-	left: 0;
-	-webkit-box-shadow: -10px 0 0 0 #00cdae, -10px 3px 0 0 #00ae94;
-	box-shadow: -10px 0 0 0 #00cdae, -10px 3px 0 0 #00ae94;
-	border-left: 10px solid #00cdae;
-}
-
-.btn span.slant-left, .btn span.slant-right {
-	position: absolute;
-	width: 0;
-	height: 0;
-	border-top: 0 solid transparent;
-	border-bottom: 50px solid transparent;
-	-webkit-transition: all .15s;
-	-transition: all .15s;
-	-webkit-transition-property: left, right;
-	transition-property: left, right;
-}
-
-.btn.left span.slant-right {
-	left: 0;
-	-webkit-box-shadow: -10px 0 0 0 #00967f, -10px 3px 0 0 #007261;
-	box-shadow: -10px 0 0 0 #00967f, -10px 3px 0 0 #007261;
-	border-left: 10px solid #00967f;
-}
-
-.btn.right span.slant-right {
-	left: 0;
-	-webkit-box-shadow: -10px 0 0 0 #00cdae, -10px 3px 0 0 #00ae94;
-	box-shadow: -10px 0 0 0 #00cdae, -10px 3px 0 0 #00ae94;
-	border-left: 10px solid #00cdae;
-}
-
-.btn.left span.slant-left {
-	right: 0;
-	-webkit-box-shadow: 10px 0 0 0 #00cdae, 10px 3px 0 0 #00ae94;
-	box-shadow: 10px 0 0 0 #00cdae, 10px 3px 0 0 #00ae94;
-	border-right: 10px solid #00cdae;
-}
-
-.btn.right span.slant-left {
-	right: 0;
-	-webkit-box-shadow: 10px 0 0 0 #00967f, 10px 3px 0 0 #007261;
-	box-shadow: 10px 0 0 0 #00967f, 10px 3px 0 0 #007261;
-	border-right: 10px solid #00967f;
-}
-
-.btn:active, .btn.active {
-	height: 51px;
-}
-
-.btn:hover {}
-
-.btn:hover span.arrow-left {
-	right: 10px;
-}
-
-.btn:hover span.arrow-right {
-	left: 10px;
-}
-
-.btn:hover span.slant-left {
-	right: 10px;
-}
-
-.btn:hover span.slant-right {
-	left: 10px;
-}
-
-.btn-small {
-	height: 30px;
-	font-size: 12px;
-	line-height: 10px;
-}
-
-a.btn-small span.btn {
-	height: 30px;
-}
-
-.label
-{
-user-select: none; /* supported by Chrome and Opera */
--webkit-user-select: none; /* Safari */
--khtml-user-select: none; /* Konqueror HTML */
--moz-user-select: none; /* Firefox */
--ms-user-select: none; /* Internet Explorer/Edge */
-text-shadow: 0px 0px 6px /*ori*black*/rgba(11,11,11,1)/*sri*/;
-
-background: rgba(0,0,0,.1);
-
-margin-left: auto;
-margin-right: auto;
-margin-top:10px;
-border-top-left-radius: 5px;
-
-border-top-right-radius: 5px;
-display: table;
-
-padding: 10px 20px 0px 20px;
-}
-.numberinput{
-
-  width:40px;
-  background: black;
-  color:white;
-}
-
-.label-after
-{
-	display: block;
-	cursor: pointer;
-	font-size: 14px;
-	padding: 0px 20px 0px 20px;
-	text-align: center;
-	margin-top: 0px;
-	margin-left: 5%;
-	margin-right:  5%;
-	border-top-left-radius: 0px;
-	border-top-right-radius: 0px;
-	border-bottom-left-radius: 5px;
-	border-bottom-right-radius: 5px;
-}
-.label-standalone
-{
-	border-radius: 5px;
-	padding: 10px 20px 10px 20px;	
-}
-.listextarea
-{
-	background: black;
-	width: 89%;
-	margin-left: 5%;
-	margin-right:  5%;
-	display: block;
-	resize: vertical;
-	word-wrap: normal ;
-	white-space: pre;
-	height: 100px;
-	color:white;
-}
-
-    	</style>
-<br>
-    	 <div class="content">
-      <a href="https://github.com/ThomazPom/Moz-Ext-UltimaDark" class="btn left">
-        <span style="color:orange" class="left icon">&lt; /&gt;</span>
-        <span class="right title"><span class="arrow-right"></span>Sources & Updates</span>
-      </a>
-  </div>
-   <div class="content">
-      <a href="https://www.paypal.me/ThomazPom" class="btn right">
-        <span  class="left title"><span class="arrow-left"></span>Donate</span>
-        <span class="right icon">🧡</span>
-      </a>
-  </div>
-  <div class="content">
-      <a href="https://addons.mozilla.org/fr/firefox/addon/UltimaDark/" class="btn left">
-        <span  class="right title"><span class="arrow-right"></span>Rate & About</span>
-        <span class="left icon">⭐</span>
-      </a>
-  </div>
-  <span class="label">Darken these websites</span>
-      <textarea class="listextarea" id="white_list"></textarea>
-
-  <span class="label">Exclude these websites </span>
-      <textarea class="listextarea" id="black_list"></textarea>
-
-      <a class="label label-after"><span id="donotdarken">Exclude </span> </a>
-      <a class="label label-after"><span>Precision<input id="precision_number" class="numberinput" type="number" value="2" min="2" max="10"></span></a>
-      <a class="label label-standalone" href="https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Match_patterns">&gt;Match patterns reference&lt;<br/></a>
-    
-      <div class="label  label-standalone">   	
-		       <input class="disable_something" id="disable_webext" type="checkbox" />
-		  <label for="disable_webext">UtimaDark is <span dataoncheck="blue"><span class="bawl"></span><span class='text'>&nbsp;</span></span>
-      </div>
-      <div class="label  label-standalone">   	
-		       <input class="disable_something" id="disable_cache" type="checkbox" />
-		  	<label for="disable_cache">Cache system is <span dataoncheck="blue"><span class="bawl"></span><span class='text'>&nbsp;</span></span>
-      </div>
-      <div class="label  label-standalone">   	
-		       <input class="disable_something" id="disable_image_edition" type="checkbox" />
-		  	<label for="disable_image_edition">Image edition is <span dataoncheck="blue"><span class="bawl"></span><span class='text'>&nbsp;</span></span>
-      </div>
-  </div>
-
-    <script type="text/javascript" src="popup.js"></script>
-    </body>
-</html>
+			
+		</div>
+		<script src="popup.js"></script>
+	</body>
+	</html>
+	

@@ -326,8 +326,8 @@ window.dark_object = {
         uDark.idk_cache = {};
         uDark.fixedRandom = Math.random();
         browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editBeforeData);
-
-        browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.editBeforeRequest);
+        browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.editBeforeRequestStyleSheet);
+        browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.editBeforeRequestImage);
         if (uDark.regiteredCS) {
           uDark.regiteredCS.unregister();
           uDark.regiteredCS = null
@@ -339,17 +339,30 @@ window.dark_object = {
             },
             ["blocking", "responseHeaders"]);
 
-          browser.webRequest.onBeforeRequest.addListener(dark_object.misc.editBeforeRequest, {
-              urls: uDark.userSettings.properWhiteList,
-              types: ["stylesheet", "image"]
+            browser.webRequest.onBeforeRequest.addListener(dark_object.misc.editBeforeRequestStyleSheet, {
+              // urls: uDark.userSettings.properWhiteList, // We can't assume the css is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
+              urls: ["<all_urls>"],
+              types: ["stylesheet"]
             },
             ["blocking"]);
+            
+          browser.webRequest.onBeforeRequest.addListener(dark_object.misc.editBeforeRequestImage, {
+            urls: ["<all_urls>"],
+            // urls: uDark.userSettings.properWhiteList, // We can't assume the image is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
+            types: [ "image"]
+          },
+          ["blocking"]);
 
           var contentScript = {
             matches: uDark.userSettings.properWhiteList,
             excludeMatches: uDark.userSettings.properBlackList,
-
+    
             // js : [{code: uDark.injectscripts_str}],
+            js: [{
+              file: "content_script.js"
+            },{
+              file: "MurmurHash3.js"
+            }], // Forced overrides
             css: [{
               code: uDark.inject_css_override
             }], // Forced overrides
@@ -383,16 +396,20 @@ window.dark_object = {
       uDark.injectscripts_str = uDark.injectscripts.map(x => x.innerHTML).join(";") // JS injection method
       // Listen for onHeaderReceived for the target page.
       // Set "blocking" and "responseHeaders".
-      var portFromCS;
+      function connected(connectedPort) {
+        
 
-      function connected(p) {
-        portFromCS = p;
-        console.log("connected", p);
-        if (p.name == "port-from-cs") {
-          p.used_cache_keys = new Set();
-          uDark.connected_cs_ports[`port-from-cs-${p.sender.tab.id}-${p.sender.frameId}`] = p;
-          portFromCS.onDisconnect.addListener(p => {
-            console.log("Disconnected:", p, "Checking", p.used_cache_keys)
+        console.log("Connected", connectedPort.sender.url);
+        if (connectedPort.name == "port-from-cs") {
+          // At first, we used exclude_regex here to not register some content scripts, but thent we used it earlier, in the content script registration
+
+          let portKey=`port-from-cs-${connectedPort.sender.tab.id}-${connectedPort.sender.frameId}`
+          connectedPort.used_cache_keys = new Set();
+
+
+          uDark.connected_cs_ports[portKey] = connectedPort;
+          connectedPort.onDisconnect.addListener(p => {
+            console.log("Disconnected:", p.sender.url, "Checking", p.used_cache_keys)
             if (p.used_cache_keys.size) { // We time it to avoid deleting the cache before the page is loaded (Like on link clicks)
               setTimeout(x => {
                 let owned_cache_keys = new Set()
@@ -406,13 +423,36 @@ window.dark_object = {
                 })
               }, 5000);
             }
-            delete uDark.connected_cs_ports[`port-from-cs-${p.sender.tab.id}-${p.sender.frameId}`]
+            let portValue=uDark.connected_cs_ports[portKey]
+
+            if(portValue!="ARRIVING_SOON") // A port should arrive soon, and we need this marker for ressources connected before it
+            {
+              delete uDark.connected_cs_ports[portKey] // Removing reference to the port, so it will be garbage collected
+            }
           });
-          portFromCS.onMessage.addListener(uDark.handleMessageFromCS);
+          connectedPort.onMessage.addListener(uDark.handleMessageFromCS);
         }
-        if (p.name == "port-from-popup") {
-          portFromCS.onMessage.addListener(function(m) {
-            browser.storage.local.set(m, dark_object.background.setListener);
+        if (connectedPort.name == "port-from-popup") {
+        
+          if(connectedPort.sender.tab)
+          {
+            // Knowing if my options are open or not, to change requests behaviour in these windows
+            // Basicaly i want them to be able to frame any website
+            // Popup does not have a tab, this may be how we could differenciate popup from options 
+            uDark.connected_cs_ports[`port-from-popup-${connectedPort.sender.tab.id}`] = connectedPort; 
+            uDark.connected_options_ports_count++;
+            connectedPort.onDisconnect.addListener(p => {
+              delete uDark.connected_cs_ports[`port-from-popup-${p.sender.tab.id}`]
+              uDark.connected_options_ports_count--;
+            });
+          }
+            // uDark.userSettings = {...uDark.userSettings,...m.updateSettings}
+            connectedPort.onMessage.addListener(function(m) {
+            
+            if(m.updateSettings)
+            {
+                browser.storage.local.set(m.updateSettings, dark_object.background.setListener);
+            }
           });
         }
       }
@@ -1024,7 +1064,8 @@ window.dark_object = {
       window.uDark = {
         disable_edit_str_cache: true,
         unResovableVarsRegex: /(?:hsl|rgb)a?[ ]*\([^)]*\(/, // vars that can't be resolved by the background script
-        userSettings: {},
+        userSettings: {
+        },
         keepIdkProperties: false,
         chunk_stylesheets_idk_only_cors: true, // Asking front trough a message to get the css can be costly so we only do it when it's absolutely necessary: when the cors does not allow us to get the css directly;
         disableCorsCSSEdit: false,
@@ -1040,6 +1081,7 @@ window.dark_object = {
         idk_minimum_editor: 0.2,
         general_cache: {},
         connected_cs_ports: {},
+        connected_options_ports_count: 0,
         background_match: /(footer[^\/\\]*$)|background|(bg|box|panel|fond|fundo|bck)[._-]/i,
         rgba_val: function(r, g, b, a) {
           a = typeof a == "number" ? a : 1;
@@ -1766,7 +1808,7 @@ window.dark_object = {
                   if(can_iterate && (enableLiveChunkRepair=true)) // We accept CSS until it breaks, and cut it from there
                   {
                     rejected_str=""; // Pass from false to empty string
-                    let max_iterations=30; // Fix a limit for timing reasons
+                    let max_iterations=10; // Fix a limit for timing reasons
                     for(let i=1;i<=max_iterations;i++) 
                     {
 
@@ -1797,6 +1839,7 @@ window.dark_object = {
                   } 
                   else{ // We reject the whole CSS if it broken for any reason.( @media cut in midle of name like @medi.integrity rule), str sarting with a bracket, etc.
                      // Reasons are endless and if Firefox said the CSS is broken, we trust it.
+                    //  console.log(can_iterate,cssStyleSheet,details.url,details.datacount)
                     return  new Error("Rejected integrity rule as a whole");
                   }
               }
@@ -1921,9 +1964,9 @@ window.dark_object = {
             dv.getComputedStyle(who, "").getPropertyValue(css) || '';
         },
         send_data_image_to_parser: function(str, details) {
-          // if (str.trim().toLowerCase().startsWith('data:') && !uDark.userSettings.disable_image_edition) {
-          //   str = str.replace(/(?<!(base64IMG=))(data:image\/(png|jpe?g|svg\+xml);base64,([^\"]*?))([)'"]|$)/g, "https://data-image.com?base64IMG=$&")
-          // }
+          if (str.trim().toLowerCase().startsWith('data:') && !uDark.userSettings.disable_image_edition) {
+            str = str.replace(/(?<!(base64IMG=))(data:image\/(png|jpe?g|svg\+xml);base64,([^\"]*?))([)'"]|$)/g, "https://data-image.com?base64IMG=$&")
+          }
           return str;
         }
 
@@ -1987,43 +2030,229 @@ window.dark_object = {
     }
   },
   misc: {
-    editBeforeRequest: function(details) {
-      if (details.originUrl && (details.originUrl.startsWith("moz-extension://")) ||
-        (details.documentUrl || details.url).match(uDark.userSettings.exclude_regex)) {
+    editBeforeRequestImage: function(details) {
+
+    
+    // Util 2024 jan 02 we were checking details.documentUrl, or details.url to know if a stylesheet was loaded in a excluded page
+    // Since only CS ports that matches blaclist and whitelist are connected, we can simply check if this resource has a corresponding CS port
+    if(!uDark.connected_cs_ports["port-from-cs-"+details.tabId+"-"+details.frameId])
+    {
+      console.log("Image","No port found for",details.url,"loaded by webpage:",details.originUrl,"Assuming it is not an eligible webpage, or even blocked by another extension");
+      return {}
+    }
+    //   if (details.originUrl && (details.originUrl.startsWith("moz-extension://")) ||
+    //   (details.documentUrl || details.url).match(uDark.userSettings.exclude_regex)) {
+    //   return {}
+    // }
+    if(details.url&&(use2024Experimentalway=false))
+    {  
+        let filter = browser.webRequest.filterResponseData(details.requestId); // After this instruction, browser espect us to write data to the filter and close it
+        details.buffers=details.buffers||[];
+        filter.ondata = event => {
+          details.buffers.push(event.data); 
+        }
+         
+          filter.onstop = event => {
+            console.log("Image","Filter stopped	",details.buffers.length);
+      
+            let blob = (new Blob( details.buffers ));
+            blob.arrayBuffer().then((buffer)=>{
+              { 
+                 
+                            // Create an Image object
+                        const img = new Image();
+
+                        // Set the source of the Image to the blob URL
+                        img.src = URL.createObjectURL(blob);
+
+                        // Wait for the image to load
+                        img.onload = function () {
+                          // Create a canvas
+                          const canvas = document.createElement('canvas');
+                          const ctx = canvas.getContext('2d');
+
+                          // Set the canvas size to the image size
+                          canvas.width = img.width;
+                          canvas.height = img.height;
+
+                          // Draw the image onto the canvas
+                          ctx.drawImage(img, 0, 0);
+
+                          // Get the ImageData from the canvas
+                          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+                          // Now you can work with the imageData object
+                          console.log(imageData,img.src);
+
+                          // The imageData object has a data property, a Uint8ClampedArray containing the color values of each pixel in the image.
+                          // It is easier to work with this array as 32-bit integers, so we create a new Uint32Array from the original one.
+                          
+                          
+                                      
+                          let theImageDataBufferTMP = new ArrayBuffer(imageData.data.length);
+                          let theImageDataClamped8TMP = new Uint8ClampedArray(theImageDataBufferTMP);
+                          theImageDataClamped8TMP.set(imageData.data);
+                          let theImageDataUint32TMP = new Uint32Array(theImageDataBufferTMP) // Id prefet o use imageData bu idont uderstand yet why in can't
+                          // let theImageDataUint32TMP = new Uint32Array(imageData.data);
+
+                          let n=theImageDataUint32TMP.length;
+                          start_date=new Date();
+                          
+                          console.log("Image","Starting edition" ,new Date()/1-start_date/1);
+                          imgDataLoop: while (n--) {
+                            var number = theImageDataUint32TMP[n];
+                            var r = number & 0xff;
+                            var g = (number >> 8) & 0xff;
+                            var b = (number >> 16) & 0xff;
+                            var a = (number >> 24) & 0xff;
+                            {
+                              // Standard way 2023 // very very very slow (1.5s for a 500 x 500 img)
+                              
+                              // 2024 way : Go faster by finding the right caclulation for each pixel
+                              // [r, g, b, a] = uDark.revert_rgba(r, g, b, a, (...args) => args);
+                              if(uDark.RGBToLightness(r,g,b)>128){
+                                // [r,g,b]=[r,g,b].map((x)=>x/2);
+                                a=0;
+                              }
+                            }
+                            var newColor = ((a << 24)) | (b << 16) | (g << 8) | r;
+                            theImageDataUint32TMP[n] = newColor;
+                          }
+                          console.log("Image","Image edited in",new Date()/1-start_date/1);
+                          imageData.data.set(theImageDataClamped8TMP);
+                          ctx.putImageData(imageData, 0, 0);
+                          
+                          
+                          canvas.toBlob((editedBlobWithImageHeaders)=>{
+                            // console
+                            // filter.write(theImageDataUint32TMP.buffer);
+                            console.log(editedBlobWithImageHeaders);
+                            editedBlobWithImageHeaders.arrayBuffer().then((buffer)=>{
+                              filter.write(buffer);
+                              console.log("Image","Image written in filter",new Date()/1-start_date/1);
+                              filter.disconnect();
+                              
+                            });
+                        })
+                          // filter.write(theImageDataUint32TMP.buffer);
+                          // filter.write(details.buffers[0]);
+                          // filter.disconnect();
+                        };
+
+
+                
+              };
+          });
+        }
         return {}
       }
+                      
+                        //     // Create an Image object
+                        // const img = new Image();
 
-      details.isStyleSheet = ["stylesheet"].includes(details.type)
-      details.isImage = ["image"].includes(details.type)
+                        // // Set the source of the Image to the blob URL
+                        // img.src = URL.createObjectURL(blob);
+
+                        // // Wait for the image to load
+                        // img.onload = function () {
+                        //   // Create a canvas
+                        //   const canvas = document.createElement('canvas');
+                        //   const ctx = canvas.getContext('2d');
+
+                        //   // Set the canvas size to the image size
+                        //   canvas.width = img.width;
+                        //   canvas.height = img.height;
+
+                        //   // Draw the image onto the canvas
+                        //   ctx.drawImage(img, 0, 0);
+
+                        //   // Get the ImageData from the canvas
+                        //   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+                        //   // Now you can work with the imageData object
+                        //   console.log(imageData,img.src);
+
+                        //   // The imageData object has a data property, a Uint8ClampedArray containing the color values of each pixel in the image.
+                        //   // It is easier to work with this array as 32-bit integers, so we create a new Uint32Array from the original one.
+                        //   let theImageDataUint32TMP = Uint32Array.from(imageData.data.buffer);
+                        //   let n=theImageDataUint32TMP.length;
+                        //   imgDataLoop: while (n--) {
+                        //     var number = theImageDataUint32TMP[n];
+                        //     var r = number & 0xff;
+                        //     var g = (number >> 8) & 0xff;
+                        //     var b = (number >> 16) & 0xff;
+                        //     var a = (number >> 24) & 0xff;
+                        //     {
+                        //       // Standard way 2023
+                        //       [r, g, b, a] = uDark.revert_rgba(r, g, b, a, (...args) => args);
+                        //     }
+                        //     var newColor = ((a << 24)) | (b << 16) | (g << 8) | r;
+                        //     theImageDataUint32TMP[n] = newColor;
+                        //   }
+                          
+                        
+
+                        // };
+
+
+                      
+
+////////////////////////
+      // Here we catch any image, including data:images <3 ( in the form of data-image.com)
+      let resultEdit = {}
+      // console.log("Image",uDark.userSettings.disable_image_edition,!(uDark.userSettings.disable_image_edition))
+      if(!(uDark.userSettings.disable_image_edition))
+      {
+        resultEdit = uDark.edit_an_image(details);
+      }
+      // If resultEdit is a promise, image will be edited (foreground or background), otherwise it may be a big background image to include under text
+      // Lets inform the content script about it
+      if(!resultEdit.then)
+      {
+        // uDark.registerBackgroundItem(false,{selectorText:`img[src='${details.url}']`},details);
+        let imageURLObject = new URL(details.url);
+        if(imageURLObject.searchParams.has("uDark_cssClass"))
+        {
+          let cssClass=decodeURIComponent(imageURLObject.searchParams.get("uDark_cssClass"));
+          // console.log("Found a background image via property",cssClass);
+          uDark.registerBackgroundItem(false,{selectorText:cssClass},details);
+          imageURLObject.searchParams.delete("uDark_cssClass");
+          imageURLObject.searchParams.set("c",uDark.fixedRandom);
+          return {redirectUrl:imageURLObject.href};
+        }
+        else if (!imageURLObject.searchParams.has("c"))
+        {
+          // console.log("Found an img element",details.url)
+          // console.log(details.url,"is not a background image, but an img element",details)
+          uDark.registerBackgroundItem(false,{selectorText:`img[src='${details.url}']`},details);
+        }
+      }
+      return resultEdit;
       
 
-      if (details.isImage) {
-        // Here we catch any image, including data:images <3 ( in the form of data-image.com)
-        let resultEdit = uDark.userSettings.disable_image_edition ? {} : uDark.edit_an_image(details);
-        // If resultEdit is a promise, image will be edited (foreground or background), otherwise it may be a big background image to include under text
-        // Lets inform the content script about it
-        if(!resultEdit.then)
-        {
-          // uDark.registerBackgroundItem(false,{selectorText:`img[src='${details.url}']`},details);
-          let imageURLObject = new URL(details.url);
-          if(imageURLObject.searchParams.has("uDark_cssClass"))
-          {
-            let cssClass=decodeURIComponent(imageURLObject.searchParams.get("uDark_cssClass"));
-            // console.log("Found a background image via property",cssClass);
-            uDark.registerBackgroundItem(false,{selectorText:cssClass},details);
-            imageURLObject.searchParams.delete("uDark_cssClass");
-            imageURLObject.searchParams.set("c",uDark.fixedRandom);
-            return {redirectUrl:imageURLObject.href};
-          }
-          else if (!imageURLObject.searchParams.has("c"))
-          {
-            // console.log("Found an img element",details.url)
-            // console.log(details.url,"is not a background image, but an img element",details)
-            uDark.registerBackgroundItem(false,{selectorText:`img[src='${details.url}']`},details);
-          }
-        }
-        return resultEdit;
+    },
+
+    editBeforeRequestStyleSheet: function(details) {
+
+
+      // Util 2024 jan 02 we were checking details.documentUrl, or details.url to know if a stylesheet was loaded in a excluded page
+      // Since only CS ports that matches blaclist and whitelist are connected, we can simply check if this resource has a corresponding CS port
+      if(!uDark.connected_cs_ports["port-from-cs-"+details.tabId+"-"+details.frameId])
+      {
+        console.log("CSS","No port found for",details.url,"loaded by webpage:",details.originUrl,"Assuming it is not an eligible webpage, or even blocked by another extension");
+        console.log("If i'm lacking of knowledge, khere is what i know about this request",details.tabId,details.frameId);
+        return {responseHeaders:details.responseHeaders}
       }
+
+
+      // if (details.originUrl && (details.originUrl.startsWith("moz-extension://")) ||
+      //   (details.documentUrl || details.url).match(uDark.userSettings.exclude_regex)) {
+      //   return {}
+      // }
+      
+
+      
+      
       let filter = browser.webRequest.filterResponseData(details.requestId); // After this instruction, browser espect us to write data to the filter and close it
       let decoder = new TextDecoder()
       let encoder = new TextEncoder();
@@ -2048,6 +2277,7 @@ window.dark_object = {
           details.rejectedValues = "";
           // console.log(details,"Accepted integrity rule")
           if(transformResult.rejected){
+            // console.log("Accepted a partial integrity_rule ♥",details.url)
             details.rejectedValues=transformResult.rejected;
             transformResult=transformResult.str;
           }
@@ -2089,7 +2319,7 @@ window.dark_object = {
         }
         let chunk_hash = fMurmurHash3Hash(chunk);
 
-        content_script_port = uDark.get_the_remote_port(details);
+        content_script_port = uDark.get_the_remote_port(details); // Sometimes here the port havent connected yet. In fact content_script_ports are slow to connect.
         if(!content_script_port)
         {
           console.log("No port found for",details);
@@ -2113,9 +2343,42 @@ window.dark_object = {
       return chunk;
     },
     editBeforeData: function(details) {
-      if (details.originUrl && details.originUrl.startsWith("moz-extension://") ||
+      if(details.tabId==-1&&uDark.connected_options_ports_count||uDark.connected_cs_ports["port-from-popup-"+details.tabId])
+      { // ^-1 Happens sometimes, like on https://www.youtube.com/ at the time i write this, stackoverflow talks about worker threads
+
+        // Here we are covering the needs of the option page: Be able to frame any page
+        let removeHeaders=["content-security-policy","x-frame-options","content-security-policy-report-only"]
+        details.responseHeaders=details.responseHeaders.filter(x=>!removeHeaders.includes(x.name.toLowerCase()))
+      }
+
+      // Here we have to check the url or the documentUrl to know if this webpage is excluded
+      // It already has passed the whitelist check, this is why we only check the blacklist
+      // However this request happens before the content script is connected, so we can't check if it will connect or not
+      // Even if we could do this, like sending some bytes and waiting for he content script to connect,
+      // and it would be not so musch costyl in terms of time, some pages as YOurunbe as the time i write this, somehow manages
+      // to send in this very first request tabID -1 and frameID 0, which is not a valid combination, and the content script will never be found
+      // stackoverflow says it might be related to worker threads. I explored details in the search of somethign that could be used to detect this, but i found nothing
+      if (
+        //details.originUrl && details.originUrl.startsWith("moz-extension://") ||
         (details.documentUrl || details.url).match(uDark.userSettings.exclude_regex)) {
-        return {}
+        console.log("Excluding", details.url,"made by",details.documentUrl)
+        
+        delete uDark.connected_cs_ports["port-from-cs-"+details.tabId+"-"+details.frameId];
+        // As bellow is marking as arriving soon
+        // it will not be deleted. It is almost impossible, but still possible to have a page that starts loading, we mark it as arriving soon
+        // loading stops, for whatever reason, and the content script does not connect
+        // In this case, the port will not be erased, and all resources will darkened, even if the page is not eligible for uDark
+        // It is testable by disablising the content script, assignation and line above; loading a darkened page, in a tab, to set the arriving soon flag, 
+        // then loading an uneligible page in the same tab, and see if it not dakening.
+        return {responseHeaders:details.responseHeaders}
+      }
+      if(details.tabId!=-1)
+      {
+        // Lets be the MVP here, sometimes the content script is not connected yet, and the CSS will arrive in few milliseconds.
+        // This page is eligible for uDark
+        console.log("I'm telling the world that",details.url,"is eligible for uDark", "on", details.tabId,details.frameId)
+        uDark.connected_cs_ports["port-from-cs-"+details.tabId+"-"+details.frameId]="ARRIVING_SOON";
+
       }
 
       var n = details.responseHeaders.length;
