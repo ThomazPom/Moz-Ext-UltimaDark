@@ -399,7 +399,7 @@ window.dark_object = {
       function connected(connectedPort) {
         
 
-        console.log("Connected", connectedPort.sender.url);
+        console.info("Connected", connectedPort.sender.url);
         if (connectedPort.name == "port-from-cs") {
           // At first, we used exclude_regex here to not register some content scripts, but thent we used it earlier, in the content script registration
 
@@ -409,7 +409,7 @@ window.dark_object = {
 
           uDark.connected_cs_ports[portKey] = connectedPort;
           connectedPort.onDisconnect.addListener(p => {
-            console.log("Disconnected:", p.sender.url, "Checking", p.used_cache_keys)
+            console.info("Disconnected:", p.sender.url, "Checking", p.used_cache_keys)
             if (p.used_cache_keys.size) { // We time it to avoid deleting the cache before the page is loaded (Like on link clicks)
               setTimeout(x => {
                 let owned_cache_keys = new Set()
@@ -417,9 +417,10 @@ window.dark_object = {
 
                 p.used_cache_keys.forEach(x => {
                   if (!owned_cache_keys.has(x)) {
-                    console.log("Deleting", x)
+                    // console.log("Deleting", x)
                     delete uDark.idk_cache[x]
-                  } else(console.log("Not deleting", x, "because it is still used by another port"))
+                  } 
+                  // else(console.log("Not deleting", x, "because it is still used by another port"))
                 })
               }, 5000);
             }
@@ -2037,7 +2038,7 @@ window.dark_object = {
     // Since only CS ports that matches blaclist and whitelist are connected, we can simply check if this resource has a corresponding CS port
     if(!uDark.connected_cs_ports["port-from-cs-"+details.tabId+"-"+details.frameId])
     {
-      console.log("Image","No port found for",details.url,"loaded by webpage:",details.originUrl,"Assuming it is not an eligible webpage, or even blocked by another extension");
+      // console.log("Image","No port found for",details.url,"loaded by webpage:",details.originUrl,"Assuming it is not an eligible webpage, or even blocked by another extension");
       return {}
     }
     //   if (details.originUrl && (details.originUrl.startsWith("moz-extension://")) ||
@@ -2239,8 +2240,8 @@ window.dark_object = {
       // Since only CS ports that matches blaclist and whitelist are connected, we can simply check if this resource has a corresponding CS port
       if(!uDark.connected_cs_ports["port-from-cs-"+details.tabId+"-"+details.frameId])
       {
-        console.log("CSS","No port found for",details.url,"loaded by webpage:",details.originUrl,"Assuming it is not an eligible webpage, or even blocked by another extension");
-        console.log("If i'm lacking of knowledge, khere is what i know about this request",details.tabId,details.frameId);
+        // console.log("CSS","No port found for",details.url,"loaded by webpage:",details.originUrl,"Assuming it is not an eligible webpage, or even blocked by another extension");
+        // console.log("If i'm lacking of knowledge, khere is what i know about this request",details.tabId,details.frameId);
         return {responseHeaders:details.responseHeaders}
       }
 
@@ -2271,7 +2272,7 @@ window.dark_object = {
           // console.log(details,transformResult.message)
           details.rejectedValues += str;
           
-          console.info(transformResult.message,details.url,details.rejectedValues.length);
+          // console.info(transformResult.message,details.url,details.rejectedValues.length);
         } else {
 
           details.rejectedValues = "";
@@ -2322,11 +2323,11 @@ window.dark_object = {
         content_script_port = uDark.get_the_remote_port(details); // Sometimes here the port havent connected yet. In fact content_script_ports are slow to connect.
         if(!content_script_port)
         {
-          console.log("No port found for",details);
+          // console.log("No port found for",details);
         }
         content_script_port.used_cache_keys.add(chunk_hash);
         if (uDark.general_cache[chunk_hash]) {
-          console.log(chunk_hash, "seems to be in cache", details.url)
+          // console.log(chunk_hash, "seems to be in cache", details.url)
           return uDark.general_cache[chunk_hash];
         }
         // console.log("Sending chunk to parser", chunk_hash, details.url, chunk)
@@ -2361,7 +2362,7 @@ window.dark_object = {
       if (
         //details.originUrl && details.originUrl.startsWith("moz-extension://") ||
         (details.documentUrl || details.url).match(uDark.userSettings.exclude_regex)) {
-        console.log("Excluding", details.url,"made by",details.documentUrl)
+        // console.log("Excluding", details.url,"made by",details.documentUrl)
         
         delete uDark.connected_cs_ports["port-from-cs-"+details.tabId+"-"+details.frameId];
         // As bellow is marking as arriving soon
@@ -2376,7 +2377,7 @@ window.dark_object = {
       {
         // Lets be the MVP here, sometimes the content script is not connected yet, and the CSS will arrive in few milliseconds.
         // This page is eligible for uDark
-        console.log("I'm telling the world that",details.url,"is eligible for uDark", "on", details.tabId,details.frameId)
+        // console.log("I'm telling the world that",details.url,"is eligible for uDark", "on", details.tabId,details.frameId)
         uDark.connected_cs_ports["port-from-cs-"+details.tabId+"-"+details.frameId]="ARRIVING_SOON";
 
       }
