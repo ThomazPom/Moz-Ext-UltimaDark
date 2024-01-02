@@ -51,8 +51,7 @@ html:not(.uDark-popup) .uDark-popup,html.uDark-popup .uDark-options{
     background-color:white;
     height: 20px;
     width: 20px;
-    display:inline-block;
-    float:right;
+    float: right;
     border-radius:100%;
 }
 .disable_something:checked+label>span .bawl{
@@ -143,7 +142,7 @@ html:not(.uDark-popup) .uDark-popup,html.uDark-popup .uDark-options{
     border-top: 16px solid transparent;
     border-bottom: 14px solid transparent;
     -webkit-transition: all .15s;
-    -transition: all .15s;
+    transition: all .15s;
     -webkit-transition-property: left, right;
     transition-property: left, right;
 }
@@ -183,7 +182,7 @@ html:not(.uDark-popup) .uDark-popup,html.uDark-popup .uDark-options{
     border-top: 0 solid transparent;
     border-bottom: 50px solid transparent;
     -webkit-transition: all .15s;
-    -transition: all .15s;
+    transition: all .15s;
     -webkit-transition-property: left, right;
     transition-property: left, right;
 }
@@ -219,8 +218,6 @@ html:not(.uDark-popup) .uDark-popup,html.uDark-popup .uDark-options{
 .btn:active, .btn.active {
     height: 51px;
 }
-
-.btn:hover {}
 
 .btn:hover span.arrow-left {
     right: 10px;
