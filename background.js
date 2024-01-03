@@ -1,7 +1,7 @@
 window.dark_object = {
   foreground: {
     inject: function() {
-      if(window.uDark && window.uDark.is_foreground){return; }// Already fully installed. Do not reinstall if somehow another HTML element gets injected in the page
+      if(window.uDark && window.uDark.is_foreground){return; } // Avoid infinite loops // Already fully installed. Do not reinstall if somehow another HTML element gets injected in the page
       uDark.is_foreground = true;
       uDark.rgb_a_colorsRegex = /rgba?\([0-9., \/a-z_-]+\)/gmi, // rgba vals with variables names involved  #rgba(255 255 255 / 0.1) is valid color
         uDark.hsl_a_colorsRegex = /hsla?\(([%0-9., \/=a-z-]|deg|turn|tetha)+\)/gmi, // hsla vals without variables involved
@@ -247,7 +247,7 @@ window.dark_object = {
       // UserStyles.org append text nodes to style elements, this is why we set the textContent of these items
       
       uDark.functionPrototypeEditor(Node, [
-        Node.prototype.appendChild, // TODO: I've seen appendChild(textNode) generate an infinite loop, with code inside the block bellow, Investigation is needed.
+        Node.prototype.appendChild, 
         Node.prototype.insertBefore
       ], (elem, args) => {
         console.log(elem, args);
@@ -1116,7 +1116,7 @@ window.dark_object = {
   },
   both: {
     install: function() {
-      if(window.uDark && window.uDark.is_foreground){console.info("UltimaDark was already loaded", window);return; }// Already fully installed. Do not reinstall if somehow another HTML element gets injected
+      if(window.uDark && window.uDark.is_foreground){console.info("UltimaDark was already loaded", window);return; }// Avoid infinite loops // Already fully installed. Do not reinstall if somehow another HTML element gets injected in the page
       const CSS_COLOR_NAMES = ["AliceBlue", "AntiqueWhite", "Aqua", "Aquamarine", "Azure", "Beige", "Bisque", "Black", "BlanchedAlmond", "Blue", "BlueViolet", "Brown", "BurlyWood", "CadetBlue", "Chartreuse", "Chocolate", "Coral", "CornflowerBlue", "Cornsilk", "Crimson", "Cyan", "DarkBlue", "DarkCyan", "DarkGoldenRod", "DarkGray", "DarkGrey", "DarkGreen", "DarkKhaki", "DarkMagenta", "DarkOliveGreen", "DarkOrange", "DarkOrchid", "DarkRed", "DarkSalmon", "DarkSeaGreen", "DarkSlateBlue", "DarkSlateGray", "DarkSlateGrey", "DarkTurquoise", "DarkViolet", "DeepPink", "DeepSkyBlue", "DimGray", "DimGrey", "DodgerBlue", "FireBrick", "FloralWhite", "ForestGreen", "Fuchsia", "Gainsboro", "GhostWhite", "Gold", "GoldenRod", "Gray", "Grey", "Green", "GreenYellow", "HoneyDew", "HotPink", "IndianRed", "Indigo", "Ivory", "Khaki", "Lavender", "LavenderBlush", "LawnGreen", "LemonChiffon", "LightBlue", "LightCoral", "LightCyan", "LightGoldenRodYellow", "LightGray", "LightGrey", "LightGreen", "LightPink", "LightSalmon", "LightSeaGreen", "LightSkyBlue", "LightSlateGray", "LightSlateGrey", "LightSteelBlue", "LightYellow", "Lime", "LimeGreen", "Linen", "Magenta", "Maroon", "MediumAquaMarine", "MediumBlue", "MediumOrchid", "MediumPurple", "MediumSeaGreen", "MediumSlateBlue", "MediumSpringGreen", "MediumTurquoise", "MediumVioletRed", "MidnightBlue", "MintCream", "MistyRose", "Moccasin", "NavajoWhite", "Navy", "OldLace", "Olive", "OliveDrab", "Orange", "OrangeRed", "Orchid", "PaleGoldenRod", "PaleGreen", "PaleTurquoise", "PaleVioletRed", "PapayaWhip", "PeachPuff", "Peru", "Pink", "Plum", "PowderBlue", "Purple", "RebeccaPurple", "Red", "RosyBrown", "RoyalBlue", "SaddleBrown", "Salmon", "SandyBrown", "SeaGreen", "SeaShell", "Sienna", "Silver", "SkyBlue", "SlateBlue", "SlateGray", "SlateGrey", "Snow", "SpringGreen", "SteelBlue", "Tan", "Teal", "Thistle", "Tomato", "Turquoise", "Violet", "Wheat", "White", "WhiteSmoke", "Yellow", "YellowGreen"]
       window.uDark = {
         disable_edit_str_cache: true,
