@@ -1821,7 +1821,6 @@ window.dark_object = {
           uDark.edit_cssRules(cssStyleSheet.cssRules, idk_mode, details);
         },
         edit_str: function(str, cssStyleSheet, verifyIntegrity = false, details, idk_mode = false) {
-          console.log(Math.random() );
           let rejected_str = false;
           if (!uDark.disable_edit_str_cache && details) {
 
