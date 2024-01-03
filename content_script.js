@@ -36,7 +36,6 @@ myPort.onMessage.addListener(function(m) {
   }
 });
 
-
-
-  
 exportFunction(csOverrideRemoteContent , window, { defineAs: "UDarkOverrideRemoteContent" });
+
+console.log("Content script loaded");
