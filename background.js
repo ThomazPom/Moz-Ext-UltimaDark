@@ -2365,15 +2365,18 @@ window.dark_object = {
         }
       }
       filter.onstop = event => {
+        
+        let should_refresh_stylesheet = !(new URL(details.url).searchParams.has("refresh"));
 
         if (details.rejectedValues.length) {
           transformResult = uDark.edit_str(details.rejectedValues, false, false, details);
           // TODO: Remove the call from here and do it in css edit
           transformResult = uDark.send_data_image_to_parser(transformResult, details);
-          transformResult = dark_object.misc.chunk_manage_idk(details, transformResult, true);
+          transformResult = dark_object.misc.chunk_manage_idk(details, transformResult, should_refresh_stylesheet);
           filter.write(encoder.encode(transformResult)); // Write the last chunk if any, trying to get the last rules to be applied, there is proaby invalid content at the end of the CSS;
-        } else {
-          dark_object.misc.chunk_manage_idk(details, false, true); // If no rejected values, we still have to refresh potential cors stylesheets
+        }
+        else{
+          dark_object.misc.chunk_manage_idk(details, false, should_refresh_stylesheet);
         }
 
         // console.log("Filter stopped", details.url, details.unresolvableChunks);
@@ -2384,7 +2387,7 @@ window.dark_object = {
     },
     chunk_manage_idk: function(details, chunk, refresh_stylesheet = false) {
 
-      if (!uDark.disableCorsCSSEdit && details.unresolvableChunks && details.unresolvableChunks[details.datacount]) {
+      if (!uDark.disableCorsCSSEdit && details.unresolvableChunks ) {
         if (uDark.chunk_stylesheets_idk_only_cors) {
           let aUrl = new URL(details.url);
           let bUrl = new URL(details.documentUrl);
@@ -2393,36 +2396,37 @@ window.dark_object = {
             return chunk;
           }
         }
-
-        let content_script_port_promise = uDark.get_the_remote_port(details); // Sometimes here the port havent connected yet. In fact content_script_ports are slow to connect.
         
         let chunk_hash = fMurmurHash3Hash(chunk);
-        if (chunk) {
-
+        
+        let content_script_port_promise = uDark.get_the_remote_port(details); // Sometimes here the port havent connected yet. In fact content_script_ports are slow to connect.
+        if (chunk && details.unresolvableChunks[details.datacount]) {
+        
+  
           content_script_port_promise.then((content_script_port) => {
             content_script_port.used_cache_keys.add(chunk_hash);
           })
-
+  
           if (uDark.general_cache[chunk_hash]) {
-            // console.log(chunk_hash, "seems to be in cache", details.url)
+            console.log(chunk_hash, "seems to be in cache", details.url)
             return uDark.general_cache[chunk_hash];
           }
-
           uDark.general_cache[chunk_hash] = chunk;
         }
-        // console.log("Sending chunk to parser", chunk_hash, details.url, chunk)
-        if(!(new URL(details.url)).searchParams.has("refresh")){ // If the stylesheet has a refresh param, it means it is a stylesheet that has been refreshed by uDark
-          content_script_port_promise.then((content_script_port) => { // We must not refresh it again, it ends in a loop
-            content_script_port.postMessage({
-              havingIDKVars: {
-                details,
-                chunk: chunk,
-                chunk_hash,
-                refresh_stylesheet: refresh_stylesheet,
-              }
-            });
-          })
-        }
+
+
+
+      
+        content_script_port_promise.then((content_script_port) => { // We must not refresh it again, it ends in a loop
+          content_script_port.postMessage({
+            havingIDKVars: {
+              details,
+              chunk: chunk,
+              chunk_hash,
+              refresh_stylesheet: refresh_stylesheet,
+            }
+          });
+        })
 
       }
       return chunk;
