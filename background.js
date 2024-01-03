@@ -2,6 +2,13 @@ window.dark_object = {
   foreground: {
     inject: function() {
       if(window.uDark && window.uDark.is_foreground){return; } // Avoid infinite loops // Already fully installed. Do not reinstall if somehow another HTML element gets injected in the page
+
+      // Zone for revoking property edition by the website : // no true=no trust
+      // https://developer.mozilla.org/fr/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty
+     // Some functions are replaced by good or less polyfills, i prefer native functions when possible
+      Object.defineProperty(String.prototype, "replaceAll", { value: String.prototype.replaceAll, writable:false, configurable:false, enumerable:false }); // WikiCommons uses this one
+
+      // End of zone for revoking property edition by the website
       uDark.is_foreground = true;
       uDark.rgb_a_colorsRegex = /rgba?\([0-9., \/a-z_-]+\)/gmi, // rgba vals with variables names involved  #rgba(255 255 255 / 0.1) is valid color
         uDark.hsl_a_colorsRegex = /hsla?\(([%0-9., \/=a-z-]|deg|turn|tetha)+\)/gmi, // hsla vals without variables involved
@@ -81,7 +88,6 @@ window.dark_object = {
           }
         })
       });
-
 
 
 
@@ -1693,6 +1699,8 @@ window.dark_object = {
               // {
               //   console.log("Catched 1.2", idk_mode,cssRule.cssText,key_idk,key,value,actions,uDark.is_background && uDark.unResovableVarsRegex.test(value)) 
               // }
+
+
               value = uDark.edit_with_regex(idk_mode, value, uDark.rgb_a_colorsRegex, transformation, render, idk_mode ? cssRule : false); // edit_rgb_a_colors
               value = uDark.edit_with_regex(idk_mode, value, uDark.hsl_a_colorsRegex, transformation, render, idk_mode ? cssRule : false); // edit_hsl_a_colors
               value = uDark.restore_idk_vars(idk_mode, value); // Restore alone vars: color: var(--color_8)
@@ -1707,7 +1715,6 @@ window.dark_object = {
         },
 
         edit_cssProperties: function(cssRule, idk_mode = false, details) {
-
           let foreground_items = [],
             variables_items = [],
             background_items = [],
@@ -1967,6 +1974,7 @@ window.dark_object = {
 
 
         },
+
         functionPrototypeEditor: function(leType, laFonction, watcher = x => x, conditon = x => x, result_editor = x => x) {
           //  console.log(leType,leType.name,leType.prototype,laFonction,laFonction.name)
           if (laFonction.concat) {
