@@ -1792,7 +1792,7 @@ window.dark_object = {
             url.searchParams.set("refresh", Math.random());
             let cloneNoFlickering = styleSheet.ownerNode.cloneNode();
             cloneNoFlickering.href = url.href;
-            styleSheet.ownerNode.after(cloneNoFlickering); // <3 No flickeing ! // Using after overrides the old stylesheet
+            styleSheet.ownerNode.after(cloneNoFlickering); // <3 No flickering ! // Using after overrides the old stylesheet
             // styleSheet.ownerNode.parentNode.insertBefore(cloneNoFlickering, styleSheet.ownerNode); // InsertBefore does not override the old stylesheet
             setTimeout(() => {
               styleSheet.ownerNode.remove();
@@ -2307,7 +2307,7 @@ window.dark_object = {
     },
 
     editBeforeRequestStyleSheet: function(details) {
-
+      console.log("Loading CSS",details.url)
 
       // Util 2024 jan 02 we were checking details.documentUrl, or details.url to know if a stylesheet was loaded in a excluded page
       // Since only CS ports that matches blaclist and whitelist are connected, we can simply check if this resource has a corresponding CS port
@@ -2411,17 +2411,18 @@ window.dark_object = {
           uDark.general_cache[chunk_hash] = chunk;
         }
         // console.log("Sending chunk to parser", chunk_hash, details.url, chunk)
-
-        content_script_port_promise.then((content_script_port) => {
-          content_script_port.postMessage({
-            havingIDKVars: {
-              details,
-              chunk: chunk,
-              chunk_hash,
-              refresh_stylesheet: refresh_stylesheet,
-            }
-          });
-        })
+        if(!(new URL(details.url)).searchParams.has("refresh")){ // If the stylesheet has a refresh param, it means it is a stylesheet that has been refreshed by uDark
+          content_script_port_promise.then((content_script_port) => { // We must not refresh it again, it ends in a loop
+            content_script_port.postMessage({
+              havingIDKVars: {
+                details,
+                chunk: chunk,
+                chunk_hash,
+                refresh_stylesheet: refresh_stylesheet,
+              }
+            });
+          })
+        }
 
       }
       return chunk;
