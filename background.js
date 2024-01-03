@@ -1,6 +1,7 @@
 window.dark_object = {
   foreground: {
     inject: function() {
+      if(window.uDark && window.uDark.is_foreground){return; }// Already fully installed. Do not reinstall if somehow another HTML element gets injected in the page
       uDark.is_foreground = true;
       uDark.rgb_a_colorsRegex = /rgba?\([0-9., \/a-z_-]+\)/gmi, // rgba vals with variables names involved  #rgba(255 255 255 / 0.1) is valid color
         uDark.hsl_a_colorsRegex = /hsla?\(([%0-9., \/=a-z-]|deg|turn|tetha)+\)/gmi, // hsla vals without variables involved
@@ -243,16 +244,71 @@ window.dark_object = {
       }
 
 
-
-      // UserStyles.org append text nodes to style elements 
+      // UserStyles.org append text nodes to style elements, this is why we set the textContent of these items
+      
       uDark.functionPrototypeEditor(Node, [
-        Node.prototype.appendChild,
+        Node.prototype.appendChild, // TODO: I've seen appendChild(textNode) generate an infinite loop, with code inside the block bellow, Investigation is needed.
         Node.prototype.insertBefore
       ], (elem, args) => {
+        console.log(elem, args);
         (args[0].textContent = uDark.edit_str(args[0].textContent));
         return args
       }, (elem, value) => elem instanceof HTMLStyleElement)
 
+      /******************** BUT ********************** */
+      // Here are all the cases when editing a style element can affect the page style, and there is a lot of them
+      // I encountered innerHTML  appendChild and insertBefore so far, but there are all these cases in the wild
+
+      if(false){
+        
+              
+                    
+              var testStyle=document.createElement("style")
+
+              testStyle.outerHTML+=testStyle.outerHTML+testStyle.outerHTML.slice(0,-8)+".test20 {color:red!important}"+"</style>"// has no effects
+              document.querySelectorAll(".test").forEach(w=>w.remove())
+              document.head.appendChild(testStyle)
+              testStyle.classList.add("test")
+              testStyle.append(ite=document.createTextNode("invalid"))
+              testStyle.replaceChildren(document.createTextNode(".test1 {color:red!important}"))
+
+              testStyle.textContent+=".test16{color:red!important}"
+              testStyle.innerHTML+=".test17 {color:red!important}"
+              testStyle.innerText+=".test18 {color:red!important}"
+              testStyle.outerText // Replaces the element by some text, unsuitable
+              testStyle.append(ite=document.createTextNode("invalid"))
+              testStyle.replaceChild(document.createTextNode(".test2 {color:red!important}"),ite)
+              testStyle.append(ite=document.createTextNode(".test3 {color:red!important}"))
+              testStyle.prepend(ite=document.createTextNode(".test4 {color:red!important}"))
+
+              ite.before(document.createTextNode(".test5 {color:red!important}"))
+              ite.after(document.createTextNode(".test6 {color:red!important}"))
+              testStyle.appendChild(ite=document.createTextNode(".test7 {color:red!important}"))
+              testStyle.insertBefore(document.createTextNode(".test8 {color:red!important}"),ite)
+              testStyle.append(ite=document.createTextNode(""))
+              testStyle.append(ite=document.createTextNode("invalid"))
+              ite.replaceWith(document.createTextNode(".test11 {color:red!important}"))
+              testStyle.append(ite=document.createTextNode(""))
+              ite.insertData(0,".test9 {color:red!important}")
+              ite.appendData(".test10 {color:red!important}")
+
+              ite.replaceData(0,0,".test12 {color:red!important}")
+              ite.data+=".test13 {color:red!important}"
+              ite.nodeValue +=".test14 {color:red!important}"
+              ite.textContent +=".test15 {color:red!important}"
+              for (i=20;i;i--){
+                let title=document.createElement("div");
+                title.classList.add("test"+i)
+                title.classList.add("test")
+                title.textContent="Test #"+i;
+                document.body.prepend(title)
+              }
+
+              testStyle.outerHTML+=testStyle.outerHTML+testStyle.outerHTML.slice(0,-8)+".test20 {color:red!important}"+"</style>"
+      }
+      /****************************************** */
+
+      
 
       // FINALLY CNN Use this one (webpack)!!!!
       uDark.valuePrototypeEditor(Node, "textContent", (elem, value) => {
@@ -1060,7 +1116,7 @@ window.dark_object = {
   },
   both: {
     install: function() {
-      document.o_createElement = document.createElement;
+      if(window.uDark && window.uDark.is_foreground){console.info("UltimaDark was already loaded", window);return; }// Already fully installed. Do not reinstall if somehow another HTML element gets injected
       const CSS_COLOR_NAMES = ["AliceBlue", "AntiqueWhite", "Aqua", "Aquamarine", "Azure", "Beige", "Bisque", "Black", "BlanchedAlmond", "Blue", "BlueViolet", "Brown", "BurlyWood", "CadetBlue", "Chartreuse", "Chocolate", "Coral", "CornflowerBlue", "Cornsilk", "Crimson", "Cyan", "DarkBlue", "DarkCyan", "DarkGoldenRod", "DarkGray", "DarkGrey", "DarkGreen", "DarkKhaki", "DarkMagenta", "DarkOliveGreen", "DarkOrange", "DarkOrchid", "DarkRed", "DarkSalmon", "DarkSeaGreen", "DarkSlateBlue", "DarkSlateGray", "DarkSlateGrey", "DarkTurquoise", "DarkViolet", "DeepPink", "DeepSkyBlue", "DimGray", "DimGrey", "DodgerBlue", "FireBrick", "FloralWhite", "ForestGreen", "Fuchsia", "Gainsboro", "GhostWhite", "Gold", "GoldenRod", "Gray", "Grey", "Green", "GreenYellow", "HoneyDew", "HotPink", "IndianRed", "Indigo", "Ivory", "Khaki", "Lavender", "LavenderBlush", "LawnGreen", "LemonChiffon", "LightBlue", "LightCoral", "LightCyan", "LightGoldenRodYellow", "LightGray", "LightGrey", "LightGreen", "LightPink", "LightSalmon", "LightSeaGreen", "LightSkyBlue", "LightSlateGray", "LightSlateGrey", "LightSteelBlue", "LightYellow", "Lime", "LimeGreen", "Linen", "Magenta", "Maroon", "MediumAquaMarine", "MediumBlue", "MediumOrchid", "MediumPurple", "MediumSeaGreen", "MediumSlateBlue", "MediumSpringGreen", "MediumTurquoise", "MediumVioletRed", "MidnightBlue", "MintCream", "MistyRose", "Moccasin", "NavajoWhite", "Navy", "OldLace", "Olive", "OliveDrab", "Orange", "OrangeRed", "Orchid", "PaleGoldenRod", "PaleGreen", "PaleTurquoise", "PaleVioletRed", "PapayaWhip", "PeachPuff", "Peru", "Pink", "Plum", "PowderBlue", "Purple", "RebeccaPurple", "Red", "RosyBrown", "RoyalBlue", "SaddleBrown", "Salmon", "SandyBrown", "SeaGreen", "SeaShell", "Sienna", "Silver", "SkyBlue", "SlateBlue", "SlateGray", "SlateGrey", "Snow", "SpringGreen", "SteelBlue", "Tan", "Teal", "Thistle", "Tomato", "Turquoise", "Violet", "Wheat", "White", "WhiteSmoke", "Yellow", "YellowGreen"]
       window.uDark = {
         disable_edit_str_cache: true,
@@ -1765,6 +1821,7 @@ window.dark_object = {
           uDark.edit_cssRules(cssStyleSheet.cssRules, idk_mode, details);
         },
         edit_str: function(str, cssStyleSheet, verifyIntegrity = false, details, idk_mode = false) {
+          console.log(Math.random() );
           let rejected_str = false;
           if (!uDark.disable_edit_str_cache && details) {
 
@@ -2020,7 +2077,7 @@ window.dark_object = {
             stick: "brightness(10)"
           }
         },
-        "background-image": {callBack:uDark.encode_backgroundItemForLiveRegister}, // TODO: Encode selector and capture it later  
+        "background-image": {callBack:uDark.encode_backgroundItemForLiveRegister},
         "background": {callBack:uDark.encode_backgroundItemForLiveRegister},
 
 
