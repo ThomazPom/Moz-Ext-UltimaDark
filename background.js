@@ -1422,21 +1422,28 @@ window.dark_object = {
             }
           })
         },
+        regex_search_for_url: /url\(((\\\)|.)+?)\)/g,
         encode_backgroundItemForLiveRegister: function(cssStyle, cssRule,details,property="background-image") {
-          // Instead of registering the image as a background, we will encode the selector in the URL 
-          // and register the image as a background image only when it is downloaded, in the filter script
-          cssStyle[property]=cssStyle[property].
-              replace(/url\(((\\\)|.)+?)\)/g,(match,g1)=>{
+              // Instead of registering the image as a background, we will encode the selector in the URL 
+              // and register the image as a background image only when it is downloaded, in the filter script
+              // Its very neccessary to not edit property if they dont contain a url, as it changes a lot the CSS if there are shorthand properties involved : setting bacground image removes bacground property
+              let value=cssStyle.getPropertyValue(property);
+              let changed=false;
+              value=value.replace(uDark.regex_search_for_url,(match,g1)=>{
+                  changed=true;
+                  let link=g1.trim();
                 
-                let link=g1.trim();
-              
-                let usedChar=link.includes("?")?"&":"?"
-                let lastChar=link.slice(-1);
-                let isQuoted=["'",'"'].includes(lastChar)
-                link=link.slice(0,-1*(isQuoted))+usedChar+"uDark_cssClass="+encodeURIComponent(cssRule.selectorText)+(isQuoted?lastChar:"");
-                return "url("+link+")";
-            });
-            
+                  let usedChar=link.includes("?")?"&":"?"
+                  let lastChar=link.slice(-1);
+                  let isQuoted=["'",'"'].includes(lastChar)
+                  link=link.slice(0,-1*(isQuoted))+usedChar+"uDark_cssClass="+encodeURIComponent(cssRule.selectorText)+(isQuoted?lastChar:"");
+                  return "url("+link+")";
+              })
+
+              if(changed)
+              { 
+                cssStyle.setProperty(property,value);
+              }
           // console.log("Found a background image via property",property,cssRule.selectorText,`'${cssStyle[property]}'`);
           },
         isInsideSquare(squareTop,squareBottom,squareLeft,squareRight,pointTop,pointLeft)
@@ -1643,6 +1650,7 @@ window.dark_object = {
         edit_all_cssRule_colors(idk_mode, cssRule, keys, transformation, render, hasUnresolvedVars, key_prefix = "", actions = {}) {
           // render = (render||uDark.rgba_val);
           // console.log(idk_mode,cssRule,keys,transformation,render,key_prefix,actions);
+          
           let cssStyle = cssRule.style;
           keys.forEach(key => {
             let key_idk = (idk_mode ? "--ud-idk_" : "") + key;
@@ -1746,7 +1754,8 @@ window.dark_object = {
 
           }
           let hasUnresolvedVars = {
-            has: false
+            has: false,
+            details:details
           }; // Passed by reference. // request details are shared so we use a new object. We could have emedded it into details though
 
           // console.log("cssRule",cssRule,foreground_items,background_items,variables_items,wording_action)
@@ -1829,6 +1838,7 @@ window.dark_object = {
         },
         edit_str: function(str, cssStyleSheet, verifyIntegrity = false, details, idk_mode = false) {
           let rejected_str = false;
+        
           if (!uDark.disable_edit_str_cache && details) {
 
             details.str_hash = fMurmurHash3Hash(details.url + str + idk_mode);
