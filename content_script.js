@@ -26,15 +26,14 @@ function resolveIDKVars(data) {
 
 
     }
-    //   console.log("In content script, resolved IDK vars: ", data);
-    if (data.refresh_stylesheet) {
-      setTimeout(() => {
-        window.wrappedJSObject.uDark.refresh_stylesheet(data.details.url);
-      }, 0)
-    }
-  }, 100); // 100s should be enough, as in fact the page is already almost loaded :
+  }, 100); /*Allow time for the frontend to load CSS VARS in scope*/ // 100s should be enough, as in fact the page is already almost loaded :
   // We are here because link tags are already loaded, (so stylesheets are OK) and we are only waiting for all of this to be put in context wich is short 
 };
+
+function refreshStylesheet(data) {
+    window.wrappedJSObject.uDark.refresh_stylesheet(data.details.url);
+}
+
 
 function registerBackgroundItem(selectorText) {
   window.wrappedJSObject.uDark.registerBackgroundItem(false, selectorText, false); // go directly to the edit, the validation is already done
@@ -46,6 +45,7 @@ myPort.onMessage.addListener(function(m) {
   if (window.wrappedJSObject.uDark) { // if uDark is loaded (uDark is not loaded on txt resources for example)
     m.havingIDKVars && resolveIDKVars(m.havingIDKVars);
     m.registerBackgroundItem && registerBackgroundItem(m.registerBackgroundItem);
+    m.refreshStylesheet && refreshStylesheet(m.refreshStylesheet);
   }
 });
 

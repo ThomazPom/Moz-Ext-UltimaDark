@@ -979,10 +979,6 @@ window.dark_object = {
             // console.log("Remote content override save", data, (new Date()) / 1)
             uDark.general_cache[data.chunk_hash] = data.chunk;
 
-            // The magic here is that we are already after chunk put in memory so this is done ony once per cors CSS
-            browser.browsingData.removeCache({
-              since: 3000
-            }).then(x => console.info(`Browser last seconds cache flushed, allowing new load of CSS`), error => console.error(`Error: ${error}`));
           },
           parse_and_edit_html3: function(str, details) {
             details.requestScripts = details.requestScripts || []
@@ -1038,11 +1034,12 @@ window.dark_object = {
             // })
             // I think killing cache this way may be more efficient than cleaning the cache
             // cache key is unique for each browser session
-            aDocument.querySelectorAll("link[rel='stylesheet'][href]")
-              .forEach(x => {
-                let hasHref = x.getAttribute("href").trim()
-                hasHref && x.setAttribute("href", hasHref + "#ud_ck=1" + uDark.fixedRandom);
-              });
+            // aDocument.querySelectorAll("link[rel='stylesheet'][href]")//This was causing problems i dont knwo why : double loading of css on openAi, and not so usefull since UD flushes cache on options change
+            //   .forEach(x => {
+            //     let hasHref = x.getAttribute("href").trim(); 
+            //     console.log("link", hasHref)
+            //     hasHref && x.setAttribute("href", hasHref + "ud_ck=1" + uDark.fixedRandom);
+            //   });
             // /
 
             aDocument.querySelectorAll("[fill],[color],path,[bgcolor]").forEach(coloreditem => {
@@ -1780,24 +1777,32 @@ window.dark_object = {
 
         },
         refresh_stylesheet: function(styleSheetUrl) {
-          [...document.styleSheets].filter(styleSheet => {
+          let refresh_result = [...document.styleSheets].filter(styleSheet => {
             if (!styleSheet.href) return false;
             let oStylesheetURL = new URL(styleSheet.href)
             let oStylesheetURL2 = new URL(styleSheetUrl)
             return oStylesheetURL.origin == oStylesheetURL2.origin &&
               oStylesheetURL.pathname == oStylesheetURL2.pathname;
-          }).forEach(styleSheet => {
+          }).map(styleSheet => {
             // console.log("Refreshing", styleSheet.href);
             let url = new URL(styleSheet.href);
             url.searchParams.set("refresh", Math.random());
+            
             let cloneNoFlickering = styleSheet.ownerNode.cloneNode();
             cloneNoFlickering.href = url.href;
             styleSheet.ownerNode.after(cloneNoFlickering); // <3 No flickering ! // Using after overrides the old stylesheet
             // styleSheet.ownerNode.parentNode.insertBefore(cloneNoFlickering, styleSheet.ownerNode); // InsertBefore does not override the old stylesheet
+            let ownerNode = styleSheet.ownerNode;
             setTimeout(() => {
-              styleSheet.ownerNode.remove();
-            }, 10000); // 3 seconds was not enough to load the new stylesheet
+              ownerNode.remove();
+              console.log(ownerNode, "removed")
+            }, 10*1000); // 3 seconds was not enough to load the new stylesheet
+            return 1;
           });
+          console.log(refresh_result,refresh_result.length, "stylesheet refreshed",styleSheetUrl)
+          if(!refresh_result.length){
+            console.log("Could not find stylesheet "+styleSheetUrl + " to refresh it")
+          }
         },
         do_idk_mode: function() {
           let editableStyleSheets = [...document.styleSheets].filter(styleSheet => {
@@ -2397,11 +2402,11 @@ window.dark_object = {
           }
         }
         
-        let chunk_hash = fMurmurHash3Hash(chunk);
         
         let content_script_port_promise = uDark.get_the_remote_port(details); // Sometimes here the port havent connected yet. In fact content_script_ports are slow to connect.
         if (chunk && details.unresolvableChunks[details.datacount]) {
         
+          let chunk_hash = fMurmurHash3Hash(chunk);
   
           content_script_port_promise.then((content_script_port) => {
             content_script_port.used_cache_keys.add(chunk_hash);
@@ -2412,22 +2417,33 @@ window.dark_object = {
             return uDark.general_cache[chunk_hash];
           }
           uDark.general_cache[chunk_hash] = chunk;
+          content_script_port_promise.then((content_script_port) => {
+            content_script_port.postMessage({
+              havingIDKVars: {
+                details,
+                chunk: chunk,
+                chunk_hash,
+              }
+            });
+          })
         }
-
-
-
-      
-        content_script_port_promise.then((content_script_port) => { // We must not refresh it again, it ends in a loop
-          content_script_port.postMessage({
-            havingIDKVars: {
-              details,
-              chunk: chunk,
-              chunk_hash,
-              refresh_stylesheet: refresh_stylesheet,
-            }
-          });
-        })
-
+        if(refresh_stylesheet)
+        {
+          
+            content_script_port_promise.then((content_script_port) => {
+              
+            // The magic here is that we are already after chunk put in memory so this is done ony once per cors CSS
+              browser.browsingData.removeCache({ since: (Date.now()-details.timeStamp)*4  }).then(x => {
+                console.info(`Browser last seconds cache flushed, allowing new load of CSS`)
+                setTimeout(() => {
+                  console.info(`Asking for a new load of ${details.url}`,);
+                  content_script_port.postMessage({
+                  refreshStylesheet: { details }
+                });}, 1000); // Allow time for content script port to connect AND for it to resolve IDK vars AND for it to send the message back to background.
+                // Must check if all this block can be moved back in theresolvedIDKVars_action to prevent the need of a so huge timeout
+              });
+            });
+          }
       }
       return chunk;
     },
