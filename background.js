@@ -393,6 +393,7 @@ window.dark_object = {
           .replace(/^(.*)$/g, "^$1$")).join("|") // User multi match)
         uDark.general_cache = {};
         uDark.idk_cache = {};
+        uDark.reloadTimingForIDKCorsStylesheets=300; // edit_str from 2024 january was ok with 210 for both editing and messaging, 250 Should be enough for now
         uDark.fixedRandom = Math.random();
         browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editBeforeData);
         browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.editBeforeRequestStyleSheet);
@@ -971,13 +972,43 @@ window.dark_object = {
 
             console.log("BG Edited in", (new Date()) / 1 - date_start, "ms")
           },
-          handleMessageFromCS: function(message) {
-            message.resolvedIDKVars && uDark.resolvedIDKVars_action(message.resolvedIDKVars);
-
+          handleMessageFromCS: function(message,sender) {
+            message.resolvedIDKVars && uDark.resolvedIDKVars_action(message.resolvedIDKVars,sender);
           },
-          resolvedIDKVars_action: function(data) {
+          resolvedIDKVars_action: function(data,content_script_port) {
             // console.log("Remote content override save", data, (new Date()) / 1)
+            
+            // After a CSS has been processed, its content gets cached in function chunk_manage_idk, then sent to front end and then cached here
+            // It will be its final form, and will be used for future requests, avoiding to reprocess the CSS, and allowing to refresh the CSS
             uDark.general_cache[data.chunk_hash] = data.chunk;
+            let cache_key="reload_stylesheet_timer_"+data.details.requestId;
+            if(cache_key in uDark.general_cache){
+              // NOTE: Comment this whole if, it is only for finding the good time to reload the stylesheet
+              if(uDark.general_cache[cache_key]=="ENDED"){
+                console.log(uDark.reloadTimingForIDKCorsStylesheets,"was too short for",data.details.url,"as reload timing", "you have to increase it.", "Increasing it of +10ms")
+                uDark.reloadTimingForIDKCorsStylesheets+=10;
+              }
+            }
+
+            // Once a cache is set, we are sure we will want to refresh the CSS, but preferably after the last chunk has been processed.
+            // The last chunk will not necessarly trigger a IDK chunck caching, so here a simple way to ensure there will be a refresh
+            // for each request that once did a IDK chunk caching. This implies resetting the timeout of the previous chunk, if any.
+            // It implies reloadTimingForIDKCorsStylesheets should cover the time between the last idk processed chunk and the current one
+            // If this time is too short, the stylesheet will be reloaded multiple times.
+            // The if statement above helps finding the good timing, with the "ENDED" value set in cache_key below. 2024 january : 110ms was ok, and set at a security margin 150ms
+            clearTimeout(uDark.general_cache[cache_key]);
+            uDark.general_cache[cache_key]=setTimeout(x=>{
+                uDark.general_cache[cache_key]="ENDED"; // NOTE: Comment this line when he good timing is found
+                // delete uDark.general_cache[cache_key]; // CLean the cache dictionary // TODO: Restore this line when he good timing is found
+                browser.browsingData.removeCache({ since: (Date.now()-data.details.timeStamp)*4  }).then(x => {
+                  console.info(`Browser last seconds cache flushed, allowing new load of CSS`,data.details.url)
+                  console.info(`Asking for a new load of ${data.details.url}`,);
+                  content_script_port.postMessage({
+                    refreshStylesheet: { details:data.details }
+                  });
+                });
+            },uDark.reloadTimingForIDKCorsStylesheets)
+
 
           },
           parse_and_edit_html3: function(str, details) {
@@ -1786,7 +1817,7 @@ window.dark_object = {
           }).map(styleSheet => {
             // console.log("Refreshing", styleSheet.href);
             let url = new URL(styleSheet.href);
-            url.searchParams.set("refresh", Math.random());
+            url.searchParams.set("ud_refresh", Math.random());
             
             let cloneNoFlickering = styleSheet.ownerNode.cloneNode();
             cloneNoFlickering.href = url.href;
@@ -2363,7 +2394,7 @@ window.dark_object = {
           }
           // TODO: Remove the call from here and do it in css edit
           transformResult = uDark.send_data_image_to_parser(transformResult, details);
-          transformResult = dark_object.misc.chunk_manage_idk(details, transformResult, false);
+          transformResult = dark_object.misc.chunk_manage_idk(details, transformResult);
 
           filter.write(encoder.encode(transformResult));
           // console.log("Accepted integrity_rule",details.url,transformResult)
@@ -2371,17 +2402,13 @@ window.dark_object = {
       }
       filter.onstop = event => {
         
-        let should_refresh_stylesheet = !(new URL(details.url).searchParams.has("refresh"));
 
         if (details.rejectedValues.length) {
           transformResult = uDark.edit_str(details.rejectedValues, false, false, details);
           // TODO: Remove the call from here and do it in css edit
           transformResult = uDark.send_data_image_to_parser(transformResult, details);
-          transformResult = dark_object.misc.chunk_manage_idk(details, transformResult, should_refresh_stylesheet);
+          transformResult = dark_object.misc.chunk_manage_idk(details, transformResult);
           filter.write(encoder.encode(transformResult)); // Write the last chunk if any, trying to get the last rules to be applied, there is proaby invalid content at the end of the CSS;
-        }
-        else{
-          dark_object.misc.chunk_manage_idk(details, false, should_refresh_stylesheet);
         }
 
         // console.log("Filter stopped", details.url, details.unresolvableChunks);
@@ -2390,7 +2417,9 @@ window.dark_object = {
       // must not return this closes filter//
       return {}
     },
-    chunk_manage_idk: function(details, chunk, refresh_stylesheet = false) {
+    chunk_manage_idk: function(details, chunk) {
+
+      refresh_stylesheet =!(new URL(details.url).searchParams.has("ud_refresh"));
 
       if (!uDark.disableCorsCSSEdit && details.unresolvableChunks ) {
         if (uDark.chunk_stylesheets_idk_only_cors) {
@@ -2417,33 +2446,19 @@ window.dark_object = {
             return uDark.general_cache[chunk_hash];
           }
           uDark.general_cache[chunk_hash] = chunk;
-          content_script_port_promise.then((content_script_port) => {
-            content_script_port.postMessage({
-              havingIDKVars: {
-                details,
-                chunk: chunk,
-                chunk_hash,
-              }
-            });
-          })
-        }
-        if(refresh_stylesheet)
-        {
-          
+          if(refresh_stylesheet)
+          {
             content_script_port_promise.then((content_script_port) => {
-              
-            // The magic here is that we are already after chunk put in memory so this is done ony once per cors CSS
-              browser.browsingData.removeCache({ since: (Date.now()-details.timeStamp)*4  }).then(x => {
-                console.info(`Browser last seconds cache flushed, allowing new load of CSS`)
-                setTimeout(() => {
-                  console.info(`Asking for a new load of ${details.url}`,);
-                  content_script_port.postMessage({
-                  refreshStylesheet: { details }
-                });}, 1000); // Allow time for content script port to connect AND for it to resolve IDK vars AND for it to send the message back to background.
-                // Must check if all this block can be moved back in theresolvedIDKVars_action to prevent the need of a so huge timeout
+              content_script_port.postMessage({
+                havingIDKVars: {
+                  details,
+                  chunk: chunk,
+                  chunk_hash,
+                }
               });
-            });
+            })
           }
+        }
       }
       return chunk;
     },
