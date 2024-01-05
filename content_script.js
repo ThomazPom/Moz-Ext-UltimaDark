@@ -15,7 +15,7 @@ function csOverrideRemoteContent(url, content) {
 function resolveIDKVars(data) {
   setTimeout(() => {
     if (data.chunk) {
-      let ikd_resolved = window.wrappedJSObject.uDark.edit_str(data.chunk, false, false, false, true);
+        let ikd_resolved = window.wrappedJSObject.uDark.edit_str(data.chunk, false, false, false, true);
 
       //   console.log("In content script, resolving IDK vars: ", ikd_resolved,data.chunk);
 
