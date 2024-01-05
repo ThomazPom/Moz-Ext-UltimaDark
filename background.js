@@ -16,9 +16,9 @@ window.dark_object = {
       }); // WikiCommons uses this one
 
       // End of zone for revoking property edition by the website
-      uDark.is_foreground = true;
-      uDark.rgb_a_colorsRegex = /rgba?\([0-9., \/a-z_-]+\)/gmi, // rgba vals with variables names involved  #rgba(255 255 255 / 0.1) is valid color
-        uDark.hsl_a_colorsRegex = /hsla?\(([%0-9., \/=a-z-]|deg|turn|tetha)+\)/gmi, // hsla vals without variables involved
+        uDark.is_foreground = true;
+        uDark.rgb_a_colorsRegex = /rgba?\([%0-9., \/a-z_+*-]+\)/gmi, // rgba vals with variables names and calcs involved NOTE: #rgba(255 255 255 / 0.1) is valid color rgba(255,255,255,30%) is valid color too
+        uDark.hsl_a_colorsRegex = /hsla?\(([%0-9., \/=a-z_+*-]|deg|turn|tetha)+\)/gmi, // hsla vals  with variables names and calcs involved  #rgba(255 255 255 / 0.1)
         uDark.valuePrototypeEditor = function(leType, atName, watcher = x => x, conditon = x => x, aftermath = false) {
           //   console.log(leType,atName)
           // if (conditon) {
@@ -393,7 +393,7 @@ window.dark_object = {
           .replace(/^(.*)$/g, "^$1$")).join("|") // User multi match)
         uDark.general_cache = {};
         uDark.idk_cache = {};
-        uDark.reloadTimingForIDKCorsStylesheets=300; // edit_str from 2024 january was ok with 210 for both editing and messaging, 250 Should be enough for now
+        uDark.reloadTimingForIDKCorsStylesheets=400; // edit_str from 2024 january was ok with 210 for both editing and messaging, 250 Should be enough for now
         uDark.fixedRandom = Math.random();
         browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editBeforeData);
         browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.editBeforeRequestStyleSheet);
@@ -455,8 +455,8 @@ window.dark_object = {
     },
     install: function() {
       uDark.is_background = true;
-      uDark.rgb_a_colorsRegex = /rgba?\([0-9., \/]+\)/gmi, // rgba vals without variables involved #! rgba(255 255 255 / 0.1) is valid color
-        uDark.hsl_a_colorsRegex = /hsla?\(([%0-9., \/=]|deg|turn|tetha)+\)/gmi, // hsla vals without variables involved
+      uDark.rgb_a_colorsRegex = /rgba?\([%0-9., \/]+\)/gmi, // rgba vals without variables and calc()involved #! rgba(255 255 255 / 0.1) is valid color and rgba(255,255,255,30%) too
+        uDark.hsl_a_colorsRegex = /hsla?\(([%0-9., \/=]|deg|turn|tetha)+\)/gmi, // hsla vals without variables and calc() involved
         uDark.injectscripts = [dark_object.both.install, dark_object.foreground.inject].map(code => {
           var script = document.createElement("script");
           script.innerHTML = "(" + code.toString() + ")()";
@@ -483,7 +483,7 @@ window.dark_object = {
             if (p.used_cache_keys.size) { // We time it to avoid deleting the cache before the page is loaded (Like on link clicks)
               setTimeout(x => {
                 let owned_cache_keys = new Set()
-                Object.values(uDark.connected_cs_ports).forEach(x => x.used_cache_keys.forEach(y => owned_cache_keys.add(y)))
+                Object.values(uDark.connected_cs_ports).forEach(x => x.used_cache_keys && x.used_cache_keys.forEach(y => owned_cache_keys.add(y)))
 
                 p.used_cache_keys.forEach(x => {
                   if (!owned_cache_keys.has(x)) {
@@ -1163,7 +1163,7 @@ window.dark_object = {
         disable_edit_str_cache: true,
         unResovableVarsRegex: /(?:hsl|rgb)a?[ ]*\([^)]*\(/, // vars that can't be resolved by the background script
         userSettings: {},
-        keepIdkProperties: false,
+        keepIdkProperties: true,
         chunk_stylesheets_idk_only_cors: true, // Asking front trough a message to get the css can be costly so we only do it when it's absolutely necessary: when the cors does not allow us to get the css directly;
         disableCorsCSSEdit: false,
         namedColorsRegex: (new RegExp(`(?<![_a-z0-9-])(${CSS_COLOR_NAMES.join("|")})(?![_a-z0-9-])`, "gmi")),
@@ -1175,6 +1175,7 @@ window.dark_object = {
         min_bright_bg: 0.1, // background with value over min_bright_bg_trigger will be darkened from this value up to max_bright_bg
         max_bright_bg: 0.4, // background with value over min_bright_bg_trigger will be darkened from min_bright_bg up to this value
         on_idk_missing: "fill_minimum",
+        on_idk_missing_twice: {restore:true,fill_black:false,fill_color:"red"}["restore"],
         idk_minimum_editor: 0.2,
         general_cache: {},
         connected_cs_ports: {},
@@ -1349,7 +1350,7 @@ window.dark_object = {
 
           return render(...[r, g, b], a);
         },
-        eget_color: function(anycolor, editColorF = false, cssRule = false) {
+        eget_color: function(anycolor, editColorF = false, cssRule = false,no_color=false) {
 
 
           if (!anycolor) {
@@ -1362,6 +1363,11 @@ window.dark_object = {
             // otherwise if it is not a color, we should warn as its a bug in regexpes
             // or frontend does not define a color correctly
             console.info(anycolor, " is not a color (It's ok if frontent does not define a color correctly)")
+            if(no_color)
+            {
+              if(no_color===true) return anycolor;
+              return no_color;
+            }
             return editColorF ? editColorF(...[0, 0, 0, 1]) : [0, 0, 0, 1];
           }
           if (editColorF) {
@@ -1375,7 +1381,7 @@ window.dark_object = {
           // Must restore spanp feature and use it in frontend capture with flood-color css attribute
           // to catch correctly assignments like style.color=rgba(var(--flood-color),0.5) instead of returning [0,0,0,0]
 
-          if (!possiblecolor) {
+          if (!possiblecolor || possiblecolor==="none") { // none is not a color, and it not usefull to create a style element for it
             return false
           }
 
@@ -1394,6 +1400,7 @@ window.dark_object = {
           }
 
           style.floodColor = possiblecolor;
+
           let result = style.floodColor; // Must be done in 2 steps to avoid same value as possiblecolor
 
           if (!style.floodColor) {
@@ -1413,7 +1420,7 @@ window.dark_object = {
             result = computedStyle.floodColor || possiblecolor; // Sometimes on frontend, computedStyle is empty, idk why. Looks like a bug in browser 
 
             if (computedStyle.floodColor != computedStyle.backgroundColor) // Probably an invalid color
-            { // backgroundColor is the only poperty wich returns rgba(0, 0, 0, 0) an alpha value on unresolved vars/invalid colors
+            { // backgroundColor is the only poperty wich returns rgba(0, 0, 0, 0) an alpha value on unresolved vars/invalid 
               result = false;
             }
 
@@ -1639,17 +1646,49 @@ window.dark_object = {
 
           });
         },
+        
+        idk_twice_actions:{
+          "background":(cssRule,idk_value)=>{
 
-        edit_with_regex: function(idk_mode, value, regex, transformation, render, cssRule) {
+
+                cssRule.style.setProperty("background-blend-mode","darken","important");
+
+                // Use RGB colors to avoid value bein edited later
+                // Use hsl color name or hex to benefit a future edit
+                return idk_value+" linear-gradient(rgba(140, 140, 140, 1),rgba(140, 140, 140, 1))";
+            },//9f9f9f
+            "background-image":(cssRule,idk_value)=>{
+              
+                // Use RGB colors to avoid value being edited later
+                // Use hsl color name or hex to benefit a future edit
+                  cssRule.style.setProperty("background-blend-mode","darken","important");
+                  return idk_value+", linear-gradient(rgba(140, 140, 140, 1),rgba(140, 140, 140, 1))";
+              },
+              
+                // Use RGB colors to avoid value being edited later
+            "color":(cssRule,idk_value)=>{     return "rgb(255,255,255)";    }
+        },
+        edit_with_regex: function(idk_mode, key, value, regex, transformation, render, cssRule) {
           return value.replaceAll(regex, (match) => {
-            return transformation(...uDark.eget_color(uDark.restore_idk_vars(idk_mode, match), false, cssRule), render);
+            let restored=uDark.restore_idk_vars(idk_mode, match);
+            let maybe_array = uDark.eget_color(restored, false, cssRule,uDark.on_idk_missing_twice )
+            if(maybe_array.push)
+            {            
+              return transformation(...maybe_array, render);
+            }
+            // console.log("Fully failed to get '",key,"' from",maybe_array,cssRule,match);
+            if(uDark.idk_twice_actions[key])
+            {
+                maybe_array=uDark.idk_twice_actions[key](cssRule,restored);
+            }
+            return maybe_array;
           });
         },
 
         hexadecimalColorsRegex: /#[0-9a-f]{3,4}(?:[0-9a-f]{2})?(?:[0-9a-f]{2})?/gmi, // hexadecimal colors
         foreground_color_css_properties: ["color", "fill"], // css properties that are foreground colors
         // Gradients can be set in background-image
-        background_color_css_properties_regex: /color|fill|box-shadow|background-image/, // css properties that are background colors
+        background_color_css_properties_regex: /color|fill|box-shadow|background(-image)?/, // css properties that are background colors
         edit_prefix_fg_vars: function(idk_mode, value, actions) {
           if (!value.includes("var(") && !idk_mode) {
             return value; // No variables to edit;
@@ -1658,7 +1697,7 @@ window.dark_object = {
         },
         restore_idk_vars: function(idk_mode, value) {
           if (idk_mode) {
-            value = value.replaceAll("..1..", "var(").replaceAll("..2..", ")");
+            value = value.replaceAll("..1..", "var(").replaceAll("..2..", ")").replaceAll("..3..", "calc(");
             // value = CSS_COLOR_NAMES[Math.floor(Math.random() * CSS_COLOR_NAMES.length)];
           }
           return value;
@@ -1706,10 +1745,11 @@ window.dark_object = {
                   if (!uDark.keepIdkProperties) {
                     cssStyle.removeProperty(key_idk);
                   }
-
-                  for (let i = 0; i < 4; i++) {
-                    value = value.replaceAll(/var\([^()]+\)/g, match => match.replaceAll("var(", "..1..").replaceAll(")", "..2.."))
-                  }
+                    //value.match(/(var|calc)\((\((\((\((\((\((\((\((.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)/g) 
+                    // 9 nested vars or parentheis: keep hsl or RGBA bounds if a parethesis is open we expect it to be closed.
+                    value=value.replaceAll(/(var|calc)\((\((\((\((\((\((\((\((.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)/g, match => match.replaceAll("var(", "..1..").replaceAll(")", "..2..").replaceAll("calc(", "..3.."));
+                    // value = value.replaceAll(/(var|calc)\([^()]+\)/g, match => match.replaceAll("var(", "..1..").replaceAll(")", "..2..").replaceAll("calc(", "..3.."))
+                  
                 }
               }
               // if(debug=cssRule.cssText.includes(uDark.searchedCssText))
@@ -1726,11 +1766,11 @@ window.dark_object = {
               // }
 
 
-              value = uDark.edit_with_regex(idk_mode, value, uDark.rgb_a_colorsRegex, transformation, render, idk_mode ? cssRule : false); // edit_rgb_a_colors
-              value = uDark.edit_with_regex(idk_mode, value, uDark.hsl_a_colorsRegex, transformation, render, idk_mode ? cssRule : false); // edit_hsl_a_colors
+              value = uDark.edit_with_regex(idk_mode, key, value, uDark.rgb_a_colorsRegex, transformation, render, idk_mode ? cssRule : false); // edit_rgb_a_colors
+              value = uDark.edit_with_regex(idk_mode, key, value, uDark.hsl_a_colorsRegex, transformation, render, idk_mode ? cssRule : false); // edit_hsl_a_colors
               value = uDark.restore_idk_vars(idk_mode, value); // Restore alone vars: color: var(--color_8)
-              value = uDark.edit_with_regex(false /*The namedColorsRegex is not affected*/ , value, uDark.namedColorsRegex, transformation, render); // edit_named_colors
-              value = uDark.edit_with_regex(false /*The hexadecimalColorsRegex is not affected*/ , value, uDark.hexadecimalColorsRegex, transformation, render); // edit_hex_colors // The browser auto converts hex to rgb, but some times not like in  var(--123,#00ff00) as it cant resolve the var
+              value = uDark.edit_with_regex(false /*The namedColorsRegex is not affected*/ , key, value, uDark.namedColorsRegex, transformation, render); // edit_named_colors
+              value = uDark.edit_with_regex(false /*The hexadecimalColorsRegex is not affected*/, key, value, uDark.hexadecimalColorsRegex, transformation, render); // edit_hex_colors // The browser auto converts hex to rgb, but some times not like in  var(--123,#00ff00) as it cant resolve the var
 
               cssStyle.setProperty(key_prefix + key, value, priority); // Unexpected recursion even using setProperty WHY ?
               // console.log("end",key,value)
@@ -1774,10 +1814,10 @@ window.dark_object = {
             has: false,
             details: details
           }; // Passed by reference. // request details are shared so we use a new object. We could have emedded it into details though
-
-          // console.log("cssRule",cssRule,foreground_items,background_items,variables_items,wording_action)
+          
           wording_action.length && uDark.css_properties_wording_action(cssRule.style, wording_action, details, cssRule);
           background_items.length && uDark.edit_all_cssRule_colors(idk_mode, cssRule, background_items, uDark.rgba, uDark.rgba_val, hasUnresolvedVars)
+          
           foreground_items.length && uDark.edit_all_cssRule_colors(idk_mode, cssRule, foreground_items, uDark.revert_rgba, uDark.rgba_val, hasUnresolvedVars, "", {
             prefix_fg_vars: true
           })
@@ -2419,7 +2459,6 @@ window.dark_object = {
     },
     chunk_manage_idk: function(details, chunk) {
 
-      refresh_stylesheet =!(new URL(details.url).searchParams.has("ud_refresh"));
 
       if (!uDark.disableCorsCSSEdit && details.unresolvableChunks ) {
         if (uDark.chunk_stylesheets_idk_only_cors) {
@@ -2442,10 +2481,12 @@ window.dark_object = {
           })
   
           if (uDark.general_cache[chunk_hash]) {
-            console.log(chunk_hash, "seems to be in cache", details.url)
+            // console.log(chunk_hash, "seems to be in cache", details.url,details.requestId)
             return uDark.general_cache[chunk_hash];
           }
           uDark.general_cache[chunk_hash] = chunk;
+          
+          let refresh_stylesheet =!(new URL(details.url).searchParams.has("ud_refresh"));
           if(refresh_stylesheet)
           {
             content_script_port_promise.then((content_script_port) => {
