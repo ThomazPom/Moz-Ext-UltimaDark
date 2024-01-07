@@ -1172,7 +1172,7 @@ window.dark_object = {
       } // Avoid infinite loops // Already fully installed. Do not reinstall if somehow another HTML element gets injected in the page
       const CSS_COLOR_NAMES = ["AliceBlue", "AntiqueWhite", "Aqua", "Aquamarine", "Azure", "Beige", "Bisque", "Black", "BlanchedAlmond", "Blue", "BlueViolet", "Brown", "BurlyWood", "CadetBlue", "Chartreuse", "Chocolate", "Coral", "CornflowerBlue", "Cornsilk", "Crimson", "Cyan", "DarkBlue", "DarkCyan", "DarkGoldenRod", "DarkGray", "DarkGrey", "DarkGreen", "DarkKhaki", "DarkMagenta", "DarkOliveGreen", "DarkOrange", "DarkOrchid", "DarkRed", "DarkSalmon", "DarkSeaGreen", "DarkSlateBlue", "DarkSlateGray", "DarkSlateGrey", "DarkTurquoise", "DarkViolet", "DeepPink", "DeepSkyBlue", "DimGray", "DimGrey", "DodgerBlue", "FireBrick", "FloralWhite", "ForestGreen", "Fuchsia", "Gainsboro", "GhostWhite", "Gold", "GoldenRod", "Gray", "Grey", "Green", "GreenYellow", "HoneyDew", "HotPink", "IndianRed", "Indigo", "Ivory", "Khaki", "Lavender", "LavenderBlush", "LawnGreen", "LemonChiffon", "LightBlue", "LightCoral", "LightCyan", "LightGoldenRodYellow", "LightGray", "LightGrey", "LightGreen", "LightPink", "LightSalmon", "LightSeaGreen", "LightSkyBlue", "LightSlateGray", "LightSlateGrey", "LightSteelBlue", "LightYellow", "Lime", "LimeGreen", "Linen", "Magenta", "Maroon", "MediumAquaMarine", "MediumBlue", "MediumOrchid", "MediumPurple", "MediumSeaGreen", "MediumSlateBlue", "MediumSpringGreen", "MediumTurquoise", "MediumVioletRed", "MidnightBlue", "MintCream", "MistyRose", "Moccasin", "NavajoWhite", "Navy", "OldLace", "Olive", "OliveDrab", "Orange", "OrangeRed", "Orchid", "PaleGoldenRod", "PaleGreen", "PaleTurquoise", "PaleVioletRed", "PapayaWhip", "PeachPuff", "Peru", "Pink", "Plum", "PowderBlue", "Purple", "RebeccaPurple", "Red", "RosyBrown", "RoyalBlue", "SaddleBrown", "Salmon", "SandyBrown", "SeaGreen", "SeaShell", "Sienna", "Silver", "SkyBlue", "SlateBlue", "SlateGray", "SlateGrey", "Snow", "SpringGreen", "SteelBlue", "Tan", "Teal", "Thistle", "Tomato", "Turquoise", "Violet", "Wheat", "White", "WhiteSmoke", "Yellow", "YellowGreen"]
       window.uDark = {
-        unResovableVarsRegex: /(?:hsl|rgb)a?[ ]*\([^)]*\(/, // vars that can't be resolved by the background script
+        unResolvableVarsRegex: /(?:hsl|rgb)a?[ ]*\([^)]*\(/, // vars that can't be resolved by the background script
         userSettings: {},
         keepIdkProperties: true,
         enable_idk_mode: true,
@@ -1720,7 +1720,7 @@ window.dark_object = {
           cssRule[key] = "done"; // Used right above to avoid reprocessing, already deleted once by mistake, this is why this comment exists now :)
           let priority = cssStyle.getPropertyPriority(key_idk);
 
-          if (uDark.is_background && uDark.unResovableVarsRegex.test(value)) {
+          if (uDark.is_background && uDark.unResolvableVarsRegex.test(value)) {
             if(!topLevelRule.unresolvableRule)
             {
               hasUnresolvedVars.carried.unresolvableStylesheet.insertRule(topLevelRule.cssText, hasUnresolvedVars.carried.unresolvableStylesheet.cssRules.length );
@@ -1754,7 +1754,7 @@ window.dark_object = {
           }
           // if(debug=cssRule.cssText.includes(uDark.searchedCssText))
           // {
-          //   console.log("Catched 1.1", idk_mode,cssRule.cssText,key_idk,key,value,actions,uDark.is_background && uDark.unResovableVarsRegex.test(value)) 
+          //   console.log("Catched 1.1", idk_mode,cssRule.cssText,key_idk,key,value,actions,uDark.is_background && uDark.unResolvableVarsRegex.test(value)) 
           // }
           if (actions.prefix_fg_vars) {
             value = uDark.edit_prefix_fg_vars(idk_mode, value, actions);
@@ -1762,7 +1762,7 @@ window.dark_object = {
 
           // if(debug=cssRule.cssText.includes(uDark.searchedCssText))
           // {
-          //   console.log("Catched 1.2", idk_mode,cssRule.cssText,key_idk,key,value,actions,uDark.is_background && uDark.unResovableVarsRegex.test(value)) 
+          //   console.log("Catched 1.2", idk_mode,cssRule.cssText,key_idk,key,value,actions,uDark.is_background && uDark.unResolvableVarsRegex.test(value)) 
           // }
           
 
@@ -1829,8 +1829,8 @@ window.dark_object = {
                 continue;
               }
             }
-
-            if (x.startsWith("--")) {
+            
+            if (x.startsWith("--")) { // Partial idk mode must not edit variables
               variables_items.push(x);
               continue;
             } // Eliminate Variables, i don't think its usefull to test them againt regexes
@@ -1847,6 +1847,10 @@ window.dark_object = {
             } // Do background regex match
 
           }
+          // NOTE: Once i tried to disable variables_items, on partial idk mode, but it was an error: some variables can be used in background or foreground colors as is (--rgb(var(--ud-fg--color_1),0.5))
+          // And must therefore be edited
+
+
           let hasUnresolvedVars = {
             has: false,
             carried:carried,
@@ -1952,7 +1956,7 @@ window.dark_object = {
           uDark.edit_cssRules(unresolvableStylesheet.cssRules, false, details, {}, function(rule) {
             uDark.edit_all_cssRule_colors(false, rule, Object.values(rule), false, false, false, key_prefix = "", actions = {},
             function(idk_mode, cssRule, key, key_idk, value, transformation, render, hasUnresolvedVars, key_prefix, actions,topLevelRule){
-              if(value.test(uDark.unResovableVarsRegex))
+              if(!value.test(uDark.unResolvableVarsRegex))
               {
                 cssRule.cssStyle.removeProperty(key);
               }
