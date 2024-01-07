@@ -1174,7 +1174,7 @@ window.dark_object = {
       window.uDark = {
         unResolvableVarsRegex: /(?:hsl|rgb)a?[ ]*\([^)]*\(/, // vars that can't be resolved by the background script
         userSettings: {},
-        keepIdkProperties: true,
+        keepIdkProperties: false,
         enable_idk_mode: true,
         chunk_stylesheets_idk_only_cors: true, // Asking front trough a message to get the css can be costly so we only do it when it's absolutely necessary: when the cors does not allow us to get the css directly;
         disableCorsCSSEdit: false,
@@ -1725,6 +1725,7 @@ window.dark_object = {
             {
               hasUnresolvedVars.carried.unresolvableStylesheet.insertRule(topLevelRule.cssText, hasUnresolvedVars.carried.unresolvableStylesheet.cssRules.length );
               topLevelRule.unresolvableRule=true;
+              console.log("Added unresolvable rule",topLevelRule.cssText,hasUnresolvedVars.carried.unresolvableStylesheet.cssRules.length);
             }
 
 
@@ -1780,10 +1781,11 @@ window.dark_object = {
         edit_all_cssRule_colors(idk_mode, cssRule, keys, transformation, render, hasUnresolvedVars, key_prefix = "", actions = {},callBack=uDark.edit_all_cssRule_colors_cb) {
           // render = (render||uDark.rgba_val);
           // console.log(idk_mode,cssRule,keys,transformation,render,key_prefix,actions);
-          
-          let topLevelRule=(cssRule.parentRule||cssRule)
-          
-
+          let topLevelRule=cssRule;
+          while(topLevelRule.parentRule)
+          {
+            topLevelRule=topLevelRule.parentRule; // Even media rules can have parentRule: its called Layers
+          }
           keys.forEach(key => {
             let key_idk = ((idk_mode===true) ? "--ud-idk_" : "") + key;
             let value = cssRule.style.getPropertyValue(key_idk) || "";
@@ -1810,6 +1812,7 @@ window.dark_object = {
               }
             }
             if (value) {
+              
               callBack(idk_mode, cssRule, key,key_idk, value, transformation, render, hasUnresolvedVars, key_prefix, actions,topLevelRule);
             }
           });
@@ -1849,6 +1852,7 @@ window.dark_object = {
           }
           // NOTE: Once i tried to disable variables_items, on partial idk mode, but it was an error: some variables can be used in background or foreground colors as is (--rgb(var(--ud-fg--color_1),0.5))
           // And must therefore be edited
+       
 
 
           let hasUnresolvedVars = {
@@ -1952,13 +1956,15 @@ window.dark_object = {
 
           uDark.edit_cssRules(cssStyleSheet.cssRules, idk_mode, details,carried);
           
+          console.log("BEFORE",unresolvableStylesheet.cssRules)
           
           uDark.edit_cssRules(unresolvableStylesheet.cssRules, false, details, {}, function(rule) {
-            uDark.edit_all_cssRule_colors(false, rule, Object.values(rule), false, false, false, key_prefix = "", actions = {},
+            uDark.edit_all_cssRule_colors(false, rule, Object.values(rule.style), false, false, false, key_prefix = "", actions = {debug:true},
             function(idk_mode, cssRule, key, key_idk, value, transformation, render, hasUnresolvedVars, key_prefix, actions,topLevelRule){
-              if(!value.test(uDark.unResolvableVarsRegex))
+              
+              if(!uDark.unResolvableVarsRegex.test(value))
               {
-                cssRule.cssStyle.removeProperty(key);
+                cssRule.style.removeProperty(key);
               }
             });
           })

@@ -14,7 +14,6 @@ function csOverrideRemoteContent(url, content) {
 
 let expectedValueForResolvableColor = "rgba(255, 254, 253, 0.55)";
 function resolveIDKVars(data) {
- 
     if (data.chunk) {
       
       let readable_variable_check_value=`rgba(255,254,253,var(--chunk_is_readable_${data.details.requestId}_${data.details.datacount}))`;
@@ -27,13 +26,16 @@ function resolveIDKVars(data) {
         // console.log("floodColor",floodColor);
         if(floodColor!=expectedValueForResolvableColor){return;} // If the floodColor is not the one we expect for this chunk, it means that the chunk is not written yet, so we wait
         clearInterval(workInterval);
+        option.remove();
         
         let idk_variables_only = window.wrappedJSObject.uDark.edit_str(data.chunk_variables , false, false, false, "partial_idk");
         
         let tempVariablesStyle=document.createElement("style");
         tempVariablesStyle.id="UltimaDarkTempVariablesStyle";
+        
         tempVariablesStyle.innerHTML=idk_variables_only;
-        document.head.appendChild(tempVariablesStyle);
+        document.head.append(tempVariablesStyle);
+        
         console.log("Resolved variables: will now post message to background script",readable_variable_check_value);
         let ikd_chunk_resolved = window.wrappedJSObject.uDark.edit_str(data.chunk, false, false, false, true);
         data.chunk = ikd_chunk_resolved;
@@ -42,7 +44,7 @@ function resolveIDKVars(data) {
         });
       },50); // Allow time for a chunk to be written before reading vairables out of it.
       setTimeout(() => {
-        // console.log("Timeout: on chunk",data.details.datacount,"for",data.details.requestId,"(url:",data.details.url,")");
+        console.log("Timeout: on chunk",data.details.datacount,"for",data.details.requestId,"(url:",data.details.url,")");
         // console.log("It was containing:", window.wrappedJSObject.uDark.edit_str(data.chunk_variables , false, false, false, "partial_idk"));
         clearInterval(workInterval);
       }, 10000); // If the chunk is not written after 10 seconds, we stop waiting for it.
