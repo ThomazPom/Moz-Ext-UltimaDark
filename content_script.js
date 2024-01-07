@@ -42,11 +42,8 @@ function resolveIDKVars(data) {
         });
       },50); // Allow time for a chunk to be written before reading vairables out of it.
       setTimeout(() => {
-        console.log("Timeout: will now post message to background script");
+        console.log("Timeout: on chunk",data.details.datacount,"for",data.details.requestId,"(url:",data.details.url,")");
         clearInterval(workInterval);
-        myPort.postMessage({
-          resolvedIDKVars: data
-        });
       }, 10000); // If the chunk is not written after 10 seconds, we stop waiting for it.
     }
 };
