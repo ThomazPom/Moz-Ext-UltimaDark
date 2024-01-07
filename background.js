@@ -60,7 +60,7 @@ window.dark_object = {
       }
 
 
-      if (!uDark.disable_idk_mode) { // Use of an observer was consuming too much ressources
+      if (uDark.enable_idk_mode) { // Use of an observer was consuming too much ressources
         uDark.do_idk_mode_timed();
       }
 
@@ -395,9 +395,14 @@ window.dark_object = {
         uDark.idk_cache = {};
         uDark.resolvedIDKVars_action_timeout=400; // edit_str from 2024 january was ok with 210 for both editing and messaging, 250 Should be enough for now
         uDark.fixedRandom = Math.random();
+        
         browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editBeforeData);
         browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.editBeforeRequestStyleSheet);
         browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.editBeforeRequestImage);
+        /*Experimental*/
+        browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editHeadersOnHeadersReceived);
+        browser.webRequest.onCompleted.removeListener(dark_object.misc.onCompletedStylesheet);
+        /*end of Experimental*/
         if (uDark.regiteredCS) {
           uDark.regiteredCS.unregister();
           uDark.regiteredCS = null
@@ -415,6 +420,21 @@ window.dark_object = {
               types: ["stylesheet"]
             },
             ["blocking"]);
+          
+            /*Experimental*/
+            browser.webRequest.onHeadersReceived.addListener(dark_object.misc.editHeadersOnHeadersReceived, {
+              // urls: uDark.userSettings.properWhiteList, // We can't assume the css is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
+              urls: ["<all_urls>"],
+              types: ["stylesheet"]
+            },
+            ["blocking"]);
+            browser.webRequest.onCompleted.addListener(dark_object.misc.onCompletedStylesheet, {
+              // urls: uDark.userSettings.properWhiteList, // We can't assume the css is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
+              urls: ["<all_urls>"],
+              types: ["stylesheet"]
+            },
+            /*["blocking"]*/);
+            /*end of Experimental*/
 
           browser.webRequest.onBeforeRequest.addListener(dark_object.misc.editBeforeRequestImage, {
               urls: ["<all_urls>"],
@@ -487,10 +507,10 @@ window.dark_object = {
 
                 p.used_cache_keys.forEach(x => {
                   if (!owned_cache_keys.has(x)) {
-                    // console.log("Deleting", x)
+                    console.log("Deleting", x)
                     delete uDark.idk_cache[x]
                   }
-                  // else(console.log("Not deleting", x, "because it is still used by another port"))
+                  else(console.log("Not deleting", x, "because it is still used by another port"))
                 })
               }, 5*1000); // Allow 5 seconds for the new port to connect and own its cache keys
             }
@@ -976,8 +996,14 @@ window.dark_object = {
             message.resolvedIDKVars && uDark.resolvedIDKVars_action(message.resolvedIDKVars,sender);
           },
           resolvedIDKVars_action: function(data) {
+            console.log("resolvedIDKVars_action",data.chunk.includes("darken"))
+            uDark.idk_cache[data.chunk_hash] = data.chunk;
 
-            
+
+
+
+
+            // Missing chunks strategy :
             let missingChunksKey="missing_chunks_"+data.details.requestId;
             if(missingChunksKey in uDark.idk_cache){
               let missing_chunk_key_set=uDark.idk_cache[missingChunksKey];
@@ -991,6 +1017,9 @@ window.dark_object = {
                 delete uDark.idk_cache["filter_"+missingChunksKey];
               }
             }
+            // end of missing chunks strategy
+
+
 
 
           },
@@ -1143,12 +1172,11 @@ window.dark_object = {
       } // Avoid infinite loops // Already fully installed. Do not reinstall if somehow another HTML element gets injected in the page
       const CSS_COLOR_NAMES = ["AliceBlue", "AntiqueWhite", "Aqua", "Aquamarine", "Azure", "Beige", "Bisque", "Black", "BlanchedAlmond", "Blue", "BlueViolet", "Brown", "BurlyWood", "CadetBlue", "Chartreuse", "Chocolate", "Coral", "CornflowerBlue", "Cornsilk", "Crimson", "Cyan", "DarkBlue", "DarkCyan", "DarkGoldenRod", "DarkGray", "DarkGrey", "DarkGreen", "DarkKhaki", "DarkMagenta", "DarkOliveGreen", "DarkOrange", "DarkOrchid", "DarkRed", "DarkSalmon", "DarkSeaGreen", "DarkSlateBlue", "DarkSlateGray", "DarkSlateGrey", "DarkTurquoise", "DarkViolet", "DeepPink", "DeepSkyBlue", "DimGray", "DimGrey", "DodgerBlue", "FireBrick", "FloralWhite", "ForestGreen", "Fuchsia", "Gainsboro", "GhostWhite", "Gold", "GoldenRod", "Gray", "Grey", "Green", "GreenYellow", "HoneyDew", "HotPink", "IndianRed", "Indigo", "Ivory", "Khaki", "Lavender", "LavenderBlush", "LawnGreen", "LemonChiffon", "LightBlue", "LightCoral", "LightCyan", "LightGoldenRodYellow", "LightGray", "LightGrey", "LightGreen", "LightPink", "LightSalmon", "LightSeaGreen", "LightSkyBlue", "LightSlateGray", "LightSlateGrey", "LightSteelBlue", "LightYellow", "Lime", "LimeGreen", "Linen", "Magenta", "Maroon", "MediumAquaMarine", "MediumBlue", "MediumOrchid", "MediumPurple", "MediumSeaGreen", "MediumSlateBlue", "MediumSpringGreen", "MediumTurquoise", "MediumVioletRed", "MidnightBlue", "MintCream", "MistyRose", "Moccasin", "NavajoWhite", "Navy", "OldLace", "Olive", "OliveDrab", "Orange", "OrangeRed", "Orchid", "PaleGoldenRod", "PaleGreen", "PaleTurquoise", "PaleVioletRed", "PapayaWhip", "PeachPuff", "Peru", "Pink", "Plum", "PowderBlue", "Purple", "RebeccaPurple", "Red", "RosyBrown", "RoyalBlue", "SaddleBrown", "Salmon", "SandyBrown", "SeaGreen", "SeaShell", "Sienna", "Silver", "SkyBlue", "SlateBlue", "SlateGray", "SlateGrey", "Snow", "SpringGreen", "SteelBlue", "Tan", "Teal", "Thistle", "Tomato", "Turquoise", "Violet", "Wheat", "White", "WhiteSmoke", "Yellow", "YellowGreen"]
       window.uDark = {
-        disable_edit_str_cache: true,
         unResovableVarsRegex: /(?:hsl|rgb)a?[ ]*\([^)]*\(/, // vars that can't be resolved by the background script
         userSettings: {},
         keepIdkProperties: true,
-        disable_idk_mode: true,
-        chunk_stylesheets_idk_only_cors: false, // Asking front trough a message to get the css can be costly so we only do it when it's absolutely necessary: when the cors does not allow us to get the css directly;
+        enable_idk_mode: true,
+        chunk_stylesheets_idk_only_cors: true, // Asking front trough a message to get the css can be costly so we only do it when it's absolutely necessary: when the cors does not allow us to get the css directly;
         disableCorsCSSEdit: false,
         namedColorsRegex: (new RegExp(`(?<![_a-z0-9-])(${CSS_COLOR_NAMES.join("|")})(?![_a-z0-9-])`, "gmi")),
         min_bright_fg: 0.65, // Text with luminace under this value will be brightened
@@ -1736,6 +1764,7 @@ window.dark_object = {
           // {
           //   console.log("Catched 1.2", idk_mode,cssRule.cssText,key_idk,key,value,actions,uDark.is_background && uDark.unResovableVarsRegex.test(value)) 
           // }
+          
 
 
           value = uDark.edit_with_regex(idk_mode, key, value, uDark.rgb_a_colorsRegex, transformation, render, idk_mode ? cssRule : false); // edit_rgb_a_colors
@@ -1756,9 +1785,11 @@ window.dark_object = {
           
 
           keys.forEach(key => {
-            let key_idk = (idk_mode ? "--ud-idk_" : "") + key;
+            let key_idk = ((idk_mode===true) ? "--ud-idk_" : "") + key;
             let value = cssRule.style.getPropertyValue(key_idk) || "";
 
+      
+  
             if (!value) { // Value is not set when using shorthand and var(--background-color) is used
               /* This is testable with
                   aCSS=new CSSStyleSheet();
@@ -1789,8 +1820,9 @@ window.dark_object = {
             variables_items = [],
             background_items = [],
             wording_action = [];
+
           for (let x of cssRule.style) {
-            if (idk_mode) {
+            if (idk_mode===true) {
               if (x.startsWith("--ud-idk_")) {
                 x = x.slice(9);
               } else {
@@ -1837,7 +1869,10 @@ window.dark_object = {
           }
         },
         do_idk_mode_timed: function(duration, interval) {
-
+          if(!uDark.idk_mode_enabled)
+          {
+            return;
+          }
           // Repeat IDK mode every n ms for a certain time
           duration = duration || uDark.idk_mode_duration || 10000;
           interval = interval || uDark.idk_mode_interval || 200;
@@ -1925,18 +1960,11 @@ window.dark_object = {
           })
 
 
-          console.log("Unresolvable rules",unresolvableStylesheet,unresolvableStylesheet.cssRules.length);
+          // console.log("Unresolvable rules",unresolvableStylesheet,unresolvableStylesheet.cssRules.length);
         },
-        edit_str: function(str, cssStyleSheet, verifyIntegrity = false, details, idk_mode = false) {
+        edit_str: function(str, cssStyleSheet, verifyIntegrity = false, details, idk_mode = false,carried={}) {
           let rejected_str = false;
 
-          if (!uDark.disable_edit_str_cache && details) {
-
-            details.str_hash = fMurmurHash3Hash(details.url + str + idk_mode);
-            if (uDark.general_cache[details.str_hash]) {
-              return uDark.general_cache[details.str_hash];
-            }
-          }
           if (!cssStyleSheet) {
             cssStyleSheet = new CSSStyleSheet()
             let valueReplace = str + (verifyIntegrity ? "\n.integrity_rule{}" : "");
@@ -1949,7 +1977,7 @@ window.dark_object = {
             str = `z{${str}}`;
             cssStyleSheet.o_ud_replaceSync ? cssStyleSheet.o_ud_replaceSync(str) : cssStyleSheet.replaceSync(str);
 
-            uDark.edit_css(cssStyleSheet, false, details);
+            uDark.edit_css(cssStyleSheet, false, details,carried);
             str = cssStyleSheet.cssRules[0].cssText.slice(4, -2);
 
           } else {
@@ -2010,8 +2038,7 @@ window.dark_object = {
                 }
               }
             }
-
-            uDark.edit_css(cssStyleSheet, idk_mode, details);
+            uDark.edit_css(cssStyleSheet, idk_mode, details,carried);
 
             let rules = [...cssStyleSheet.cssRules].map(r => r.cssText);
 
@@ -2020,10 +2047,6 @@ window.dark_object = {
             str = rules.join("\n");
           }
 
-
-          if (!uDark.disable_edit_str_cache && details) {
-            uDark.general_cache[details.str_hash] = str;
-          }
           if (rejected_str) {
             str = {
               str: str,
@@ -2220,6 +2243,8 @@ window.dark_object = {
       //   (details.documentUrl || details.url).match(uDark.userSettings.exclude_regex)) {
       //   return {}
       // }
+
+      // PROOF OF CONCEPT EDITING IMAGES BUFFERS WIHOUT FETCHING THEM IS POSSIBLE
       if (details.url && (use2024Experimentalway = false)) {
         let filter = browser.webRequest.filterResponseData(details.requestId); // After this instruction, browser espect us to write data to the filter and close it
         details.buffers = details.buffers || [];
@@ -2321,56 +2346,7 @@ window.dark_object = {
         }
         return {}
       }
-
-      //     // Create an Image object
-      // const img = new Image();
-
-      // // Set the source of the Image to the blob URL
-      // img.src = URL.createObjectURL(blob);
-
-      // // Wait for the image to load
-      // img.onload = function () {
-      //   // Create a canvas
-      //   const canvas = document.createElement('canvas');
-      //   const ctx = canvas.getContext('2d');
-
-      //   // Set the canvas size to the image size
-      //   canvas.width = img.width;
-      //   canvas.height = img.height;
-
-      //   // Draw the image onto the canvas
-      //   ctx.drawImage(img, 0, 0);
-
-      //   // Get the ImageData from the canvas
-      //   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-      //   // Now you can work with the imageData object
-      //   console.log(imageData,img.src);
-
-      //   // The imageData object has a data property, a Uint8ClampedArray containing the color values of each pixel in the image.
-      //   // It is easier to work with this array as 32-bit integers, so we create a new Uint32Array from the original one.
-      //   let theImageDataUint32TMP = Uint32Array.from(imageData.data.buffer);
-      //   let n=theImageDataUint32TMP.length;
-      //   imgDataLoop: while (n--) {
-      //     var number = theImageDataUint32TMP[n];
-      //     var r = number & 0xff;
-      //     var g = (number >> 8) & 0xff;
-      //     var b = (number >> 16) & 0xff;
-      //     var a = (number >> 24) & 0xff;
-      //     {
-      //       // Standard way 2023
-      //       [r, g, b, a] = uDark.revert_rgba(r, g, b, a, (...args) => args);
-      //     }
-      //     var newColor = ((a << 24)) | (b << 16) | (g << 8) | r;
-      //     theImageDataUint32TMP[n] = newColor;
-      //   }
-
-
-
-      // };
-
-
-
+      // END OF PROOF OF CONCEPT EDITING IMAGES BUFFERS WIHOUT FETCHING THEM IS POSSIBLE
 
       ////////////////////////
       // Here we catch any image, including data:images <3 ( in the form of data-image.com)
@@ -2409,138 +2385,246 @@ window.dark_object = {
     },
 
     editBeforeRequestStyleSheet: function(details) {
-
-      let stylesheetURL=(new URL(details.url));
-      let refresh_stylesheet =stylesheetURL.searchParams.has("ud_refresh");
-      if(refresh_stylesheet)
-      {
+      
+      let carried={};
+      carried.isCorsRequest=dark_object.misc.isCorsRequest(details);
+      // let stylesheetURL=(new URL(details.url));
+      
+      
+      console.log("Loading CSS",details.url,details)
+      // let refresh_stylesheet =stylesheetURL.searchParams.has("ud_refresh"); // Near end for this system
+      // if(refresh_stylesheet)
+      // {
         
-        console.log("Redirecting CSS",details.url)
-        stylesheetURL.searchParams.delete("ud_refresh"); // Use cache for the stylesheet, and get the exact same resource
-        return {redirectUrl:stylesheetURL.href}; // Github sends different resources if you ask them twice like with a random param, taking in account your browser headers
-      }
-
-      console.log("Loading CSS",details.url)
-      // Util 2024 jan 02 we were checking details.documentUrl, or details.url to know if a stylesheet was loaded in a excluded page
-      // Since only CS ports that matches blaclist and whitelist are connected, we can simply check if this resource has a corresponding CS port
-      if (!uDark.connected_cs_ports["port-from-cs-" + details.tabId + "-" + details.frameId]) {
-        // console.log("CSS","No port found for",details.url,"loaded by webpage:",details.originUrl,"Assuming it is not an eligible webpage, or even blocked by another extension");
-        // console.log("If i'm lacking of knowledge, khere is what i know about this request",details.tabId,details.frameId);
-        return {
-          responseHeaders: details.responseHeaders
-        }
-      }
-
-
-      // if (details.originUrl && (details.originUrl.startsWith("moz-extension://")) ||
-      //   (details.documentUrl || details.url).match(uDark.userSettings.exclude_regex)) {
-      //   return {}
+      //   console.log("Redirecting CSS",details.url)
+      //   stylesheetURL.searchParams.delete("ud_refresh"); // Use cache for the stylesheet, and get the exact same resource
+      //   return {redirectUrl:stylesheetURL.href}; // Github sends different resources if you ask them twice like with a random param, taking in account your browser headers
       // }
 
-
-
-
-      let filter = browser.webRequest.filterResponseData(details.requestId); // After this instruction, browser espect us to write data to the filter and close it
-      let decoder = new TextDecoder()
-      let encoder = new TextEncoder();
-      details.datacount = 0;
-      details.rejectedValues = "";
-
-      filter.ondata = event => {
-
-        details.datacount++
-        var str = decoder.decode(event.data, {
-          stream: true
-        }); //str,cssStyleSheet,verifyIntegrity=false,details
-
-        transformResult = uDark.edit_str(details.rejectedValues + str, false, true, details);
-        if (transformResult.message) {
-          // console.log(details,transformResult.message)
-          details.rejectedValues += str;
-
-          // console.info(transformResult.message,details.url,details.rejectedValues.length);
-        } else {
-
-          details.rejectedValues = "";
-          // console.log(details,"Accepted integrity rule")
-          if (transformResult.rejected) {
-            // console.log("Accepted a partial integrity_rule ♥",details.url)
-            details.rejectedValues = transformResult.rejected;
-            transformResult = transformResult.str;
-          }
-          // TODO: Remove the call from here and do it in css edit
-          transformResult = uDark.send_data_image_to_parser(transformResult, details);
-          dark_object.misc.chunk_manage_idk(details, transformResult);
-
-          filter.write(encoder.encode(transformResult));
-          // console.log("Accepted integrity_rule",details.url,transformResult)
+      // Util 2024 jan 02 we were checking details.documentUrl, or details.url to know if a stylesheet was loaded in a excluded page
+      // Since only CS ports that matches blaclist and whitelist are connected, we can simply check if this resource has a corresponding CS port
+        if (!uDark.connected_cs_ports["port-from-cs-" + details.tabId + "-" + details.frameId]) {
+          // NOTE: It is safe to NOT use the promise here, thanks to the ARRIVING_SOON system 
+          // console.log("CSS","No port found for",details.url,"loaded by webpage:",details.originUrl,"Assuming it is not an eligible webpage, or even blocked by another extension");
+          // console.log("If i'm lacking of knowledge, khere is what i know about this request",details.tabId,details.frameId);
+          return {}
         }
-      }
-      filter.onstop = event => {
-        
 
-        if (details.rejectedValues.length) {
-          transformResult = uDark.edit_str(details.rejectedValues, false, false, details);
-          // TODO: Remove the call from here and do it in css edit
-          transformResult = uDark.send_data_image_to_parser(transformResult, details);
-          dark_object.misc.chunk_manage_idk(details, transformResult);
-          filter.write(encoder.encode(transformResult)); // Write the last chunk if any, trying to get the last rules to be applied, there is proaby invalid content at the end of the CSS;
-        }
-        
-        let missingChunksKey="missing_chunks_"+details.requestId;
-        if(missingChunksKey in uDark.idk_cache)
-        {
-          let missing_chunk_key_set = uDark.idk_cache[missingChunksKey]
-          uDark.idk_cache["filter_"+missingChunksKey]={filter,encoder};
-          setTimeout(()=>{
-            if(missing_chunk_key_set.size)
-            {
-              console.log("Missing chunks",missing_chunk_key_set.size,"for",details.url,"after",uDark.resolvedIDKVars_action_timeout,"ms")
+        let filter = browser.webRequest.filterResponseData(details.requestId); // After this instruction, browser espect us to write data to the filter and close it
+        let decoder = new TextDecoder()
+        let encoder = new TextEncoder();
+        details.datacount = 0;
+        details.rejectedValues = "";
+        filter.onstart = event => {
+          console.log("Onstart",details.url)
+        };
+        filter.ondata = event => {
+          
+          details.datacount++
+          var str = decoder.decode(event.data, {
+            stream: true
+          }); //str,cssStyleSheet,verifyIntegrity=false,details
+          let carried={};
+          carried.chunk = uDark.edit_str(details.rejectedValues + str, false, true, details,false,carried);
+          if (carried.chunk.message) {
+            // console.log(details,transformResult.message)
+            details.rejectedValues += str;
+  
+            // console.info(transformResult.message,details.url,details.rejectedValues.length);
+          } else {
+  
+            details.rejectedValues = "";
+            // console.log(details,"Accepted integrity rule")
+            if (carried.chunk.rejected) {
+              // console.log("Accepted a partial integrity_rule ♥",details.url)
+              details.rejectedValues = carried.chunk.rejected;
+              carried.chunk = carried.chunk.str;
             }
-            missing_chunk_key_set.forEach((chunk_hash)=>{
-              uDark.resolvedIDKVars_action({chunk_hash,details})
-            })
-          },  uDark.resolvedIDKVars_action_timeout);
+            
+            // TODO: Remove the call from here and do it in css edit
+            carried.chunk = uDark.send_data_image_to_parser(carried.chunk, details);
+            dark_object.misc.chunk_manage_idk(details, carried);
+            filter.write(encoder.encode(carried.chunk));
+            // console.log("Accepted integrity_rule",details.url,transformResult)
+          }
         }
-        else{
-          filter.disconnect(); // Low perf if not disconnected !
+        filter.onstop = event => {
+          if(details.url.includes("global")){
+            console.log("Wrote global")
+            // PROOF OF CONCEPT THAT WRITING CSS CHUNK AND USE THEIR VARIABLES IN THE SAME FILE IS POSSIBLE. THIS HAS TO GO IN CHUNK_MANAGE_IDK_SYSTEM. NEEDS A DELAY TO WORK
+            // filter.write(encoder.encode(`:root{--very_special_alpha:0.55;}`));
+  
+            // get_the_remote_port_promise=uDark.get_the_remote_port(details).then((content_script_port)=>{
+            //   content_script_port.postMessage({
+            //     havingIDKVars: {
+            //       details,
+            //       chunk: "aaa{background:rgba(255,254,253,var(--very_special_alpha));}",
+            //       chunk_hash:"test"
+            //     }
+            //   });
+            // });
+            // END OF PROOF OF CONCEPT
+          }
+  
+          if (details.rejectedValues.length) {
+            
+            carried.chunk = uDark.edit_str(details.rejectedValues, false, false, details,false,carried);
+            // TODO: Remove the call from here and do it in css edit
+            carried.chunk = uDark.send_data_image_to_parser(carried.chunk, details);
+            dark_object.misc.chunk_manage_idk(details, carried.chunk);
+            filter.write(encoder.encode(carried.chunk)); // Write the last chunk if any, trying to get the last rules to be applied, there is proaby invalid content at the end of the CSS;
+          }
+
+          let missingChunksKey="missing_chunks_"+details.requestId;
+          if(missingChunksKey in uDark.idk_cache)
+          {
+            /* Missing chunck strategy*/
+            console.log("Missing chunks",uDark.idk_cache[missingChunksKey].size)
+            let missing_chunk_key_set = uDark.idk_cache[missingChunksKey]
+            uDark.idk_cache["filter_"+missingChunksKey]={filter,encoder};
+            setTimeout(()=>{
+              if(missing_chunk_key_set.size)
+              {
+                console.log("Missing chunks",missing_chunk_key_set.size,"for",details.url,"after",uDark.resolvedIDKVars_action_timeout,"ms")
+              }
+              missing_chunk_key_set.forEach((chunk_hash)=>{
+                uDark.resolvedIDKVars_action({chunk_hash,details,chunk:""})
+              })
+            },  uDark.resolvedIDKVars_action_timeout*2000);
+            /* End of missing chunck strategy*/
+          }
+          else{
+            filter.disconnect(); // Low perf if not disconnected !
+          }
         }
-      }
+
+      // return {redirectUrl:details.url};
+      // return {responseHeaders:[{name:"Vary",value:"*"},{name:"Location",value:details.url}]};
+      return {};
       // must not return this closes filter//
-      return {}
     },
-    chunk_manage_idk: function(details, chunk) {
+    isCorsRequest:(details) => {
+          let aUrl = new URL(details.url);
+          let bUrl = new URL(details.documentUrl);
+          details.origin = aUrl.origin;
+          details.doc_origin = bUrl.origin;
+          details.hostname = aUrl.hostname;
+          details.doc_hostname = bUrl.hostname;
+          return (aUrl.origin != bUrl.origin)
+    },
+    chunk_manage_idk: function(details, carried) {
 
 
       if (!uDark.disableCorsCSSEdit && details.unresolvableChunks ) {
-        if (uDark.chunk_stylesheets_idk_only_cors) {
-          let aUrl = new URL(details.url);
-          let bUrl = new URL(details.documentUrl);
-          if (aUrl.origin == bUrl.origin) {
+        if(!carried.unresolvableStylesheet.cssRules.length)
+        {
+          // console.log("No unresolvable rules found for",details.url,"chunk",details.datacount)
+          return;
+        }
+
+        if (carried.isCorsRequest&&uDark.chunk_stylesheets_idk_only_cors) {
+          
             // console.log("Skipping chunk as it is not a CORS one", details.url)
-            return chunk;
-          }
+            return;
+          
+        }
+        let chunk_hash = fMurmurHash3Hash(carried.chunk);
+        if(chunk_hash in uDark.idk_cache)
+        {
+          console.log("Skipping chunk as it is already in cache", details.url)
+          carried.chunk=uDark.idk_cache[chunk_hash];
+          return;
         }
         let content_script_port_promise = uDark.get_the_remote_port(details); // Sometimes here the port havent connected yet. In fact content_script_ports are slow to connect.
-        if (chunk && details.unresolvableChunks[details.datacount]) {
-          let chunk_hash = fMurmurHash3Hash(chunk);
-          let missingChunksKey="missing_chunks_"+details.requestId;
-          if(!(missingChunksKey in uDark.idk_cache))
-          {
-            uDark.idk_cache[missingChunksKey]=new Set();
-          }
-          uDark.idk_cache[missingChunksKey].add(chunk_hash);
-          content_script_port_promise.then((content_script_port) => {
-            content_script_port.postMessage({
-              havingIDKVars: {
-                details,
-                chunk: chunk,
-                chunk_hash,
-              }
-            });
-          })
+        let rules = [...carried.unresolvableStylesheet.cssRules].map(r => r.cssText);  
+        let chunk_variables = rules.join("\n");
+
+        let readable_variable_checker=`\n:root{--chunk_is_readable_${details.requestId}_${details.datacount}:0.55;}`;
+        carried.chunk+=readable_variable_checker;
+        
+        if(!details.rejectCache)
+        {
+          details.rejectCache = true;
+          console.log("Setting: Rejecting cache for",details.url,details.doc_hostname); // Works only with doc_hostname, not hostname
+          uDark.idk_cache["remove_cache_"+details.requestId]=details.doc_hostname; // Works only with doc_hostname, not hostname; this is counter intuitive
         }
+   
+
+        /* Missing chucks strategy */
+        let missingChunksKey="missing_chunks_"+details.requestId;
+        if(!(missingChunksKey in uDark.idk_cache))
+        {
+          uDark.idk_cache[missingChunksKey]=new Set();
+        }
+        uDark.idk_cache[missingChunksKey].add(chunk_hash);
+        /* End of missing chucks strategy */
+
+        
+
+        content_script_port_promise.then((content_script_port) => {
+          
+        
+          content_script_port.used_cache_keys.add(chunk_hash);
+          
+
+          content_script_port.postMessage({
+            havingIDKVars: {
+              details,
+              chunk: carried.chunk,
+              chunk_variables: chunk_variables,
+              chunk_hash,
+            }
+          });
+          
+
+        })
+        
       }
+    },
+    onCompletedStylesheet: function(details) {
+
+      let possibleCacheKey="remove_cache_"+details.requestId;
+      // console.log(possibleCacheKey,uDark.idk_cache[possibleCacheKey])
+      if(possibleCacheKey in uDark.idk_cache)
+      {
+        console.log("Removing cache for",details.url);
+        browser.browsingData.removeCache(
+          {
+             since: (Date.now()-details.timeStamp)
+            ,hostnames:[uDark.idk_cache[possibleCacheKey]]
+          })
+          .then(x => {
+            console.info(`Browser cache flushed`)
+            delete uDark.idk_cache[possibleCacheKey];
+          }, error => console.error(`Error: ${error}`));
+      }
+    
+        
+      
+    },
+      
+    editHeadersOnHeadersReceived: function(details) {
+      console.log("Headers received",details.url,details.rejectCache)
+      
+      // return {responseHeaders:[{name:"Content-Location",value:"https://data-css.com/?base64CSS="+encodeURI(details.url)}]};
+      // return { redirectUrl:details.url};
+      //       setTimeout(()=>{
+              
+      // console.log("Headers received 2",details.url)
+      //         if(details.rejectCache){
+      //           let noCacheHeaders = [
+      //             {name:"cache-control",value:"no-cache no-store, must-revalidate"},
+      //             {name:"pragma",value:"no-cache"},
+      //             {name:"expires",value:"0"}]
+      //           noCacheNames=new Set(["cache-control","pragma","expires"]);
+      //           details.responseHeaders = details.responseHeaders.filter(x => !noCacheNames.has(x.name.toLowerCase()))
+      //           details.responseHeaders.push(...noCacheHeaders);
+      //           console.log("Rejecting cache for",details.url);
+      //         }
+
+      // },70)
+     
+      return details;
     },
     editBeforeData: function(details) {
       console.log("Loaded html",details.url)

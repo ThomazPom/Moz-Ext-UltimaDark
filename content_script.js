@@ -12,22 +12,43 @@ function csOverrideRemoteContent(url, content) {
   });
 };
 
+let expectedValueForResolvableColor = "rgba(255, 254, 253, 0.55)";
 function resolveIDKVars(data) {
-  setTimeout(() => {
+ 
     if (data.chunk) {
-        let ikd_resolved = window.wrappedJSObject.uDark.edit_str(data.chunk, false, false, false, true);
+      
+      let readable_variable_check_value=`rgba(255,254,253,var(--chunk_is_readable_${data.details.requestId}_${data.details.datacount}))`;
+      let option = new Option();
+      document.head.appendChild(option);
+      option.style.floodColor=readable_variable_check_value;
 
-      //   console.log("In content script, resolving IDK vars: ", ikd_resolved,data.chunk);
-
-      data.chunk = ikd_resolved;
-      myPort.postMessage({
-        resolvedIDKVars: data
-      });
-
-
+        let workInterval = setInterval(() => {
+        let floodColor=getComputedStyle(option).floodColor;
+        console.log("floodColor",floodColor);
+        if(floodColor!=expectedValueForResolvableColor){return;} // If the floodColor is not the one we expect for this chunk, it means that the chunk is not written yet, so we wait
+        clearInterval(workInterval);
+        
+        let idk_variables_only = window.wrappedJSObject.uDark.edit_str(data.chunk_variables , false, false, false, "partial_idk");
+        
+        let tempVariablesStyle=document.createElement("style");
+        tempVariablesStyle.id="UltimaDarkTempVariablesStyle";
+        tempVariablesStyle.innerHTML=idk_variables_only;
+        document.head.appendChild(tempVariablesStyle);
+        console.log("Resolved variables: will now post message to background script",readable_variable_check_value);
+        let ikd_chunk_resolved = window.wrappedJSObject.uDark.edit_str(data.chunk, false, false, false, true);
+        data.chunk = ikd_chunk_resolved;
+        myPort.postMessage({
+          resolvedIDKVars: data
+        });
+      },50); // Allow time for a chunk to be written before reading vairables out of it.
+      setTimeout(() => {
+        console.log("Timeout: will now post message to background script");
+        clearInterval(workInterval);
+        myPort.postMessage({
+          resolvedIDKVars: data
+        });
+      }, 10000); // If the chunk is not written after 10 seconds, we stop waiting for it.
     }
-  }, 100); /*Allow time for the frontend to load CSS VARS in scope*/ // 100s should be enough, as in fact the page is already almost loaded :
-  // We are here because link tags are already loaded, (so stylesheets are OK) and we are only waiting for all of this to be put in context wich is short 
 };
 
 function refreshStylesheet(data) {
