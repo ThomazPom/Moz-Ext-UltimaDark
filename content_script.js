@@ -24,7 +24,7 @@ function resolveIDKVars(data) {
 
         let workInterval = setInterval(() => {
         let floodColor=getComputedStyle(option).floodColor;
-        console.log("floodColor",floodColor);
+        // console.log("floodColor",floodColor);
         if(floodColor!=expectedValueForResolvableColor){return;} // If the floodColor is not the one we expect for this chunk, it means that the chunk is not written yet, so we wait
         clearInterval(workInterval);
         
@@ -42,7 +42,8 @@ function resolveIDKVars(data) {
         });
       },50); // Allow time for a chunk to be written before reading vairables out of it.
       setTimeout(() => {
-        console.log("Timeout: on chunk",data.details.datacount,"for",data.details.requestId,"(url:",data.details.url,")");
+        // console.log("Timeout: on chunk",data.details.datacount,"for",data.details.requestId,"(url:",data.details.url,")");
+        // console.log("It was containing:", window.wrappedJSObject.uDark.edit_str(data.chunk_variables , false, false, false, "partial_idk"));
         clearInterval(workInterval);
       }, 10000); // If the chunk is not written after 10 seconds, we stop waiting for it.
     }
