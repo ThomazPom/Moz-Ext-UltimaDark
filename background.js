@@ -1003,21 +1003,21 @@ window.dark_object = {
 
 
 
-            // Missing chunks strategy :
-            let missingChunksKey="missing_chunks_"+data.details.requestId;
-            if(missingChunksKey in uDark.idk_cache){
-              let missing_chunk_key_set=uDark.idk_cache[missingChunksKey];
-              missing_chunk_key_set.delete(data.chunk_hash);
-              let filter_items=uDark.idk_cache["filter_"+missingChunksKey];
-              filter_items.filter.write(filter_items.encoder.encode( data.chunk));
-              // console.log("Received chunk",data.chunk_hash,missing_chunk_key_set.size,"remaining")
-              if(missing_chunk_key_set.size==0){
-                delete uDark.idk_cache[missingChunksKey];
-                filter_items.filter.disconnect();
-                delete uDark.idk_cache["filter_"+missingChunksKey];
-              }
-            }
-            // end of missing chunks strategy
+            // // Missing chunks strategy :
+            // let missingChunksKey="missing_chunks_"+data.details.requestId;
+            // if(missingChunksKey in uDark.idk_cache){
+            //   let missing_chunk_key_set=uDark.idk_cache[missingChunksKey];
+            //   missing_chunk_key_set.delete(data.chunk_hash);
+            //   let filter_items=uDark.idk_cache["filter_"+missingChunksKey];
+            //   filter_items.filter.write(filter_items.encoder.encode( data.chunk));
+            //   // console.log("Received chunk",data.chunk_hash,missing_chunk_key_set.size,"remaining")
+            //   if(missing_chunk_key_set.size==0){
+            //     delete uDark.idk_cache[missingChunksKey];
+            //     filter_items.filter.disconnect();
+            //     delete uDark.idk_cache["filter_"+missingChunksKey];
+            //   }
+            // }
+            // // end of missing chunks strategy
 
 
 
@@ -2391,7 +2391,7 @@ window.dark_object = {
       // let stylesheetURL=(new URL(details.url));
       
       
-      console.log("Loading CSS",details.url,details)
+      console.log("Loading CSS",details.url)
       // let refresh_stylesheet =stylesheetURL.searchParams.has("ud_refresh"); // Near end for this system
       // if(refresh_stylesheet)
       // {
@@ -2415,9 +2415,6 @@ window.dark_object = {
         let encoder = new TextEncoder();
         details.datacount = 0;
         details.rejectedValues = "";
-        filter.onstart = event => {
-          console.log("Onstart",details.url)
-        };
         filter.ondata = event => {
           
           details.datacount++
@@ -2475,27 +2472,27 @@ window.dark_object = {
             filter.write(encoder.encode(carried.chunk)); // Write the last chunk if any, trying to get the last rules to be applied, there is proaby invalid content at the end of the CSS;
           }
 
-          let missingChunksKey="missing_chunks_"+details.requestId;
-          if(missingChunksKey in uDark.idk_cache)
-          {
-            /* Missing chunck strategy*/
-            console.log("Missing chunks",uDark.idk_cache[missingChunksKey].size)
-            let missing_chunk_key_set = uDark.idk_cache[missingChunksKey]
-            uDark.idk_cache["filter_"+missingChunksKey]={filter,encoder};
-            setTimeout(()=>{
-              if(missing_chunk_key_set.size)
-              {
-                console.log("Missing chunks",missing_chunk_key_set.size,"for",details.url,"after",uDark.resolvedIDKVars_action_timeout,"ms")
-              }
-              missing_chunk_key_set.forEach((chunk_hash)=>{
-                uDark.resolvedIDKVars_action({chunk_hash,details,chunk:""})
-              })
-            },  uDark.resolvedIDKVars_action_timeout*2000);
-            /* End of missing chunck strategy*/
-          }
-          else{
+          // let missingChunksKey="missing_chunks_"+details.requestId;
+          // if(missingChunksKey in uDark.idk_cache)
+          // {
+          //   /* Missing chunck strategy*/
+          //   console.log("Missing chunks",uDark.idk_cache[missingChunksKey].size)
+          //   let missing_chunk_key_set = uDark.idk_cache[missingChunksKey]
+          //   uDark.idk_cache["filter_"+missingChunksKey]={filter,encoder};
+          //   setTimeout(()=>{
+          //     if(missing_chunk_key_set.size)
+          //     {
+          //       console.log("Missing chunks",missing_chunk_key_set.size,"for",details.url,"after",uDark.resolvedIDKVars_action_timeout,"ms")
+          //     }
+          //     missing_chunk_key_set.forEach((chunk_hash)=>{
+          //       uDark.resolvedIDKVars_action({chunk_hash,details,chunk:""})
+          //     })
+          //   },  uDark.resolvedIDKVars_action_timeout*2000);
+          //   /* End of missing chunck strategy*/
+          // }
+          // else{
             filter.disconnect(); // Low perf if not disconnected !
-          }
+          // }
         }
 
       // return {redirectUrl:details.url};
@@ -2550,14 +2547,14 @@ window.dark_object = {
         }
    
 
-        /* Missing chucks strategy */
-        let missingChunksKey="missing_chunks_"+details.requestId;
-        if(!(missingChunksKey in uDark.idk_cache))
-        {
-          uDark.idk_cache[missingChunksKey]=new Set();
-        }
-        uDark.idk_cache[missingChunksKey].add(chunk_hash);
-        /* End of missing chucks strategy */
+        // /* Missing chucks strategy */
+        // let missingChunksKey="missing_chunks_"+details.requestId;
+        // if(!(missingChunksKey in uDark.idk_cache))
+        // {
+        //   uDark.idk_cache[missingChunksKey]=new Set();
+        // }
+        // uDark.idk_cache[missingChunksKey].add(chunk_hash);
+        // /* End of missing chucks strategy */
 
         
 
@@ -2583,20 +2580,22 @@ window.dark_object = {
     },
     onCompletedStylesheet: function(details) {
 
+      // Remove cache for the css resource if it was rejected by chunk_manage_idk, the next time we see it we'll have to replace its chunks
       let possibleCacheKey="remove_cache_"+details.requestId;
-      // console.log(possibleCacheKey,uDark.idk_cache[possibleCacheKey])
       if(possibleCacheKey in uDark.idk_cache)
       {
-        console.log("Removing cache for",details.url);
-        browser.browsingData.removeCache(
-          {
-             since: (Date.now()-details.timeStamp)
-            ,hostnames:[uDark.idk_cache[possibleCacheKey]]
-          })
-          .then(x => {
-            console.info(`Browser cache flushed`)
-            delete uDark.idk_cache[possibleCacheKey];
-          }, error => console.error(`Error: ${error}`));
+        setTimeout(w=>{
+          console.log("Removing cache for",details.url);
+          browser.browsingData.removeCache(
+            {
+               since: (Date.now()-details.timeStamp)
+              ,hostnames:[uDark.idk_cache[possibleCacheKey]]
+            })
+            .then(x => {
+              console.info(`Browser cache flushed`)
+              delete uDark.idk_cache[possibleCacheKey];
+            }, error => console.error(`Error: ${error}`));
+        },100) // Must wait the request is finished, otherwise it will not be uncached
       }
     
         
@@ -2604,26 +2603,8 @@ window.dark_object = {
     },
       
     editHeadersOnHeadersReceived: function(details) {
-      console.log("Headers received",details.url,details.rejectCache)
+       console.log("Headers received",details.url)
       
-      // return {responseHeaders:[{name:"Content-Location",value:"https://data-css.com/?base64CSS="+encodeURI(details.url)}]};
-      // return { redirectUrl:details.url};
-      //       setTimeout(()=>{
-              
-      // console.log("Headers received 2",details.url)
-      //         if(details.rejectCache){
-      //           let noCacheHeaders = [
-      //             {name:"cache-control",value:"no-cache no-store, must-revalidate"},
-      //             {name:"pragma",value:"no-cache"},
-      //             {name:"expires",value:"0"}]
-      //           noCacheNames=new Set(["cache-control","pragma","expires"]);
-      //           details.responseHeaders = details.responseHeaders.filter(x => !noCacheNames.has(x.name.toLowerCase()))
-      //           details.responseHeaders.push(...noCacheHeaders);
-      //           console.log("Rejecting cache for",details.url);
-      //         }
-
-      // },70)
-     
       return details;
     },
     editBeforeData: function(details) {
