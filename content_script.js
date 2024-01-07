@@ -28,20 +28,24 @@ function resolveIDKVars(data) {
         clearInterval(workInterval);
         option.remove();
         
+        // The variables we are looking a might be in data.chunk we have to read it first to make them available to idk_variables_only.
+        let ikd_chunk_resolved = window.wrappedJSObject.uDark.edit_str(data.chunk, false, false, false, true);
+            
         let idk_variables_only = window.wrappedJSObject.uDark.edit_str(data.chunk_variables , false, false, false, "partial_idk");
         
         let tempVariablesStyle=document.createElement("style");
         tempVariablesStyle.id="UltimaDarkTempVariablesStyle";
         
-        tempVariablesStyle.innerHTML=idk_variables_only;
+        tempVariablesStyle.innerHTML="/*UltimaDark temporary style*/\n"+idk_variables_only;
         document.head.append(tempVariablesStyle);
         
-        console.log("Resolved variables: will now post message to background script",readable_variable_check_value);
-        let ikd_chunk_resolved = window.wrappedJSObject.uDark.edit_str(data.chunk, false, false, false, true);
-        data.chunk = ikd_chunk_resolved;
-        myPort.postMessage({
-          resolvedIDKVars: data
-        });
+
+
+            console.log("Resolved variables: will now post message to background script",readable_variable_check_value);
+            data.chunk = ikd_chunk_resolved;
+            myPort.postMessage({
+              resolvedIDKVars: data
+            });
       },50); // Allow time for a chunk to be written before reading vairables out of it.
       setTimeout(() => {
         console.log("Timeout: on chunk",data.details.datacount,"for",data.details.requestId,"(url:",data.details.url,")");
@@ -74,4 +78,4 @@ exportFunction(csOverrideRemoteContent, window, {
   defineAs: "UDarkOverrideRemoteContent"
 });
 
-console.log("Content script loaded");
+console.log("Content script loaded",document.location.href);

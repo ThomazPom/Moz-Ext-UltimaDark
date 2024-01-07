@@ -1676,6 +1676,22 @@ window.dark_object = {
                   cssRule.style.setProperty("background-blend-mode","darken","important");
                   return idk_value+", linear-gradient(rgba(140, 140, 140, 1),rgba(140, 140, 140, 1))";
               },
+              "background-color":(cssRule,idk_value)=>{
+                
+                  // Use RGB colors to avoid value being edited later
+                  // Use hsl color name or hex to benefit a future edit
+                  
+                  cssRule.style.setProperty("background-blend-mode","darken","important");
+                  let background_image=cssRule.style.getPropertyValue("background-image");
+                  let result=`linear-gradient(${idk_value},${idk_value}), linear-gradient(rgba(140, 140, 140, 1),rgba(140, 140, 140, 1))`;
+                  if(background_image)
+                  {
+                    result=background_image+","+result;
+                  }
+                  cssRule.style.setProperty("background-image",result);
+                  return "none";
+                  // return idk_value+", linear-gradient(rgba(140, 140, 140, 1),rgba(140, 140, 140, 1))";
+                },
               
                 // Use RGB colors to avoid value being edited later
             "color":(cssRule,idk_value)=>{     return "rgb(255,255,255)";    }
@@ -1725,7 +1741,6 @@ window.dark_object = {
             {
               hasUnresolvedVars.carried.unresolvableStylesheet.insertRule(topLevelRule.cssText, hasUnresolvedVars.carried.unresolvableStylesheet.cssRules.length );
               topLevelRule.unresolvableRule=true;
-              console.log("Added unresolvable rule",topLevelRule.cssText,hasUnresolvedVars.carried.unresolvableStylesheet.cssRules.length);
             }
 
 
@@ -1956,13 +1971,13 @@ window.dark_object = {
 
           uDark.edit_cssRules(cssStyleSheet.cssRules, idk_mode, details,carried);
           
-          console.log("BEFORE",unresolvableStylesheet.cssRules)
+          // console.log("BEFORE",unresolvableStylesheet.cssRules)
           
           uDark.edit_cssRules(unresolvableStylesheet.cssRules, false, details, {}, function(rule) {
             uDark.edit_all_cssRule_colors(false, rule, Object.values(rule.style), false, false, false, key_prefix = "", actions = {debug:true},
             function(idk_mode, cssRule, key, key_idk, value, transformation, render, hasUnresolvedVars, key_prefix, actions,topLevelRule){
               
-              if(!uDark.unResolvableVarsRegex.test(value))
+              if(!uDark.unResolvableVarsRegex.test(value)&&!uDark.is_color(value))
               {
                 cssRule.style.removeProperty(key);
               }
@@ -2456,23 +2471,7 @@ window.dark_object = {
           }
         }
         filter.onstop = event => {
-          if(details.url.includes("global")){
-            console.log("Wrote global")
-            // PROOF OF CONCEPT THAT WRITING CSS CHUNK AND USE THEIR VARIABLES IN THE SAME FILE IS POSSIBLE. THIS HAS TO GO IN CHUNK_MANAGE_IDK_SYSTEM. NEEDS A DELAY TO WORK
-            // filter.write(encoder.encode(`:root{--very_special_alpha:0.55;}`));
-  
-            // get_the_remote_port_promise=uDark.get_the_remote_port(details).then((content_script_port)=>{
-            //   content_script_port.postMessage({
-            //     havingIDKVars: {
-            //       details,
-            //       chunk: "aaa{background:rgba(255,254,253,var(--very_special_alpha));}",
-            //       chunk_hash:"test"
-            //     }
-            //   });
-            // });
-            // END OF PROOF OF CONCEPT
-          }
-  
+
           if (details.rejectedValues.length) {
             
             carried.chunk = uDark.edit_str(details.rejectedValues, false, false, details,false,carried);
@@ -2552,7 +2551,7 @@ window.dark_object = {
         if(!details.rejectCache)
         {
           details.rejectCache = true;
-          console.log("Setting: Rejecting cache for",details.url,details.doc_hostname); // Works only with doc_hostname, not hostname
+          // console.log("Setting: Rejecting cache for",details.url,details.doc_hostname); // Works only with doc_hostname, not hostname
           uDark.idk_cache["remove_cache_"+details.requestId]=details.doc_hostname; // Works only with doc_hostname, not hostname; this is counter intuitive
         }
    
