@@ -22,5 +22,6 @@
   "background": {
     "scripts": ["MurmurHash3.js","background.js"]
   }
+  
 
 }

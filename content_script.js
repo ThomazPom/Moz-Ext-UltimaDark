@@ -19,9 +19,9 @@ function resolveIDKVars(data) {
         option.remove();
         
         // The variables we are looking a might be in data.chunk we have to read it first to make them available to idk_variables_only.
-        let ikd_chunk_resolved = window.wrappedJSObject.uDark.edit_str(data.chunk, false, false, false, true);
+        let ikd_chunk_resolved = uDark.edit_str(data.chunk, false, false, false, true);
             
-        let idk_variables_only = window.wrappedJSObject.uDark.edit_str(data.chunk_variables , false, false, false, "partial_idk");
+        let idk_variables_only = uDark.edit_str(data.chunk_variables , false, false, false, "partial_idk");
         
         let tempVariablesStyle=document.createElement("style");
         tempVariablesStyle.id="UltimaDarkTempVariablesStyle";
@@ -44,11 +44,6 @@ function resolveIDKVars(data) {
       }, 10000); // If the chunk is not written after 10 seconds, we stop waiting for it.
     }
 };
-
-function refreshStylesheet(data) {
-    window.wrappedJSObject.uDark.refresh_stylesheet(data.details.url);
-}
-
 
 function registerBackgroundItem(selectorText) {
   window.wrappedJSObject.uDark.registerBackgroundItem(false, selectorText, false); // go directly to the edit, the validation is already done

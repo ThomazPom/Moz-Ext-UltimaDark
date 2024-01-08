@@ -329,7 +329,7 @@ a.btn-small span.btn {
     color:white;
 }
 .visible_button{
-    background-color: gray;
+    background-color: rgb(34, 155, 0);
     padding: 5px 10px 5px 10px;
     margin: 5px;
     border-radius:5px ;
