@@ -4,8 +4,8 @@
   --secondary-color: black;
 }
 
-html{ 
-  /* Just in case meta tag  is not working ? */
+html,body{ 
+  /* Just in case darkening meta tag  is not working like in srcdocs*/ 
    background-color:var(--main-bgcolor); 
-   /* color: var(--secondary-color); */
+   color: var(--secondary-color);
 }
