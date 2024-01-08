@@ -3,3 +3,9 @@
     color: white;
     mix-blend-mode: exclusion;
     ;}
+
+    
+iframe {
+    /*Iframe get light background in dark color schemes and vice versa*/
+    color-scheme: light!important; /*Fortunately all css can be overriden unconditoonally in this file*/
+  }

@@ -399,9 +399,9 @@ window.dark_object = {
         browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editBeforeData);
         browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.editBeforeRequestStyleSheet);
         browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.editBeforeRequestImage);
+        browser.webRequest.onCompleted.removeListener(dark_object.misc.onCompletedStylesheet);
         /*Experimental*/
         browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editHeadersOnHeadersReceived);
-        browser.webRequest.onCompleted.removeListener(dark_object.misc.onCompletedStylesheet);
         /*end of Experimental*/
         if (uDark.regiteredCS) {
           uDark.regiteredCS.unregister();
@@ -428,12 +428,6 @@ window.dark_object = {
               types: ["stylesheet"]
             },
             ["blocking"]);
-            browser.webRequest.onCompleted.addListener(dark_object.misc.onCompletedStylesheet, {
-              // urls: uDark.userSettings.properWhiteList, // We can't assume the css is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
-              urls: ["<all_urls>"],
-              types: ["stylesheet"]
-            },
-            /*["blocking"]*/);
             /*end of Experimental*/
 
           browser.webRequest.onBeforeRequest.addListener(dark_object.misc.editBeforeRequestImage, {
@@ -442,6 +436,32 @@ window.dark_object = {
               types: ["image"]
             },
             ["blocking"]);
+
+          browser.webRequest.onCompleted.addListener(dark_object.misc.onCompletedStylesheet, {
+            // urls: uDark.userSettings.properWhiteList, // We can't assume the css is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
+            urls: ["<all_urls>"],
+            types: ["stylesheet"]
+          });
+
+          browser.webRequest.onHeadersReceived.addListener(details=>{
+            if(["script","image","font"].includes(details.type)){return;}
+            if(details.documentUrl && details.documentUrl.startsWith("moz-extension:")){return;}
+            if(details.method != "GET"){return;}
+            // if(!details.documentUrl.includes(".js")){return;}
+            if(details.url.includes(".js")){return}
+            console.log(details.type,details.method)
+            if (details.url.match(/\.css$/)){
+              console.log("a CSS request",details)
+            }
+            else{
+              console.log("Not CSS request",details)
+            }
+
+
+          }, {
+            // urls: uDark.userSettings.properWhiteList, // We can't assume the css is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
+            urls: ["<all_urls>"],
+          })
 
           var contentScript = {
             matches: uDark.userSettings.properWhiteList,
@@ -1066,7 +1086,12 @@ window.dark_object = {
               astyle.setAttribute("style", uDark.edit_str(astyle.getAttribute("style"), false, false, details));
             });
 
-
+            //EXPERIMENTAL
+            aDocument.querySelectorAll("meta").forEach(m=>{
+              if(m.httpEquiv.toLowerCase().trim()=="content-type" && m.content.includes("charset")){
+                m.content="text/html; charset=utf-8"
+              }
+            })
             aDocument.querySelectorAll("img[src*='data']").forEach(image => {
               // console.log(documentElement,image,uDark.send_data_image_to_parser(image.src,details)) 
               image.src = uDark.send_data_image_to_parser(image.getAttribute("src"), details)
@@ -1910,34 +1935,7 @@ window.dark_object = {
           }, duration)
 
         },
-        refresh_stylesheet: function(styleSheetUrl) {
-          let refresh_result = [...document.styleSheets].filter(styleSheet => {
-            if (!styleSheet.href) return false;
-            let oStylesheetURL = new URL(styleSheet.href)
-            let oStylesheetURL2 = new URL(styleSheetUrl)
-            return oStylesheetURL.origin == oStylesheetURL2.origin &&
-              oStylesheetURL.pathname == oStylesheetURL2.pathname;
-          }).map(styleSheet => {
-            // console.log("Refreshing", styleSheet.href);
-            let url = new URL(styleSheet.href);
-            url.searchParams.set("ud_refresh", Math.random());
-            
-            let cloneNoFlickering = styleSheet.ownerNode.cloneNode();
-            cloneNoFlickering.href = url.href;
-            styleSheet.ownerNode.after(cloneNoFlickering); // <3 No flickering ! // Using after overrides the old stylesheet
-            // styleSheet.ownerNode.parentNode.insertBefore(cloneNoFlickering, styleSheet.ownerNode); // InsertBefore does not override the old stylesheet
-            let ownerNode = styleSheet.ownerNode;
-            setTimeout(() => {
-              ownerNode.remove();
-              console.log(ownerNode, "removed")
-            }, 10*1000); // 3 seconds was not enough to load the new stylesheet
-            return 1;
-          });
-          console.log(refresh_result,refresh_result.length, "stylesheet refreshed",styleSheetUrl)
-          if(!refresh_result.length){
-            console.log("Could not find stylesheet "+styleSheetUrl + " to refresh it")
-          }
-        },
+
         do_idk_mode: function() {
           let editableStyleSheets = [...document.styleSheets].filter(styleSheet => {
             if (styleSheet.idk_mode_ok) {
@@ -2417,14 +2415,7 @@ window.dark_object = {
       
       
       console.log("Loading CSS",details.url)
-      // let refresh_stylesheet =stylesheetURL.searchParams.has("ud_refresh"); // Near end for this system
-      // if(refresh_stylesheet)
-      // {
-        
-      //   console.log("Redirecting CSS",details.url)
-      //   stylesheetURL.searchParams.delete("ud_refresh"); // Use cache for the stylesheet, and get the exact same resource
-      //   return {redirectUrl:stylesheetURL.href}; // Github sends different resources if you ask them twice like with a random param, taking in account your browser headers
-      // }
+
 
       // Util 2024 jan 02 we were checking details.documentUrl, or details.url to know if a stylesheet was loaded in a excluded page
       // Since only CS ports that matches blaclist and whitelist are connected, we can simply check if this resource has a corresponding CS port
@@ -2663,6 +2654,8 @@ window.dark_object = {
       }
       if (!(details.headersLow["content-type"] || "text/html").includes("text/html")) return {}
       details.charset = ((details.headersLow["content-type"] || "").match(/charset=([0-9A-Z-]+)/i) || ["", "utf-8"])[1]
+      console.log(details.charset)
+
       if (details.url.startsWith("https://data-image.com/?base64IMG=")) {
         return {
           redirectUrl: data.url.slice(34)

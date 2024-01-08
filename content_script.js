@@ -2,16 +2,6 @@ let myPort = browser.runtime.connect({
   name: "port-from-cs"
 });
 
-function csOverrideRemoteContent(url, content) {
-  myPort.postMessage({
-    overrideRemoteContent: {
-      source: document.location.href,
-      url: url,
-      content: content
-    }
-  });
-};
-
 let expectedValueForResolvableColor = "rgba(255, 254, 253, 0.55)";
 function resolveIDKVars(data) {
     if (data.chunk) {
@@ -74,8 +64,5 @@ myPort.onMessage.addListener(function(m) {
   }
 });
 
-exportFunction(csOverrideRemoteContent, window, {
-  defineAs: "UDarkOverrideRemoteContent"
-});
-
 console.log("Content script loaded",document.location.href);
+
