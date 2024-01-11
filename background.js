@@ -365,6 +365,7 @@ window.dark_object = {
           edit_cssRules: uDark.edit_cssRules,
           edit_cssRules: uDark.edit_cssRules,
           is_color: (...args) => cloneInto(uDark.is_color(...args), window),
+          is_color_var: (...args) => cloneInto(uDark.is_color_var(...args), window),
           eget_color: (...args) => cloneInto(uDark.eget_color(...args), window),
           edit_str:uDark.edit_str,
         }, window, {
@@ -1610,13 +1611,47 @@ window.dark_object = {
             return theColor
 
           },
-          is_color: function(possiblecolor, as_float = true, fill = false, cssRule, spanp = false) {
+          is_color:function(possiblecolor, as_float = true, fill = false, cssRule) {
+            
+             if (!possiblecolor || possiblecolor === "none") { // none is not a color, and it not usefull to create a style element for it
+              return false
+              }
+              if(uDark.is_content_script&&possiblecolor.includes("var(")){
+                return    uDark.is_color_var(possiblecolor, as_float, fill, cssRule)
+              }
+              
+              let nonColor="rgba(0,0,0,0.11)";
+              uDark.colorWork.canvasContext.fillStyle=nonColor;
+              uDark.colorWork.canvasContext.fillStyle=possiblecolor;
+              let result = uDark.colorWork.canvasContext.fillStyle;
+              if(result==nonColor)
+              {
+                return false;
+              }
+              if(as_float)
+              {
+                if(result.startsWith("#"))
+                {
+                  hexColor= "0x"+result.slice(1);
+                  result= [(hexColor >> 16) & 0xFF, (hexColor >> 8) & 0xFF,   hexColor & 0xFF]
+                }
+                else {
+                { 
+                  result=result.match(/[0-9\.]+/g).map(parseFloat)
+                }
+              }
+              return result;
+
+            }
+            
+
+          },  
+          is_color_var: function(possiblecolor, as_float = true, fill = false, cssRule, spanp = false) {
             // Must restore spanp feature and use it in frontend capture with flood-color css attribute
             // to catch correctly assignments like style.color=rgba(var(--flood-color),0.5) instead of returning [0,0,0,0]
-
-            if (!possiblecolor || possiblecolor === "none") { // none is not a color, and it not usefull to create a style element for it
-              return false
-            }
+            // if (!possiblecolor || possiblecolor === "none") { // none is not a color, and it not usefull to create a style element for it
+            //   return false
+            // }
 
             let cache_key = `${possiblecolor}${as_float}${fill}`
             if (!uDark.userSettings.disable_cache && !spanp && uDark.general_cache[cache_key]) {
