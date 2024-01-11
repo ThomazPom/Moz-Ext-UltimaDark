@@ -366,3 +366,6 @@ table.cols{
     background: url("bg.jpg");
     background-size: cover;
 }
+#websitePickerIframe{
+    color-scheme: light;
+}
