@@ -1,4 +1,107 @@
 window.dark_object = {
+  all_levels: {
+
+    install: function() {
+      window.uDark = {
+          edit_str: function(str, cssStyleSheet, verifyIntegrity = false, details, idk_mode = false, carried = {}) {
+            let rejected_str = false;
+
+            if (!cssStyleSheet) {
+              cssStyleSheet = new CSSStyleSheet()
+              let valueReplace = str + (verifyIntegrity ? "\n.integrity_rule{}" : "");
+              cssStyleSheet.o_ud_replaceSync ? cssStyleSheet.o_ud_replaceSync(valueReplace) : cssStyleSheet.replaceSync(valueReplace);
+            } else if (!cssStyleSheet.rules.length) {
+              return str; // Empty styles from domparser can't be edited as they are not "constructed"
+            }
+            let nochunk = !verifyIntegrity && !cssStyleSheet.cssRules.length; // if we want to check integrity, it means we have a chunked css
+            if (nochunk) {
+              str = `z{${str}}`;
+              cssStyleSheet.o_ud_replaceSync ? cssStyleSheet.o_ud_replaceSync(str) : cssStyleSheet.replaceSync(str);
+
+              uDark.edit_css(cssStyleSheet, false, details, carried);
+              str = cssStyleSheet.cssRules[0].cssText.slice(4, -2);
+
+            } else {
+
+              // Exists the rare case where css only do imports, no rules with {} and integrity cant be verified because it does not close the import with a ";"
+              let returnAsIs = (!cssStyleSheet.cssRules.length && !str.includes("{"))
+              if (returnAsIs) {
+                return str; //don't even try to edit it .
+                // Fortunately it is not a common case, easy to detect with zero cssRules, and it mostly are short strings testables with includes
+              };
+
+              if (verifyIntegrity) {
+                let last_rule = cssStyleSheet.cssRules[cssStyleSheet.cssRules.length - 1];
+                let is_rejected = !last_rule || last_rule.selectorText != ".integrity_rule";
+
+                // console.log(cssStyleSheet,last_rule,is_rejected)
+                if (is_rejected) {
+
+                  //
+                  let can_iterate = cssStyleSheet.cssRules.length > 1; // If there is only one rule, and it's rejected, we dont'have to find the previous one
+                  if (can_iterate && (enableLiveChunkRepair = true)) // We accept CSS until it breaks, and cut it from there
+                  {
+                    rejected_str = ""; // Pass from false to empty string
+                    let max_iterations = 10; // Fix a limit for timing reasons
+                    for (let i = 1; i <= max_iterations; i++) {
+
+                      // Lets find the last significant bracket.
+                      // If we are in any part of the string we don't care about the last char as it is either not a bracket or not one that will permit us
+                      // to fix the CSS. ( As it is in a broken state already)
+                      let last_bracket_index = str.lastIndexOf("}", str.length - 2); // Doing what said above 
+
+                      // Reject CSS as a whole if we can't find a bracket for whaterver messed up CSS we have
+                      if (last_bracket_index == -1) {
+                        return new Error("Rejected integrity rule from live chunk repair")
+                      }
+
+
+                      // Now we have two parts, the one we keep and the one we reject
+                      rejected_str = str.substring(last_bracket_index + 1) + rejected_str;
+
+                      str = str.substring(0, last_bracket_index + 1)
+
+                      // Do we have a valid CSS now ? lets add an integrity rule to check it
+                      let valueReplace = str + "\n.integrity_rule{}";
+                      cssStyleSheet.replaceSync(valueReplace); // Asumig only background script will edit CSS with integrity verification, using replaceSync is ok
+                      let last_rule = cssStyleSheet.cssRules[cssStyleSheet.cssRules.length - 1];
+                      if (last_rule && last_rule.selectorText == ".integrity_rule") // We found our rule again, no need to iterate more, this means we have a valid CSS in str
+                      {
+                        break;
+                      } else if (i == max_iterations) {
+                        return new Error("Rejected integrity rule from live chunk repair, max iterations reached")
+                      }
+                    }
+                  } else { // We reject the whole CSS if it broken for any reason.( @media cut in midle of name like @medi.integrity rule), str sarting with a bracket, etc.
+                    // Reasons are endless and if Firefox said the CSS is broken, we trust it.
+                    //  console.log(can_iterate,cssStyleSheet,details.url,details.datacount)
+                    return new Error("Rejected integrity rule as a whole");
+                  }
+                }
+              }
+              uDark.edit_css(cssStyleSheet, idk_mode, details, carried);
+
+              let rules = [...cssStyleSheet.cssRules].map(r => r.cssText);
+
+              uDark.edit_str_restore_imports_all_way(str, rules);
+
+              str = rules.join("\n");
+            }
+
+            if (rejected_str) {
+              str = {
+                str: str,
+                rejected: rejected_str,
+              }
+            }
+            return str;
+          },
+
+
+      };
+    },
+  },
+
   user_content: {
     install: function() {
       console.info("UltimaDark","User content script install", document.location.href);
@@ -266,6 +369,7 @@ window.dark_object = {
           // uDark.general_cache["o_ud_set_"+atName]=originalSet
           Object.defineProperty(leType.prototype, atName, {
             set: exportFunction(function(value) {             // getters must be exported like regular functions
+              // console.log("Setting", this, atName, value)
               var new_value = conditon && conditon(this, value) ? watcher(this, value) : value;
               let call_result = originalSet.call(this, new_value || value);
               aftermath && aftermath(this, value, new_value);
@@ -293,7 +397,7 @@ window.dark_object = {
             value: {
               [laFonction.name]: exportFunction(function() {
                 if (conditon && conditon(this, arguments)) {
-                  // console.log(leType,laFonction,this,arguments[0],watcher(this, arguments)[0])
+                  // console.log("Setting",leType,laFonction,this,arguments[0],watcher(this, arguments)[0])
                   let watcher_result = watcher(this, arguments);
                   // console.log("watcher_result", this,originalFunction,watcher_result,originalFunctionKey,leType.prototype[originalFunctionKey],this[originalFunctionKey],this.getP);
                   let result = originalFunction.apply(this, watcher_result)
@@ -341,9 +445,13 @@ window.dark_object = {
 
       }}
 
-    // uDark.injectscripts = [dark_object.all_levels.install, dark_object.user_content.install].map(code => {
-    //   return "(" + code.toString() + ")()";
-    // })
+      // uDark.injectscripts = [dark_object.all_levels.install, dark_object.user_content.install].map(code => {
+      //   return "(" + code.toString() + ")()";
+      // })
+      // uDark.injectscripts = [ dark_object.user_content.install].map(code => {
+      //   return "(" + code.toString() + ")()";
+      // })
+      // document.wrappedJSObject.eval(uDark.injectscripts.join(";"));
     
 
 
@@ -351,7 +459,8 @@ window.dark_object = {
       browser.storage.local.get(null, function(res) {
         window.uDark.userSettings = res;
       });
-      if(exportUlimaDarkToForeground=true){ // Under test but not usefull anymore
+      // NOTE: DROPS SIGNIFICANTLY THE PERFORMANCE, prefer use eval
+      if(exportUlimaDarkToForeground=false){ // Under test but not usefull anymore
 
         window.wrappedJSObject.uDark = cloneInto({ // Export functions the page needs to use
           rgba: uDark.rgba,
@@ -365,6 +474,7 @@ window.dark_object = {
           edit_cssRules: uDark.edit_cssRules,
           edit_cssRules: uDark.edit_cssRules,
           is_color: (...args) => cloneInto(uDark.is_color(...args), window),
+          is_color_no_clone: uDark.is_color,
           is_color_var: (...args) => cloneInto(uDark.is_color_var(...args), window),
           eget_color: (...args) => cloneInto(uDark.eget_color(...args), window),
           edit_str:uDark.edit_str,
@@ -1470,7 +1580,6 @@ window.dark_object = {
             fill_color: "red"
           } ["restore"],
           idk_minimum_editor: 0.2,
-          general_cache: {},
           connected_cs_ports: {},
           connected_options_ports_count: 0,
           rgba_val: function(r, g, b, a) {
@@ -1611,13 +1720,16 @@ window.dark_object = {
             return theColor
 
           },
-          is_color:function(possiblecolor, as_float = true, fill = false, cssRule) {
-            
+          is_color:function(possiblecolor, as_float = true, fill = false, cssRule,spanp=false) { 
+            let cache_key = `${possiblecolor}${as_float}${fill}`
+              if (!uDark.userSettings.disable_cache && !spanp && uDark.general_cache[cache_key]) { // See https://jsben.ch/aXxCT for cache effect on performance
+                return uDark.general_cache[cache_key];
+              }
              if (!possiblecolor || possiblecolor === "none") { // none is not a color, and it not usefull to create a style element for it
               return false
               }
               if(uDark.is_content_script&&possiblecolor.includes("var(")){
-                return    uDark.is_color_var(possiblecolor, as_float, fill, cssRule)
+                return    uDark.is_color_var(possiblecolor, as_float, fill, cssRule, spanp)
               }
               
               let nonColor="rgba(0,0,0,0.11)";
@@ -1640,6 +1752,9 @@ window.dark_object = {
                   result=result.match(/[0-9\.]+/g).map(parseFloat)
                 }
               }
+              if (!uDark.userSettings.disable_cache) {
+                uDark.general_cache[cache_key] = result;
+              }
               return result;
 
             }
@@ -1649,10 +1764,13 @@ window.dark_object = {
           is_color_var: function(possiblecolor, as_float = true, fill = false, cssRule, spanp = false) {
             // Must restore spanp feature and use it in frontend capture with flood-color css attribute
             // to catch correctly assignments like style.color=rgba(var(--flood-color),0.5) instead of returning [0,0,0,0]
-            // if (!possiblecolor || possiblecolor === "none") { // none is not a color, and it not usefull to create a style element for it
-            //   return false
-            // }
 
+            // Helped by is_color_var and regexpes, we should not need this block
+            if (!possiblecolor || possiblecolor === "none") { // none is not a color, and it not usefull to create a style element for it
+              return false
+            }
+
+            
             let cache_key = `${possiblecolor}${as_float}${fill}`
             if (!uDark.userSettings.disable_cache && !spanp && uDark.general_cache[cache_key]) {
               return uDark.general_cache[cache_key];
@@ -1802,7 +1920,6 @@ window.dark_object = {
 
             
             let [h, s, l] = uDark.rgbToHsl(r, g, b);
-
             if (l > uDark.min_bright_bg_trigger) {
 
               
@@ -2072,20 +2189,20 @@ window.dark_object = {
               // Interestingly this could even be used earlier, during css editing, to avoid the need of a second pass
 
               cssRule.style.setProperty("background-blend-mode", "darken", "important");
-
+              return idk_value;
               // Use RGB colors to avoid value bein edited later
               // Use hsl color name or hex to benefit a future edit
               return idk_value + " linear-gradient(rgba(168, 168, 168, 1),rgba(168, 168, 168, 1))";
             }, //9f9f9f
             "background-image": (cssRule, idk_value) => {
-
+              return idk_value;
               // Use RGB colors to avoid value being edited later
               // Use hsl color name or hex to benefit a future edit
               cssRule.style.setProperty("background-blend-mode", "darken", "important");
               return idk_value + ", linear-gradient(rgba(168, 168, 168, 1),rgba(168, 168, 168, 1))";
             },
             "background-color": (cssRule, idk_value) => {
-
+              return idk_value;
               // Use RGB colors to avoid value being edited later
               // Use hsl color name or hex to benefit a future edit
 
@@ -2321,99 +2438,7 @@ window.dark_object = {
 
             // console.log("Unresolvable rules",unresolvableStylesheet,unresolvableStylesheet.cssRules.length);
           },
-          edit_str: function(str, cssStyleSheet, verifyIntegrity = false, details, idk_mode = false, carried = {}) {
-            let rejected_str = false;
 
-            if (!cssStyleSheet) {
-              cssStyleSheet = new CSSStyleSheet()
-              let valueReplace = str + (verifyIntegrity ? "\n.integrity_rule{}" : "");
-              cssStyleSheet.o_ud_replaceSync ? cssStyleSheet.o_ud_replaceSync(valueReplace) : cssStyleSheet.replaceSync(valueReplace);
-            } else if (!cssStyleSheet.rules.length) {
-              return str; // Empty styles from domparser can't be edited as they are not "constructed"
-            }
-            let nochunk = !verifyIntegrity && !cssStyleSheet.cssRules.length; // if we want to check integrity, it means we have a chunked css
-            if (nochunk) {
-              str = `z{${str}}`;
-              cssStyleSheet.o_ud_replaceSync ? cssStyleSheet.o_ud_replaceSync(str) : cssStyleSheet.replaceSync(str);
-
-              uDark.edit_css(cssStyleSheet, false, details, carried);
-              str = cssStyleSheet.cssRules[0].cssText.slice(4, -2);
-
-            } else {
-
-              // Exists the rare case where css only do imports, no rules with {} and integrity cant be verified because it does not close the import with a ";"
-              let returnAsIs = (!cssStyleSheet.cssRules.length && !str.includes("{"))
-              if (returnAsIs) {
-                return str; //don't even try to edit it .
-                // Fortunately it is not a common case, easy to detect with zero cssRules, and it mostly are short strings testables with includes
-              };
-
-              if (verifyIntegrity) {
-                let last_rule = cssStyleSheet.cssRules[cssStyleSheet.cssRules.length - 1];
-                let is_rejected = !last_rule || last_rule.selectorText != ".integrity_rule";
-
-                // console.log(cssStyleSheet,last_rule,is_rejected)
-                if (is_rejected) {
-
-                  //
-                  let can_iterate = cssStyleSheet.cssRules.length > 1; // If there is only one rule, and it's rejected, we dont'have to find the previous one
-                  if (can_iterate && (enableLiveChunkRepair = true)) // We accept CSS until it breaks, and cut it from there
-                  {
-                    rejected_str = ""; // Pass from false to empty string
-                    let max_iterations = 10; // Fix a limit for timing reasons
-                    for (let i = 1; i <= max_iterations; i++) {
-
-                      // Lets find the last significant bracket.
-                      // If we are in any part of the string we don't care about the last char as it is either not a bracket or not one that will permit us
-                      // to fix the CSS. ( As it is in a broken state already)
-                      let last_bracket_index = str.lastIndexOf("}", str.length - 2); // Doing what said above 
-
-                      // Reject CSS as a whole if we can't find a bracket for whaterver messed up CSS we have
-                      if (last_bracket_index == -1) {
-                        return new Error("Rejected integrity rule from live chunk repair")
-                      }
-
-
-                      // Now we have two parts, the one we keep and the one we reject
-                      rejected_str = str.substring(last_bracket_index + 1) + rejected_str;
-
-                      str = str.substring(0, last_bracket_index + 1)
-
-                      // Do we have a valid CSS now ? lets add an integrity rule to check it
-                      let valueReplace = str + "\n.integrity_rule{}";
-                      cssStyleSheet.replaceSync(valueReplace); // Asumig only background script will edit CSS with integrity verification, using replaceSync is ok
-                      let last_rule = cssStyleSheet.cssRules[cssStyleSheet.cssRules.length - 1];
-                      if (last_rule && last_rule.selectorText == ".integrity_rule") // We found our rule again, no need to iterate more, this means we have a valid CSS in str
-                      {
-                        break;
-                      } else if (i == max_iterations) {
-                        return new Error("Rejected integrity rule from live chunk repair, max iterations reached")
-                      }
-                    }
-                  } else { // We reject the whole CSS if it broken for any reason.( @media cut in midle of name like @medi.integrity rule), str sarting with a bracket, etc.
-                    // Reasons are endless and if Firefox said the CSS is broken, we trust it.
-                    //  console.log(can_iterate,cssStyleSheet,details.url,details.datacount)
-                    return new Error("Rejected integrity rule as a whole");
-                  }
-                }
-              }
-              uDark.edit_css(cssStyleSheet, idk_mode, details, carried);
-
-              let rules = [...cssStyleSheet.cssRules].map(r => r.cssText);
-
-              uDark.edit_str_restore_imports_all_way(str, rules);
-
-              str = rules.join("\n");
-            }
-
-            if (rejected_str) {
-              str = {
-                str: str,
-                rejected: rejected_str,
-              }
-            }
-            return str;
-          },
           get_the_remote_port(details, max_tries = 5, time_between_tries = 100) { // Ports can take a lot of time to be available
             return new Promise((resolve, reject) => {
 
