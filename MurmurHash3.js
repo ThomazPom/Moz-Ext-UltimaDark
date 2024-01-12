@@ -51,11 +51,7 @@
     }, e = new t, "undefined" != typeof module ? module.exports = t : this.MurmurHash3 = t
 }();
 
-let fMurmurHash3Hash=function(str)
+window.fMurmurHash3Hash=function(str)
 {
     return MurmurHash3(str).result().toString();
-}
-if(window.exportFunction)
-{
-    exportFunction(fMurmurHash3Hash , window, { defineAs: "fMurmurHash3Hash" });
 }
