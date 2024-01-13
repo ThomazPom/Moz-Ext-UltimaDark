@@ -10,7 +10,7 @@ window.dark_object = {
       window.uDark = {
           rgb_a_colorsRegex: /rgba?\([%0-9., \/a-z_+*-]+\)/gmi, // rgba vals with variables names and calcs involved NOTE: #rgba(255 255 255 / 0.1) is valid color rgba(255,255,255,30%) is valid color too
           hsl_a_colorsRegex: /hsla?\(([%0-9., \/=a-z_+*-]|deg|turn|tetha)+\)/gmi, // hsla vals  with variables names and calcs involved  #rgba(255 255 255 / 0.1)
-
+          direct_window_export: true,
           enable_idk_mode: true,
           general_cache:{},
           userSettings: {},
@@ -25,11 +25,65 @@ window.dark_object = {
           min_bright_bg_trigger: 0.2, // backgrounds with luminace under this value will remain as is
           min_bright_bg: 0.1, // background with value over min_bright_bg_trigger will be darkened from this value up to max_bright_bg
           max_bright_bg: 0.4, // background with value over min_bright_bg_trigger will be darkened from min_bright_bg up to this value
+          do_idk_mode_timed: function(duration, interval) {
+            if (!uDark.enable_idk_mode) {
+              return;
+            }
+            // Repeat IDK mode every n ms for a certain time
+            duration = duration || uDark.idk_mode_duration || 5000;
+            interval = interval || uDark.idk_mode_interval || 50;
+            clearInterval(uDark.do_idk_mode_interval)
+            let interval_id = setInterval(function() {
+              // console.log("IDK mode launched")
+              uDark.do_idk_mode();
+            }, interval)
+            uDark.do_idk_mode_interval = interval_id;
+            setTimeout(function() {
+              // console.log("IDK mode stopped after" ,duration,"ms and",  (duration/interval)+" execs");
+              clearInterval(interval_id) // Use interval_id to avoid next intervals. If we use uDark.do_idk_mode_interval, it may clear the new interval_id we just created and stored in uDark.do_idk_mode_interval
+            }, duration)
+            return interval_id;
+          },
+  
+          do_idk_mode: function() {
+            let editableStyleSheets = [...document.wrappedJSObject.styleSheets].filter(styleSheet => {
+              if (styleSheet.idk_mode_ok) {
+                return false; // This one is still OK
+              }
+              styleSheet.idk_mode_ok = true; // This attribute is lost if the stylesheet is edited, so we can ignore this CSS.
+              
+              if(styleSheet.ownerNode.id=="UltimaDarkTempVariablesStyle")
+              {
+                return false; // Created on the document of the content script and becomes a cors stylesheet. It's already IDK resolved
+              }
+              if (styleSheet.href) {
+  
+                let styleSheetHref = (new URL(styleSheet.href))
+                let is_cross_domain = styleSheetHref.origin != document.location.origin;
+                
+                return !is_cross_domain && !uDark.chunk_stylesheets_idk_only_cors; // If it is cross domain, we will do it via a message to the background script
+                
+              }
+              else if(styleSheet.ownerNode.classList.contains("ud-idk-vars")){
+                return true;
+              }
+              return false; // Stylesheet has no href, it is a style element, and is not declared by background as needing IDK intervention.
+            });
+            editableStyleSheets.forEach(styleSheet => {
+              // console.log("Will edit",styleSheet)
+              console.log(styleSheet.rules.length,"bug here" ,"https://pom.pm/Tests/test_idkvars_inline_style.html")
+              uDark.edit_cssRules(styleSheet.cssRules, true);
+            });
+          },
           valuePrototypeEditor: function(leType, atName, watcher = x => x, conditon = x => x, aftermath = false) {
             //   console.log(leType,atName)
             // if (conditon) {
             //   console.log("VAdding condtition to", leType, leType.name, conditon, conditon.toString())
             // }
+            
+            if(leType.wrappedJSObject){ // Cross compatibilty with content script
+              leType=leType.wrappedJSObject;
+            }
             var originalSet = Object.getOwnPropertyDescriptor(leType.prototype, atName).set;
             Object.defineProperty(leType.prototype, "o_ud_set_" + atName, {
               set: originalSet
@@ -48,9 +102,12 @@ window.dark_object = {
           functionPrototypeEditor: function(leType, laFonction, watcher = x => x, conditon = x => x, result_editor = x => x) {
             //  console.log(leType,leType.name,leType.prototype,laFonction,laFonction.name)
             if (laFonction.concat) {
-              return laFonction.forEach(aFonction => {
+              return laFonction.forEach(aFonction => { 
                 uDark.functionPrototypeEditor(leType, aFonction, watcher, conditon, result_editor)
               })
+            }
+            if(leType.wrappedJSObject){ // Cross compatibilty with content script
+              leType=leType.wrappedJSObject;
             }
             // if (conditon) {
             //   console.log("Adding condtition to", leType, leType.name, laFonction, conditon, conditon.toString())
@@ -748,8 +805,7 @@ window.dark_object = {
             value = uDark.edit_with_regex(false /*The namedColorsRegex is not affected*/ , key, value, uDark.namedColorsRegex, transformation, render); // edit_named_colors
             value = uDark.edit_with_regex(false /*The hexadecimalColorsRegex is not affected*/ , key, value, uDark.hexadecimalColorsRegex, transformation, render); // edit_hex_colors // The browser auto converts hex to rgb, but some times not like in  var(--123,#00ff00) as it cant resolve the var
 
-            cssStyle.setProperty(key_prefix + key, value, priority); // Unexpected recursion even using setProperty WHY ?
-            // console.log("end",key,value)
+            cssStyle.setProperty(key_prefix + key, value, priority); // Once we had  an infinite loop here when uDark was loaded twice and redefining setProperty.
             // console.log("cssKey Color",cssRule,key,value,priority,cssRule.cssText);
           },
           edit_all_cssRule_colors(idk_mode, cssRule, keys, transformation, render, hasUnresolvedVars, key_prefix = "", actions = {}, callBack = uDark.edit_all_cssRule_colors_cb) {
@@ -946,11 +1002,7 @@ window.dark_object = {
 
         }
       }
-      // Zone for revoking property edition by the website : // no true=no trust
-      // https://developer.mozilla.org/fr/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty
-      // Some functions are replaced by good or less polyfills, i prefer native functions when possible
-
-      // End of zone for revoking property edition by the website
+      
 
 
 
@@ -1107,70 +1159,32 @@ window.dark_object = {
       window.uDark = {...uDark,...{
        is_content_script:true,
 
-        do_idk_mode_timed: function(duration, interval) {
-          if (!uDark.enable_idk_mode) {
-            return;
-          }
-          // Repeat IDK mode every n ms for a certain time
-          duration = duration || uDark.idk_mode_duration || 5000;
-          interval = interval || uDark.idk_mode_interval || 50;
-          clearInterval(uDark.do_idk_mode_interval)
-          let interval_id = setInterval(function() {
-            // console.log("IDK mode launched")
-            uDark.do_idk_mode();
-          }, interval)
-          uDark.do_idk_mode_interval = interval_id;
-          setTimeout(function() {
-            // console.log("IDK mode stopped after" ,duration,"ms and",  (duration/interval)+" execs");
-            clearInterval(interval_id) // Use interval_id to avoid next intervals. If we use uDark.do_idk_mode_interval, it may clear the new interval_id we just created and stored in uDark.do_idk_mode_interval
-          }, duration)
-          return interval_id;
-        },
 
-        do_idk_mode: function() {
-          let editableStyleSheets = [...document.wrappedJSObject.styleSheets].filter(styleSheet => {
-            if (styleSheet.idk_mode_ok) {
-              return false; // This one is still OK
-            }
-            styleSheet.idk_mode_ok = true; // This attribute is lost if the stylesheet is edited, so we can ignore this CSS.
-            
-            if(styleSheet.ownerNode.id=="UltimaDarkTempVariablesStyle")
-            {
-              return false; // Created on the document of the content script and becomes a cors stylesheet. It's already IDK resolved
-            }
-            if (styleSheet.href) {
-
-              let styleSheetHref = (new URL(styleSheet.href))
-              let is_cross_domain = styleSheetHref.origin != document.location.origin;
-              
-              return !is_cross_domain && !uDark.chunk_stylesheets_idk_only_cors; // If it is cross domain, we will do it via a message to the background script
-              
-            }
-            else if(styleSheet.ownerNode.classList.contains("ud-idk-vars")){
-              return true;
-            }
-            return false; // Stylesheet has no href, it is a style element, and is not declared by background as needing IDK intervention.
-          });
-          editableStyleSheets.forEach(styleSheet => {
-            // console.log("Will edit",styleSheet)
-            console.log(styleSheet.rules.length,"bug here" ,"https://pom.pm/Tests/test_idkvars_inline_style.html")
-            uDark.edit_cssRules(styleSheet.cssRules, true);
-          });
-        },
         
 
       }}
 
-      uDark.injectscripts = [dark_object.all_levels.install, dark_object.content_script.override_website].map(code => {
-        return "(" + code.toString() + ")()";
-      })
-      window.wrappedJSObject.eval(uDark.injectscripts.join(";"));
+      if(uDark.direct_window_export)
+      {
+        let injectscripts = [dark_object.all_levels.install, dark_object.content_script.override_website].map(code => {
+          return "(" + code.toString() + ")()";
+        })
+        window.wrappedJSObject.eval(injectscripts.join(";"));
+
+        
+      }
     
-
-
 
       browser.storage.local.get(null, function(res) {
         window.uDark.userSettings = res;
+        if(uDark.direct_window_export)
+        {
+          // let loadSettings = function() {
+          //   uDark.userSettings=JSON.parse('{res}');
+          // };
+          // window.wrappedJSObject.eval("(" + loadSettings.toString().replace('{res}',JSON.stringify(uDark.userSettings).replaceAll(/(['\\])/g,"\\$1")) + ")()");
+          window.wrappedJSObject.uDark.userSettings = cloneInto(res, window); // Using eval here has no gain, on browserbench.org it has equal performance
+        }
       });
       // NOTE: DROPS SIGNIFICANTLY THE PERFORMANCE, prefer use eval
       if(exportUlimaDarkToForeground=false){ // Under test but not usefull anymore
@@ -1269,24 +1283,39 @@ window.dark_object = {
       }
     },
     override_website: function() {
-      if (window.uDark && window.uDark.installed) {
-        return;
-      } // Avoid infinite loops // Already fully installed. Do not reinstall if somehow another HTML element gets injected in the page
+      start = new Date()/1;
+      console.log("UltimaDark","Content script override website",start = new Date()/1 );
       // console.log(globalThis.exportFunction)
-      if(!globalThis.exportFunction)
+      {// Measure the impact of exportFunction on performance by disabling its behavior
+        
+        // globalThis.exportFunction=f=>f;
+      }
+      if(uDark.direct_window_export)
       {
+        document.wrappedJSObject=document;
+        // Avoid infinite loops 
+        if (window.uDark && window.uDark.installed) {
+          return; // Already fully installed. Do not reinstall if somehow another uDark object gets injected in the page
+        } else {
+          uDark.installed = true;
+        }
 
+
+        // Emulate content script exportFunction in one line;
         globalThis.exportFunction=f=>f;
-        console.log(globalThis.exportFunction)
+
+        // Zone for revoking property edition by the website : // no true=no trust
+        // https://developer.mozilla.org/fr/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty
+        // Some functions are replaced by good or less polyfills, i prefer native functions when possible
         Object.defineProperty(String.prototype, "replaceAll", {
           value: String.prototype.replaceAll,
           writable: false,
           configurable: false,
           enumerable: false
         }); // WikiCommons uses this one
-        console.log("".replaceAll.toString());
+        
+      // End of zone for revoking property edition by the website
       }
-      uDark.installed = true;
       console.info("UltimaDark","Websites overrides install", window);
 
       uDark.functionPrototypeEditor(CSSStyleSheet,
@@ -1451,8 +1480,10 @@ window.dark_object = {
         return uDark.edit_str(value)
       }, (elem, value) => value && elem instanceof HTMLStyleElement);
 
-      console.info("UltimaDark","Websites overrides ready", window);
+      console.info("UltimaDark","Websites overrides ready", window, "elapsed:" ,(new Date()/1)-start);
 
+    
+      
     }
   },
   background: {
@@ -2268,10 +2299,6 @@ window.dark_object = {
   },
   both: {
     install: function() {
-      if (window.uDark && window.uDark.installed) {
-        console.info("UltimaDark was already loaded", window);
-        return;
-      } // Avoid infinite loops // Already fully installed. Do not reinstall if somehow another HTML element gets injected in the page
       window.uDark = {
         ...uDark,
         ...{
@@ -3007,7 +3034,10 @@ if (browser.webRequest) {
   dark_object.background.install();
 } else {
   dark_object.content_script.install();
-  // dark_object.content_script.override_website();
+  if(!uDark.direct_window_export)
+  {
+    dark_object.content_script.override_website();
+  }
   dark_object.content_script.website_load();
   
 }
