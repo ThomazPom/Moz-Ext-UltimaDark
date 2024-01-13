@@ -672,41 +672,52 @@ window.dark_object = {
 
             });
           },
-
+          ceilBrigthness: function(str) {
+              // 9 nested vars or parentheis: if a parethesis is open we expect it to be closed.
+                return str.replaceAll(/((?:rgb|hsl)a?\()(\((\((\((\((\((\((\((.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)/g, (match,g1) => {
+                  let intermediate=match.slice(g1.length,-1);
+                  let inside=intermediate.split(/[,](?![^(]*\))/);
+                  if(inside.length>=3)
+                  {
+                    if(g1.startsWith("rgb"))
+                    {
+                      for(let i=0;i<3;i++)
+                      {
+                        inside[i]=`min(${inside[i]},180)`
+                      }
+                    }
+                    else if(g1.startsWith("hsl"))
+                    {
+                      inside[2]=`min(${inside[2]},0.5)`
+                    }
+                    match=g1+inside.join(",")+")";
+                  }
+                  return match;
+                })
+          },
           idk_twice_actions: {
             "background": (cssRule, idk_value) => {
-              // As last resort if this method ever proves problematic, use function  min( )  background: rgba(min(var(--label-r),180),min(var(--label-g),180),min(var(--label-b),180), 1);
-
-              //  background: rgba(min(255*0.3 + 0.2*var(--label-r), var(--label-r)), min(255*0.3 + 0.2*var(--label-b), var(--label-b)), min(255*0.3 + 0.2*var(--label-g), var(--label-g)));
-
-              // Interestingly this could even be used earlier, during css editing, to avoid the need of a second pass
-
-              cssRule.style.setProperty("background-blend-mode", "darken", "important");
-              return idk_value;
-              // Use RGB colors to avoid value bein edited later
-              // Use hsl color name or hex to benefit a future edit
-              return idk_value + " linear-gradient(rgba(168, 168, 168, 1),rgba(168, 168, 168, 1))";
-            }, //9f9f9f
+              let result = uDark.ceilBrigthness(idk_value);
+              return result;
+              // old way:
+              // cssRule.style.setProperty("background-blend-mode", "darken", "important");
+              // return idk_value + " linear-gradient(rgba(168, 168, 168, 1),rgba(168, 168, 168, 1))"; 
+            },
             "background-image": (cssRule, idk_value) => {
-              return idk_value;
-              // Use RGB colors to avoid value being edited later
-              // Use hsl color name or hex to benefit a future edit
-              cssRule.style.setProperty("background-blend-mode", "darken", "important");
-              return idk_value + ", linear-gradient(rgba(168, 168, 168, 1),rgba(168, 168, 168, 1))";
+              return uDark.ceilBrigthness(idk_value);
             },
             "background-color": (cssRule, idk_value) => {
-              return idk_value;
-              // Use RGB colors to avoid value being edited later
-              // Use hsl color name or hex to benefit a future edit
+              return uDark.ceilBrigthness(idk_value);
 
-              cssRule.style.setProperty("background-blend-mode", "darken", "important");
-              let background_image = cssRule.style.getPropertyValue("background-image");
-              let result = `linear-gradient(${idk_value},${idk_value}), linear-gradient(rgba(168, 168, 168, 1),rgba(168, 168, 168, 1))`;
-              if (background_image) {
-                result = background_image + "," + result;
-              }
-              cssRule.style.setProperty("background-image", result);
-              return "none";
+              // old way:
+              // cssRule.style.setProperty("background-blend-mode", "darken", "important");
+              // let background_image = cssRule.style.getPropertyValue("background-image");
+              // let result = `linear-gradient(${idk_value},${idk_value}), linear-gradient(rgba(168, 168, 168, 1),rgba(168, 168, 168, 1))`;
+              // if (background_image) {
+              //   result = background_image + "," + result;
+              // }
+              // cssRule.style.setProperty("background-image", result);
+              // return "none";
               // return idk_value+", linear-gradient(rgba(168, 168, 168, 1),rgba(168, 168, 168, 1))";
             },
 
@@ -725,6 +736,7 @@ window.dark_object = {
               // console.log("Fully failed to get '",key,"' from",maybe_array,cssRule,match);
               if (uDark.idk_twice_actions[key]) {
                 maybe_array = uDark.idk_twice_actions[key](cssRule, restored);
+                console.log(maybe_array, "from", restored);
               }
               return maybe_array;
             });
