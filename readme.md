@@ -37,9 +37,9 @@ UltimaDark also has the capability to edit pixels in images ("Image Edition" tog
 
 # Versions
 
-- Currently on 1.5.x
+ Currently on 1.5.x
 # Downloads
-- [Download from AMO](https://addons.mozilla.org/firefox/addon/ultimadark/) (Firefox's add-on repository)
+ [Download from AMO](https://addons.mozilla.org/firefox/addon/ultimadark/) (Firefox's add-on repository)
 
 # How To Clone
 
