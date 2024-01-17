@@ -812,7 +812,6 @@ window.dark_object = {
 
               // console.log(uDark.is_background,key,new_value,"has unresolvable vars, skipping");
               hasUnresolvedVars.has = hasUnresolvedVars.has || true;
-              console.log("Setting unresolvable vars", key, "with --ud-idk_")
               cssStyle.setProperty("--ud-idk_" + key, new_value, priority);
               uDark.on_idk_missing == "remove" && cssStyle.removeProperty(key)
               uDark.on_idk_missing == "fill_black" && cssStyle.setProperty(key, transformation(0, 0, 0, 1, render), priority);
