@@ -59,3 +59,7 @@ Bug reports help developers to find out about issues they may not have experienc
 - Search for the site name on the issue tracker to make sure it has not already been reported 
 - Disable other extensions that may be interfering with the layout of the site eg. content blockers before testing
 - Take screenshots of the behavior and specify what Browser, Release Channel, and Version you are on along with providing a link to the offending site 
+
+# Backporting 
+
+Without an unreasonable level of effort, this extension will not be compatible with Pre-Quantum versions of Firefox (56 and lower). However, it should be theoretically possible to get working on 57 and higher. Contributions towards this broader compatibility would be greatly appreciated. 
