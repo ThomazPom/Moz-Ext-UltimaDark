@@ -355,9 +355,9 @@ window.dark_object = {
             if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
             return p;
           },
-          rgbToHsl: (r, g, b,max) => {
+          rgbToHsl: (r, g, b) => {
             (r /= 255), (g /= 255), (b /= 255);
-            const vmax = (max||Math.max(r, g, b)),
+            const vmax = Math.max(r, g, b),
               vmin = Math.min(r, g, b);
             let h, s, l = (vmax + vmin) / 2;
 
