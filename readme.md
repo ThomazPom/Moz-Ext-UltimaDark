@@ -29,7 +29,7 @@ You can review the transformation function here: [Desmos Background Transformati
 UltimaDark also has the capability to edit pixels in images ("Image Edition" toggle), although this feature is currently experimental and not fully functional. An example of the broken functionality can be seen on the Apple support page: [Broken Example](https://support.apple.com/fr-fr/HT205189). On the other hand, the feature works better on the Sushi Spirit website: [Not-So-Bad Example](https://www.sushispirit.com/).
 
 # Compatibility
-- Currently running on Firefox 102.15.1 ESR and higher
+- Currently running on Firefox [102.15.1 ESR](https://ftp.mozilla.org/pub/firefox/releases/102.15.1esr/) and [higher](https://www.mozilla.org/firefox/new/)
 - [Mercury](https://thorium.rocks/mercury)
 - [Waterfox G6.0.7 or higher](https://www.waterfox.net/) 
 - [LibreWolf](https://librewolf.net/)
@@ -37,9 +37,9 @@ UltimaDark also has the capability to edit pixels in images ("Image Edition" tog
 
 # Versions
 
-- Currently on 1.5.x
+ Currently on 1.5.x
 # Downloads
-- [Download with firefox](https://addons.mozilla.org/fr/firefox/addon/UltimaDark/)
+ [Download from AMO](https://addons.mozilla.org/firefox/addon/ultimadark/) (Firefox's add-on repository)
 
 # How To Clone
 
@@ -59,3 +59,7 @@ Bug reports help developers to find out about issues they may not have experienc
 - Search for the site name on the issue tracker to make sure it has not already been reported 
 - Disable other extensions that may be interfering with the layout of the site eg. content blockers before testing
 - Take screenshots of the behavior and specify what Browser, Release Channel, and Version you are on along with providing a link to the offending site 
+
+# Backporting 
+
+Without an unreasonable level of effort, this extension will not be compatible with Pre-Quantum versions of Firefox (56 and lower). However, it should be theoretically possible to get working on 57 and higher. Contributions towards this broader compatibility would be greatly appreciated. 
