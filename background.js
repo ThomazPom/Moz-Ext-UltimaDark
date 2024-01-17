@@ -71,7 +71,6 @@ window.dark_object = {
             });
             editableStyleSheets.forEach(styleSheet => {
               // console.log("Will edit",styleSheet)
-              console.log(styleSheet.rules.length,"bug here" ,"https://pom.pm/Tests/test_idkvars_inline_style.html")
               uDark.edit_cssRules(styleSheet.cssRules, true);
             });
           },
@@ -199,6 +198,7 @@ window.dark_object = {
               // As long as we are returing a STR, we have to edit the style element innerHTML;
               // astyle.innerHTML=uDark.edit_css(astyle.innerHTML,astyle.sheet);
               astyle.classList.add("ud-edited-content-script")
+              
             });
             documentElement.querySelectorAll("[style]").forEach(astyle => {
               // console.log(details,astyle,astyle.innerHTML,astyle.innerHTML.includes(`button,[type="reset"],[type="button"],button:hover,[type="button"],[type="submit"],button:active:hover,[type="button"],[type="submi`))
@@ -222,6 +222,7 @@ window.dark_object = {
             return result_edited;
           },
           edit_str: function(str, cssStyleSheet, verifyIntegrity = false, details, idk_mode = false, carried = {}) {
+            
             let rejected_str = false;
 
             if (!cssStyleSheet) {
@@ -811,6 +812,7 @@ window.dark_object = {
 
               // console.log(uDark.is_background,key,new_value,"has unresolvable vars, skipping");
               hasUnresolvedVars.has = hasUnresolvedVars.has || true;
+              console.log("Setting unresolvable vars", key, "with --ud-idk_")
               cssStyle.setProperty("--ud-idk_" + key, new_value, priority);
               uDark.on_idk_missing == "remove" && cssStyle.removeProperty(key)
               uDark.on_idk_missing == "fill_black" && cssStyle.setProperty(key, transformation(0, 0, 0, 1, render), priority);
@@ -820,7 +822,6 @@ window.dark_object = {
               uDark.on_idk_missing == "fill_green" && cssStyle.setProperty(key, transformation(0, 129, 0, 1, render), priority);
               return;
             } else if (idk_mode) {
-
               {
                 if (!uDark.keepIdkProperties) {
                   cssStyle.removeProperty(key_idk);
@@ -906,18 +907,20 @@ window.dark_object = {
               wording_action = [];
 
             for (let x of cssRule.style) {
-              if (idk_mode === true) {
+              if (idk_mode === true) { // Partial idk mode does not have --ud-idk_ prefix, they are added by cloning the cssRule
+                
                 if (x.startsWith("--ud-idk_")) {
                   x = x.slice(9);
                 } else {
                   continue;
                 }
               }
+              
 
-              if (x.startsWith("--")) { // Partial idk mode must not edit variables
+              if (x.startsWith("--")) { 
                 variables_items.push(x);
-                continue;
-              } // Eliminate Variables, i don't think its usefull to test them againt regexes
+                continue; // Eliminate Variables, i don't think its usefull to test them againt regexes
+              } 
               if (uDark.css_properties_wording_action_dict[x]) {
                 wording_action.push(x);
               } // Check if some wording action is needed
@@ -947,7 +950,9 @@ window.dark_object = {
             foreground_items.length && uDark.edit_all_cssRule_colors(idk_mode, cssRule, foreground_items, uDark.revert_rgba, uDark.rgba_val, hasUnresolvedVars, "", {
               prefix_fg_vars: true
             })
-            variables_items.length && [uDark.edit_all_cssRule_colors(idk_mode, cssRule, variables_items, uDark.revert_rgba, uDark.rgba_val, hasUnresolvedVars, "--ud-fg", {
+            variables_items.length && [uDark.edit_all_cssRule_colors(idk_mode, cssRule, variables_items, uDark.revert_rgba, uDark.rgba_val, hasUnresolvedVars, 
+              idk_mode?"":"--ud-fg" // Avoid double prefixing :  we are here in front end, and this has been done in background
+              , {
               prefix_fg_vars: true
             }), uDark.edit_all_cssRule_colors(idk_mode, cssRule, variables_items, uDark.rgba, uDark.rgba_val, hasUnresolvedVars)]
 
@@ -1278,7 +1283,7 @@ window.dark_object = {
             
             let readable_variable_check_value=`rgba(255,254,253,var(--chunk_is_readable_${data.details.requestId}_${data.details.datacount}))`;
      
-
+            console.log("Will search for",readable_variable_check_value,"in chunk",data.details.datacount,"for",data.details.requestId,"(url:",data.details.url,")");
             let workInterval = setInterval(() => {
               
               let option = new Option(); // Option must be in the loop because once the color is set to an unkonwn variable it stays at empty string
@@ -1287,7 +1292,6 @@ window.dark_object = {
               
               let floodColor=getComputedStyle(option).floodColor;
               option.remove();
-              console.log("floodColor",floodColor);
               if(floodColor!=expectedValueForResolvableColor){return;} // If the floodColor is not the one we expect for this chunk, it means that the chunk is not written yet, so we wait
               clearInterval(workInterval);
               clearTimeout(workTimeout);
@@ -1296,12 +1300,12 @@ window.dark_object = {
               // The variables we are looking a might be in data.chunk we have to read it first to make them available to idk_variables_only.
               let ikd_chunk_resolved = uDark.edit_str(data.chunk, false, false, false, true);
                   
-              let idk_variables_only = uDark.edit_str(data.chunk_variables , false, false, false, "partial_idk");
+              let props_and_var_only_color_idk = uDark.edit_str(data.chunk_variables , false, false, false, "partial_idk");
               
               let tempVariablesStyle=document.createElement("style");
               tempVariablesStyle.id="UltimaDarkTempVariablesStyle";
               
-              tempVariablesStyle.innerHTML="/*UltimaDark temporary style*/\n"+idk_variables_only;
+              tempVariablesStyle.innerHTML="/*UltimaDark temporary style*/\n"+props_and_var_only_color_idk;
               document.head.append(tempVariablesStyle);
               
       
@@ -1338,7 +1342,6 @@ window.dark_object = {
     },
     
     website_load: function() {
-      
       if (uDark.enable_idk_mode) { // Use of an observer was consuming too much ressources
         
         uDark.do_idk_mode_timed();
@@ -3015,7 +3018,6 @@ window.dark_object = {
     //   return details;
     // },
     editBeforeData: function(details) {
-      console.log("Loaded html", details.url)
       if (details.tabId == -1 && uDark.connected_options_ports_count || uDark.connected_cs_ports["port-from-popup-" + details.tabId]) { // ^-1 Happens sometimes, like on https://www.youtube.com/ at the time i write this, stackoverflow talks about worker threads
 
         // Here we are covering the needs of the option page: Be able to frame any page
@@ -3067,24 +3069,27 @@ window.dark_object = {
         var a_filter = uDark.headersdo[x.name.toLowerCase()];
         return a_filter ? a_filter(x) : true;
       })
-      let filter = browser.webRequest.filterResponseData(details.requestId);
-      let decoder = new TextDecoder(details.charset)
-      let encoder = new TextEncoder();
-      details.datacount = 0;
-      details.writeEnd = "";
+      if(!details.fromCache)
+      { // We don't want to edit cached pages, as they are already edited and put in cache !
+        let filter = browser.webRequest.filterResponseData(details.requestId);
+        let decoder = new TextDecoder(details.charset)
+        let encoder = new TextEncoder();
+        details.datacount = 0;
+        details.writeEnd = "";
 
-      filter.ondata = event => {
-        details.datacount++
-        details.writeEnd += decoder.decode(event.data, {
-          stream: true
-        });
-        // must not return this closes filter//
-      }
-      filter.onstop = event => {
-        details.datacount = 1;
-        details.writeEnd = uDark.parse_and_edit_html3(details.writeEnd, details)
-        filter.write(encoder.encode(details.writeEnd));
-        filter.disconnect(); // Low perf if not disconnected !
+        filter.ondata = event => {
+          details.datacount++
+          details.writeEnd += decoder.decode(event.data, {
+            stream: true
+          });
+          // must not return this closes filter//
+        }
+        filter.onstop = event => {
+          details.datacount = 1;
+          details.writeEnd = uDark.parse_and_edit_html3(details.writeEnd, details)
+          filter.write(encoder.encode(details.writeEnd));
+          filter.disconnect(); // Low perf if not disconnected !
+        }
       }
       return {
         responseHeaders: details.responseHeaders
