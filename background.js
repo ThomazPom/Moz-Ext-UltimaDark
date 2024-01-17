@@ -18,7 +18,7 @@ window.dark_object = {
           background_match: /(footer[^\/\\]*$)|background|(bg|box|panel|fond|fundo|bck)[._-]/i,
           chunk_stylesheets_idk_only_cors: false, 
           namedColorsRegex: (new RegExp(`(?<![_a-z0-9-])(${CSS_COLOR_NAMES.join("|")})(?![_a-z0-9-])`, "gmi")),
-          min_bright_fg: 0.65, // Text with luminace under this value will be brightened
+          min_bright_fg: 0.65, // Text with luminance  under this value will be brightened
           max_bright_fg: 0.9, // Text over this value will be darkened
           brightness_peak_editor_fg: 0.5, // Reduce the brightness of texts with intermediate luminace, tying to achieve better saturation
           hueShiftfg: 0, // Hue shift for text, 0 is no shift, 360 is full shift
@@ -174,8 +174,19 @@ window.dark_object = {
             if (elem instanceof HTMLStyleElement) {
               return uDark.edit_str(value)
             }
+
+            
+            
+            hasBody=value.includes("body");
+            if(!hasBody)
+            {
+              // Looks like an overkill but it is not. 
+              // Angular websites counts their comments to work and the first comment of non encapsulated html will be removed
+              value="<body>"+value+"</body>";
+            }
             var parser = new DOMParser();
-            var documentElement = parser.parseFromString(value, "text/html").documentElement;
+            var parsedElement = parser.parseFromString(value, "text/html");
+            let documentElement = parsedElement.documentElement;
             documentElement.querySelectorAll("meta[name='color-scheme']").forEach(udMetaDark=>{
     
               udMetaDark.id = "ud-meta-dark"
@@ -197,10 +208,17 @@ window.dark_object = {
             documentElement.querySelectorAll("img[src*='data']").forEach(image => {
               image.src = uDark.send_data_image_to_parser(image.getAttribute("src"))
             })
-    
-            let result_edited= documentElement.innerHTML;
+            let result_edited= false;
             
+            if(hasBody)
+            {
+              result_edited=documentElement.outerHTML;
+            }
+            else {
+              result_edited=parsedElement.body.innerHTML;
+            }
             result_edited = result_edited.replace(/[\s\t]integrity=/g, " nointegrity=")
+            
             return result_edited;
           },
           edit_str: function(str, cssStyleSheet, verifyIntegrity = false, details, idk_mode = false, carried = {}) {
@@ -222,7 +240,7 @@ window.dark_object = {
               str = cssStyleSheet.cssRules[0].cssText.slice(4, -2);
 
             } else {
-
+              
               // Exists the rare case where css only do imports, no rules with {} and integrity cant be verified because it does not close the import with a ";"
               let returnAsIs = (!cssStyleSheet.cssRules.length && !str.includes("{"))
               if (returnAsIs) {
@@ -337,9 +355,9 @@ window.dark_object = {
             if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
             return p;
           },
-          rgbToHsl: (r, g, b) => {
+          rgbToHsl: (r, g, b,max) => {
             (r /= 255), (g /= 255), (b /= 255);
-            const vmax = Math.max(r, g, b),
+            const vmax = (max||Math.max(r, g, b)),
               vmin = Math.min(r, g, b);
             let h, s, l = (vmax + vmin) / 2;
 
@@ -603,12 +621,27 @@ window.dark_object = {
             return render(...[r, g, b], a);
           },
           
-          edit_cssRules: (cssRules, idk_mode = false, details, carried, callBack = uDark.edit_cssProperties) => {
+          edit_cssRules: (cssRules, idk_mode = false, details, carried, callBack = uDark.edit_cssProperties,clean_empty_rules=false) => {
             [...cssRules].forEach(cssRule => {
               if (cssRule.cssRules && cssRule.cssRules.length) {
-                return uDark.edit_cssRules(cssRule.cssRules, idk_mode, details, carried, callBack);
+                uDark.edit_cssRules(cssRule.cssRules, idk_mode, details, carried, callBack);
+                if(clean_empty_rules)
+                {
+                  for(let i=cssRule.cssRules.length-1;i>=0;i--)
+                  {
+                    let cssStyle=cssRule.cssRules[i].style;
+                    if(cssStyle && cssStyle.length==0||!cssStyle&&cssRule.cssRules.length==0)
+                    {
+                      
+                      // console.log("Deleted empty rule",cssRule.cssRules[i],"from",cssRule,cssStyle,cssStyle.length)
+                      cssRule.deleteRule(i);
+                    }
+                  }
+                }
+                return;
               } else if (cssRule.style && cssRule.constructor.name != "CSSFontFaceRule") {
                 callBack(cssRule, idk_mode, details, carried);
+                
               }
             })
           },
@@ -650,6 +683,9 @@ window.dark_object = {
                 if (action.replace) {
                   let value = cssStyle.getPropertyValue(key);
                   cssStyle.setProperty(key, value.replaceAll(...action.replace));
+                }
+                if (action.remove) {
+                  cssStyle.removeProperty(key);
                 }
                 if (action.stickConcatToPropery) {
                   let vars = action.stickConcatToPropery;
@@ -736,7 +772,6 @@ window.dark_object = {
               // console.log("Fully failed to get '",key,"' from",maybe_array,cssRule,match);
               if (uDark.idk_twice_actions[key]) {
                 maybe_array = uDark.idk_twice_actions[key](cssRule, restored);
-                console.log(maybe_array, "from", restored);
               }
               return maybe_array;
             });
@@ -745,12 +780,12 @@ window.dark_object = {
           hexadecimalColorsRegex: /#[0-9a-f]{3,4}(?:[0-9a-f]{2})?(?:[0-9a-f]{2})?/gmi, // hexadecimal colors
           foreground_color_css_properties: ["color", "fill"], // css properties that are foreground colors
           // Gradients can be set in background-image
-          background_color_css_properties_regex: /color|fill|box-shadow|^background(?:-image|-color)?$/, // css properties that are background colors
+          background_color_css_properties_regex: /color|fill|box-shadow|^background(?:-image|-color)?$/,// Background images can contain colors // css properties that are background colors
           edit_prefix_fg_vars: function(idk_mode, value, actions) {
             if (!value.includes("var(") && !idk_mode) {
               return value; // No variables to edit;
             }
-            return value.replace(/(?<!a-z0-^9-_])--([a-z0-9-_])/g, "--ud-fg--$1")
+            return value.replace(/(?<!a-z0-^9-_])--([a-z0-9-_])/gi, "--ud-fg--$1")
           },
           restore_idk_vars: function(idk_mode, value) {
             if (idk_mode) {
@@ -761,11 +796,12 @@ window.dark_object = {
           },
 
           edit_all_cssRule_colors_cb: (idk_mode, cssRule, key, key_idk, value, transformation, render, hasUnresolvedVars, key_prefix, actions, topLevelRule) => {
+            let new_value=value;
             let cssStyle = cssRule.style;
             cssRule[key] = "done"; // Used right above to avoid reprocessing, already deleted once by mistake, this is why this comment exists now :)
             let priority = cssStyle.getPropertyPriority(key_idk);
 
-            if (uDark.is_background && uDark.unResolvableVarsRegex.test(value) && value.includes("var(")) { // To complicated to write a rgex for this, so we will use a simple test
+            if (uDark.is_background && uDark.unResolvableVarsRegex.test(new_value) && new_value.includes("var(")) { // To complicated to write a rgex for this, so we will use a simple test
               if (!topLevelRule.unresolvableRule) {
                 hasUnresolvedVars.carried.unresolvableStylesheet.insertRule(topLevelRule.cssText, hasUnresolvedVars.carried.unresolvableStylesheet.cssRules.length);
                 topLevelRule.unresolvableRule = true;
@@ -773,9 +809,9 @@ window.dark_object = {
 
 
 
-              // console.log(uDark.is_background,key,value,"has unresolvable vars, skipping");
+              // console.log(uDark.is_background,key,new_value,"has unresolvable vars, skipping");
               hasUnresolvedVars.has = hasUnresolvedVars.has || true;
-              cssStyle.setProperty("--ud-idk_" + key, value, priority);
+              cssStyle.setProperty("--ud-idk_" + key, new_value, priority);
               uDark.on_idk_missing == "remove" && cssStyle.removeProperty(key)
               uDark.on_idk_missing == "fill_black" && cssStyle.setProperty(key, transformation(0, 0, 0, 1, render), priority);
 
@@ -789,35 +825,39 @@ window.dark_object = {
                 if (!uDark.keepIdkProperties) {
                   cssStyle.removeProperty(key_idk);
                 }
-                //value.match(/(var|calc)\((\((\((\((\((\((\((\((.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)/g) 
+                //new_value.match(/(var|calc)\((\((\((\((\((\((\((\((.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)/g) 
                 // 9 nested vars or parentheis: keep hsl or RGBA bounds if a parethesis is open we expect it to be closed.
-                value = value.replaceAll(/(var|calc)\((\((\((\((\((\((\((\((.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)/g, match => match.replaceAll("var(", "..1..").replaceAll(")", "..2..").replaceAll("calc(", "..3.."));
-                // value = value.replaceAll(/(var|calc)\([^()]+\)/g, match => match.replaceAll("var(", "..1..").replaceAll(")", "..2..").replaceAll("calc(", "..3.."))
+                new_value = new_value.replaceAll(/(var|calc)\((\((\((\((\((\((\((\((.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)/g, match => match.replaceAll("var(", "..1..").replaceAll(")", "..2..").replaceAll("calc(", "..3.."));
+                // new_value = new_value.replaceAll(/(var|calc)\([^()]+\)/g, match => match.replaceAll("var(", "..1..").replaceAll(")", "..2..").replaceAll("calc(", "..3.."))
 
               }
             }
             // if(debug=cssRule.cssText.includes(uDark.searchedCssText))
             // {
-            //   console.log("Catched 1.1", idk_mode,cssRule.cssText,key_idk,key,value,actions,uDark.is_background && uDark.unResolvableVarsRegex.test(value)) 
+            //   console.log("Catched 1.1", idk_mode,cssRule.cssText,key_idk,key,new_value,actions,uDark.is_background && uDark.unResolvableVarsRegex.test(new_value)) 
             // }
-            if (actions.prefix_fg_vars) {
-              value = uDark.edit_prefix_fg_vars(idk_mode, value, actions);
+            if (actions.prefix_fg_vars) { 
+              new_value = uDark.edit_prefix_fg_vars(idk_mode, new_value, actions);
             }
 
             // if(debug=cssRule.cssText.includes(uDark.searchedCssText))
             // {
-            //   console.log("Catched 1.2", idk_mode,cssRule.cssText,key_idk,key,value,actions,uDark.is_background && uDark.unResolvableVarsRegex.test(value)) 
+            //   console.log("Catched 1.2", idk_mode,cssRule.cssText,key_idk,key,new_value,actions,uDark.is_background && uDark.unResolvableVarsRegex.test(new_value)) 
             // }
 
             
       
-            value = uDark.edit_with_regex(idk_mode, key, value, uDark.rgb_a_colorsRegex, transformation, render, idk_mode ? cssRule : false); // edit_rgb_a_colors
-            value = uDark.edit_with_regex(idk_mode, key, value, uDark.hsl_a_colorsRegex, transformation, render, idk_mode ? cssRule : false); // edit_hsl_a_colors
-            value = uDark.restore_idk_vars(idk_mode, value); // Restore alone vars: color: var(--color_8)
-            value = uDark.edit_with_regex(false /*The namedColorsRegex is not affected*/ , key, value, uDark.namedColorsRegex, transformation, render); // edit_named_colors
-            value = uDark.edit_with_regex(false /*The hexadecimalColorsRegex is not affected*/ , key, value, uDark.hexadecimalColorsRegex, transformation, render); // edit_hex_colors // The browser auto converts hex to rgb, but some times not like in  var(--123,#00ff00) as it cant resolve the var
+            new_value = uDark.edit_with_regex(idk_mode, key, new_value, uDark.rgb_a_colorsRegex, transformation, render, idk_mode ? cssRule : false); // edit_rgb_a_colors
+            new_value = uDark.edit_with_regex(idk_mode, key, new_value, uDark.hsl_a_colorsRegex, transformation, render, idk_mode ? cssRule : false); // edit_hsl_a_colors
+            new_value = uDark.restore_idk_vars(idk_mode, new_value); // Restore alone vars: color: var(--color_8)
+            new_value = uDark.edit_with_regex(false /*The namedColorsRegex is not affected*/ , key, new_value, uDark.namedColorsRegex, transformation, render); // edit_named_colors
+            new_value = uDark.edit_with_regex(false /*The hexadecimalColorsRegex is not affected*/ , key, new_value, uDark.hexadecimalColorsRegex, transformation, render); // edit_hex_colors // The browser auto converts hex to rgb, but some times not like in  var(--123,#00ff00) as it cant resolve the var
 
-            cssStyle.setProperty(key_prefix + key, value, priority); // Once we had  an infinite loop here when uDark was loaded twice and redefining setProperty.
+            if(value!=new_value||key_prefix)
+            {
+              // Edit the value only if necessary:  setting bacground image removes bacground property for intance
+              cssStyle.setProperty(key_prefix + key, new_value, priority); // Once we had  an infinite loop here when uDark was loaded twice and redefining setProperty.
+            }
             // console.log("cssKey Color",cssRule,key,value,priority,cssRule.cssText);
           },
           edit_all_cssRule_colors(idk_mode, cssRule, keys, transformation, render, hasUnresolvedVars, key_prefix = "", actions = {}, callBack = uDark.edit_all_cssRule_colors_cb) {
@@ -932,19 +972,22 @@ window.dark_object = {
             uDark.edit_cssRules(unresolvableStylesheet.cssRules, false, details, {}, function(rule) {
               uDark.edit_all_cssRule_colors(false, rule, Object.values(rule.style), false, false, false, key_prefix = "", actions = {},
                 function(idk_mode, cssRule, key, key_idk, value, transformation, render, hasUnresolvedVars, key_prefix, actions, topLevelRule) {
-
-                  if (!uDark.unResolvableVarsRegex.test(value) && !uDark.is_color(value)) {
+                  
+                  if (!uDark.unResolvableVarsRegex.test(value)||!value.includes("var(")) {
                     cssRule.style.removeProperty(key);
                   }
-                });
-            })
+                }
+                );
+            }
+            ,true // Clean empty rules
+            )
+            
 
 
             // console.log("Unresolvable rules",unresolvableStylesheet,unresolvableStylesheet.cssRules.length);
           },
 
       };
-      
       uDark.colorWork={
         canvasWidth: 5,
         canvasHeight: 3,
@@ -958,6 +1001,7 @@ window.dark_object = {
         "mix-blend-mode": {
           replace: ["multiply", "normal"]
         },
+        "scrollbar-color": {remove:1}, // Not sure about this one, it's detected as a background color, and gets edited.
         "color-scheme": {
           replace: ["light", "dark"]
         },
@@ -1229,19 +1273,25 @@ window.dark_object = {
       
       let expectedValueForResolvableColor = "rgba(255, 254, 253, 0.55)";
       function resolveIDKVars(data) {
+          
           if (data.chunk) {
             
             let readable_variable_check_value=`rgba(255,254,253,var(--chunk_is_readable_${data.details.requestId}_${data.details.datacount}))`;
-            let option = new Option();
-            document.head.appendChild(option);
-            option.style.floodColor=readable_variable_check_value;
-      
-              let workInterval = setInterval(() => {
+     
+
+            let workInterval = setInterval(() => {
+              
+              let option = new Option(); // Option must be in the loop because once the color is set to an unkonwn variable it stays at empty string
+              document.head.appendChild(option);
+              option.style.floodColor=readable_variable_check_value;
+              
               let floodColor=getComputedStyle(option).floodColor;
-              // console.log("floodColor",floodColor);
+              option.remove();
+              console.log("floodColor",floodColor);
               if(floodColor!=expectedValueForResolvableColor){return;} // If the floodColor is not the one we expect for this chunk, it means that the chunk is not written yet, so we wait
               clearInterval(workInterval);
-              option.remove();
+              clearTimeout(workTimeout);
+             
               
               // The variables we are looking a might be in data.chunk we have to read it first to make them available to idk_variables_only.
               let ikd_chunk_resolved = uDark.edit_str(data.chunk, false, false, false, true);
@@ -1262,7 +1312,7 @@ window.dark_object = {
                     resolvedIDKVars: data
                   });
             },50); // Allow time for a chunk to be written before reading vairables out of it.
-            setTimeout(() => {
+            let workTimeout = setTimeout(() => {
               console.log("Timeout: on chunk",data.details.datacount,"for",data.details.requestId,"(url:",data.details.url,")","Search for",readable_variable_check_value,"was not successful");
               // console.log("It was containing:", uDark.edit_str(data.chunk_variables , false, false, false, "partial_idk"));
               clearInterval(workInterval);
@@ -1295,8 +1345,8 @@ window.dark_object = {
       }
     },
     override_website: function() {
-      start = new Date()/1;
-      console.log("UltimaDark","Content script override website",start = new Date()/1 );
+      let start = new Date()/1;
+      console.log("UltimaDark","Content script override website" );
       // console.log(globalThis.exportFunction)
       {// Measure the impact of exportFunction on performance by disabling its behavior
         
@@ -1634,7 +1684,7 @@ window.dark_object = {
       function connected(connectedPort) {
 
 
-        console.info("Connected", connectedPort.sender.url);
+        console.info("Connected", connectedPort.sender.url,connectedPort.sender.contextId);
         if (connectedPort.name == "port-from-cs") {
           // At first, we used exclude_regex here to not register some content scripts, but thent we used it earlier, in the content script registration
           
@@ -1644,7 +1694,7 @@ window.dark_object = {
 
           uDark.connected_cs_ports[portKey] = connectedPort;
           connectedPort.onDisconnect.addListener(p => {
-            console.info("Disconnected:", p.sender.url, "Checking", p.used_cache_keys)
+            console.info("Disconnected:", p.sender.url,p.sender.contextId, "Checking", p.used_cache_keys)
             if (p.used_cache_keys.size) { // We time it to avoid deleting the cache before the page is loaded (Like on link clicks)
               setTimeout(x => {
                 let owned_cache_keys = new Set()
@@ -2249,7 +2299,7 @@ window.dark_object = {
               udStyle.innerHTML = uDark.inject_css_suggested;
               udStyle.id = "ud-style"
               aDocument.head.prepend(udStyle);
-
+              
               var udMetaDark = aDocument.querySelector("meta[name='color-scheme']") || document.createElement("meta")
               udMetaDark.id = "ud-meta-dark"
               udMetaDark.name = "color-scheme";
@@ -2802,6 +2852,10 @@ window.dark_object = {
         }); //str,cssStyleSheet,verifyIntegrity=false,details
         let carried = {};
         carried.chunk = uDark.edit_str(details.rejectedValues + str, false, true, details, false, carried);
+        // if(str.includes('import'))
+        // {
+          // console.log(str)
+        // }
         if (carried.chunk.message) {
           // console.log(details,transformResult.message)
           details.rejectedValues += str;
@@ -2885,7 +2939,7 @@ window.dark_object = {
         }
         let chunk_hash = fMurmurHash3Hash(carried.chunk);
         if (chunk_hash in uDark.idk_cache) {
-          console.log("Skipping chunk as it is already in cache", details.url)
+          // console.log("Skipping chunk as it is already in cache", details.url)
           carried.chunk = uDark.idk_cache[chunk_hash];
           return;
         }
@@ -2918,8 +2972,7 @@ window.dark_object = {
 
 
           content_script_port.used_cache_keys.add(chunk_hash);
-
-
+          // console.log("Sending chunk to content script",content_script_port.sender.contextId,details.requestId,details.datacount,details.url,chunk_hash)
           content_script_port.postMessage({
             havingIDKVars: {
               details,
@@ -2946,7 +2999,7 @@ window.dark_object = {
               hostnames: [uDark.idk_cache[possibleCacheKey]]
             })
             .then(x => {
-              console.info(`Browser cache flushed`)
+              console.info(`Browser last`,Date.now()-details.timeStamp,`ms cache of`,uDark.idk_cache[possibleCacheKey],` flushed for request`,details.requestId)
               delete uDark.idk_cache[possibleCacheKey];
             }, error => console.error(`Error: ${error}`));
         }, 100) // Must wait the request is finished, otherwise it will not be uncached

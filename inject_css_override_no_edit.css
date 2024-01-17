@@ -9,3 +9,7 @@ iframe {
     /*Iframe get light background in dark color schemes and vice versa*/
     color-scheme: light!important; /*Fortunately all css can be overriden unconditoonally in this file*/
   }
+
+* {
+    scrollbar-color:rgba(255,255,255,0.40) rgba(0,0,0,0.26)
+}
