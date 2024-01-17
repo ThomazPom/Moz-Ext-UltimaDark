@@ -1282,7 +1282,6 @@ window.dark_object = {
             
             let readable_variable_check_value=`rgba(255,254,253,var(--chunk_is_readable_${data.details.requestId}_${data.details.datacount}))`;
      
-            console.log("Will search for",readable_variable_check_value,"in chunk",data.details.datacount,"for",data.details.requestId,"(url:",data.details.url,")");
             let workInterval = setInterval(() => {
               
               let option = new Option(); // Option must be in the loop because once the color is set to an unkonwn variable it stays at empty string
@@ -1296,7 +1295,7 @@ window.dark_object = {
               clearTimeout(workTimeout);
              
               
-              // The variables we are looking a might be in data.chunk we have to read it first to make them available to idk_variables_only.
+              // The variables we are looking a might be in data.chunk we have to read it first to make them available to props_and_var_only_color_idk.
               let ikd_chunk_resolved = uDark.edit_str(data.chunk, false, false, false, true);
                   
               let props_and_var_only_color_idk = uDark.edit_str(data.chunk_variables , false, false, false, "partial_idk");
