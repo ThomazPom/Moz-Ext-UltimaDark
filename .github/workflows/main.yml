@@ -1,17 +1,19 @@
 name: Automated XPI Builder
 on: [push]
+
 jobs: 
  build:
   runs-on: ubuntu-latest  
   steps: 
-  - uses: actions/checkout@nightly
-  - name: Automated XPI build process
-  - uses: TheDoctor0/zip-release@0.7.6
-    with:
+    - name: Checkout code 
+      uses: actions/checkout@nightly
+    - name: Automated XPI build process
+      uses: TheDoctor0/zip-release@0.7.6
+      with:
     # Filename for archive
-      filename: nightly-release.xpi
-      type: 'zip'
+        filename: nightly-release.xpi
+        type: 'zip'
     # List of excluded files / directories
-      exclusions: '*.git* *.ps1* */gre-resources/* */other-tools-and-tests/* *.editorconfig'
+        exclusions: '*.git* *.ps1* */gre-resources/* */other-tools-and-tests/* *.editorconfig'
 
           
