@@ -1,5 +1,5 @@
 # Unless you are a developer you want to be on the [master](https://github.com/ThomazPom/Moz-Ext-UltimaDark/tree/master) branch
-This branch is for testing GitHub actions and **should not be merged** 25 attempts later it finally works... mostly.  Thank you for your patience - @Vintagemotors
+This branch is for testing GitHub actions and **should not be merged** 25 attempts later it finally works... mostly. The builds generated through Actions are currently unsigned, non-functional, automated builds from GitHub Actions. Do not try to use "Latest". Definitely do not upload it to AMO.Thank you for your patience - @Vintagemotors
 
 
 
