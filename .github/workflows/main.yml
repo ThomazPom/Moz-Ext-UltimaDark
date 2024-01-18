@@ -15,5 +15,8 @@ jobs:
         type: 'zip'
     # List of excluded files / directories
         exclusions: '*.git* *.ps1* */gre-resources/* */other-tools-and-tests/* *.editorconfig'
+        directory: .
+        path: . 
+        
 
           
