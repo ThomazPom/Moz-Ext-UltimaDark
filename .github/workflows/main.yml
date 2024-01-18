@@ -18,15 +18,15 @@ jobs:
         exclusions: '*.git* *.ps1* /*gre-resources/* /*other-tools-and-tests/* /*archive-worker-directory/* .editorconfig'
         directory: .
         path: .
-    - name: Nightly-Alpha-Publish
-      uses: docker://antonyurchenko/git-release:latest
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        UNRELEASED: "update"
-        UNRELEASED_TAG: future
-      with:
-        args: |
-            nightly-release.xpi
+ #   - name: Nightly-Alpha-Publish
+ #     uses: docker://antonyurchenko/git-release:latest
+ #     env:
+ #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+ #       UNRELEASED: "update"
+ #       UNRELEASED_TAG: future
+ #     with:
+ #       args: |
+ #           nightly-release.xpi
 
     - name: "Upload Artifact"
       uses: actions/upload-artifact@v4
