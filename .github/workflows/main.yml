@@ -7,8 +7,9 @@ jobs:
   steps: 
    # - name: Checkout code 
  #     uses: actions/checkout@nightly
-    - name: Automated XPI build process
+    - name: Load Action
       uses: TheDoctor0/zip-release@0.7.6
+    - name: Automated XPI build process
       uses: ThomazPom/Moz-Ext-UltimaDark/nightly
       with:
     # Filename for archive
