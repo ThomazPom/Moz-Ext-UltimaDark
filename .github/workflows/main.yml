@@ -15,7 +15,7 @@ jobs:
         type: 'zip'
     # List of excluded files / directories
         exclusions: '*.git* *.ps1* */gre-resources/* */other-tools-and-tests/* *.editorconfig'
-        directory: ThomazPom/Moz-Ext-UltimaDark/tree/nightly/archive-worker-directory 
+        directory: .
         path: ThomazPom/Moz-Ext-UltimaDark/tree/nightly
         
 
