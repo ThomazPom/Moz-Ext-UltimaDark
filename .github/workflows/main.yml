@@ -31,5 +31,5 @@ jobs:
     - name: "Upload Artifact"
       uses: actions/upload-artifact@v3
       with:
-        name: target.xpi
+        name: nightly-release.xpi
         path: ${{ steps.web-ext-build.outputs.target }}
