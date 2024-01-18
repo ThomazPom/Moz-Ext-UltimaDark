@@ -7,20 +7,17 @@ jobs:
   build:
     runs-on: ubuntu-latest  
     steps:
-      # Uncomment the following lines if you want to checkout code
-      #- name: Checkout code 
-      #  uses: actions/checkout@nightly
+      - name: Checkout code 
+        uses: actions/checkout@v2
 
       - name: Load Action
-        uses: TheDoctor0/zip-release@0.7.6
+        uses: TheDoctor0/zip-release@v0.7.6
 
       - name: Automated XPI build process
         uses: ThomazPom/Moz-Ext-UltimaDark/nightly
         with:
-          # Filename for archive
           filename: nightly-release.xpi
           type: 'zip'
-          # List of excluded files / directories
           exclusions: '*.git* *.ps1* */gre-resources/* */other-tools-and-tests/* *.editorconfig'
           directory: .
           path: .
