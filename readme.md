@@ -1,5 +1,5 @@
 # Unless you are a developer you want to be on the [master](https://github.com/ThomazPom/Moz-Ext-UltimaDark/tree/master) branch
-This branch is for testing GitHub actions and **should not be merged** Once I get them working I will copy the action and recreate the branch to eliminate the excessive commits.  Thank you for your patience - @Vintagemotors
+This branch is for testing GitHub actions and **should not be merged** 25 attempts later it finally works... mostly.  Thank you for your patience - @Vintagemotors
 
 
 
