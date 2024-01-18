@@ -33,3 +33,5 @@ jobs:
       with:
         name: nightly-release.xpi
         path: nightly-release.xpi
+        compression-level: 0
+
