@@ -5,8 +5,8 @@ jobs:
  build:
   runs-on: ubuntu-latest  
   steps: 
-    - name: Checkout code 
-      uses: actions/checkout@nightly
+   # - name: Checkout code 
+ #     uses: actions/checkout@nightly
     - name: Automated XPI build process
       uses: TheDoctor0/zip-release@0.7.6
       with:
