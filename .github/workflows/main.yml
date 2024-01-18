@@ -1,0 +1,22 @@
+            - name: Automated XPI Builder
+  # You may pin to the exact commit or the version.
+  # uses: TheDoctor0/zip-release@b57d897cb5d60cb78b51a507f63fa184cfe35554
+  uses: TheDoctor0/zip-release@0.7.6
+  with:
+    # Filename for archive
+    filename: nightly-release.xpi
+    # Base path for archive files
+    path: # optional, default is .
+    # Working directory before zipping
+    directory: # optional, default is .
+    # List of excluded files / directories
+    exclusions: '*.git* *.ps1* */gre-resources/* */other-tools-and-tests/* *.editorconfig'
+    # List of excluded files / directories with recursive wildcards (only applies on Windows with `zip` type)
+    recursive_exclusions: # optional, default is 
+    # Provide any custom parameters to the zipping command
+    custom: # optional, default is 
+    # Tool to use for archiving
+    type: # optional, default is zip
+    # An extra command that will run before zipping
+    command: # optional, default is 
+          
