@@ -15,6 +15,6 @@ jobs:
         filename: nightly-release.xpi
         type: 'zip'
 
-        exclusions: '*.git* *.ps1* */gre-resources/* */other-tools-and-tests/* *.editorconfig'
+        exclusions: '*.git* *.ps1* /*gre-resources/* /*other-tools-and-tests/* .editorconfig'
         directory: .
         path: .
