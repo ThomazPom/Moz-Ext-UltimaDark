@@ -18,3 +18,14 @@ jobs:
         exclusions: '*.git* *.ps1* /*gre-resources/* /*other-tools-and-tests/* /*archive-worker-directory/* .editorconfig'
         directory: .
         path: .
+    - name: Nightly-Alpha-Publish
+      uses: docker://antonyurchenko/git-release:latest
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        DRAFT_RELEASE: "false"
+        PRE_RELEASE: "true"
+        CHANGELOG_FILE: "none"
+        ALLOW_TAG_PREFIX: "true"
+      with:
+        args: |
+            nightly-release.xpi
