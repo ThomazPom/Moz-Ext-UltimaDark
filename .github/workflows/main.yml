@@ -1,24 +1,26 @@
 name: Automated XPI Builder
-on: [push]
 
-jobs: 
- build:
-  runs-on: ubuntu-latest  
-  steps: 
-   # - name: Checkout code 
- #     uses: actions/checkout@nightly
-    - name: Load Action
-      uses: TheDoctor0/zip-release@0.7.6
-    - name: Automated XPI build process
-      uses: ThomazPom/Moz-Ext-UltimaDark/nightly
-      with:
-    # Filename for archive
-        filename: nightly-release.xpi
-        type: 'zip'
-    # List of excluded files / directories
-        exclusions: '*.git* *.ps1* */gre-resources/* */other-tools-and-tests/* *.editorconfig'
-        directory: .
-        path: .
-        
+on:
+  push:
 
-          
+jobs:
+  build:
+    runs-on: ubuntu-latest  
+    steps:
+      # Uncomment the following lines if you want to checkout code
+      #- name: Checkout code 
+      #  uses: actions/checkout@nightly
+
+      - name: Load Action
+        uses: TheDoctor0/zip-release@0.7.6
+
+      - name: Automated XPI build process
+        uses: ThomazPom/Moz-Ext-UltimaDark/nightly
+        with:
+          # Filename for archive
+          filename: nightly-release.xpi
+          type: 'zip'
+          # List of excluded files / directories
+          exclusions: '*.git* *.ps1* */gre-resources/* */other-tools-and-tests/* *.editorconfig'
+          directory: .
+          path: .
