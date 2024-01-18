@@ -22,9 +22,8 @@ jobs:
       uses: docker://antonyurchenko/git-release:latest
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        DRAFT_RELEASE: "false"
-        PRE_RELEASE: "true"
-        CHANGELOG_FILE: "none"
+        UNRELEASED: "update"
+        UNRELEASED_TAG: future
       with:
         args: |
             nightly-release.xpi
