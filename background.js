@@ -1,1011 +1,1021 @@
 window.dark_object = {
-  
+
   all_levels: {
 
     install: function() {
-      
-    
+
       const CSS_COLOR_NAMES = ["AliceBlue", "AntiqueWhite", "Aqua", "Aquamarine", "Azure", "Beige", "Bisque", "Black", "BlanchedAlmond", "Blue", "BlueViolet", "Brown", "BurlyWood", "CadetBlue", "Chartreuse", "Chocolate", "Coral", "CornflowerBlue", "Cornsilk", "Crimson", "Cyan", "DarkBlue", "DarkCyan", "DarkGoldenRod", "DarkGray", "DarkGrey", "DarkGreen", "DarkKhaki", "DarkMagenta", "DarkOliveGreen", "DarkOrange", "DarkOrchid", "DarkRed", "DarkSalmon", "DarkSeaGreen", "DarkSlateBlue", "DarkSlateGray", "DarkSlateGrey", "DarkTurquoise", "DarkViolet", "DeepPink", "DeepSkyBlue", "DimGray", "DimGrey", "DodgerBlue", "FireBrick", "FloralWhite", "ForestGreen", "Fuchsia", "Gainsboro", "GhostWhite", "Gold", "GoldenRod", "Gray", "Grey", "Green", "GreenYellow", "HoneyDew", "HotPink", "IndianRed", "Indigo", "Ivory", "Khaki", "Lavender", "LavenderBlush", "LawnGreen", "LemonChiffon", "LightBlue", "LightCoral", "LightCyan", "LightGoldenRodYellow", "LightGray", "LightGrey", "LightGreen", "LightPink", "LightSalmon", "LightSeaGreen", "LightSkyBlue", "LightSlateGray", "LightSlateGrey", "LightSteelBlue", "LightYellow", "Lime", "LimeGreen", "Linen", "Magenta", "Maroon", "MediumAquaMarine", "MediumBlue", "MediumOrchid", "MediumPurple", "MediumSeaGreen", "MediumSlateBlue", "MediumSpringGreen", "MediumTurquoise", "MediumVioletRed", "MidnightBlue", "MintCream", "MistyRose", "Moccasin", "NavajoWhite", "Navy", "OldLace", "Olive", "OliveDrab", "Orange", "OrangeRed", "Orchid", "PaleGoldenRod", "PaleGreen", "PaleTurquoise", "PaleVioletRed", "PapayaWhip", "PeachPuff", "Peru", "Pink", "Plum", "PowderBlue", "Purple", "RebeccaPurple", "Red", "RosyBrown", "RoyalBlue", "SaddleBrown", "Salmon", "SandyBrown", "SeaGreen", "SeaShell", "Sienna", "Silver", "SkyBlue", "SlateBlue", "SlateGray", "SlateGrey", "Snow", "SpringGreen", "SteelBlue", "Tan", "Teal", "Thistle", "Tomato", "Turquoise", "Violet", "Wheat", "White", "WhiteSmoke", "Yellow", "YellowGreen"]
-      
+
       window.uDark = {
-          rgb_a_colorsRegex: /rgba?\([%0-9., \/a-z_+*-]+\)/gmi, // rgba vals with variables names and calcs involved NOTE: #rgba(255 255 255 / 0.1) is valid color rgba(255,255,255,30%) is valid color too
-          hsl_a_colorsRegex: /hsla?\(([%0-9., \/=a-z_+*-]|deg|turn|tetha)+\)/gmi, // hsla vals  with variables names and calcs involved  #rgba(255 255 255 / 0.1)
-          direct_window_export: true,
-          enable_idk_mode: true,
-          general_cache:{},
-          userSettings: {},
-          regex_search_for_url: /url\("(.+?)(?<!\\)("\))/g,
-          background_match: /(footer[^\/\\]*$)|background|(bg|box|panel|fond|fundo|bck)[._-]/i,
-          chunk_stylesheets_idk_only_cors: false, 
-          namedColorsRegex: (new RegExp(`(?<![_a-z0-9-])(${CSS_COLOR_NAMES.join("|")})(?![_a-z0-9-])`, "gmi")),
-          min_bright_fg: 0.65, // Text with luminance  under this value will be brightened
-          max_bright_fg: 0.9, // Text over this value will be darkened
-          brightness_peak_editor_fg: 0.5, // Reduce the brightness of texts with intermediate luminace, tying to achieve better saturation
-          hueShiftfg: 0, // Hue shift for text, 0 is no shift, 360 is full shift
-          min_bright_bg_trigger: 0.2, // backgrounds with luminace under this value will remain as is
-          min_bright_bg: 0.1, // background with value over min_bright_bg_trigger will be darkened from this value up to max_bright_bg
-          max_bright_bg: 0.4, // background with value over min_bright_bg_trigger will be darkened from min_bright_bg up to this value
-          do_idk_mode_timed: function(duration, interval) {
-            if (!uDark.enable_idk_mode) {
-              return;
-            }
-            // Repeat IDK mode every n ms for a certain time
-            duration = duration || uDark.idk_mode_duration || 5000;
-            interval = interval || uDark.idk_mode_interval || 50;
-            clearInterval(uDark.do_idk_mode_interval)
-            let interval_id = setInterval(function() {
-              // console.log("IDK mode launched")
-              uDark.do_idk_mode();
-            }, interval)
-            uDark.do_idk_mode_interval = interval_id;
-            setTimeout(function() {
-              // console.log("IDK mode stopped after" ,duration,"ms and",  (duration/interval)+" execs");
-              clearInterval(interval_id) // Use interval_id to avoid next intervals. If we use uDark.do_idk_mode_interval, it may clear the new interval_id we just created and stored in uDark.do_idk_mode_interval
-            }, duration)
-            return interval_id;
-          },
-  
-          do_idk_mode: function() {
-            let editableStyleSheets = [...document.wrappedJSObject.styleSheets].filter(styleSheet => {
-              if (styleSheet.idk_mode_ok) {
-                return false; // This one is still OK
-              }
-              styleSheet.idk_mode_ok = true; // This attribute is lost if the stylesheet is edited, so we can ignore this CSS.
-              
-              if(styleSheet.ownerNode.id=="UltimaDarkTempVariablesStyle")
-              {
-                return false; // Created on the document of the content script and becomes a cors stylesheet. It's already IDK resolved
-              }
-              if (styleSheet.href) {
-  
-                let styleSheetHref = (new URL(styleSheet.href))
-                let is_cross_domain = styleSheetHref.origin != document.location.origin;
-                
-                return !is_cross_domain && !uDark.chunk_stylesheets_idk_only_cors; // If it is cross domain, we will do it via a message to the background script
-                
-              }
-              else if(styleSheet.ownerNode.classList.contains("ud-idk-vars")){
-                return true;
-              }
-              return false; // Stylesheet has no href, it is a style element, and is not declared by background as needing IDK intervention.
-            });
-            editableStyleSheets.forEach(styleSheet => {
-              // console.log("Will edit",styleSheet)
-              uDark.edit_cssRules(styleSheet.cssRules, true);
-            });
-          },
-          valuePrototypeEditor: function(leType, atName, watcher = x => x, conditon = x => x, aftermath = false) {
-            //   console.log(leType,atName)
-            // if (conditon) {
-            //   console.log("VAdding condtition to", leType, leType.name, conditon, conditon.toString())
-            // }
-            
-            if(leType.wrappedJSObject){ // Cross compatibilty with content script
-              leType=leType.wrappedJSObject;
-            }
-            var originalSet = Object.getOwnPropertyDescriptor(leType.prototype, atName).set;
-            Object.defineProperty(leType.prototype, "o_ud_set_" + atName, {
-              set: originalSet
-            });
-            // uDark.general_cache["o_ud_set_"+atName]=originalSet
-            Object.defineProperty(leType.prototype, atName, {
-              set: exportFunction(function(value) {             // getters must be exported like regular functions
-                // console.log("Setting", this, atName, value)
-                var new_value = conditon && conditon(this, value) ? watcher(this, value) : value;
-                let call_result = originalSet.call(this, new_value || value);
-                aftermath && aftermath(this, value, new_value);
-                return call_result;
-              },window)
-            });
-          },
-          functionPrototypeEditor: function(leType, laFonction, watcher = x => x, conditon = x => x, result_editor = x => x) {
-            //  console.log(leType,leType.name,leType.prototype,laFonction,laFonction.name)
-            if (laFonction.concat) {
-              return laFonction.forEach(aFonction => { 
-                uDark.functionPrototypeEditor(leType, aFonction, watcher, conditon, result_editor)
-              })
-            }
-            if(leType.wrappedJSObject){ // Cross compatibilty with content script
-              leType=leType.wrappedJSObject;
-            }
-            // if (conditon) {
-            //   console.log("Adding condtition to", leType, leType.name, laFonction, conditon, conditon.toString())
-            // }
-            let originalFunctionKey="o_ud_" + laFonction.name
-            var originalFunction = exportFunction(Object.getOwnPropertyDescriptor(leType.prototype, laFonction.name).value,window);
-            Object.defineProperty(leType.prototype, originalFunctionKey, {
-              value: originalFunction,
-              writable: true
-            });
-            Object.defineProperty(leType.prototype, laFonction.name, {
-              value: {
-                [laFonction.name]: exportFunction(function() {
-                  if (conditon && conditon(this, arguments)) {
-                    // console.log("Setting",leType,laFonction,this,arguments[0],watcher(this, arguments)[0])
-                    let watcher_result = watcher(this, arguments);
-                    // console.log("watcher_result", this,originalFunction,watcher_result,originalFunctionKey,leType.prototype[originalFunctionKey],this[originalFunctionKey],this.getP);
-                    let result = originalFunction.apply(this, watcher_result)
-                    return result_editor(result, this, arguments, watcher_result);
-                  } else {
-                    return (originalFunction.apply(this, arguments));
-                  }
-                },window)
-              } [laFonction.name]
-            });
-          },
-          edit_str_restore_imports_header_way: function(str, rules) {
-            let cssHeader = str.split("{", 1)[0];
-            // Restore the header as it often contains important information like @import @namespace etc
-            // Breaks if the header contains a comment including "{" but it is not a common case
-            // Fixable by removing comments before splitting
-            rules[0] = cssHeader + (rules.length ? "{" + rules[0].split("{", 2)[1] : "");
-          },
-          // At-rules : https://developer.mozilla.org/fr/docs/Web/CSS/At-rule
-          // @charset, @import or @namespace, followed by some space or \n, followed by some content, followed by ; or end of STRING
-          // Surpisingly and fortunately end of LINE does not delimits the end of the at-rule and forces devs & minifers either to add a ; or end of STRING 
-          // which and fortunately simplifies a LOT the handling 
-          // 'm' flag is not set on purpose to avoid matching $ as a line end, and keeping it at end of STRING
-          // Content must not be interupted while between quotes or parenthesis.
-          // It wont break on string ("te\"st") or this one('te\'st') or @import ('abc\)d;s'); thanks to
-          // priority matches (\\\)) and (\\') and (\\")  
-          //-------------------v-Rule name----space or-CR--v-----v--Protected values-v----v-the content dot
-          cssAtRulesRegex: /@(charset|import|namespace)(\n|\s)+((\((\\\)|.)+?\))|("(\\"|.)+?")|('(\\'|.)+?')|.)+?(;|$)/gs,
-          edit_str_restore_imports_all_way: function(str, rules) {
-            // This regexp seems a bit complex
-            // because @import url("") can includes ";" which is also the css instruction separator like in following example
-            // @charset "UTF-8";@import url("https://use.typekit.net/lls1fmf.css");
-            // @import url("https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap");
-            // .primary-1{ color: rgb(133, 175, 255); }
-            let imports = str.match(uDark.cssAtRulesRegex) || [];
-            rules.unshift(...imports);
+        trigger_number_colors_photo: 1900,
+        trigger_number_lightness_photo: 750,
+        rgb_a_colorsRegex: /rgba?\([%0-9., \/a-z_+*-]+\)/gmi, // rgba vals with variables names and calcs involved NOTE: #rgba(255 255 255 / 0.1) is valid color rgba(255,255,255,30%) is valid color too
+        hsl_a_colorsRegex: /hsla?\(([%0-9., \/=a-z_+*-]|deg|turn|tetha)+\)/gmi, // hsla vals  with variables names and calcs involved  #rgba(255 255 255 / 0.1)
+        direct_window_export: true,
+        enable_idk_mode: true,
+        general_cache: {},
+        userSettings: {},
+        regex_search_for_url: /url\("(.+?)(?<!\\)("\))/g,
+        background_match:/background|(?<![a-z])(bg|box|panel|fond|fundo|bck)(?![a-z])/i,
+        chunk_stylesheets_idk_only_cors: false,
+        namedColorsRegex: (new RegExp(`(?<![_a-z0-9-])(${CSS_COLOR_NAMES.join("|")})(?![_a-z0-9-])`, "gmi")),
+        min_bright_fg: 0.65, // Text with luminance  under this value will be brightened
+        max_bright_fg: 0.9, // Text over this value will be darkened
+        brightness_peak_editor_fg: 0.5, // Reduce the brightness of texts with intermediate luminace, tying to achieve better saturation
+        hueShiftfg: 0, // Hue shift for text, 0 is fno shift, 360 is full shift
+        min_bright_bg_trigger: 0.2, // backgrounds with luminace under this value will remain as is
+        min_bright_bg: 0.1, // background with value over min_bright_bg_trigger will be darkened from this value up to max_bright_bg
+        max_bright_bg: 0.4, // background with value over min_bright_bg_trigger will be darkened from min_bright_bg up to this value
+        do_idk_mode_timed: function(duration, interval) {
+          if (!uDark.enable_idk_mode) {
+            return;
+          }
+          // Repeat IDK mode every n ms for a certain time
+          duration = duration || uDark.idk_mode_duration || 5000;
+          interval = interval || uDark.idk_mode_interval || 50;
+          clearInterval(uDark.do_idk_mode_interval)
+          let interval_id = setInterval(function() {
+            // console.log("IDK mode launched")
+            uDark.do_idk_mode();
+          }, interval)
+          uDark.do_idk_mode_interval = interval_id;
+          setTimeout(function() {
+            // console.log("IDK mode stopped after" ,duration,"ms and",  (duration/interval)+" execs");
+            clearInterval(interval_id) // Use interval_id to avoid next intervals. If we use uDark.do_idk_mode_interval, it may clear the new interval_id we just created and stored in uDark.do_idk_mode_interval
+          }, duration)
+          return interval_id;
+        },
 
+        do_idk_mode: function() {
+          let editableStyleSheets = [...document.wrappedJSObject.styleSheets].filter(styleSheet => {
+            if (styleSheet.idk_mode_ok) {
+              return false; // This one is still OK
+            }
+            styleSheet.idk_mode_ok = true; // This attribute is lost if the stylesheet is edited, so we can ignore this CSS.
 
-          },
-          send_data_image_to_parser: function(str, details,carried={}) {
-            if (str.trim().toLowerCase().startsWith('data:') && !uDark.userSettings.disable_image_edition) {
-              
-              carried.changed=true;
-              str = str.replace(/(?<!(base64IMG=))(data:image\/(png|jpe?g|svg\+xml);base64,([^\"]*?))([)'"]|$)/g, "https://data-image.com?base64IMG=$&")
+            if (styleSheet.ownerNode.id == "UltimaDarkTempVariablesStyle") {
+              return false; // Created on the document of the content script and becomes a cors stylesheet. It's already IDK resolved
             }
-            return str;
-          },
-          frontEditHTML: (elem, value) => {
-            if (elem instanceof HTMLStyleElement) {
-              return uDark.edit_str(value)
-            }
+            if (styleSheet.href) {
 
-            
-            
-            hasBody=value.includes("body");
-            if(!hasBody)
-            {
-              // Looks like an overkill but it is not. 
-              // Angular websites counts their comments to work and the first comment of non encapsulated html will be removed
-              value="<body>"+value+"</body>";
+              let styleSheetHref = (new URL(styleSheet.href))
+              let is_cross_domain = styleSheetHref.origin != document.location.origin;
+
+              return !is_cross_domain && !uDark.chunk_stylesheets_idk_only_cors; // If it is cross domain, we will do it via a message to the background script
+
+            } else if (styleSheet.ownerNode.classList.contains("ud-idk-vars")) {
+              return true;
             }
-            var parser = new DOMParser();
-            var parsedElement = parser.parseFromString(value, "text/html");
-            let documentElement = parsedElement.documentElement;
-            documentElement.querySelectorAll("meta[name='color-scheme']").forEach(udMetaDark=>{
-    
-              udMetaDark.id = "ud-meta-dark"
-              udMetaDark.name = "color-scheme";
+            return false; // Stylesheet has no href, it is a style element, and is not declared by background as needing IDK intervention.
+          });
+          editableStyleSheets.forEach(styleSheet => {
+            // console.log("Will edit",styleSheet)
+            uDark.edit_cssRules(styleSheet.cssRules, true);
+          });
+        },
+        image_element_prepare_href: function(image, aDocument, src_override) // Adds notable infos to the image element href, used by the image edition feature
+        {
+          if(!uDark.disable_lazy_loading)
+          {
+            image.loading="lazy";
+          }
+          // Do not parse url preventing adding context to it or interpreting it as a relative url or correcting its content by any way
+          let imageTrueSrc = src_override || image.getAttribute("src")
+
+          if (!image.hasAttribute("data-ud-selector")) {
+            image.setAttribute("data-ud-selector", Math.random());
+          }
+          selectorText = `img[data-ud-selector='${image.getAttribute("data-ud-selector")}']`;
+          let notableInfos = {};
+          for (const attributeName of image.getAttributeNames()) {
+            let infoValue = image.getAttribute(attributeName);
+            if (infoValue.length > 0 && !(/[.\/]/i).test(infoValue) && !(["src", "data-ud-selector"]).includes(attributeName)) {
+              notableInfos[attributeName] = infoValue;
+            }
+          }
+          let parentAnchor = aDocument.querySelector(`a ${selectorText}`);
+          if (parentAnchor) {
+            notableInfos["inside_a"] = true;
+          }
+          return imageTrueSrc + "#" + new URLSearchParams(notableInfos).toString();
+        },
+        valuePrototypeEditor: function(leType, atName, watcher = x => x, conditon = x => x, aftermath = false) {
+          //   console.log(leType,atName)
+          // if (conditon) {
+          //   console.log("VAdding condtition to", leType, leType.name, conditon, conditon.toString())
+          // }
+
+          if (leType.wrappedJSObject) { // Cross compatibilty with content script
+            leType = leType.wrappedJSObject;
+          }
+          var originalSet = Object.getOwnPropertyDescriptor(leType.prototype, atName).set;
+          Object.defineProperty(leType.prototype, "o_ud_set_" + atName, {
+            set: originalSet
+          });
+          // uDark.general_cache["o_ud_set_"+atName]=originalSet
+          Object.defineProperty(leType.prototype, atName, {
+            set: exportFunction(function(value) { // getters must be exported like regular functions
+              // console.log("Setting", this, atName, value)
+              var new_value = conditon && conditon(this, value) ? watcher(this, value) : value;
+              let call_result = originalSet.call(this, new_value || value);
+              aftermath && aftermath(this, value, new_value);
+              return call_result;
+            }, window)
+          });
+        },
+        functionPrototypeEditor: function(leType, laFonction, watcher = x => x, conditon = x => x, result_editor = x => x) {
+          //  console.log(leType,leType.name,leType.prototype,laFonction,laFonction.name)
+          if (laFonction.concat) {
+            return laFonction.forEach(aFonction => {
+              uDark.functionPrototypeEditor(leType, aFonction, watcher, conditon, result_editor)
             })
-            documentElement.querySelectorAll("style").forEach(astyle => {
-              astyle.innerHTML = uDark.edit_str(astyle.innerHTML);
-              // According to https://stackoverflow.com/questions/55895361/how-do-i-change-the-innerhtml-of-a-global-style-element-with-cssrule ,
-              // it is not possible to edit a style element innerHTML with its cssStyleSheet alone
-              // As long as we are returing a STR, we have to edit the style element innerHTML;
-              // astyle.innerHTML=uDark.edit_css(astyle.innerHTML,astyle.sheet);
-              astyle.classList.add("ud-edited-content-script")
-              
-            });
-            documentElement.querySelectorAll("[style]").forEach(astyle => {
-              // console.log(details,astyle,astyle.innerHTML,astyle.innerHTML.includes(`button,[type="reset"],[type="button"],button:hover,[type="button"],[type="submit"],button:active:hover,[type="button"],[type="submi`))
-              astyle.setAttribute("style", uDark.edit_str(astyle.getAttribute("style")));
-            });
-    
-            documentElement.querySelectorAll("img[src*='data']").forEach(image => {
-              image.src = uDark.send_data_image_to_parser(image.getAttribute("src"))
-            })
-            let result_edited= false;
-            
-            if(hasBody)
-            {
-              result_edited=documentElement.outerHTML;
-            }
-            else {
-              result_edited=parsedElement.body.innerHTML;
-            }
-            result_edited = result_edited.replace(/[\s\t]integrity=/g, " nointegrity=")
-            
-            return result_edited;
-          },
-          edit_str: function(str, cssStyleSheet, verifyIntegrity = false, details, idk_mode = false, carried = {}) {
-            
-            let rejected_str = false;
-
-            if (!cssStyleSheet) {
-              cssStyleSheet = new CSSStyleSheet()
-              let valueReplace = str + (verifyIntegrity ? "\n.integrity_rule{}" : "");
-              cssStyleSheet.o_ud_replaceSync ? cssStyleSheet.o_ud_replaceSync(valueReplace) : cssStyleSheet.replaceSync(valueReplace);
-            } else if (!cssStyleSheet.rules.length) {
-              return str; // Empty styles from domparser can't be edited as they are not "constructed"
-            }
-            let nochunk = !verifyIntegrity && !cssStyleSheet.cssRules.length; // if we want to check integrity, it means we have a chunked css
-            if (nochunk) {
-              str = `z{${str}}`;
-              cssStyleSheet.o_ud_replaceSync ? cssStyleSheet.o_ud_replaceSync(str) : cssStyleSheet.replaceSync(str);
-
-              uDark.edit_css(cssStyleSheet, false, details, carried);
-              str = cssStyleSheet.cssRules[0].cssText.slice(4, -2);
-
-            } else {
-              
-              // Exists the rare case where css only do imports, no rules with {} and integrity cant be verified because it does not close the import with a ";"
-              let returnAsIs = (!cssStyleSheet.cssRules.length && !str.includes("{"))
-              if (returnAsIs) {
-                return str; //don't even try to edit it .
-                // Fortunately it is not a common case, easy to detect with zero cssRules, and it mostly are short strings testables with includes
-              };
-
-              if (verifyIntegrity) {
-                let last_rule = cssStyleSheet.cssRules[cssStyleSheet.cssRules.length - 1];
-                let is_rejected = !last_rule || last_rule.selectorText != ".integrity_rule";
-
-                // console.log(cssStyleSheet,last_rule,is_rejected)
-                if (is_rejected) {
-
-                  //
-                  let can_iterate = cssStyleSheet.cssRules.length > 1; // If there is only one rule, and it's rejected, we dont'have to find the previous one
-                  if (can_iterate && (enableLiveChunkRepair = true)) // We accept CSS until it breaks, and cut it from there
-                  {
-                    rejected_str = ""; // Pass from false to empty string
-                    let max_iterations = 10; // Fix a limit for timing reasons
-                    for (let i = 1; i <= max_iterations; i++) {
-
-                      // Lets find the last significant bracket.
-                      // If we are in any part of the string we don't care about the last char as it is either not a bracket or not one that will permit us
-                      // to fix the CSS. ( As it is in a broken state already)
-                      let last_bracket_index = str.lastIndexOf("}", str.length - 2); // Doing what said above 
-
-                      // Reject CSS as a whole if we can't find a bracket for whaterver messed up CSS we have
-                      if (last_bracket_index == -1) {
-                        return new Error("Rejected integrity rule from live chunk repair")
-                      }
-
-
-                      // Now we have two parts, the one we keep and the one we reject
-                      rejected_str = str.substring(last_bracket_index + 1) + rejected_str;
-
-                      str = str.substring(0, last_bracket_index + 1)
-
-                      // Do we have a valid CSS now ? lets add an integrity rule to check it
-                      let valueReplace = str + "\n.integrity_rule{}";
-                      cssStyleSheet.replaceSync(valueReplace); // Asumig only background script will edit CSS with integrity verification, using replaceSync is ok
-                      let last_rule = cssStyleSheet.cssRules[cssStyleSheet.cssRules.length - 1];
-                      if (last_rule && last_rule.selectorText == ".integrity_rule") // We found our rule again, no need to iterate more, this means we have a valid CSS in str
-                      {
-                        break;
-                      } else if (i == max_iterations) {
-                        return new Error("Rejected integrity rule from live chunk repair, max iterations reached")
-                      }
-                    }
-                  } else { // We reject the whole CSS if it broken for any reason.( @media cut in midle of name like @medi.integrity rule), str sarting with a bracket, etc.
-                    // Reasons are endless and if Firefox said the CSS is broken, we trust it.
-                    //  console.log(can_iterate,cssStyleSheet,details.url,details.datacount)
-                    return new Error("Rejected integrity rule as a whole");
-                  }
+          }
+          if (leType.wrappedJSObject) { // Cross compatibilty with content script
+            leType = leType.wrappedJSObject;
+          }
+          // if (conditon) {
+          //   console.log("Adding condtition to", leType, leType.name, laFonction, conditon, conditon.toString())
+          // }
+          let originalFunctionKey = "o_ud_" + laFonction.name
+          var originalFunction = exportFunction(Object.getOwnPropertyDescriptor(leType.prototype, laFonction.name).value, window);
+          Object.defineProperty(leType.prototype, originalFunctionKey, {
+            value: originalFunction,
+            writable: true
+          });
+          Object.defineProperty(leType.prototype, laFonction.name, {
+            value: {
+              [laFonction.name]: exportFunction(function() {
+                if (conditon && conditon(this, arguments)) {
+                  // console.log("Setting",leType,laFonction,this,arguments[0],watcher(this, arguments)[0])
+                  let watcher_result = watcher(this, arguments);
+                  // console.log("watcher_result", this,originalFunction,watcher_result,originalFunctionKey,leType.prototype[originalFunctionKey],this[originalFunctionKey],this.getP);
+                  let result = originalFunction.apply(this, watcher_result)
+                  return result_editor(result, this, arguments, watcher_result);
+                } else {
+                  return (originalFunction.apply(this, arguments));
                 }
-              }
-              uDark.edit_css(cssStyleSheet, idk_mode, details, carried);
+              }, window)
+            } [laFonction.name]
+          });
+        },
+        edit_str_restore_imports_header_way: function(str, rules) {
+          let cssHeader = str.split("{", 1)[0];
+          // Restore the header as it often contains important information like @import @namespace etc
+          // Breaks if the header contains a comment including "{" but it is not a common case
+          // Fixable by removing comments before splitting
+          rules[0] = cssHeader + (rules.length ? "{" + rules[0].split("{", 2)[1] : "");
+        },
+        // At-rules : https://developer.mozilla.org/fr/docs/Web/CSS/At-rule
+        // @charset, @import or @namespace, followed by some space or \n, followed by some content, followed by ; or end of STRING
+        // Surpisingly and fortunately end of LINE does not delimits the end of the at-rule and forces devs & minifers either to add a ; or end of STRING 
+        // which and fortunately simplifies a LOT the handling 
+        // 'm' flag is not set on purpose to avoid matching $ as a line end, and keeping it at end of STRING
+        // Content must not be interupted while between quotes or parenthesis.
+        // It wont break on string ("te\"st") or this one('te\'st') or @import ('abc\)d;s'); thanks to
+        // priority matches (\\\)) and (\\') and (\\")  
+        //-------------------v-Rule name----space or-CR--v-----v--Protected values-v----v-the content dot
+        cssAtRulesRegex: /@(charset|import|namespace)(\n|\s)+((\((\\\)|.)+?\))|("(\\"|.)+?")|('(\\'|.)+?')|.)+?(;|$)/gs,
+        edit_str_restore_imports_all_way: function(str, rules) {
+          // This regexp seems a bit complex
+          // because @import url("") can includes ";" which is also the css instruction separator like in following example
+          // @charset "UTF-8";@import url("https://use.typekit.net/lls1fmf.css");
+          // @import url("https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap");
+          // .primary-1{ color: rgb(133, 175, 255); }
+          let imports = str.match(uDark.cssAtRulesRegex) || [];
+          rules.unshift(...imports);
 
-              let rules = [...cssStyleSheet.cssRules].map(r => r.cssText);
-
-              uDark.edit_str_restore_imports_all_way(str, rules);
-
-              str = rules.join("\n");
-            }
-
-            if (rejected_str) {
-              str = {
-                str: str,
-                rejected: rejected_str,
-              }
-            }
+        },
+        send_data_image_to_parser: function(str, details, carried = {}) {
+          if (!uDark.edit_data_images) {
             return str;
-          },
-          rgba_val: function(r, g, b, a) {
-            a = typeof a == "number" ? a : 1;
-            return "rgba(" + (r) + "," + (g) + "," + (b) + "," + (a) + ")";
-          }, // https://perf.link : Concatenation is better than foramting
-          hsla_val: function(h, s, l, a) {
-            a = typeof a == "number" ? a : 1;
-            return "hsla(" + (h * 360) + " " + (s * 100) + "% " + (l * 100) + "% / " + (a) + ")";
-          },
-          hex_val: function(r, g, b, a) {
-            a = typeof a == "number" ? a : 1
-            return "#" +
-              r.toString(16).padStart(2, "0") +
-              g.toString(16).padStart(2, "0") +
-              b.toString(16).padStart(2, "0") +
-              (a == 1 ? "" : (a * 255).toString(16).padStart(2, "0"))
-          },
+          }
+          if (str.trim().toLowerCase().startsWith('data:') && !uDark.userSettings.disable_image_edition) {
 
-          hslToRgb: (h, s, l) => {
-            let r, g, b;
+            carried.changed = true;
+            str = str.replace(/(?<!(base64IMG=))(data:image\/(png|jpe?g|svg\+xml);base64,([^\"]*?))([)'"]|$)/g, "https://data-image.com?base64IMG=$&")
+          }
+          return str;
+        },
+        frontEditHTML: (elem, value) => {
+          if (elem instanceof HTMLStyleElement) {
+            return uDark.edit_str(value)
+          }
 
-            if (s === 0) {
-              r = g = b = l; // achromatic
-            } else {
-              const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-              const p = 2 * l - q;
-              r = uDark.hueToRgb(p, q, h + 1 / 3);
-              g = uDark.hueToRgb(p, q, h);
-              b = uDark.hueToRgb(p, q, h - 1 / 3);
-            }
+          hasBody = value.includes("body");
+          if (!hasBody) {
+            // Looks like an overkill but it is not. 
+            // Angular websites counts their comments to work and the first comment of non encapsulated html will be removed
+            value = "<body>" + value + "</body>";
+          }
+          var parser = new DOMParser();
+          var parsedElement = parser.parseFromString(value, "text/html");
+          let documentElement = parsedElement.documentElement;
+          documentElement.querySelectorAll("meta[name='color-scheme']").forEach(udMetaDark => {
 
-            return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
-          },
+            udMetaDark.id = "ud-meta-dark"
+            udMetaDark.name = "color-scheme";
+          })
+          documentElement.querySelectorAll("style").forEach(astyle => {
+            astyle.innerHTML = uDark.edit_str(astyle.innerHTML);
+            // According to https://stackoverflow.com/questions/55895361/how-do-i-change-the-innerhtml-of-a-global-style-element-with-cssrule ,
+            // it is not possible to edit a style element innerHTML with its cssStyleSheet alone
+            // As long as we are returing a STR, we have to edit the style element innerHTML;
+            // astyle.innerHTML=uDark.edit_css(astyle.innerHTML,astyle.sheet);
+            astyle.classList.add("ud-edited-content-script")
 
-          hueToRgb: (p, q, t) => {
-            if (t < 0) t += 1;
-            if (t > 1) t -= 1;
-            if (t < 1 / 6) return p + (q - p) * 6 * t;
-            if (t < 1 / 2) return q;
-            if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
-            return p;
-          },
-          rgbToHsl: (r, g, b) => {
-            (r /= 255), (g /= 255), (b /= 255);
-            const vmax = Math.max(r, g, b),
-              vmin = Math.min(r, g, b);
-            let h, s, l = (vmax + vmin) / 2;
+          });
+          documentElement.querySelectorAll("[style]").forEach(astyle => {
+            // console.log(details,astyle,astyle.innerHTML,astyle.innerHTML.includes(`button,[type="reset"],[type="button"],button:hover,[type="button"],[type="submit"],button:active:hover,[type="button"],[type="submi`))
+            astyle.setAttribute("style", uDark.edit_str(astyle.getAttribute("style")));
+          });
 
-            if (vmax === vmin) {
-              return [0, 0, l]; // achromatic
-            }
+          documentElement.querySelectorAll("link[rel*='icon'][href]").forEach(link => {
+            link.setAttribute("href", link.getAttribute('href') + "#ud_favicon");
+          });
+          documentElement.querySelectorAll("img[src]").forEach(image => { // We catch images later, not here
 
-            const d = vmax - vmin;
-            s = l > 0.5 ? d / (2 - vmax - vmin) : d / (vmax + vmin);
-            if (vmax === r) h = (g - b) / d + (g < b ? 6 : 0);
-            if (vmax === g) h = (b - r) / d + 2;
-            if (vmax === b) h = (r - g) / d + 4;
-            h /= 6;
+            image.setAttribute("src", uDark.image_element_prepare_href(image, documentElement));
 
-            return [h, s, l];
-          },
-          RGBToLightness: (r, g, b) => {
+            // uDark.registerBackgroundItem(false,{selectorText:`img[src='${image.src}']`}, details)
+          })
+          documentElement.querySelectorAll("img[src*='data']").forEach(image => {
+            image.src = uDark.send_data_image_to_parser(image.getAttribute("src"))
+          })
+          let result_edited = undefined;
 
-            const l = Math.max(r, g, b);
-            const s = l - Math.min(r, g, b);
-            return (2 * l - s) / 2;
-          },
-          
-          eget_color: function(anycolor, editColorF = false, cssRule = false, no_color = false) {
+          if (hasBody) {
+            result_edited = documentElement.outerHTML;
+          } else {
+            result_edited = parsedElement.body.innerHTML;
+          }
+          result_edited = result_edited.replace(/[\s\t]integrity=/g, " nointegrity=")
 
+          return result_edited;
+        },
+        edit_str: function(str, cssStyleSheet, verifyIntegrity = false, details, idk_mode = false, carried = {}) {
 
-            if (!anycolor) {
-              return anycolor;
-            }
+          let rejected_str = false;
 
+          if (!cssStyleSheet) {
+            cssStyleSheet = new CSSStyleSheet()
+            let valueReplace = str + (verifyIntegrity ? "\n.integrity_rule{}" : "");
+            cssStyleSheet.o_ud_replaceSync ? cssStyleSheet.o_ud_replaceSync(valueReplace) : cssStyleSheet.replaceSync(valueReplace);
+          } else if (!cssStyleSheet.rules.length) {
+            return str; // Empty styles from domparser can't be edited as they are not "constructed"
+          }
+          let nochunk = !verifyIntegrity && !cssStyleSheet.cssRules.length; // if we want to check integrity, it means we have a chunked css
+          if (nochunk) {
+            str = `z{${str}}`;
+            cssStyleSheet.o_ud_replaceSync ? cssStyleSheet.o_ud_replaceSync(str) : cssStyleSheet.replaceSync(str);
 
-            let theColor = uDark.is_color(anycolor, as_float = true, fill = false, cssRule)
-            if (!theColor) {
-              // otherwise if it is not a color, we should warn as its a bug in regexpes
-              // or frontend does not define a color correctly
-              console.info(anycolor, " is not a color (It's ok if frontent does not define a color correctly)")
-              if (no_color) {
-                if (no_color === true) return anycolor;
-                return no_color;
-              }
-              return editColorF ? editColorF(...[0, 0, 0, 1]) : [0, 0, 0, 1];
-            }
-            if (editColorF) {
-              // Caller asks us to apply a transformation, probably rgba, hex or revert_rgba
-              return editColorF(...theColor)
-            }
-            return theColor
+            uDark.edit_css(cssStyleSheet, false, details, carried);
+            str = cssStyleSheet.cssRules[0].cssText.slice(4, -2);
 
-          },
-          is_color: function(possiblecolor, as_float = true, fill = false, cssRule,spanp=false) { 
-            let cache_key = `${possiblecolor}${as_float}${fill}`
-              if (!uDark.userSettings.disable_cache && !spanp && uDark.general_cache[cache_key]) { // See https://jsben.ch/aXxCT for cache effect on performance
-                return uDark.general_cache[cache_key];
-              }
-             if (!possiblecolor || possiblecolor === "none") { // none is not a color, and it not usefull to create a style element for it
-              return false
-              }
-              if(uDark.is_content_script&&possiblecolor.includes("var(")){
-                return    uDark.is_color_var(possiblecolor, as_float, fill, cssRule, spanp)
-              }
-              
-              let nonColor="rgba(0,0,0,0.11)";
-              uDark.colorWork.canvasContext.fillStyle=nonColor;
-              uDark.colorWork.canvasContext.fillStyle=possiblecolor;
-              let result = uDark.colorWork.canvasContext.fillStyle;
-              if(result==nonColor)
-              {
-                return false;
-              }
-              if(as_float)
-              {
-                if(result.startsWith("#"))
+          } else {
+
+            // Exists the rare case where css only do imports, no rules with {} and integrity cant be verified because it does not close the import with a ";"
+            let returnAsIs = (!cssStyleSheet.cssRules.length && !str.includes("{"))
+            if (returnAsIs) {
+              return str; //don't even try to edit it .
+              // Fortunately it is not a common case, easy to detect with zero cssRules, and it mostly are short strings testables with includes
+            };
+
+            if (verifyIntegrity) {
+              let last_rule = cssStyleSheet.cssRules[cssStyleSheet.cssRules.length - 1];
+              let is_rejected = !last_rule || last_rule.selectorText != ".integrity_rule";
+
+              // console.log(cssStyleSheet,last_rule,is_rejected)
+              if (is_rejected) {
+
+                //
+                let can_iterate = cssStyleSheet.cssRules.length > 1; // If there is only one rule, and it's rejected, we dont'have to find the previous one
+                if (can_iterate && (enableLiveChunkRepair = true)) // We accept CSS until it breaks, and cut it from there
                 {
-                  hexColor= "0x"+result.slice(1);
-                  result= [(hexColor >> 16) & 0xFF, (hexColor >> 8) & 0xFF,   hexColor & 0xFF]
-                }
-                else {
-                { 
-                  result=result.match(/[0-9\.]+/g).map(parseFloat)
+                  rejected_str = ""; // Pass from false to empty string
+                  let max_iterations = 10; // Fix a limit for timing reasons
+                  for (let i = 1; i <= max_iterations; i++) {
+
+                    // Lets find the last significant bracket.
+                    // If we are in any part of the string we don't care about the last char as it is either not a bracket or not one that will permit us
+                    // to fix the CSS. ( As it is in a broken state already)
+                    let last_bracket_index = str.lastIndexOf("}", str.length - 2); // Doing what said above 
+
+                    // Reject CSS as a whole if we can't find a bracket for whaterver messed up CSS we have
+                    if (last_bracket_index == -1) {
+                      return new Error("Rejected integrity rule from live chunk repair")
+                    }
+
+                    // Now we have two parts, the one we keep and the one we reject
+                    rejected_str = str.substring(last_bracket_index + 1) + rejected_str;
+
+                    str = str.substring(0, last_bracket_index + 1)
+
+                    // Do we have a valid CSS now ? lets add an integrity rule to check it
+                    let valueReplace = str + "\n.integrity_rule{}";
+                    cssStyleSheet.replaceSync(valueReplace); // Asumig only background script will edit CSS with integrity verification, using replaceSync is ok
+                    let last_rule = cssStyleSheet.cssRules[cssStyleSheet.cssRules.length - 1];
+                    if (last_rule && last_rule.selectorText == ".integrity_rule") // We found our rule again, no need to iterate more, this means we have a valid CSS in str
+                    {
+                      break;
+                    } else if (i == max_iterations) {
+                      return new Error("Rejected integrity rule from live chunk repair, max iterations reached")
+                    }
+                  }
+                } else { // We reject the whole CSS if it broken for any reason.( @media cut in midle of name like @medi.integrity rule), str sarting with a bracket, etc.
+                  // Reasons are endless and if Firefox said the CSS is broken, we trust it.
+                  //  console.log(can_iterate,cssStyleSheet,details.url,details.datacount)
+                  return new Error("Rejected integrity rule as a whole");
                 }
               }
-              if (!uDark.userSettings.disable_cache) {
-                uDark.general_cache[cache_key] = result;
-              }
-              return result;
-
             }
+            uDark.edit_css(cssStyleSheet, idk_mode, details, carried);
+
+            let rules = [...cssStyleSheet.cssRules].map(r => r.cssText);
+
+            uDark.edit_str_restore_imports_all_way(str, rules);
+
+            str = rules.join("\n");
+          }
+
+          if (rejected_str) {
+            str = {
+              str: str,
+              rejected: rejected_str,
+            }
+          }
+          return str;
+        },
+        rgba_val: function(r, g, b, a) {
+          a = typeof a == "number" ? a : 1;
+          return "rgba(" + (r) + "," + (g) + "," + (b) + "," + (a) + ")";
+        }, // https://perf.link : Concatenation is better than foramting
+        hsla_val: function(h, s, l, a) {
+          a = typeof a == "number" ? a : 1;
+          return "hsla(" + (h * 360) + " " + (s * 100) + "% " + (l * 100) + "% / " + (a) + ")";
+        },
+        hex_val: function(r, g, b, a) {
+          a = typeof a == "number" ? a : 1
+          return "#" +
+            r.toString(16).padStart(2, "0") +
+            g.toString(16).padStart(2, "0") +
+            b.toString(16).padStart(2, "0") +
+            (a == 1 ? "" : (a * 255).toString(16).padStart(2, "0"))
+        },
+
+        hslToRgb: (h, s, l) => {
+          let r, g, b;
+
+          if (s === 0) {
+            r = g = b = l; // achromatic
+          } else {
+            const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+            const p = 2 * l - q;
+            r = uDark.hueToRgb(p, q, h + 1 / 3);
+            g = uDark.hueToRgb(p, q, h);
+            b = uDark.hueToRgb(p, q, h - 1 / 3);
+          }
+
+          return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+        },
+
+        hueToRgb: (p, q, t) => {
+          if (t < 0) t += 1;
+          if (t > 1) t -= 1;
+          if (t < 1 / 6) return p + (q - p) * 6 * t;
+          if (t < 1 / 2) return q;
+          if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+          return p;
+        },
+        rgbToHsl: (r, g, b) => {
+          (r /= 255), (g /= 255), (b /= 255);
+          const vmax = Math.max(r, g, b),
+            vmin = Math.min(r, g, b);
+          let h, s, l = (vmax + vmin) / 2;
+
+          if (vmax === vmin) {
+            return [0, 0, l]; // achromatic
+          }
+
+          const d = vmax - vmin;
+          s = l > 0.5 ? d / (2 - vmax - vmin) : d / (vmax + vmin);
+          if (vmax === r) h = (g - b) / d + (g < b ? 6 : 0);
+          if (vmax === g) h = (b - r) / d + 2;
+          if (vmax === b) h = (r - g) / d + 4;
+          h /= 6;
+
+          return [h, s, l];
+        },
+        RGBToLightness_old: (r, g, b) => {
+
+          const l = Math.max(r, g, b);
+          const s = l - Math.min(r, g, b);
+          return (2 * l - s) / 2;
+        },
+        RGBToLightness: (r, g, b) => {
+          return (Math.max(r, g, b) + Math.min(r, g, b)) / 2;
+        },
+
+        eget_color: function(anycolor, editColorF = false, cssRule = false, no_color = false) {
+
+          anycolor=anycolor.trim();
+          if (!anycolor) {
+            return anycolor;
+          }
+          if(!cssRule)
+          { // Cant have matched these values if we are  in a cssRule edit
+            if(["unset","inherit","none"].includes(anycolor.toLowerCase()))
+            {
+              return anycolor
+            }
+          }
+          let theColor = uDark.is_color(anycolor, as_float = true, fill = false, cssRule)
+          if (!theColor) {
             
-
-          },  
-          is_color_var: function(possiblecolor, as_float = true, fill = false, cssRule, spanp = false) {
-            // Must restore spanp feature and use it in frontend capture with flood-color css attribute
-            // to catch correctly assignments like style.color=rgba(var(--flood-color),0.5) instead of returning [0,0,0,0]
-
-            // Helped by is_color_var and regexpes, we should not need this block
-            if (!possiblecolor || possiblecolor === "none") { // none is not a color, and it not usefull to create a style element for it
-              return false
+            // otherwise if it is not a color, we should warn as its a bug in regexpes
+            // or frontend does not define a color correctly
+            console.info(anycolor, " is not a color (It's ok if frontent does not define a color correctly)")
+            if (no_color) {
+              if (no_color === true) return anycolor;
+              return no_color;
             }
+            return editColorF ? editColorF(...[0, 0, 0, 1]) : [0, 0, 0, 1];
+          }
+          if (editColorF) {
+            // Caller asks us to apply a transformation, probably rgba, hex or revert_rgba
+            return editColorF(...theColor)
+          }
+          return theColor
 
-            
-            let cache_key = `${possiblecolor}${as_float}${fill}`
-            if (!uDark.userSettings.disable_cache && !spanp && uDark.general_cache[cache_key]) {
-              return uDark.general_cache[cache_key];
-            }
-            possiblecolor = possiblecolor.trim().toLowerCase();
-            let option = new Option();
-            let style = option.style;
-            if (cssRule) {
-              // apply specific class variables to style
-              Object.values(cssRule.style).filter(x => x.startsWith("--")).forEach(x => {
-                style.setProperty(x, cssRule.style.getPropertyValue(x))
-              })
-            }
+        },
+        is_color: function(possiblecolor, as_float = true, fill = false, cssRule, spanp = false) {
+          let cache_key = `${possiblecolor}${as_float}${fill}`
+          if (!uDark.userSettings.disable_cache && !spanp && uDark.general_cache[cache_key]) { // See https://jsben.ch/aXxCT for cache effect on performance
+            return uDark.general_cache[cache_key];
+          }
+          if (!possiblecolor || possiblecolor === "none") { // none is not a color, and it not usefull to create a style element for it
+            return false
+          }
+          if (uDark.website_context && possiblecolor.includes("var(")) {
+            console.log("Going var for ", possiblecolor)
+            return uDark.is_color_var(possiblecolor, as_float, fill, cssRule, spanp)
+          }
 
-            style.floodColor = possiblecolor;
-
-            let result = style.floodColor; // Must be done in 2 steps to avoid same value as possiblecolor
-
-            if (!style.floodColor) {
-              // Impossible color : browser said so
-              return false;
-            }
-            if (style.floodColor == possiblecolor) {
-              // Browser said it is a color but doubt it is a valid one, we need a further check
-              document.head.appendChild(option);
-              if ("o_ud_set_backgroundColor" in style) // Only working way to do it so far
+          let nonColor = "rgba(0, 0, 0, 0.11)"; // Spaces are important, we are looking for an exaxt match
+          uDark.colorWork.canvasContext.fillStyle = nonColor;
+          uDark.colorWork.canvasContext.fillStyle = possiblecolor;
+          let result = uDark.colorWork.canvasContext.fillStyle;
+          if (result == nonColor) {
+            return false;
+          }
+          if (as_float) {
+            if (result.startsWith("#")) {
+              hexColor = "0x" + result.slice(1);
+              result = [(hexColor >> 16) & 0xFF, (hexColor >> 8) & 0xFF, hexColor & 0xFF]
+            } else {
               {
-                style.o_ud_set_backgroundColor = possiblecolor;
-              } else {
-                style.backgroundColor = possiblecolor;
-              }
-              let computedStyle = getComputedStyle(option); // On invalid colors, background will be none here
-              result = computedStyle.floodColor || possiblecolor; // Sometimes on frontend, computedStyle is empty, idk why. Looks like a bug in browser 
-
-              if (computedStyle.floodColor != computedStyle.backgroundColor) // Probably an invalid color
-              { // backgroundColor is the only poperty wich returns rgba(0, 0, 0, 0) an alpha value on unresolved vars/invalid 
-                result = false;
-              }
-
-              option.remove();
-            }
-            if (result) {
-
-              if (as_float) {
                 result = result.match(/[0-9\.]+/g).map(parseFloat)
-                if (fill) {
-                  result = result.concat(Array(4 - result.length).fill(1))
-                }
               }
-
-              if (!uDark.userSettings.disable_cache) {
-                uDark.general_cache[cache_key] = result;
-              }
+            }
+            if (!uDark.userSettings.disable_cache) {
+              uDark.general_cache[cache_key] = result;
             }
             return result;
-          },
-          
-          rgba_rgb: function(r, g, b, a,render=false) {
-            render=(render||uDark.rgba_val)
-            a = typeof a == "number" ? a : 1
-            let lightness=uDark.RGBToLightness(r,g,b);
-            let max_channel=Math.max(r,g,b);
-            let min_chanel=Math.min(r,g,b);
-            let scale=204;
-            if(lightness>uDark.min_bright_bg_trigger*255)
-            {
-              [r,g,b]=[r,g,b].map(x=>x-min_chanel);
-            }
-            if(lightness>127&&Math.min(r,g,b)<26)
-            {
-              [r,g,b]=[r,g,b].map(x=>Math.min(x+26,255));
-            }
 
-            return render(...[r, g, b], a);
+          }
 
-            
-          },
-          rgba_via_canvas: function(r, g, b, a,render=false) { // Too slow even without being completed with complex logics
-            render=(render||uDark.rgba_val)
-            a = typeof a == "number" ? a : 1
-            let colorYindex=0;
-            let colorXPos=uDark.colorWork.indexes[colorYindex];
-            if(colorXPos==0)
-            {
-              let min_chanel=255*uDark.min_bright_bg;
-              uDark.colorWork.canvasContext.fillStyle = uDark.rgba_val(min_chanel, min_chanel, min_chanel, 1);
-              uDark.colorWork.canvasContext.fillRect(0, 0, uDark.colorWork.canvasWidth, 1);         
-            }
+        },
+        is_color_var: function(possiblecolor, as_float = true, fill = false, cssRule, spanp = false) {
+          // Must restore spanp feature and use it in frontend capture with flood-color css attribute
+          // to catch correctly assignments like style.color=rgba(var(--flood-color),0.5) instead of returning [0,0,0,0]
 
-            let lightness=uDark.RGBToLightness(r,g,b);
-            if(lightness>127)
-            {
-              uDark.colorWork.canvasContext.fillStyle = uDark.rgba_val(r, g, b, 1-lightness/255);
-              uDark.colorWork.canvasContext.fillRect(colorXPos, colorYindex, 1, 1);
-              pixel=uDark.colorWork.canvasContext.getImageData(colorXPos, colorYindex, 1, 1);
-              [r,g,b]=pixel.data
-              // console.log("3",uDark.colorWork.canvasContext.fillStyle,uDark.rgba_val(r, g, b, 1),lightness)
-              // console.log(1,...pixel.data );
-              uDark.colorWork.indexes[colorYindex]=uDark.colorWork.indexes[colorYindex]%uDark.colorWork.canvasWidth;
-            }
+          // Helped by is_color_var and regexpes, we should not need this block
+          if (!possiblecolor || possiblecolor === "none") { // none is not a color, and it not usefull to create a style element for it
+            return false
+          }
 
-            return render(...[r, g, b], a);
-
-            
-          },
-          rgba: (r, g, b, a, render = false) => {
-            // Lets remove any brightness from the color
-            render = (render || uDark.rgba_val)
-            a = typeof a == "number" ? a : 1
-
-            
-            let [h, s, l] = uDark.rgbToHsl(r, g, b);
-            if (l > uDark.min_bright_bg_trigger) {
-
-              
-              // https://www.desmos.com/calculator/oqqi9nzonh
-              let B = uDark.min_bright_bg;
-              let A = uDark.max_bright_bg
-              // let scaleToA = uDark.userSettings.noScaleToA && l<A;
-              if (l > 0.5) {
-                l = 1 - l; // Invert the lightness for bightest colors
-              }
-              //  l = Math.sin(Math.PI*l)*(A-B)+B;
-
-              // if(!scaleToA)
-              // {
-              l = Math.min(2 * l, -2 * l + 2) * (A - B) + B;
-              // }
-            }
-            [r, g, b] = uDark.hslToRgb(h, s, l);
-            return render(...[r, g, b], a);
-
-          },
-          revert_rgba: function(r, g, b, a, render) {
-            render = (render || uDark.rgba_val)
-            a = typeof a == "number" ? a : 1
-            let [h, s, l] = uDark.rgbToHsl(r, g, b);
-            let A = uDark.min_bright_fg
-            let B = uDark.max_bright_fg
-            let E = uDark.brightness_peak_editor_fg
-
-            let ol = l;
-
-            // l = Math.sin(Math.PI*l)*(A-B)+B;
-            l = Math.min(2 * l, -2 * l + 2) * (A - B) + B; // Was a good one, but we may boost saturation as folowing lines shows
-            // Still not sure about the best way to do it ^ has implicity while indeed a saturation boost might be nice
-            // l = Math.pow(Math.min(2 * l, -2 * l + 2),E) * (A - B) + B;
-            if (l > .60 && h > 0.66 && h < 0.72) {
-              // FIXME: EXPERIMENTAL:
-              h += 0.66 - 0.72; // Avoid blueish colors being purple 
-            }
-            // i dont like how saturation boost gives a blue color to some texts like gitlab's ones.
-            // s=1-Math.pow(1-s,1/E); // Boost saturation proportionnaly as brightness decrease, but we could have a separate setting for saturation boost
-
-            // h=h-(l-ol)/4; // Keep the same hue, but we could have a separate setting for hue shift
-
-
-            [r, g, b] = uDark.hslToRgb(h, s, l);
-
-
-            return render(...[r, g, b], a);
-          },
-          
-          edit_cssRules: (cssRules, idk_mode = false, details, carried, callBack = uDark.edit_cssProperties,clean_empty_rules=false) => {
-            [...cssRules].forEach(cssRule => {
-              if (cssRule.cssRules && cssRule.cssRules.length) {
-                uDark.edit_cssRules(cssRule.cssRules, idk_mode, details, carried, callBack);
-                if(clean_empty_rules)
-                {
-                  for(let i=cssRule.cssRules.length-1;i>=0;i--)
-                  {
-                    let cssStyle=cssRule.cssRules[i].style;
-                    if(cssStyle && cssStyle.length==0||!cssStyle&&cssRule.cssRules.length==0)
-                    {
-                      
-                      // console.log("Deleted empty rule",cssRule.cssRules[i],"from",cssRule,cssStyle,cssStyle.length)
-                      cssRule.deleteRule(i);
-                    }
-                  }
-                }
-                return;
-              } else if (cssRule.style && cssRule.constructor.name != "CSSFontFaceRule") {
-                callBack(cssRule, idk_mode, details, carried);
-                
-              }
+          let cache_key = `${possiblecolor}${as_float}${fill}`
+          if (!uDark.userSettings.disable_cache && !spanp && uDark.general_cache[cache_key]) {
+            return uDark.general_cache[cache_key];
+          }
+          possiblecolor = possiblecolor.trim().toLowerCase();
+          let option = new Option();
+          let style = option.style;
+          if (cssRule) {
+            // apply specific class variables to style
+            Object.values(cssRule.style).filter(x => x.startsWith("--")).forEach(x => {
+              style.setProperty(x, cssRule.style.getPropertyValue(x))
             })
-          },
-          
-          edit_css_urls: function(cssStyle, cssRule, details, property = "background-image")
-          {
-            let value = cssStyle.getPropertyValue(property);
-            // Its very neccessary to not edit property if they dont contain a url, as it changes a lot the CSS if there are shorthand properties involved : setting bacground image removes bacground property
-            
-            // Instead of registering the image as a background, we will encode the selector in the URL 
-            // and register the image as a background image only when it is downloaded, in the filter script
-              
-              let carried={};
-              value = value.replace(uDark.regex_search_for_url, (match, g1) => {
-              //changed = true;
-              let link = g1.trim();
-              
-              link = uDark.send_data_image_to_parser(link,false,carried);
-              carried.changed=true;
-              let usedChar = link.includes("#") ? "&" : "?"
-              usedChar = "#";
-              link += usedChar + "uDark_cssClass=" + encodeURIComponent(cssRule.selectorText);
-              return 'url("' + link + '")';
-            })
-            
-            if (carried.changed) {
-              cssStyle.setProperty(property, value);
+          }
+
+          style.floodColor = possiblecolor;
+
+          let result = style.floodColor; // Must be done in 2 steps to avoid same value as possiblecolor
+
+          if (!style.floodColor) {
+            // Impossible color : browser said so
+            return false;
+          }
+          if (style.floodColor == possiblecolor) {
+            // Browser said it is a color but doubt it is a valid one, we need a further check
+            document.head.appendChild(option);
+            if ("o_ud_set_backgroundColor" in style) // Only working way to do it so far
+            {
+              style.o_ud_set_backgroundColor = possiblecolor;
+            } else {
+              style.backgroundColor = possiblecolor;
+            }
+            let computedStyle = getComputedStyle(option); // On invalid colors, background will be none here
+            result = computedStyle.floodColor || possiblecolor; // Sometimes on frontend, computedStyle is empty, idk why. Looks like a bug in browser 
+
+            if (computedStyle.floodColor != computedStyle.backgroundColor) // Probably an invalid color
+            { // backgroundColor is the only poperty wich returns rgba(0, 0, 0, 0) an alpha value on unresolved vars/invalid 
+              result = false;
             }
 
-          },
-          
-          css_properties_wording_action: function(cssStyle, keys, details, cssRule) {
-            keys.forEach(key => {
-              let action = uDark.css_properties_wording_action_dict[key];
+            option.remove();
+          }
+          if (result) {
 
-              if (action) {
-
-
-                if (action.replace) {
-                  let value = cssStyle.getPropertyValue(key);
-                  cssStyle.setProperty(key, value.replaceAll(...action.replace));
-                }
-                if (action.remove) {
-                  cssStyle.removeProperty(key);
-                }
-                if (action.stickConcatToPropery) {
-                  let vars = action.stickConcatToPropery;
-                  let value = cssStyle.getPropertyValue(key)
-                  let new_value = cssStyle.getPropertyValue(vars.rKey) || ""
-                  if (value && value.includes(vars.sValue)) {
-                    new_value += " " + vars.stick;
-                  } else {
-                    new_value = new_value.replaceAll(vars.stick, "");
-                  }
-                  cssStyle.setProperty(vars.rKey, new_value);
-
-                }
-                if (action.callBacks) {
-                  action.callBacks.forEach(callBack => {
-                    callBack(cssStyle, cssRule, details);
-                  });
-                }
+            if (as_float) {
+              result = result.match(/[0-9\.]+/g).map(parseFloat)
+              if (fill) {
+                result = result.concat(Array(4 - result.length).fill(1))
               }
+            }
+
+            if (!uDark.userSettings.disable_cache) {
+              uDark.general_cache[cache_key] = result;
+            }
+          }
+          return result;
+        },
+
+        rgba_rgb: function(r, g, b, a, render = false) {
+          render = (render || uDark.rgba_val)
+          a = typeof a == "number" ? a : 1
+          lightness = uDark.RGBToLightness(r, g, b);
+          if (lightness > 51) {
+            // [r,g,b]=[r,g,b].map((x)=>x/2);
+            [r, g, b] = [r, g, b].map((x) => {
+
+              if (lightness > 127) {
+                x = x * Math.pow(255 / (lightness + 127), lightness / 127 * 2.8);
+
+              }
+              x *= 204 / 255;
+              return x;
 
             });
-          },
-          ceilBrigthness: function(str) {
-              // 9 nested vars or parentheis: if a parethesis is open we expect it to be closed.
-                return str.replaceAll(/((?:rgb|hsl)a?\()(\((\((\((\((\((\((\((.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)/g, (match,g1) => {
-                  let intermediate=match.slice(g1.length,-1);
-                  let inside=intermediate.split(/[,](?![^(]*\))/);
-                  if(inside.length>=3)
-                  {
-                    if(g1.startsWith("rgb"))
-                    {
-                      for(let i=0;i<3;i++)
-                      {
-                        inside[i]=`min(${inside[i]},180)`
-                      }
-                    }
-                    else if(g1.startsWith("hsl"))
-                    {
-                      inside[2]=`min(${inside[2]},0.5)`
-                    }
-                    match=g1+inside.join(",")+")";
+          }
+
+          return render(...[r, g, b], a);
+        },
+        rgba_via_canvas: function(r, g, b, a, render = false) { // Too slow even without being completed with complex logics
+          render = (render || uDark.rgba_val)
+          a = typeof a == "number" ? a : 1
+          let colorYindex = 0;
+          let colorXPos = uDark.colorWork.indexes[colorYindex];
+          if (colorXPos == 0) {
+            let min_chanel = 255 * uDark.min_bright_bg;
+            uDark.colorWork.canvasContext.fillStyle = uDark.rgba_val(min_chanel, min_chanel, min_chanel, 1);
+            uDark.colorWork.canvasContext.fillRect(0, 0, uDark.colorWork.canvasWidth, 1);
+          }
+
+          let lightness = uDark.RGBToLightness(r, g, b);
+          if (lightness > 127) {
+            uDark.colorWork.canvasContext.fillStyle = uDark.rgba_val(r, g, b, 1 - lightness / 255);
+            uDark.colorWork.canvasContext.fillRect(colorXPos, colorYindex, 1, 1);
+            pixel = uDark.colorWork.canvasContext.getImageData(colorXPos, colorYindex, 1, 1);
+            [r, g, b] = pixel.data
+            // console.log("3",uDark.colorWork.canvasContext.fillStyle,uDark.rgba_val(r, g, b, 1),lightness)
+            // console.log(1,...pixel.data );
+            uDark.colorWork.indexes[colorYindex] = uDark.colorWork.indexes[colorYindex] % uDark.colorWork.canvasWidth;
+          }
+
+          return render(...[r, g, b], a);
+
+        },
+        rgba: (r, g, b, a, render = false) => {
+          // Lets remove any brightness from the color
+          render = (render || uDark.rgba_val)
+          a = typeof a == "number" ? a : 1
+
+          let [h, s, l] = uDark.rgbToHsl(r, g, b);
+          if (l > uDark.min_bright_bg_trigger) {
+
+            // https://www.desmos.com/calculator/oqqi9nzonh
+            let B = uDark.min_bright_bg;
+            let A = uDark.max_bright_bg
+            // let scaleToA = uDark.userSettings.noScaleToA && l<A;
+            if (l > 0.5) {
+              l = 1 - l; // Invert the lightness for bightest colors
+            }
+            //  l = Math.sin(Math.PI*l)*(A-B)+B;
+
+            // if(!scaleToA)
+            // {
+            l = Math.min(2 * l, -2 * l + 2) * (A - B) + B;
+            // }
+          }
+          [r, g, b] = uDark.hslToRgb(h, s, l);
+          return render(...[r, g, b], a);
+
+        },
+        revert_rgba: function(r, g, b, a, render) {
+          render = (render || uDark.rgba_val)
+          a = typeof a == "number" ? a : 1
+          let [h, s, l] = uDark.rgbToHsl(r, g, b);
+          let A = uDark.min_bright_fg
+          let B = uDark.max_bright_fg
+          let E = uDark.brightness_peak_editor_fg
+
+          let ol = l;
+
+          // l = Math.sin(Math.PI*l)*(A-B)+B;
+          l = Math.min(2 * l, -2 * l + 2) * (A - B) + B; // Was a good one, but we may boost saturation as folowing lines shows
+          // Still not sure about the best way to do it ^ has implicity while indeed a saturation boost might be nice
+          // l = Math.pow(Math.min(2 * l, -2 * l + 2),E) * (A - B) + B;
+          if (l > .60 && h > 0.66 && h < 0.72) {
+            // FIXME: EXPERIMENTAL:
+            h += 0.66 - 0.72; // Avoid blueish colors being purple 
+          }
+          // i dont like how saturation boost gives a blue color to some texts like gitlab's ones.
+          // s=1-Math.pow(1-s,1/E); // Boost saturation proportionnaly as brightness decrease, but we could have a separate setting for saturation boost
+
+          // h=h-(l-ol)/4; // Keep the same hue, but we could have a separate setting for hue shift
+
+          [r, g, b] = uDark.hslToRgb(h, s, l);
+
+          return render(...[r, g, b], a);
+        },
+
+        edit_cssRules: (cssRules, idk_mode = false, details, carried, callBack = uDark.edit_cssProperties, clean_empty_rules = false) => {
+          [...cssRules].forEach(cssRule => {
+            if (cssRule.cssRules && cssRule.cssRules.length) {
+              uDark.edit_cssRules(cssRule.cssRules, idk_mode, details, carried, callBack);
+              if (clean_empty_rules) {
+                for (let i = cssRule.cssRules.length - 1; i >= 0; i--) {
+                  let cssStyle = cssRule.cssRules[i].style;
+                  if (cssStyle && cssStyle.length == 0 || !cssStyle && cssRule.cssRules.length == 0) {
+
+                    // console.log("Deleted empty rule",cssRule.cssRules[i],"from",cssRule,cssStyle,cssStyle.length)
+                    cssRule.deleteRule(i);
                   }
-                  return match;
-                })
-          },
-          idk_twice_actions: {
-            "background": (cssRule, idk_value) => {
-              let result = uDark.ceilBrigthness(idk_value);
-              return result;
-              // old way:
-              // cssRule.style.setProperty("background-blend-mode", "darken", "important");
-              // return idk_value + " linear-gradient(rgba(168, 168, 168, 1),rgba(168, 168, 168, 1))"; 
-            },
-            "background-image": (cssRule, idk_value) => {
-              return uDark.ceilBrigthness(idk_value);
-            },
-            "background-color": (cssRule, idk_value) => {
-              return uDark.ceilBrigthness(idk_value);
-
-              // old way:
-              // cssRule.style.setProperty("background-blend-mode", "darken", "important");
-              // let background_image = cssRule.style.getPropertyValue("background-image");
-              // let result = `linear-gradient(${idk_value},${idk_value}), linear-gradient(rgba(168, 168, 168, 1),rgba(168, 168, 168, 1))`;
-              // if (background_image) {
-              //   result = background_image + "," + result;
-              // }
-              // cssRule.style.setProperty("background-image", result);
-              // return "none";
-              // return idk_value+", linear-gradient(rgba(168, 168, 168, 1),rgba(168, 168, 168, 1))";
-            },
-
-            // Use RGB colors to avoid value being edited later
-            "color": (cssRule, idk_value) => {
-              return "rgb(255,255,255)";
-            }
-          },
-          edit_with_regex: function(idk_mode, key, value, regex, transformation, render, cssRule) {
-            return value.replaceAll(regex, (match) => {
-              let restored = uDark.restore_idk_vars(idk_mode, match);
-              let maybe_array = uDark.eget_color(restored, false, cssRule, uDark.on_idk_missing_twice)
-              if (maybe_array.push) {
-                return transformation(...maybe_array, render);
+                }
               }
-              // console.log("Fully failed to get '",key,"' from",maybe_array,cssRule,match);
-              if (uDark.idk_twice_actions[key]) {
-                maybe_array = uDark.idk_twice_actions[key](cssRule, restored);
-              }
-              return maybe_array;
-            });
-          },
-
-          hexadecimalColorsRegex: /#[0-9a-f]{3,4}(?:[0-9a-f]{2})?(?:[0-9a-f]{2})?/gmi, // hexadecimal colors
-          foreground_color_css_properties: ["color", "fill"], // css properties that are foreground colors
-          // Gradients can be set in background-image
-          background_color_css_properties_regex: /color|fill|box-shadow|^background(?:-image|-color)?$/,// Background images can contain colors // css properties that are background colors
-          edit_prefix_fg_vars: function(idk_mode, value, actions) {
-            if (!value.includes("var(") && !idk_mode) {
-              return value; // No variables to edit;
-            }
-            return value.replace(/(?<!a-z0-^9-_])--([a-z0-9-_])/gi, "--ud-fg--$1")
-          },
-          restore_idk_vars: function(idk_mode, value) {
-            if (idk_mode) {
-              value = value.replaceAll("..1..", "var(").replaceAll("..2..", ")").replaceAll("..3..", "calc(");
-              // value = CSS_COLOR_NAMES[Math.floor(Math.random() * CSS_COLOR_NAMES.length)];
-            }
-            return value;
-          },
-
-          edit_all_cssRule_colors_cb: (idk_mode, cssRule, key, key_idk, value, transformation, render, hasUnresolvedVars, key_prefix, actions, topLevelRule) => {
-            let new_value=value;
-            let cssStyle = cssRule.style;
-            cssRule[key] = "done"; // Used right above to avoid reprocessing, already deleted once by mistake, this is why this comment exists now :)
-            let priority = cssStyle.getPropertyPriority(key_idk);
-
-            if (uDark.is_background && uDark.unResolvableVarsRegex.test(new_value) && new_value.includes("var(")) { // To complicated to write a rgex for this, so we will use a simple test
-              if (!topLevelRule.unresolvableRule) {
-                hasUnresolvedVars.carried.unresolvableStylesheet.insertRule(topLevelRule.cssText, hasUnresolvedVars.carried.unresolvableStylesheet.cssRules.length);
-                topLevelRule.unresolvableRule = true;
-              }
-
-
-
-              // console.log(uDark.is_background,key,new_value,"has unresolvable vars, skipping");
-              hasUnresolvedVars.has = hasUnresolvedVars.has || true;
-              cssStyle.setProperty("--ud-idk_" + key, new_value, priority);
-              uDark.on_idk_missing == "remove" && cssStyle.removeProperty(key)
-              uDark.on_idk_missing == "fill_black" && cssStyle.setProperty(key, transformation(0, 0, 0, 1, render), priority);
-
-              uDark.on_idk_missing == "fill_minimum" && cssStyle.setProperty(key, transformation(...uDark.hslToRgb(0, 0, uDark.max_bright_bg * uDark.idk_minimum_editor), 1, render), priority);
-              uDark.on_idk_missing == "fill_red" && cssStyle.setProperty(key, transformation(129, 0, 0, 1, render), priority);
-              uDark.on_idk_missing == "fill_green" && cssStyle.setProperty(key, transformation(0, 129, 0, 1, render), priority);
               return;
-            } else if (idk_mode) {
-              {
-                if (!uDark.keepIdkProperties) {
-                  cssStyle.removeProperty(key_idk);
-                }
-                //new_value.match(/(var|calc)\((\((\((\((\((\((\((\((.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)/g) 
-                // 9 nested vars or parentheis: keep hsl or RGBA bounds if a parethesis is open we expect it to be closed.
-                new_value = new_value.replaceAll(/(var|calc)\((\((\((\((\((\((\((\((.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)/g, match => match.replaceAll("var(", "..1..").replaceAll(")", "..2..").replaceAll("calc(", "..3.."));
-                // new_value = new_value.replaceAll(/(var|calc)\([^()]+\)/g, match => match.replaceAll("var(", "..1..").replaceAll(")", "..2..").replaceAll("calc(", "..3.."))
+            } else if (cssRule.style && cssRule.constructor.name != "CSSFontFaceRule") {
+              callBack(cssRule, idk_mode, details, carried);
 
+            }
+          })
+        },
+
+        edit_css_urls: function(cssStyle, cssRule, details, property = "background-image") {
+          let value = cssStyle.getPropertyValue(property);
+          // Its very neccessary to not edit property if they dont contain a url, as it changes a lot the CSS if there are shorthand properties involved : setting bacground image removes bacground property
+
+          // Instead of registering the image as a background, we will encode the selector in the URL 
+          // and register the image as a background image only when it is downloaded, in the filter script
+
+          let carried = {};
+          value = value.replace(uDark.regex_search_for_url, (match, g1) => {
+            //changed = true;
+            let link = g1.trim();
+
+            link = uDark.send_data_image_to_parser(link, false, carried);
+            carried.changed = true;
+            let usedChar = link.includes("#") ? "&" : "?"
+            usedChar = "#";
+            let notableInfos = {
+              "uDark_cssClass": encodeURI(cssRule.selectorText),
+              "uDark_backgroundRepeat": cssStyle.backgroundRepeat,
+            };
+
+            link += usedChar + new URLSearchParams(notableInfos).toString();
+            return 'url("' + link + '")';
+          })
+
+          if (carried.changed) {
+            cssStyle.setProperty(property, value);
+          }
+
+        },
+
+        css_properties_wording_action: function(cssStyle, keys, details, cssRule) {
+          keys.forEach(key => {
+            let action = uDark.css_properties_wording_action_dict[key];
+
+            if (action) {
+
+              if (action.replace) {
+                let value = cssStyle.getPropertyValue(key);
+                cssStyle.setProperty(key, value.replaceAll(...action.replace));
               }
-            }
-            // if(debug=cssRule.cssText.includes(uDark.searchedCssText))
-            // {
-            //   console.log("Catched 1.1", idk_mode,cssRule.cssText,key_idk,key,new_value,actions,uDark.is_background && uDark.unResolvableVarsRegex.test(new_value)) 
-            // }
-            if (actions.prefix_fg_vars) { 
-              new_value = uDark.edit_prefix_fg_vars(idk_mode, new_value, actions);
-            }
-
-            // if(debug=cssRule.cssText.includes(uDark.searchedCssText))
-            // {
-            //   console.log("Catched 1.2", idk_mode,cssRule.cssText,key_idk,key,new_value,actions,uDark.is_background && uDark.unResolvableVarsRegex.test(new_value)) 
-            // }
-
-            
-      
-            new_value = uDark.edit_with_regex(idk_mode, key, new_value, uDark.rgb_a_colorsRegex, transformation, render, idk_mode ? cssRule : false); // edit_rgb_a_colors
-            new_value = uDark.edit_with_regex(idk_mode, key, new_value, uDark.hsl_a_colorsRegex, transformation, render, idk_mode ? cssRule : false); // edit_hsl_a_colors
-            new_value = uDark.restore_idk_vars(idk_mode, new_value); // Restore alone vars: color: var(--color_8)
-            new_value = uDark.edit_with_regex(false /*The namedColorsRegex is not affected*/ , key, new_value, uDark.namedColorsRegex, transformation, render); // edit_named_colors
-            new_value = uDark.edit_with_regex(false /*The hexadecimalColorsRegex is not affected*/ , key, new_value, uDark.hexadecimalColorsRegex, transformation, render); // edit_hex_colors // The browser auto converts hex to rgb, but some times not like in  var(--123,#00ff00) as it cant resolve the var
-
-            if(value!=new_value||key_prefix)
-            {
-              // Edit the value only if necessary:  setting bacground image removes bacground property for intance
-              cssStyle.setProperty(key_prefix + key, new_value, priority); // Once we had  an infinite loop here when uDark was loaded twice and redefining setProperty.
-            }
-            // console.log("cssKey Color",cssRule,key,value,priority,cssRule.cssText);
-          },
-          edit_all_cssRule_colors(idk_mode, cssRule, keys, transformation, render, hasUnresolvedVars, key_prefix = "", actions = {}, callBack = uDark.edit_all_cssRule_colors_cb) {
-            // render = (render||uDark.rgba_val);
-            // console.log(idk_mode,cssRule,keys,transformation,render,key_prefix,actions);
-            let topLevelRule = cssRule;
-            while (topLevelRule.parentRule) {
-              topLevelRule = topLevelRule.parentRule; // Even media rules can have parentRule: its called Layers
-            }
-            keys.forEach(key => {
-              let key_idk = ((idk_mode === true) ? "--ud-idk_" : "") + key;
-              let value = cssRule.style.getPropertyValue(key_idk) || "";
-
-
-
-              if (!value) { // Value is not set when using shorthand and var(--background-color) is used
-                /* This is testable with
-                    aCSS=new CSSStyleSheet();
-                    aCSS.replaceSync("z{border:var(--bd-color);background:var(--bg-color);}");
-                    Object.values(aCSS.cssRules[0].style)
-                    cssRule=aCSS.cssRules[0];
-                    for(x of cssRule.style){console.log(x)}
-                */
-                if (key.endsWith("-color")) { // For now only background-color and border-[side]-color can bother us
-                  key = key.slice(0, -6);
-                  if (cssRule[key]) return;
-                  value = cssRule.style.getPropertyValue(key);
-                }
-                if (!value && key.startsWith("border-")) { // And now border-[side]
-                  key = "border";
-                  if (cssRule[key]) return;
-                  value = cssRule.style.getPropertyValue(key); // background-color is not always set if using background shorthand and var(--background-color) is used
-                }
+              if (action.remove) {
+                cssStyle.removeProperty(key);
               }
-              if (value) {
-
-                callBack(idk_mode, cssRule, key, key_idk, value, transformation, render, hasUnresolvedVars, key_prefix, actions, topLevelRule);
-              }
-            });
-          },
-
-          edit_cssProperties: function(cssRule, idk_mode = false, details, carried) {
-            let foreground_items = [],
-              variables_items = [],
-              background_items = [],
-              wording_action = [];
-
-            for (let x of cssRule.style) {
-              if (idk_mode === true) { // Partial idk mode does not have --ud-idk_ prefix, they are added by cloning the cssRule
-                
-                if (x.startsWith("--ud-idk_")) {
-                  x = x.slice(9);
+              if (action.stickConcatToPropery) {
+                let vars = action.stickConcatToPropery;
+                let value = cssStyle.getPropertyValue(key)
+                let new_value = cssStyle.getPropertyValue(vars.rKey) || ""
+                if (value && value.includes(vars.sValue)) {
+                  new_value += " " + vars.stick;
                 } else {
-                  continue;
+                  new_value = new_value.replaceAll(vars.stick, "");
                 }
-              }
-              
+                cssStyle.setProperty(vars.rKey, new_value);
 
-              if (x.startsWith("--")) { 
-                variables_items.push(x);
-                continue; // Eliminate Variables, i don't think its usefull to test them againt regexes
-              } 
-              if (uDark.css_properties_wording_action_dict[x]) {
-                wording_action.push(x);
-              } // Check if some wording action is needed
-              if (uDark.foreground_color_css_properties.includes(x)) {
-                foreground_items.push(x);
-                continue;
-              } // Do foreground items first as its faster to check a list
-              if (x.match(uDark.background_color_css_properties_regex)) {
-                background_items.push(x);
-                continue;
-              } // Do background regex match
+              }
+              if (action.callBacks) {
+                action.callBacks.forEach(callBack => {
+                  callBack(cssStyle, cssRule, details);
+                });
+              }
+            }
+
+          });
+        },
+        ceilBrigthness: function(str) {
+          // 9 nested vars or parentheis: if a parethesis is open we expect it to be closed.
+          return str.replaceAll(/((?:rgb|hsl)a?\()(\((\((\((\((\((\((\((.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)/g, (match, g1) => {
+            let intermediate = match.slice(g1.length, -1);
+            let inside = intermediate.split(/[,](?![^(]*\))/);
+            if (inside.length >= 3) {
+              if (g1.startsWith("rgb")) {
+                for (let i = 0; i < 3; i++) {
+                  inside[i] = `min(${inside[i]},180)`
+                }
+              } else if (g1.startsWith("hsl")) {
+                inside[2] = `min(${inside[2]},0.5)`
+              }
+              match = g1 + inside.join(",") + ")";
+            }
+            return match;
+          })
+        },
+        idk_twice_actions: {
+          "background": (cssRule, idk_value) => {
+            let result = uDark.ceilBrigthness(idk_value);
+            return result;
+            // old way:
+            // cssRule.style.setProperty("background-blend-mode", "darken", "important");
+            // return idk_value + " linear-gradient(rgba(168, 168, 168, 1),rgba(168, 168, 168, 1))"; 
+          },
+          "background-image": (cssRule, idk_value) => {
+            return uDark.ceilBrigthness(idk_value);
+          },
+          "background-color": (cssRule, idk_value) => {
+            return uDark.ceilBrigthness(idk_value);
+
+            // old way:
+            // cssRule.style.setProperty("background-blend-mode", "darken", "important");
+            // let background_image = cssRule.style.getPropertyValue("background-image");
+            // let result = `linear-gradient(${idk_value},${idk_value}), linear-gradient(rgba(168, 168, 168, 1),rgba(168, 168, 168, 1))`;
+            // if (background_image) {
+            //   result = background_image + "," + result;
+            // }
+            // cssRule.style.setProperty("background-image", result);
+            // return "none";
+            // return idk_value+", linear-gradient(rgba(168, 168, 168, 1),rgba(168, 168, 168, 1))";
+          },
+
+          // Use RGB colors to avoid value being edited later
+          "color": (cssRule, idk_value) => {
+            return "rgb(255,255,255)";
+          }
+        },
+        edit_with_regex: function(idk_mode, key, value, regex, transformation, render, cssRule) {
+          return value.replaceAll(regex, (match) => {
+            let restored = uDark.restore_idk_vars(idk_mode, match);
+            let maybe_array = uDark.eget_color(restored, false, cssRule, uDark.on_idk_missing_twice)
+            if (maybe_array.push) {
+              return transformation(...maybe_array, render);
+            }
+            // console.log("Fully failed to get '",key,"' from",maybe_array,cssRule,match);
+            if (uDark.idk_twice_actions[key]) {
+              maybe_array = uDark.idk_twice_actions[key](cssRule, restored);
+            }
+            return maybe_array;
+          });
+        },
+
+        hexadecimalColorsRegex: /#[0-9a-f]{3,4}(?:[0-9a-f]{2})?(?:[0-9a-f]{2})?/gmi, // hexadecimal colors
+        foreground_color_css_properties: ["color", "fill"], // css properties that are foreground colors
+        // Gradients can be set in background-image
+        background_color_css_properties_regex: /color|fill|box-shadow|^background(?:-image|-color)?$/, // Background images can contain colors // css properties that are background colors
+        edit_prefix_fg_vars: function(idk_mode, value, actions) {
+          if (!value.includes("var(") && !idk_mode) {
+            return value; // No variables to edit;
+          }
+          return value.replace(/(?<!a-z0-^9-_])--([a-z0-9-_])/gi, "--ud-fg--$1")
+        },
+        restore_idk_vars: function(idk_mode, value) {
+          if (idk_mode) {
+            value = value.replaceAll("..1..", "var(").replaceAll("..2..", ")").replaceAll("..3..", "calc(");
+            // value = CSS_COLOR_NAMES[Math.floor(Math.random() * CSS_COLOR_NAMES.length)];
+          }
+          return value;
+        },
+
+        edit_all_cssRule_colors_cb: (idk_mode, cssRule, key, key_idk, value, transformation, render, hasUnresolvedVars, key_prefix, actions, topLevelRule) => {
+          let new_value = value;
+          let cssStyle = cssRule.style;
+          cssRule[key] = "done"; // Used right above to avoid reprocessing, already deleted once by mistake, this is why this comment exists now :)
+          let priority = cssStyle.getPropertyPriority(key_idk);
+
+          if (uDark.is_background && uDark.unResolvableVarsRegex.test(new_value) && new_value.includes("var(")) { // To complicated to write a rgex for this, so we will use a simple test
+            if (!topLevelRule.unresolvableRule) {
+              hasUnresolvedVars.carried.unresolvableStylesheet.insertRule(topLevelRule.cssText, hasUnresolvedVars.carried.unresolvableStylesheet.cssRules.length);
+              topLevelRule.unresolvableRule = true;
+            }
+
+            // console.log(uDark.is_background,key,new_value,"has unresolvable vars, skipping");
+            hasUnresolvedVars.has = hasUnresolvedVars.has || true;
+            cssStyle.setProperty("--ud-idk_" + key, new_value, priority);
+            uDark.on_idk_missing == "remove" && cssStyle.removeProperty(key)
+            uDark.on_idk_missing == "fill_black" && cssStyle.setProperty(key, transformation(0, 0, 0, 1, render), priority);
+
+            uDark.on_idk_missing == "fill_minimum" && cssStyle.setProperty(key, transformation(...uDark.hslToRgb(0, 0, uDark.max_bright_bg * uDark.idk_minimum_editor), 1, render), priority);
+            uDark.on_idk_missing == "fill_red" && cssStyle.setProperty(key, transformation(129, 0, 0, 1, render), priority);
+            uDark.on_idk_missing == "fill_green" && cssStyle.setProperty(key, transformation(0, 129, 0, 1, render), priority);
+            return;
+          } else if (idk_mode) {
+            {
+              if (!uDark.keepIdkProperties) {
+                cssStyle.removeProperty(key_idk);
+              }
+              //new_value.match(/(var|calc)\((\((\((\((\((\((\((\((.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)/g) 
+              // 9 nested vars or parentheis: keep hsl or RGBA bounds if a parethesis is open we expect it to be closed.
+              new_value = new_value.replaceAll(/(var|calc)\((\((\((\((\((\((\((\((.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)/g, match => match.replaceAll("var(", "..1..").replaceAll(")", "..2..").replaceAll("calc(", "..3.."));
+              // new_value = new_value.replaceAll(/(var|calc)\([^()]+\)/g, match => match.replaceAll("var(", "..1..").replaceAll(")", "..2..").replaceAll("calc(", "..3.."))
 
             }
-            // NOTE: Once i tried to disable variables_items, on partial idk mode, but it was an error: some variables can be used in background or foreground colors as is (--rgb(var(--ud-fg--color_1),0.5))
-            // And must therefore be edited
+          }
+          // if(debug=cssRule.cssText.includes(uDark.searchedCssText))
+          // {
+          //   console.log("Catched 1.1", idk_mode,cssRule.cssText,key_idk,key,new_value,actions,uDark.is_background && uDark.unResolvableVarsRegex.test(new_value)) 
+          // }
+          if (actions.prefix_fg_vars) {
+            new_value = uDark.edit_prefix_fg_vars(idk_mode, new_value, actions);
+          }
 
+          // if(debug=cssRule.cssText.includes(uDark.searchedCssText))
+          // {
+          //   console.log("Catched 1.2", idk_mode,cssRule.cssText,key_idk,key,new_value,actions,uDark.is_background && uDark.unResolvableVarsRegex.test(new_value)) 
+          // }
 
+          new_value = uDark.edit_with_regex(idk_mode, key, new_value, uDark.rgb_a_colorsRegex, transformation, render, idk_mode ? cssRule : false); // edit_rgb_a_colors
+          new_value = uDark.edit_with_regex(idk_mode, key, new_value, uDark.hsl_a_colorsRegex, transformation, render, idk_mode ? cssRule : false); // edit_hsl_a_colors
+          new_value = uDark.restore_idk_vars(idk_mode, new_value); // Restore alone vars: color: var(--color_8)
+          new_value = uDark.edit_with_regex(false /*The namedColorsRegex is not affected*/ , key, new_value, uDark.namedColorsRegex, transformation, render); // edit_named_colors
+          new_value = uDark.edit_with_regex(false /*The hexadecimalColorsRegex is not affected*/ , key, new_value, uDark.hexadecimalColorsRegex, transformation, render); // edit_hex_colors // The browser auto converts hex to rgb, but some times not like in  var(--123,#00ff00) as it cant resolve the var
 
-            let hasUnresolvedVars = {
-              has: false,
-              carried: carried,
-            }; // Passed by reference. // request details are shared so we use a new object. We could have emedded it into details though
+          if (value != new_value || key_prefix) {
+            // Edit the value only if necessary:  setting bacground image removes bacground property for intance
+            cssStyle.setProperty(key_prefix + key, new_value, priority); // Once we had  an infinite loop here when uDark was loaded twice and redefining setProperty.
+          }
+          // console.log("cssKey Color",cssRule,key,value,priority,cssRule.cssText);
+        },
+        edit_all_cssRule_colors(idk_mode, cssRule, keys, transformation, render, hasUnresolvedVars, key_prefix = "", actions = {}, callBack = uDark.edit_all_cssRule_colors_cb) {
+          // render = (render||uDark.rgba_val);
+          // console.log(idk_mode,cssRule,keys,transformation,render,key_prefix,actions);
+          let topLevelRule = cssRule;
+          while (topLevelRule.parentRule) {
+            topLevelRule = topLevelRule.parentRule; // Even media rules can have parentRule: its called Layers
+          }
+          keys.forEach(key => {
+            let key_idk = ((idk_mode === true) ? "--ud-idk_" : "") + key;
+            let value = cssRule.style.getPropertyValue(key_idk) || "";
 
-            wording_action.length && uDark.css_properties_wording_action(cssRule.style, wording_action, details, cssRule);
-            background_items.length && uDark.edit_all_cssRule_colors(idk_mode, cssRule, background_items, uDark.rgba, uDark.rgba_val, hasUnresolvedVars)
+            if (!value) { // Value is not set when using shorthand and var(--background-color) is used
+              /* This is testable with
+                  aCSS=new CSSStyleSheet();
+                  aCSS.replaceSync("z{border:var(--bd-color);background:var(--bg-color);}");
+                  Object.values(aCSS.cssRules[0].style)
+                  cssRule=aCSS.cssRules[0];
+                  for(x of cssRule.style){console.log(x)}
+              */
+              if (key.endsWith("-color")) { // For now only background-color and border-[side]-color can bother us
+                key = key.slice(0, -6);
+                if (cssRule[key]) return;
+                value = cssRule.style.getPropertyValue(key);
+              }
+              if (!value && key.startsWith("border-")) { // And now border-[side]
+                key = "border";
+                if (cssRule[key]) return;
+                value = cssRule.style.getPropertyValue(key); // background-color is not always set if using background shorthand and var(--background-color) is used
+              }
+            }
+            if (value) {
 
-            foreground_items.length && uDark.edit_all_cssRule_colors(idk_mode, cssRule, foreground_items, uDark.revert_rgba, uDark.rgba_val, hasUnresolvedVars, "", {
-              prefix_fg_vars: true
-            })
-            variables_items.length && [uDark.edit_all_cssRule_colors(idk_mode, cssRule, variables_items, uDark.revert_rgba, uDark.rgba_val, hasUnresolvedVars, 
-              idk_mode?"":"--ud-fg" // Avoid double prefixing :  we are here in front end, and this has been done in background
-              , {
+              callBack(idk_mode, cssRule, key, key_idk, value, transformation, render, hasUnresolvedVars, key_prefix, actions, topLevelRule);
+            }
+          });
+        },
+
+        edit_cssProperties: function(cssRule, idk_mode = false, details, carried) {
+          let foreground_items = [],
+            variables_items = [],
+            background_items = [],
+            wording_action = [];
+
+          for (let x of cssRule.style) {
+            if (idk_mode === true) { // Partial idk mode does not have --ud-idk_ prefix, they are added by cloning the cssRule
+
+              if (x.startsWith("--ud-idk_")) {
+                x = x.slice(9);
+              } else {
+                continue;
+              }
+            }
+
+            if (x.startsWith("--")) {
+              variables_items.push(x);
+              continue; // Eliminate Variables, i don't think its usefull to test them againt regexes
+            }
+            if (uDark.css_properties_wording_action_dict[x]) {
+              wording_action.push(x);
+            } // Check if some wording action is needed
+            if (uDark.foreground_color_css_properties.includes(x)) {
+              foreground_items.push(x);
+              continue;
+            } // Do foreground items first as its faster to check a list
+            if (x.match(uDark.background_color_css_properties_regex)) {
+              background_items.push(x);
+              continue;
+            } // Do background regex match
+
+          }
+          // NOTE: Once i tried to disable variables_items, on partial idk mode, but it was an error: some variables can be used in background or foreground colors as is (--rgb(var(--ud-fg--color_1),0.5))
+          // And must therefore be edited
+
+          let hasUnresolvedVars = {
+            has: false,
+            carried: carried,
+          }; // Passed by reference. // request details are shared so we use a new object. We could have emedded it into details though
+
+          wording_action.length && uDark.css_properties_wording_action(cssRule.style, wording_action, details, cssRule);
+          background_items.length && uDark.edit_all_cssRule_colors(idk_mode, cssRule, background_items, uDark.rgba, uDark.rgba_val, hasUnresolvedVars)
+
+          foreground_items.length && uDark.edit_all_cssRule_colors(idk_mode, cssRule, foreground_items, uDark.revert_rgba, uDark.rgba_val, hasUnresolvedVars, "", {
+            prefix_fg_vars: true
+          })
+          variables_items.length && [uDark.edit_all_cssRule_colors(idk_mode, cssRule, variables_items, uDark.revert_rgba, uDark.rgba_val, hasUnresolvedVars,
+            idk_mode ? "" : "--ud-fg" // Avoid double prefixing :  we are here in front end, and this has been done in background
+            , {
               prefix_fg_vars: true
             }), uDark.edit_all_cssRule_colors(idk_mode, cssRule, variables_items, uDark.rgba, uDark.rgba_val, hasUnresolvedVars)]
 
-            if (details && hasUnresolvedVars.has) {
+          if (details && hasUnresolvedVars.has) {
 
-              details.unresolvableChunks = details.unresolvableChunks || [];
-              details.unresolvableChunks[details.datacount] = true;
-            }
-          },
-          edit_css: function(cssStyleSheet, idk_mode, details, carried = {}) {
+            details.unresolvableChunks = details.unresolvableChunks || [];
+            details.unresolvableChunks[details.datacount] = true;
+          }
+        },
+        edit_css: function(cssStyleSheet, idk_mode, details, carried = {}) {
 
+          unresolvableStylesheet = new CSSStyleSheet();
 
-            unresolvableStylesheet = new CSSStyleSheet();
+          carried.cssStyleSheet = cssStyleSheet;
+          carried.unresolvableStylesheet = unresolvableStylesheet;
 
-            carried.cssStyleSheet = cssStyleSheet;
-            carried.unresolvableStylesheet = unresolvableStylesheet;
+          uDark.edit_cssRules(cssStyleSheet.cssRules, idk_mode, details, carried);
 
-            uDark.edit_cssRules(cssStyleSheet.cssRules, idk_mode, details, carried);
-
-            // console.log("BEFORE",unresolvableStylesheet.cssRules)
-            carried.has_idk_vars = unresolvableStylesheet.cssRules.length>0;
-            uDark.edit_cssRules(unresolvableStylesheet.cssRules, false, details, {}, function(rule) {
+          // console.log("BEFORE",unresolvableStylesheet.cssRules)
+          carried.has_idk_vars = unresolvableStylesheet.cssRules.length > 0;
+          uDark.edit_cssRules(unresolvableStylesheet.cssRules, false, details, {}, function(rule) {
               uDark.edit_all_cssRule_colors(false, rule, Object.values(rule.style), false, false, false, key_prefix = "", actions = {},
                 function(idk_mode, cssRule, key, key_idk, value, transformation, render, hasUnresolvedVars, key_prefix, actions, topLevelRule) {
-                  
-                  if (!uDark.unResolvableVarsRegex.test(value)||!value.includes("var(")) {
+
+                  if (!uDark.unResolvableVarsRegex.test(value) || !value.includes("var(")) {
                     cssRule.style.removeProperty(key);
                   }
                 }
-                );
-            }
-            ,true // Clean empty rules
-            )
-            
+              );
+            }, true // Clean empty rules
+          )
 
-
-            // console.log("Unresolvable rules",unresolvableStylesheet,unresolvableStylesheet.cssRules.length);
-          },
+          // console.log("Unresolvable rules",unresolvableStylesheet,unresolvableStylesheet.cssRules.length);
+        },
 
       };
-      uDark.colorWork={
+      uDark.colorWork = {
         canvasWidth: 5,
         canvasHeight: 3,
-        indexes:Array(3).fill(0),
+        indexes: Array(3).fill(0),
       }
-      uDark.colorWork.canvas=document.createElement('canvas');
-      uDark.colorWork.canvas.width=uDark.colorWork.canvasWidth;
-      uDark.colorWork.canvas.height=uDark.colorWork.canvasHeight;
-      uDark.colorWork.canvasContext=uDark.colorWork.canvas.getContext('2d');
+      uDark.colorWork.canvas = document.createElement('canvas');
+      uDark.colorWork.canvas.width = uDark.colorWork.canvasWidth;
+      uDark.colorWork.canvas.height = uDark.colorWork.canvasHeight;
+      uDark.colorWork.canvasContext = uDark.colorWork.canvas.getContext('2d');
       window.uDark.css_properties_wording_action_dict = {
         "mix-blend-mode": {
           replace: ["multiply", "normal"]
         },
-        "scrollbar-color": {remove:1}, // Not sure about this one, it's detected as a background color, and gets edited.
+        "scrollbar-color": {
+          remove: 1
+        }, // Not sure about this one, it's detected as a background color, and gets edited.
         "color-scheme": {
           replace: ["light", "dark"]
         },
@@ -1023,7 +1033,6 @@ window.dark_object = {
           callBack: [uDark.edit_css_urls]
         },
 
-
         // Not good for wayback machine time selector
         // "color":{ stickConcatToPropery: {sValue:"(",rKey:"mix-blend-mode", stick:"difference"}}, // Not good for wayback machine time selector
         // "position":{ stickConcatToPropery: {sValue:"fixed",rKey:"filter", stick:"contrast(110%)"}}, // Not good for wayback machine time selector
@@ -1033,13 +1042,13 @@ window.dark_object = {
 
   user_content: {
     install: function() {
-      console.info("UltimaDark","User content script install", document.location.href);
+      console.info("UltimaDark", "User content script install", document.location.href);
       window.uDark = {
         ...window.uDark,
         ...{
           getallBgimages: function(adocument, acondition = (elem, url) => true) {
             var url, B = [],
-            A = adocument.body.querySelectorAll('*:not([ud-backgrounded])');
+              A = adocument.body.querySelectorAll('*:not([ud-backgrounded])');
             A = B.slice.call(A, 0, A.length);
             while (A.length) {
               var C = A.shift()
@@ -1062,10 +1071,6 @@ window.dark_object = {
 
         }
       }
-      
-
-
-
 
       window.addEventListener('load', (event) => {
         var bodycolor = getComputedStyle(document.body)["backgroundColor"]
@@ -1075,8 +1080,6 @@ window.dark_object = {
         // setInterval(function()
         // {
         var docscrollW = document.body.scrollWidth;
-
-
 
         // Adds an overlay to big backgrounded elements
         uDark.getallBgimages(
@@ -1099,12 +1102,8 @@ window.dark_object = {
         })
       });
 
-
-
       //
       if (breakpages = false) {
-
-
 
         uDark.valuePrototypeEditor(Element, "className", (elem, value) => {
           console.log(elem, value);
@@ -1163,7 +1162,6 @@ window.dark_object = {
 
         // should not be usefull
 
-
         uDark.functionPrototypeEditor(DocumentFragment, DocumentFragment.prototype.append, (elem, args) => {
           console.log(elem, args);
           return ["NOAPPEND"]
@@ -1202,43 +1200,34 @@ window.dark_object = {
           })
       }
 
-
-
     }
-
 
   },
 
-
   content_script: {
     install() {
-      
 
-      console.info("UltimaDark","Content script install", window);
+      console.info("UltimaDark", "Content script install", window);
 
-      window.uDark = {...uDark,...{
-       is_content_script:true,
+      window.uDark = {
+        ...uDark,
+        ...{
+          is_content_script: true,
+          website_context: true
+        }
+      }
 
-
-        
-
-      }}
-
-      if(uDark.direct_window_export)
-      {
+      if (uDark.direct_window_export) {
         let injectscripts = [dark_object.all_levels.install, dark_object.content_script.override_website].map(code => {
           return "(" + code.toString() + ")()";
         })
         window.wrappedJSObject.eval(injectscripts.join(";"));
 
-        
       }
-    
 
       browser.storage.local.get(null, function(res) {
         window.uDark.userSettings = res;
-        if(uDark.direct_window_export)
-        {
+        if (uDark.direct_window_export) {
           // let loadSettings = function() {
           //   uDark.userSettings=JSON.parse('{res}');
           // };
@@ -1247,7 +1236,7 @@ window.dark_object = {
         }
       });
       // NOTE: DROPS SIGNIFICANTLY THE PERFORMANCE, prefer use eval
-      if(exportUlimaDarkToForeground=false){ // Under test but not usefull anymore
+      if (exportUlimaDarkToForeground = false) { // Under test but not usefull anymore
 
         window.wrappedJSObject.uDark = cloneInto({ // Export functions the page needs to use
           rgba: uDark.rgba,
@@ -1264,7 +1253,7 @@ window.dark_object = {
           is_color_no_clone: uDark.is_color,
           is_color_var: (...args) => cloneInto(uDark.is_color_var(...args), window),
           eget_color: (...args) => cloneInto(uDark.eget_color(...args), window),
-          edit_str:uDark.edit_str,
+          edit_str: uDark.edit_str,
         }, window, {
           cloneFunctions: true
         });
@@ -1274,88 +1263,86 @@ window.dark_object = {
       let myPort = browser.runtime.connect({
         name: "port-from-cs"
       });
-      
+
       let expectedValueForResolvableColor = "rgba(255, 254, 253, 0.55)";
+
       function resolveIDKVars(data) {
-          
-          if (data.chunk) {
-            
-            let readable_variable_check_value=`rgba(255,254,253,var(--chunk_is_readable_${data.details.requestId}_${data.details.datacount}))`;
-     
-            let workInterval = setInterval(() => {
-              
-              let option = new Option(); // Option must be in the loop because once the color is set to an unkonwn variable it stays at empty string
-              document.head.appendChild(option);
-              option.style.floodColor=readable_variable_check_value;
-              
-              let floodColor=getComputedStyle(option).floodColor;
-              option.remove();
-              if(floodColor!=expectedValueForResolvableColor){return;} // If the floodColor is not the one we expect for this chunk, it means that the chunk is not written yet, so we wait
-              clearInterval(workInterval);
-              clearTimeout(workTimeout);
-             
-              
-              // The variables we are looking a might be in data.chunk we have to read it first to make them available to props_and_var_only_color_idk.
-              let ikd_chunk_resolved = uDark.edit_str(data.chunk, false, false, false, true);
-                  
-              let props_and_var_only_color_idk = uDark.edit_str(data.chunk_variables , false, false, false, "partial_idk");
-              
-              let tempVariablesStyle=document.createElement("style");
-              tempVariablesStyle.id="UltimaDarkTempVariablesStyle";
-              
-              tempVariablesStyle.innerHTML="/*UltimaDark temporary style*/\n"+props_and_var_only_color_idk;
-              document.head.append(tempVariablesStyle);
-              
-      
-      
-                  console.log("Resolved variables: will now post message to background script",readable_variable_check_value);
-                  data.chunk = ikd_chunk_resolved;
-                  myPort.postMessage({
-                    resolvedIDKVars: data
-                  });
-            },50); // Allow time for a chunk to be written before reading vairables out of it.
-            let workTimeout = setTimeout(() => {
-              console.log("Timeout: on chunk",data.details.datacount,"for",data.details.requestId,"(url:",data.details.url,")","Search for",readable_variable_check_value,"was not successful");
-              // console.log("It was containing:", uDark.edit_str(data.chunk_variables , false, false, false, "partial_idk"));
-              clearInterval(workInterval);
-            }, 10000); // If the chunk is not written after 10 seconds, we stop waiting for it.
-          }
+
+        if (data.chunk) {
+
+          let readable_variable_check_value = `rgba(255,254,253,var(--chunk_is_readable_${data.details.requestId}_${data.details.datacount}))`;
+
+          let workInterval = setInterval(() => {
+
+            let option = new Option(); // Option must be in the loop because once the color is set to an unkonwn variable it stays at empty string
+            document.head.appendChild(option);
+            option.style.floodColor = readable_variable_check_value;
+
+            let floodColor = getComputedStyle(option).floodColor;
+            option.remove();
+            if (floodColor != expectedValueForResolvableColor) {
+              return;
+            } // If the floodColor is not the one we expect for this chunk, it means that the chunk is not written yet, so we wait
+            clearInterval(workInterval);
+            clearTimeout(workTimeout);
+
+            // The variables we are looking a might be in data.chunk we have to read it first to make them available to props_and_var_only_color_idk.
+            let ikd_chunk_resolved = uDark.edit_str(data.chunk, false, false, false, true);
+
+            let props_and_var_only_color_idk = uDark.edit_str(data.chunk_variables, false, false, false, "partial_idk");
+
+            let tempVariablesStyle = document.createElement("style");
+            tempVariablesStyle.id = "UltimaDarkTempVariablesStyle";
+
+            tempVariablesStyle.innerHTML = "/*UltimaDark temporary style*/\n" + props_and_var_only_color_idk;
+            document.head.append(tempVariablesStyle);
+
+            console.log("Resolved variables: will now post message to background script", readable_variable_check_value);
+            data.chunk = ikd_chunk_resolved;
+            myPort.postMessage({
+              resolvedIDKVars: data
+            });
+          }, 50); // Allow time for a chunk to be written before reading vairables out of it.
+          let workTimeout = setTimeout(() => {
+            console.log("Timeout: on chunk", data.details.datacount, "for", data.details.requestId, "(url:", data.details.url, ")", "Search for", readable_variable_check_value, "was not successful");
+            // console.log("It was containing:", uDark.edit_str(data.chunk_variables , false, false, false, "partial_idk"));
+            clearInterval(workInterval);
+          }, 10000); // If the chunk is not written after 10 seconds, we stop waiting for it.
+        }
       };
-      
+
       function registerBackgroundItem(selectorText) {
         // NOTE: TODO: Disable registerBackgroundItem for now, but re-enable it later
         //window.uDark.registerBackgroundItem(false, selectorText, false); // go directly to the edit, the validation is already done
       }
-      
+
       myPort.onMessage.addListener(function(m) {
         // console.log("In content script, received message from background script: ",m);
-      
-          m.havingIDKVars && resolveIDKVars(m.havingIDKVars);
-          m.registerBackgroundItem && registerBackgroundItem(m.registerBackgroundItem);
-      });
-      
-      
 
-      console.info("UltimaDark","Content script ready", window);
+        m.havingIDKVars && resolveIDKVars(m.havingIDKVars);
+        m.registerBackgroundItem && registerBackgroundItem(m.registerBackgroundItem);
+      });
+
+      console.info("UltimaDark", "Content script ready", window);
     },
-    
+
     website_load: function() {
       if (uDark.enable_idk_mode) { // Use of an observer was consuming too much ressources
-        
+
         uDark.do_idk_mode_timed();
       }
     },
     override_website: function() {
-      let start = new Date()/1;
-      console.log("UltimaDark","Content script override website" );
+      let start = new Date() / 1;
+      uDark.website_context = true;
+      console.log("UltimaDark", "Content script override website");
       // console.log(globalThis.exportFunction)
-      {// Measure the impact of exportFunction on performance by disabling its behavior
-        
+      { // Measure the impact of exportFunction on performance by disabling its behavior
+
         // globalThis.exportFunction=f=>f;
       }
-      if(uDark.direct_window_export)
-      {
-        document.wrappedJSObject=document;
+      if (uDark.direct_window_export) {
+        document.wrappedJSObject = document;
         // Avoid infinite loops 
         if (window.uDark && window.uDark.installed) {
           return; // Already fully installed. Do not reinstall if somehow another uDark object gets injected in the page
@@ -1363,9 +1350,8 @@ window.dark_object = {
           uDark.installed = true;
         }
 
-
         // Emulate content script exportFunction in one line;
-        globalThis.exportFunction=f=>f;
+        globalThis.exportFunction = f => f;
 
         // Zone for revoking property edition by the website : // no true=no trust
         // https://developer.mozilla.org/fr/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty
@@ -1376,10 +1362,10 @@ window.dark_object = {
           configurable: false,
           enumerable: false
         }); // WikiCommons uses this one
-        
-      // End of zone for revoking property edition by the website
+
+        // End of zone for revoking property edition by the website
       }
-      console.info("UltimaDark","Websites overrides install", window);
+      console.info("UltimaDark", "Websites overrides install", window);
 
       uDark.functionPrototypeEditor(CSSStyleSheet,
         [
@@ -1400,15 +1386,30 @@ window.dark_object = {
         return args;
       }, (elem, args) => args[1].includes("style"))
 
-      if(uDark.enable_idk_mode && !uDark.chunk_stylesheets_idk_only_cors /*Block not needed if cors is done by background and postMessage*/){
-        // Do IDK mode for a while if a script is added or edited ( We don't know when it will be aded to the page, 5000ms is enough)
-        // Optimisation is done in do_idk_mode, witha boolean called idk_mode_ok which is lost on href edits, so it is not a problem to do it several times
-        uDark.valuePrototypeEditor(HTMLLinkElement, "href", (elem, value) => value, (elem, value) => {
-          return true;
-        }, (elem, value, new_value) => uDark.do_idk_mode_timed(5000, 300))
+      uDark.functionPrototypeEditor(Element, Element.prototype.setAttribute, (elem, args) => {
+        args[1] = uDark.edit_str(args[1]);
+        return args;
+      }, (elem, args) => args[0] == "style")
 
-      }
+      uDark.valuePrototypeEditor(HTMLImageElement, "src", (image, value) => {
 
+        return uDark.image_element_prepare_href(image, document, value);
+      });
+
+      uDark.valuePrototypeEditor(HTMLLinkElement, "href", (elem, value) => {
+        if (elem.rel.endsWith("icon")) {
+          value = value + "#ud_favicon";
+        }
+        return value;
+      }, (elem, value) => {
+        elem.rel == elem.rel.trim()
+        return (elem.rel == "stylesheet" || elem.rel.endsWith("icon"))
+
+      }, (elem, value, new_value) => {
+        if (elem.rel == "stylesheet" && uDark.enable_idk_mode && !uDark.chunk_stylesheets_idk_only_cors) {
+          elem.addEventListener("load", uDark.do_idk_mode);
+        }
+      })
 
       if (checkDomEdit = false) {
 
@@ -1431,7 +1432,6 @@ window.dark_object = {
 
       }
 
-
       // UserStyles.org and gitlab append text nodes to style elements, this is why we set the textContent of these items
 
       uDark.functionPrototypeEditor(Node, [
@@ -1447,8 +1447,6 @@ window.dark_object = {
       // I encountered innerHTML  appendChild and insertBefore so far, but there are all these cases in the wild
 
       if (false) {
-
-
 
         var testStyle = document.createElement("style")
 
@@ -1495,15 +1493,11 @@ window.dark_object = {
       }
       /****************************************** */
 
-
-
       // FINALLY CNN Use this one (webpack)!!!!
       uDark.valuePrototypeEditor(Node, "textContent", (elem, value) => {
         return uDark.edit_str(value)
-        
+
       }, (elem, value) => elem instanceof HTMLStyleElement)
-
-
 
       uDark.valuePrototypeEditor(CSS2Properties, "background", (elem, value) => {
         let possiblecolor = uDark.is_color(value);
@@ -1511,11 +1505,8 @@ window.dark_object = {
 
       })
 
-
       // uDark.valuePrototypeEditor(CSSRule, "cssText", (elem, value) => uDark.edit_str(value)) // As far as I know, this is not affects to edit css text directly on CSSRule
       uDark.valuePrototypeEditor(CSSStyleDeclaration, "cssText", (elem, value) => uDark.edit_str(value)) // However this one does ( on elements.style.cssText and on cssRules.style.cssText, it keeps the selector as is, but the css is edited: 'color: red')
-
-
 
       { // Note the difference in wich arg is edited in following functions: we-cant-group-them !
 
@@ -1532,10 +1523,11 @@ window.dark_object = {
       // });
 
       // W3C uses this one
-
-      uDark.valuePrototypeEditor(CSS2Properties, "backgroundColor", (elem, value) => uDark.rgba(...uDark.eget_color(value)))
-      uDark.valuePrototypeEditor(CSS2Properties, "background-color", (elem, value) => uDark.rgba(...uDark.eget_color(value)))
-      uDark.valuePrototypeEditor(CSS2Properties, "color", (elem, value) => uDark.revert_rgba(...uDark.eget_color(value)))
+      uDark.valuePrototypeEditor(CSS2Properties, "backgroundColor", (elem, value) => uDark.eget_color(value,uDark.rgba))
+      
+      // valuePrototypeEditor: function(leType, atName, watcher = x => x, conditon = x => x, aftermath = false) {
+      uDark.valuePrototypeEditor(CSS2Properties, "background-color", (elem, value) => uDark.eget_color(value,uDark.rgba))
+      uDark.valuePrototypeEditor(CSS2Properties, "color", (elem, value) => uDark.eget_color(value,uDark.revert_rgba))
       uDark.valuePrototypeEditor(HTMLElement, "style", (elem, value) => uDark.edit_str(value)) // Care with "style and eget, this cause recursions"
       // TODO: Support CSS url(data-image) in all image relevant CSS properties like background-image etc
 
@@ -1543,10 +1535,8 @@ window.dark_object = {
         return uDark.edit_str(value)
       }, (elem, value) => value && elem instanceof HTMLStyleElement);
 
-      console.info("UltimaDark","Websites overrides ready", window, "elapsed:" ,(new Date()/1)-start);
+      console.info("UltimaDark", "Websites overrides ready", window, "elapsed:", (new Date() / 1) - start);
 
-    
-      
     }
   },
   background: {
@@ -1572,6 +1562,7 @@ window.dark_object = {
         browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editBeforeData);
         browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.editBeforeRequestStyleSheet);
         browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.editBeforeRequestImage);
+        browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editOnHeadersImage);
         browser.webRequest.onCompleted.removeListener(dark_object.misc.onCompletedStylesheet);
         /*Experimental*/
         // browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editHeadersOnHeadersReceived);
@@ -1609,6 +1600,12 @@ window.dark_object = {
               types: ["image"]
             },
             ["blocking"]);
+          browser.webRequest.onHeadersReceived.addListener(dark_object.misc.editOnHeadersImage, {
+              urls: ["<all_urls>"],
+              // urls: uDark.userSettings.properWhiteList, // We can't assume the image is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
+              types: ["image"]
+            },
+            ["blocking", "responseHeaders"]);
 
           browser.webRequest.onCompleted.addListener(dark_object.misc.onCompletedStylesheet, {
             // urls: uDark.userSettings.properWhiteList, // We can't assume the css is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
@@ -1637,7 +1634,6 @@ window.dark_object = {
           //   } else {
           //     console.log("Not CSS request", details)
           //   }
-
 
           // }, {
           //   // urls: uDark.userSettings.properWhiteList, // We can't assume the css is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
@@ -1680,22 +1676,20 @@ window.dark_object = {
 
     },
     install: function() {
-      
 
       function connected(connectedPort) {
 
-
-        console.info("Connected", connectedPort.sender.url,connectedPort.sender.contextId);
+        console.info("Connected", connectedPort.sender.url, connectedPort.sender.contextId);
         if (connectedPort.name == "port-from-cs") {
           // At first, we used exclude_regex here to not register some content scripts, but thent we used it earlier, in the content script registration
-          
+
           let portKey = `port-from-cs-${connectedPort.sender.tab.id}-${connectedPort.sender.frameId}`
           connectedPort.used_cache_keys = new Set();
           // console.log(portKey, connectedPort, uDark.connected_cs_ports[portKey])
 
           uDark.connected_cs_ports[portKey] = connectedPort;
           connectedPort.onDisconnect.addListener(p => {
-            console.info("Disconnected:", p.sender.url,p.sender.contextId, "Checking", p.used_cache_keys)
+            console.info("Disconnected:", p.sender.url, p.sender.contextId, "Checking", p.used_cache_keys)
             if (p.used_cache_keys.size) { // We time it to avoid deleting the cache before the page is loaded (Like on link clicks)
               setTimeout(x => {
                 let owned_cache_keys = new Set()
@@ -1753,7 +1747,6 @@ window.dark_object = {
             uDark.edit_cssRules(aCSSsrc.cssRules, false, false, {}, function(rule) {
               // It's important to use Object.values as it retrieves values that could be ignored by "for var of rules.style"
               for (key of Object.values(rule.style)) {
-
 
                 // Here value can be empty string, if the key used in CSS is a shorthand property
                 // like "background" and a var(--var) is used in the CSS but it's ok as we are here only searching for 
@@ -1848,7 +1841,521 @@ window.dark_object = {
               setTimeout(x => resolve({}), 1000);
             });
           },
+          check_image_lines_content: function(canvas, ctx) {
+            const leftBorderImageData = ctx.getImageData(0, 0, 1, canvas.height);
+            const rightBorderImageData = ctx.getImageData(canvas.width - 1, 0, 1, canvas.height);
+            const topBorderImageData = ctx.getImageData(0, 0, canvas.width, 1);
+            const bottomBorderImageData = ctx.getImageData(0, canvas.height - 1, canvas.width, 1);
+            const centerVerticalLineImageData=ctx.getImageData(canvas.width/2, 0, 1, canvas.height);
+            const centerHorizontalLineImageData=ctx.getImageData(0, canvas.height/2, canvas.width, 1);
+            let linesAchromatic = Array(10).fill(false);
+            let linesGradient = Array(10).fill(false);
+            let linesAchromaticCount = 0;
+            let linesAchromaticOpaqueCount = 0;
+            let linesGradientsCount=0;
+            let list_test = [leftBorderImageData, rightBorderImageData, topBorderImageData, bottomBorderImageData,centerVerticalLineImageData,centerHorizontalLineImageData]
+            for (i = 0; i < list_test.length; i++) {
+              let imageData = list_test[i];
+              let theImageDataBufferTMP = new ArrayBuffer(imageData.data.length);
+              let theImageDataClamped8TMP = new Uint8ClampedArray(theImageDataBufferTMP);
+              theImageDataClamped8TMP.set(imageData.data);
+              let theImageDataUint32TMP = new Uint32Array(theImageDataBufferTMP)
+              let number = theImageDataUint32TMP[0];
+              var r = number & 0xff;
+              var g = (number >> 8) & 0xff;
+              var b = (number >> 16) & 0xff;
+              var a = (number >> 24) & 0xff;
+              if (theImageDataUint32TMP.every(x => x == number)) {
+                linesAchromatic[i] = [r, g, b, a]
+                linesAchromaticCount++;
+                if (a == 255) {
+                  linesAchromaticOpaqueCount++;
+                }
+              }
+              let isGradient = true;
+              let currentLightness=Math.max(uDark.RGBToLightness(r, g, b),a);
+              for (n = 1; n < theImageDataUint32TMP.length; n++) {
+                number = theImageDataUint32TMP[n];
+                r = number & 0xff;
+                g = (number >> 8) & 0xff;
+                b = (number >> 16) & 0xff;
+                a = (number >> 24) & 0xff;
+                let lightness=Math.max(uDark.RGBToLightness(r, g, b),a);
+                if (lightness>currentLightness+5||lightness<currentLightness-5) {
+                  isGradient = false;
+                  break;
+                }
+                currentLightness=lightness;
+              }
+              if(isGradient)
+              {
+                linesGradient[i]=true;
+                linesGradientsCount++;
+              }
+            }
+            return  {
+              linesAchromaticCount,
+              linesGradient,
+              linesAchromaticOpaqueCount,
+              linesAchromatic,
+              linesGradientsCount,
+              linesWithSomeAlpha:linesAchromaticCount-linesAchromaticOpaqueCount,
+              linesFullAlphaCount:linesAchromatic.filter(x=>x[3]==0).length
+            }
+
+          },
+          logo_image_edit_hook: function(editionStatus, canvas, ctx, img, buffer, blob, filter, details, imageURLObject, complement) {
+            console.log("Logo HOOK", "CALLED", imageURLObject.hash, complement);
+            let editionConfidence = 0 +(editionStatus.editionConfidenceLogo);
+            // Draw the image onto the canvas
+            ctx.drawImage(img, 0, 0);
+            // Get the ImageData from the canvas
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+            // Now you can work with the imageData object
+            console.log(imageData, img.src);
+
+            // The imageData object has a data property, a Uint8ClampedArray containing the color values of each pixel in the image.
+            // It is easier to work with this array as 32-bit integers, so we create a new Uint32Array from the original one
+
+            let theImageDataBufferTMP = new ArrayBuffer(imageData.data.length);
+            let theImageDataClamped8TMP = new Uint8ClampedArray(theImageDataBufferTMP);
+            theImageDataClamped8TMP.set(imageData.data);
+            let theImageDataUint32TMP = new Uint32Array(theImageDataBufferTMP) // Id prefet o use imageData bu idont uderstand yet why in can't
+            // let theImageDataUint32TMP = new Uint32Array(imageData.data);
+
+            let n = theImageDataUint32TMP.length;
+            start_date = new Date();
+
+            if (!editionStatus.statsComplete) {
+              editionStatus.colorCounter = new Set();
+              editionStatus.opaqueColorCounter = new Set();
+              editionStatus.opaqueLightnessCounter = new Set();
+              editionStatus.lightnessCounter = new Set();
+              editionStatus.alphaCounter = new Set();
+              editionStatus.lightness_sum = 0;
+              editionStatus.opaqueColor_qty = 0;
+              editionStatus.opaqueLightness_sum = 0;
+              editionStatus.alpha_sum = 0;
+              editionStatus.alpha_qty = 0;
+            }
+            
+            console.log("Logo HOOK", "ENTERING LOOP", editionStatus.statsComplete)
+            imgDataLoop: while (n--) {
+
+              if (editionStatus.is_photo && !(editionConfidence >= 100)) { // stop the loop if a photo is detected
+                theImageDataClamped8TMP.set(imageData.data);
+                break imgDataLoop;
+              }
+
+              var number = theImageDataUint32TMP[n];
+
+              var r = number & 0xff;
+              var g = (number >> 8) & 0xff;
+              var b = (number >> 16) & 0xff;
+              var a = (number >> 24) & 0xff;
+              {
+                lightness = uDark.RGBToLightness(r, g, b);
+
+                if (!editionStatus.statsComplete) {
+                  editionStatus.colorCounter.add(number);
+                  let lightnessWithAlpha = Math.min(lightness, a); // Alpha kills lightness
+                  editionStatus.lightness_sum += lightnessWithAlpha;
+                  editionStatus.lightnessCounter.add(lightnessWithAlpha);
+                  editionStatus.alphaCounter.add(a);
+                  editionStatus.alpha_sum += a;
+                  if (a == 255) {
+                    editionStatus.opaqueColorCounter.add(number);
+                    editionStatus.opaqueLightnessCounter.add(lightness);
+                    editionStatus.opaqueColor_qty++
+                    editionStatus.opaqueLightness_sum += lightness;
+                  } else {
+                    editionStatus.alpha_qty++;
+                  }
+                  editionStatus.is_photo =
+                    editionStatus.opaqueColorCounter.size >= uDark.trigger_number_colors_photo ||
+                    editionStatus.lightnessCounter.size >= uDark.trigger_number_lightness_photo;
+                }
+                // Standard way 2023 // very very very slow (1.5s for a 500 x 500 img)
+                // 2024 way : Go faster by finding the right caclulation for each pixel
+                // [r, g, b, a] = uDark.revert_rgba(r, g, b, a, (...args) => args);
+                if (lightness < 127) {
+                  // [r,g,b]=[r,g,b].map((x)=>x/2);
+                  [r, g, b] = [r, g, b].map((x) => {
+                    x = x + Math.pow(
+                      (127 - lightness) // The less the lightness the more the color is lightened
+                      , 1.11); // Increase the lightening effect a bit
+                    return x;
+
+                  });
+                }
+              }
+              var newColor = ((a << 24)) | (b << 16) | (g << 8) | r;
+              theImageDataUint32TMP[n] = newColor;
+
+            }
+            if (n === -1 && !editionStatus.statsComplete) {
+              editionStatus.avg_ligtness = (editionStatus.lightness_sum / theImageDataUint32TMP.length);
+              editionStatus.alpha_percent = editionStatus.alpha_qty / theImageDataUint32TMP.length;
+              editionStatus.contrast = Math.max(...editionStatus.lightnessCounter) - Math.min(...editionStatus.lightnessCounter);
+              editionStatus.contrast_percent = editionStatus.contrast / 255;
+              editionStatus.max_lightness = Math.max(...editionStatus.lightnessCounter);
+              editionStatus.min_lightness = Math.min(...editionStatus.lightnessCounter);
+              editionStatus.statsComplete = true;
+            } else {
+              return false;
+            }
+            if (editionStatus.statsComplete) {
+
+              if (!(editionConfidence >= 100) && !editionStatus.is_photo) {
+                if (editionStatus.colorCounter.size > 1) // Not achromatic
+                {
+                  if (editionStatus.alpha_percent < 0.1) {
+                    return false; // No enough alpha to be an editable logo
+                  }
+                  let max_bright_trigger = 255 * 0.4;
+                  if (editionStatus.min_lightness > max_bright_trigger) {
+                    return false; // This is a bright image with which does not need lightening, because even the darkest pixel is bright enough
+                  }
+                  if (editionStatus.contrast_percent > .60) {
+                    return false;
+                  }
+
+                }
+
+              }
+
+            }
+
+
+            console.log("Logo HOOK", details.url, "Image edited in", new Date() / 1 - start_date / 1, editionStatus.is_photo && !editionConfidence >= 100, editionStatus.colorCounter.size);
+            imageData.data.set(theImageDataClamped8TMP);
+
+            ctx.putImageData(imageData, 0, 0);
+            editionStatus.edited = true;
+
+            return true;
+
+          },
+          background_image_edit_hook: function(editionStatus, canvas, ctx, img, buffer, blob, filter, details, imageURLObject, complement) {
+            console.log("Background 1", imageURLObject, complement, img, complement.has("uDark_cssClass") && /sprite/i.test(imageURLObject.pathname))
+            let editionConfidence = 0 +(editionStatus.editionConfidenceBackground);
+
+            // Refuse bacground images on certain conditions
+
+            if (
+              complement.has("width") && !complement.get("width").includes("%") && complement.get("width").startsWith(img.width) // We fetched the image with the same size as the element
+              ||
+              complement.has("height") && !complement.get("height").includes("%") && complement.get("height").startsWith(img.height) // We fetched the image with the same size as the element
+            ) {
+              return false;
+            }
+
+            // Draw the image onto the canvas
+            ctx.drawImage(img, 0, 0);
+            // Get the ImageData from the canvas
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+            // Now you can work with the imageData object
+            console.log(imageData, img.src);
+
+            // The imageData object has a data property, a Uint8ClampedArray containing the color values of each pixel in the image.
+            // It is easier to work with this array as 32-bit integers, so we create a new Uint32Array from the original one.
+
+            if (complement.has("uDark_backgroundRepeat") && /repeat|round|space/i.test(complement.get("uDark_backgroundRepeat").replaceAll("no-repeat", "")) ||
+              complement.has("alt") && /background/i.test(complement.get("alt")) ||
+              complement.has("uDark_cssClass") && /sprite/i.test(imageURLObject.pathname)
+
+            ) {
+              editionConfidence += 100;
+            }
+
+            if (complement.has("uDark_cssClass") && !(editionConfidence >= 100)) {
+              let linesColorCheck = uDark.check_image_lines_content(canvas, ctx)
+              if ((linesColorCheck.linesAchromaticOpaqueCount > 2 || linesColorCheck.linesGradientsCount > 2)&&linesColorCheck.linesFullAlphaCount==0) {
+                editionConfidence += 100;
+              }
+              editionStatus.linesColorCheck = linesColorCheck;
+            }
+            
+
+            let theImageDataBufferTMP = new ArrayBuffer(imageData.data.length);
+            let theImageDataClamped8TMP = new Uint8ClampedArray(theImageDataBufferTMP);
+            theImageDataClamped8TMP.set(imageData.data);
+            let theImageDataUint32TMP = new Uint32Array(theImageDataBufferTMP) // Id prefet o use imageData bu idont uderstand yet why in can't
+            // let theImageDataUint32TMP = new Uint32Array(imageData.data);
+
+            let n = theImageDataUint32TMP.length;
+            start_date = new Date();
+
+            console.log("Background", "Starting edition",editionConfidence, imageURLObject.search, imageURLObject.hash, editionConfidence, complement, details.requestId);
+            if (!editionStatus.statsComplete) {
+              editionStatus.colorCounter = new Set();
+              editionStatus.opaqueColorCounter = new Set();
+              editionStatus.opaqueLightnessCounter = new Set();
+              editionStatus.lightnessCounter = new Set();
+              editionStatus.alphaCounter = new Set();
+              editionStatus.lightness_sum = 0;
+              editionStatus.opaqueLightness_sum = 0;
+              editionStatus.alpha_sum = 0;
+              editionStatus.alpha_qty = 0;
+            }
+
+            imgDataLoop: while (n--) {
+
+              if (editionStatus.is_photo && !(editionConfidence >= 100)) { // stop the loop if a photo is detected
+                theImageDataClamped8TMP.set(imageData.data);
+                break imgDataLoop;
+              }
+
+              var number = theImageDataUint32TMP[n];
+
+              var r = number & 0xff;
+              var g = (number >> 8) & 0xff;
+              var b = (number >> 16) & 0xff;
+              var a = (number >> 24) & 0xff;
+              {
+                lightness = uDark.RGBToLightness(r, g, b);
+
+                editionStatus.colorCounter.add(number);
+                let lightnessWithAlpha = Math.min(lightness, a); // Alpha kills lightness
+                editionStatus.lightness_sum += lightnessWithAlpha;
+                editionStatus.lightnessCounter.add(lightnessWithAlpha);
+                editionStatus.alphaCounter.add(a);
+                editionStatus.alpha_sum += a;
+                if (a == 255) {
+                  editionStatus.opaqueColorCounter.add(number);
+                  editionStatus.opaqueLightnessCounter.add(lightness);
+                  editionStatus.opaqueLightness_sum += lightness;
+                } else {
+                  editionStatus.alpha_qty++;
+                }
+                // Standard way 2023 // very very very slow (1.5s for a 500 x 500 img)
+                // 2024 way : Go faster by finding the right caclulation for each pixel
+                // [r, g, b, a] = uDark.revert_rgba(r, g, b, a, (...args) => args);
+                if (lightness > 127) {
+                  // [r,g,b]=[r,g,b].map((x)=>x/2);
+                  [r, g, b] = [r, g, b].map((x) => {
+
+                    x = x * Math.pow(
+                      255 / (lightness + 127), // The more the lightness is high, the more the color is darkened
+                      lightness / 127 * 2.8 // The more the lightness is high, the more the darkeing is strong
+                    );
+
+                    return x;
+
+                  });
+                }
+
+                editionStatus.is_photo =
+                  editionStatus.opaqueColorCounter.size >= uDark.trigger_number_colors_photo ||
+                  editionStatus.lightnessCounter.size >= uDark.trigger_number_lightness_photo;
+              }
+              var newColor = ((a << 24)) | (b << 16) | (g << 8) | r;
+              theImageDataUint32TMP[n] = newColor;
+
+            }
+            if (n === -1 && !editionStatus.statsComplete) {
+              editionStatus.avg_ligtness = (editionStatus.lightness_sum / theImageDataUint32TMP.length);
+              editionStatus.alpha_percent = editionStatus.alpha_qty / theImageDataUint32TMP.length;
+              editionStatus.contrast = Math.max(...editionStatus.lightnessCounter) - Math.min(...editionStatus.lightnessCounter);
+              editionStatus.contrast_percent = editionStatus.contrast / 255;
+              editionStatus.max_lightness = Math.max(...editionStatus.lightnessCounter);
+              editionStatus.min_lightness = Math.min(...editionStatus.lightnessCounter);
+              editionStatus.statsComplete = true;
+            } else {
+              console.log("Stat not complete", details.url, editionStatus);
+              return false;
+            }
+
+            console.log(editionStatus, imageData, details.url, editionConfidence)
+            if (editionStatus.statsComplete) {
+              if (!(editionConfidence >= 100) && !editionStatus.is_photo) {
+
+                if (editionStatus.contrast_percent > .77 &&
+                  editionStatus.avg_ligtness > 220 &&
+                  editionStatus.max_lightness >= 204
+                ) {
+                  ctx.filter = "invert(0.9) hue-rotate(180deg)";
+                  ctx.drawImage(img, 0, 0);
+                  editionStatus.edited = true;
+                  return true;
+                } else if (editionStatus.colorCounter.size > 1) {
+
+                  if (editionStatus.alpha_percent > 0.1 && !(editionStatus.alpha_qty * 2 > theImageDataUint32TMP.length)) {
+                    return false; // Not a background : Too much pure alpha pixels
+                  }
+                  let min_bright_trigger = 255 * 0.4;
+                  if (editionStatus.avg_ligtness < min_bright_trigger && editionStatus.max_lightness < min_bright_trigger) {
+                    editionStatus.probable_dark_background_having_contrast = true;
+                    return false; // If its a background, i'ts already a dark one, and it has no contrast elements, no need to darken it more
+                  }
+                  if (editionStatus.contrast_percent > .45 && editionStatus.avg_ligtness > 127 || editionStatus.contrast_percent > .60) {
+                    return false; // This image is bright but seems to have contrast elements, if we darken it we will loose these elements
+                  }
+
+                }
+
+              }
+
+            }
+            console.log("Image", details.url, "Background edited in", new Date() / 1 - start_date / 1);
+            imageData.data.set(theImageDataClamped8TMP);
+
+            ctx.putImageData(imageData, 0, 0);
+            editionStatus.edited = true;
+          },
           edit_an_image: function(details) {
+            let editionStatus = {
+              edited: false,
+              statsComplete: false,
+              editionConfidenceLogo:0,
+              editionConfidenceBackground:0,
+            };
+            // Determine some basic required things about the image
+
+            let imageURLObject = new URL(details.url);
+            for (header of details.responseHeaders) {
+              if (header.value.toLowerCase().includes("image/svg")) {
+                details.isSVGImage = true;
+              }
+            }
+            if (details.isSVGImage) {
+              return {}; // TODO: Support SVG images
+            }
+            // Determine if the image deserves to be edited
+            if (imageURLObject.pathname.startsWith("/favicon.ico") || imageURLObject.hash.endsWith("#ud_favicon")) {
+              return {}
+            }
+            // Determine the transformation function to use
+
+            let complement = (new URLSearchParams(imageURLObject.hash.slice(1)));
+            let edition_order_hooks = [uDark.background_image_edit_hook,
+              uDark.logo_image_edit_hook
+            ];
+
+            if (
+              (complement.has("inside_a") ||
+                imageURLObject.search.toLowerCase().includes("logo") ||
+                (complement.has("class") && complement.get("class").toLowerCase().includes("logo")))
+            ) {
+              edition_order_hooks = [uDark.logo_image_edit_hook];
+            }
+            if(uDark.background_match.test(imageURLObject.pathname))
+            {
+              editionStatus.editionConfidenceBackground=100;
+              edition_order_hooks = [uDark.background_image_edit_hook];
+            }
+
+            if (!edition_order_hooks.length) {
+              return {}
+            }
+            
+            console.log("Image", "Editing image", details.url, edition_order_hooks,details.isDataUrl);
+
+            // Do the common tasks required for all edited images
+            let start_date = new Date();
+            let filter = {}
+
+            if (!details.isDataUrl) {
+              filter=browser.webRequest.filterResponseData(details.requestId); // After this instruction, browser espect us to write data to the filter and close it
+              details.buffers = details.buffers || [];
+              filter.ondata = event => {
+                details.buffers.push(event.data);
+              }
+            }
+
+            filter.onstop = event => {
+              console.log("Image", "Filter stopped	", details.buffers.length, details,details.url);
+              // NOTE: TODO: Improve: If the image has a 404 state the server returns html, and canvas can't draw it and loose at least 3 seconds understanding it
+              if (details.statusCode && details.statusCode >= 400) {
+                filter.disconnect();
+                return {}
+              }
+
+
+              let blob = {
+                arrayBuffer: x => ({
+                  then: x => details.dataUrl
+                })
+              }
+              if (!details.isDataUrl) {
+                blob = (new Blob(details.buffers));
+              }
+
+              blob.arrayBuffer().then((buffer) => {
+                {
+
+                  // Create an Image object
+                  const img = new Image();
+
+                  // Set the source of the Image to the blob URL
+                  if (details.isDataUrl) {
+                    img.src = details.dataUrl;
+                  } else {
+                    img.src = URL.createObjectURL(blob);
+                  }
+
+                  // Wait for the image to load
+                  img.onload = function() {
+                    // Create a canvas
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+
+                    // Set the canvas size to the image size
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+
+                    for (let imageEditionHook of edition_order_hooks) {
+                      if (editionStatus.edited === false) {
+                        imageEditionHook(editionStatus, canvas, ctx, img, buffer, blob, filter, details, imageURLObject, complement);
+                      }
+                    }
+                    if (details.isDataUrl) {
+                      if (editionStatus.edited) {
+                        return {
+                          redirectUrl: canvas.toDataURL()
+                        }
+                      } else return {
+                        redirectUrl: details.dataUrl
+                      }
+                    } else if (editionStatus.edited === true) {
+                      // Write the edited image to the filter and disconnect it
+
+                      canvas.toBlob((editedBlobWithImageHeaders) => {
+                        // console
+                        // filter.write(theImageDataUint32TMP.buffer);
+                        console.log(editedBlobWithImageHeaders);
+                        editedBlobWithImageHeaders.arrayBuffer().then((buffer) => {
+                          filter.write(buffer);
+                          console.log("Image", "Image written in filter having edited it", new Date() / 1 - start_date / 1);
+                          filter.disconnect();
+
+                        });
+                      });
+                    } else {
+                      filter.write(buffer);
+                      console.log("Image", "Image written in filter without edition", new Date() / 1 - start_date / 1);
+                      filter.disconnect();
+                    }
+
+                    // filter.write(theImageDataUint32TMP.buffer);
+                    // filter.write(details.buffers[0]);
+                    // filter.disconnect();
+                  };
+
+                };
+              });
+            }
+            if (details.isDataUrl) {
+              return filter.onstop();
+            }
+            return {
+              edited: true
+            }
+
+          },
+          edit_an_image_old: function(details) {
             var theUrl = new URL(details.url);
             details.isDataUrl = theUrl.hostname == "data-image.com"
             if (details.isDataUrl) {
@@ -1867,7 +2374,6 @@ window.dark_object = {
             }
             var canvas = document.createElement('canvas');
             var myImage = new Image;
-
 
             if (theUrl.pathname.match(/\.svg$/) || details.isSvgDataUrl) {
               return new Promise((resolve, reject) => { // on my way to do a reaaal svg url parsing
@@ -1915,7 +2421,7 @@ window.dark_object = {
                   myImage.onerror = x => {
                     resolve({})
                   }
-                  setTimeout(x => resolve({}), 1000);
+                  setTimeout(x => resolve({}), 750);
 
                   sourceImage.src = uDark.svgDataURL(svg)
                 }
@@ -1938,7 +2444,6 @@ window.dark_object = {
                   // Very small data:images are often used as backgrounds
                   is_background = is_background || details.isDataUrl && (5 - myImage.width < 0 || 5 - myImage.width < 0)
 
-
                   canvas.width = myImage.width;
                   canvas.height = myImage.height;
                   var context = canvas.getContext('2d');
@@ -1950,7 +2455,6 @@ window.dark_object = {
                   /*&& !theUrl.pathname.endsWith(".jpg") // some websites renames png files in jpg */
 
                   //   console.log(theUrl,is_background,islogo,theUrl.search.startsWith("?data-image="))
-
 
                   if (islogo) {
                     resolve({
@@ -2013,7 +2517,6 @@ window.dark_object = {
             var pixelcount1 = cornerpixs.slice(0, 4).reduce((a, b) => a + b)
             var pixelcount2 = cornerpixs.slice(4).reduce((a, b) => a + b)
             // console.log(pixelcount)
-
 
             //  console.log(details.url,pixelcount1,pixelcount1)
             if (!pixelcount1 || !pixelcount2) {
@@ -2194,9 +2697,6 @@ window.dark_object = {
             // console.log("resolvedIDKVars_action", data.chunk.includes("darken"))
             uDark.idk_cache[data.chunk_hash] = data.chunk;
 
-
-
-
             // // Missing chunks strategy :
             // let missingChunksKey="missing_chunks_"+data.details.requestId;
             // if(missingChunksKey in uDark.idk_cache){
@@ -2212,9 +2712,6 @@ window.dark_object = {
             //   }
             // }
             // // end of missing chunks strategy
-
-
-
 
           },
           parse_and_edit_html3: function(str, details) {
@@ -2247,13 +2744,12 @@ window.dark_object = {
 
             aDocument.querySelectorAll("style").forEach(astyle => {
               carried = {};
-              astyle.innerHTML = uDark.edit_str(astyle.innerHTML, false, false, details,false,carried);
+              astyle.innerHTML = uDark.edit_str(astyle.innerHTML, false, false, details, false, carried);
               // According to https://stackoverflow.com/questions/55895361/how-do-i-change-the-innerhtml-of-a-global-style-element-with-cssrule ,
               // it is not possible to edit a style element innerHTML with its cssStyleSheet alone
               // As long as we are returing a STR, we have to edit the style element innerHTML;
               // astyle.innerHTML=uDark.edit_css(astyle.innerHTML,astyle.sheet);
-              if(carried.has_idk_vars)
-              {
+              if (carried.has_idk_vars) {
                 astyle.classList.add("ud-idk-vars");
               }
               astyle.classList.add("ud-edited-background")
@@ -2272,10 +2768,14 @@ window.dark_object = {
             aDocument.querySelectorAll("img[src*='data']").forEach(image => {
               image.src = uDark.send_data_image_to_parser(image.getAttribute("src"), details)
             })
+            aDocument.querySelectorAll("link[rel*='icon'][href]").forEach(link => {
+              link.setAttribute("href", link.getAttribute('href') + "#ud_favicon");
+            });
+            aDocument.querySelectorAll("img[src]").forEach(image => { // We catch images later, not here
 
-            // aDocument.querySelectorAll("img[src]").forEach(image => { // We catch images later, not here
-            //   uDark.registerBackgroundItem(false,{selectorText:`img[src='${image.src}']`}, details)
-            // })
+              image.setAttribute("src", uDark.image_element_prepare_href(image, aDocument));
+              // uDark.registerBackgroundItem(false,{selectorText:`img[src='${image.src}']`}, details)
+            })
             // I think killing cache this way may be more efficient than cleaning the cache
             // cache key is unique for each browser session
             // aDocument.querySelectorAll("link[rel='stylesheet'][href]")//This was causing problems i dont knwo why : double loading of css on openAi, and not so usefull since UD flushes cache on options change
@@ -2300,7 +2800,7 @@ window.dark_object = {
               udStyle.innerHTML = uDark.inject_css_suggested;
               udStyle.id = "ud-style"
               aDocument.head.prepend(udStyle);
-              
+
               var udMetaDark = aDocument.querySelector("meta[name='color-scheme']") || document.createElement("meta")
               udMetaDark.id = "ud-meta-dark"
               udMetaDark.name = "color-scheme";
@@ -2314,7 +2814,6 @@ window.dark_object = {
             var outer_edited = "<!doctype html>" + documentElement.outerHTML
             outer_edited = outer_edited.replace(/[\s\t]integrity=/g, " nointegrity=")
             outer_edited = outer_edited.replaceAll("ud_secure_a_noscript", "noscript")
-
 
             return outer_edited;
           }
@@ -2355,8 +2854,6 @@ window.dark_object = {
           }
         })
       ]).then(x => console.info("CSS processed")).then(dark_object.background.setListener)
-
-
 
     }
   },
@@ -2424,15 +2921,19 @@ window.dark_object = {
 
             return last_text.filter(x => !x.bold);
           },
-          RGBRotate:class {
+          RGBRotate: class {
             constructor() {
-              this.matrix = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+              this.matrix = [
+                [1, 0, 0],
+                [0, 1, 0],
+                [0, 0, 1]
+              ];
             }
-          
+
             setHueRotation(degrees) {
               const cosA = Math.cos((degrees * Math.PI) / 180);
               const sinA = Math.sin((degrees * Math.PI) / 180);
-          
+
               this.matrix[0][0] = cosA + (1.0 - cosA) / 3.0;
               this.matrix[0][1] = (1.0 / 3.0) * (1.0 - cosA) - Math.sqrt(1.0 / 3.0) * sinA;
               this.matrix[0][2] = (1.0 / 3.0) * (1.0 - cosA) + Math.sqrt(1.0 / 3.0) * sinA;
@@ -2443,12 +2944,12 @@ window.dark_object = {
               this.matrix[2][1] = (1.0 / 3.0) * (1.0 - cosA) + Math.sqrt(1.0 / 3.0) * sinA;
               this.matrix[2][2] = cosA + (1.0 / 3.0) * (1.0 - cosA);
             }
-          
+
             apply(r, g, b) {
               const rx = r * this.matrix[0][0] + g * this.matrix[0][1] + b * this.matrix[0][2];
               const gx = r * this.matrix[1][0] + g * this.matrix[1][1] + b * this.matrix[1][2];
               const bx = r * this.matrix[2][0] + g * this.matrix[2][1] + b * this.matrix[2][2];
-          
+
               const clamp = (v) => {
                 if (v < 0) {
                   return 0;
@@ -2458,7 +2959,7 @@ window.dark_object = {
                 }
                 return Math.round(v);
               };
-          
+
               return [clamp(rx), clamp(gx), clamp(bx)];
             }
           },
@@ -2526,8 +3027,6 @@ window.dark_object = {
                   textItem.overImage.add("ud_overImage_c4");
                 }
 
-
-
                 if (textItem.overImage.size) {
                   let clone = textItem.cloneNode(true)
                   clone.querySelectorAll("*").forEach(x => x.remove())
@@ -2542,8 +3041,6 @@ window.dark_object = {
                       if (zIndexColor < zIndexBg) {
                         return;
                       }
-
-
 
                       if (uDark.isInsideSquare(bgColorItem.t1, bgColorItem.t2, bgColorItem.l1, bgColorItem.l2, boundingRect.t1, boundingRect.l1)) {
                         textItem.overImage.delete("ud_overImage_c1");
@@ -2565,9 +3062,6 @@ window.dark_object = {
                   }
                 }
 
-
-
-
               })
 
             })
@@ -2581,7 +3075,7 @@ window.dark_object = {
               return false; // No Url to register here;
             }
 
-            if (uDark.is_content_script) {
+            if (uDark.website_context) {
               if (typeof cssRule == "string") {
                 cssRule = {
                   selectorText: cssRule
@@ -2637,7 +3131,6 @@ window.dark_object = {
       //   }
       //   return true; // Continue processing,  see you in aftermath
 
-
       // }, (result, elem, args, watcher_result) => {
       //   // Any thing could have been done to this poor little CSSStyleDeclaration, we are here aftermath, lets run a full check on it.
       //   // We don't even know if it has a CSSRule or not, let try to emulate this.
@@ -2662,8 +3155,15 @@ window.dark_object = {
   },
   misc: {
     editBeforeRequestImage: function(details) {
-
-
+      if (details.url.startsWith("https://data-image.com/?base64IMG=") && !uDark.disable_image_edition) {
+        details.dataUrl = details.url.slice(34)
+        details.isSvgDataUrl = details.dataUrl.startsWith("data:image/svg+xml")
+        return {
+          redirectUrl: edit_an_image(details) // TODO: Support data:images
+        }
+      }
+    },
+    editOnHeadersImage: function(details) {
       // Util 2024 jan 02 we were checking details.documentUrl, or details.url to know if a stylesheet was loaded in a excluded page
       // Since only CS ports that matches blaclist and whitelist are connected, we can simply check if this resource has a corresponding CS port
       if (!uDark.connected_cs_ports["port-from-cs-" + details.tabId + "-" + details.frameId]) {
@@ -2674,7 +3174,7 @@ window.dark_object = {
       //   (details.documentUrl || details.url).match(uDark.userSettings.exclude_regex)) {
       //   return {}
       // }
-      
+
       if (details.url.startsWith("https://data-image.com/?base64IMG=")) {
         // console.log(details.url,"catched",details.url.slice(34));
         return {
@@ -2724,8 +3224,6 @@ window.dark_object = {
                 // The imageData object has a data property, a Uint8ClampedArray containing the color values of each pixel in the image.
                 // It is easier to work with this array as 32-bit integers, so we create a new Uint32Array from the original one.
 
-
-
                 let theImageDataBufferTMP = new ArrayBuffer(imageData.data.length);
                 let theImageDataClamped8TMP = new Uint8ClampedArray(theImageDataBufferTMP);
                 theImageDataClamped8TMP.set(imageData.data);
@@ -2759,7 +3257,6 @@ window.dark_object = {
                 imageData.data.set(theImageDataClamped8TMP);
                 ctx.putImageData(imageData, 0, 0);
 
-
                 canvas.toBlob((editedBlobWithImageHeaders) => {
                   // console
                   // filter.write(theImageDataUint32TMP.buffer);
@@ -2775,8 +3272,6 @@ window.dark_object = {
                 // filter.write(details.buffers[0]);
                 // filter.disconnect();
               };
-
-
 
             };
           });
@@ -2794,7 +3289,7 @@ window.dark_object = {
       }
       // If resultEdit is a promise, image will be edited (foreground or background), otherwise it may be a big background image to include under text
       // Lets inform the content script about it
-      if (!resultEdit.then) {
+      if (!resultEdit.then || !resultEdit.edited) {
         // uDark.registerBackgroundItem(false,{selectorText:`img[src='${details.url}']`},details);
         let imageURLObject = new URL(details.url);
         if (imageURLObject.searchParams.has("uDark_cssClass")) {
@@ -2818,7 +3313,6 @@ window.dark_object = {
       }
       return resultEdit;
 
-
     },
 
     editBeforeRequestStyleSheet: function(details) {
@@ -2827,9 +3321,7 @@ window.dark_object = {
       carried.isCorsRequest = dark_object.misc.isCorsRequest(details);
       // let stylesheetURL=(new URL(details.url));
 
-
       console.log("Loading CSS", details.url)
-
 
       // Util 2024 jan 02 we were checking details.documentUrl, or details.url to know if a stylesheet was loaded in a excluded page
       // Since only CS ports that matches blaclist and whitelist are connected, we can simply check if this resource has a corresponding CS port
@@ -2855,7 +3347,7 @@ window.dark_object = {
         carried.chunk = uDark.edit_str(details.rejectedValues + str, false, true, details, false, carried);
         // if(str.includes('import'))
         // {
-          // console.log(str)
+        // console.log(str)
         // }
         if (carried.chunk.message) {
           // console.log(details,transformResult.message)
@@ -2925,7 +3417,6 @@ window.dark_object = {
     },
     chunk_manage_idk: function(details, carried) {
 
-
       if (!uDark.disable_remote_idk_css_edit && details.unresolvableChunks) {
         if (!carried.unresolvableStylesheet.cssRules.length) {
           // console.log("No unresolvable rules found for",details.url,"chunk",details.datacount)
@@ -2957,7 +3448,6 @@ window.dark_object = {
           uDark.idk_cache["remove_cache_" + details.requestId] = details.doc_hostname; // Works only with doc_hostname, not hostname; this is counter intuitive
         }
 
-
         // /* Missing chucks strategy */
         // let missingChunksKey="missing_chunks_"+details.requestId;
         // if(!(missingChunksKey in uDark.idk_cache))
@@ -2967,10 +3457,7 @@ window.dark_object = {
         // uDark.idk_cache[missingChunksKey].add(chunk_hash);
         // /* End of missing chucks strategy */
 
-
-
         content_script_port_promise.then((content_script_port) => {
-
 
           content_script_port.used_cache_keys.add(chunk_hash);
           // console.log("Sending chunk to content script",content_script_port.sender.contextId,details.requestId,details.datacount,details.url,chunk_hash)
@@ -2982,7 +3469,6 @@ window.dark_object = {
               chunk_hash,
             }
           });
-
 
         })
 
@@ -3000,13 +3486,11 @@ window.dark_object = {
               hostnames: [uDark.idk_cache[possibleCacheKey]]
             })
             .then(x => {
-              console.info(`Browser last`,Date.now()-details.timeStamp,`ms cache of`,uDark.idk_cache[possibleCacheKey],` flushed for request`,details.requestId)
+              console.info(`Browser last`, Date.now() - details.timeStamp, `ms cache of`, uDark.idk_cache[possibleCacheKey], ` flushed for request`, details.requestId)
               delete uDark.idk_cache[possibleCacheKey];
             }, error => console.error(`Error: ${error}`));
         }, 100) // Must wait the request is finished, otherwise it will not be uncached
       }
-
-
 
     },
 
@@ -3062,13 +3546,12 @@ window.dark_object = {
       if (!(details.headersLow["content-type"] || "text/html").includes("text/html")) return {}
       details.charset = ((details.headersLow["content-type"] || "").match(/charset=([0-9A-Z-]+)/i) || ["", "utf-8"])[1]
       // console.log(details.charset)
-      
+
       details.responseHeaders = details.responseHeaders.filter(x => {
         var a_filter = uDark.headersdo[x.name.toLowerCase()];
         return a_filter ? a_filter(x) : true;
       })
-      if(!details.fromCache)
-      { // We don't want to edit cached pages, as they are already edited and put in cache !
+      if (!details.fromCache) { // We don't want to edit cached pages, as they are already edited and put in cache !
         let filter = browser.webRequest.filterResponseData(details.requestId);
         let decoder = new TextDecoder(details.charset)
         let encoder = new TextEncoder();
@@ -3102,10 +3585,9 @@ if (browser.webRequest) {
   dark_object.background.install();
 } else {
   dark_object.content_script.install();
-  if(!uDark.direct_window_export)
-  {
+  if (!uDark.direct_window_export) {
     dark_object.content_script.override_website();
   }
   dark_object.content_script.website_load();
-  
+
 }
