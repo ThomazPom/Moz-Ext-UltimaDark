@@ -1,5 +1,5 @@
 # Unless you are a developer you want to be on the [master](https://github.com/ThomazPom/Moz-Ext-UltimaDark/tree/master) branch
-This branch is for testing GitHub actions and **should not be merged**... Far too many attempts later it finally works... sort of. The automated builds generated through GitHub Actions are currently unsigned and non-functional. Do not try to use the artifacts it is producing yet. Definitely do not upload the output to AMO. Any assistance improving this would be greatly appreciated. Thank you for your patience - @Vintagemotors
+This branch is for testing GitHub actions and **should not be merged**. Far too many attempts later it finally works well enough for debugging! The automated builds generated through GitHub Actions are currently unsigned which means they are only suitable for testing. The artifact must be extracted after downloading prior to attempting to load it or the browser will be unable to read the MANIFEST. In order to test a Nightly build you have to go to about:debugging then click "Load Temporary Add-on".  Definitely do not upload these artifacts to AMO. Any assistance improving this would be greatly appreciated. Thank you for your patience - @Vintagemotors
 
 
 
