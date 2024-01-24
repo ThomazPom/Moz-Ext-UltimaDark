@@ -1,9 +1,4 @@
 
-let workerPool=Array(3).fill(1).map(x=>{
-  console.log("Creating worker");
-  return new Worker("imageWorker.js");
-})
-console.log("Image Service worker started",workerPool)
 
 window.dark_object = {
 
@@ -14,8 +9,6 @@ window.dark_object = {
       const CSS_COLOR_NAMES = ["AliceBlue", "AntiqueWhite", "Aqua", "Aquamarine", "Azure", "Beige", "Bisque", "Black", "BlanchedAlmond", "Blue", "BlueViolet", "Brown", "BurlyWood", "CadetBlue", "Chartreuse", "Chocolate", "Coral", "CornflowerBlue", "Cornsilk", "Crimson", "Cyan", "DarkBlue", "DarkCyan", "DarkGoldenRod", "DarkGray", "DarkGrey", "DarkGreen", "DarkKhaki", "DarkMagenta", "DarkOliveGreen", "DarkOrange", "DarkOrchid", "DarkRed", "DarkSalmon", "DarkSeaGreen", "DarkSlateBlue", "DarkSlateGray", "DarkSlateGrey", "DarkTurquoise", "DarkViolet", "DeepPink", "DeepSkyBlue", "DimGray", "DimGrey", "DodgerBlue", "FireBrick", "FloralWhite", "ForestGreen", "Fuchsia", "Gainsboro", "GhostWhite", "Gold", "GoldenRod", "Gray", "Grey", "Green", "GreenYellow", "HoneyDew", "HotPink", "IndianRed", "Indigo", "Ivory", "Khaki", "Lavender", "LavenderBlush", "LawnGreen", "LemonChiffon", "LightBlue", "LightCoral", "LightCyan", "LightGoldenRodYellow", "LightGray", "LightGrey", "LightGreen", "LightPink", "LightSalmon", "LightSeaGreen", "LightSkyBlue", "LightSlateGray", "LightSlateGrey", "LightSteelBlue", "LightYellow", "Lime", "LimeGreen", "Linen", "Magenta", "Maroon", "MediumAquaMarine", "MediumBlue", "MediumOrchid", "MediumPurple", "MediumSeaGreen", "MediumSlateBlue", "MediumSpringGreen", "MediumTurquoise", "MediumVioletRed", "MidnightBlue", "MintCream", "MistyRose", "Moccasin", "NavajoWhite", "Navy", "OldLace", "Olive", "OliveDrab", "Orange", "OrangeRed", "Orchid", "PaleGoldenRod", "PaleGreen", "PaleTurquoise", "PaleVioletRed", "PapayaWhip", "PeachPuff", "Peru", "Pink", "Plum", "PowderBlue", "Purple", "RebeccaPurple", "Red", "RosyBrown", "RoyalBlue", "SaddleBrown", "Salmon", "SandyBrown", "SeaGreen", "SeaShell", "Sienna", "Silver", "SkyBlue", "SlateBlue", "SlateGray", "SlateGrey", "Snow", "SpringGreen", "SteelBlue", "Tan", "Teal", "Thistle", "Tomato", "Turquoise", "Violet", "Wheat", "White", "WhiteSmoke", "Yellow", "YellowGreen"]
 
       window.uDark = {
-        trigger_number_colors_photo: 1900,
-        trigger_number_lightness_photo: 750,
         rgb_a_colorsRegex: /rgba?\([%0-9., \/a-z_+*-]+\)/gmi, // rgba vals with variables names and calcs involved NOTE: #rgba(255 255 255 / 0.1) is valid color rgba(255,255,255,30%) is valid color too
         hsl_a_colorsRegex: /hsla?\(([%0-9., \/=a-z_+*-]|deg|turn|tetha)+\)/gmi, // hsla vals  with variables names and calcs involved  #rgba(255 255 255 / 0.1)
         direct_window_export: true,
@@ -86,9 +79,9 @@ window.dark_object = {
           {
             image.loading="lazy";
           }
+
           // Do not parse url preventing adding context to it or interpreting it as a relative url or correcting its content by any way
           let imageTrueSrc = src_override || image.getAttribute("src")
-
           if (!image.hasAttribute("data-ud-selector")) {
             image.setAttribute("data-ud-selector", Math.random());
           }
@@ -100,11 +93,26 @@ window.dark_object = {
               notableInfos[attributeName] = infoValue;
             }
           }
+          if(imageTrueSrc.includes("µDark")){
+            return imageTrueSrc;
+          }
           let parentAnchor = aDocument.querySelector(`a ${selectorText}`);
           if (parentAnchor) {
             notableInfos["inside_a"] = true;
           }
-          return imageTrueSrc + "#" + new URLSearchParams(notableInfos).toString();
+          let usedChar = "#µDark"
+          if(imageTrueSrc.includes("#"))
+          {
+            usedChar = "µDark"
+          }
+          if(image.alt=="What is 256-Bit Encryption? — Definition by Techslang")
+          {
+            
+          console.log("imageTrueSrc",imageTrueSrc,usedChar)
+          }
+          imageTrueSrc=uDark.send_data_image_to_parser(imageTrueSrc ) 
+
+          return imageTrueSrc + usedChar + new URLSearchParams(notableInfos).toString();
         },
         valuePrototypeEditor: function(leType, atName, watcher = x => x, conditon = x => x, aftermath = false) {
           //   console.log(leType,atName)
@@ -193,9 +201,7 @@ window.dark_object = {
 
         },
         send_data_image_to_parser: function(str, details, carried = {}) {
-          if (!uDark.edit_data_images) {
-            return str;
-          }
+          
           if (str.trim().toLowerCase().startsWith('data:') && !uDark.userSettings.disable_image_edition) {
 
             carried.changed = true;
@@ -692,13 +698,16 @@ window.dark_object = {
 
             link = uDark.send_data_image_to_parser(link, false, carried);
             carried.changed = true;
-            let usedChar = link.includes("#") ? "&" : "?"
-            usedChar = "#";
+            
             let notableInfos = {
               "uDark_cssClass": encodeURI(cssRule.selectorText),
               "uDark_backgroundRepeat": cssStyle.backgroundRepeat,
             };
-
+            let usedChar = "#µDark"
+            if(link.includes("#"))
+            {
+              usedChar = "µDark"
+            }
             link += usedChar + new URLSearchParams(notableInfos).toString();
             return 'url("' + link + '")';
           })
@@ -1399,7 +1408,13 @@ window.dark_object = {
       }, (elem, args) => args[0] == "style")
 
       uDark.valuePrototypeEditor(HTMLImageElement, "src", (image, value) => {
-
+        if(image.alt=="What is 256-Bit Encryption? — Definition by Techslang")
+        {
+          
+          let newvalue = uDark.image_element_prepare_href(image, document, value)
+          console.log("SETTING",image,value, newvalue)
+          return newvalue;
+        }
         return uDark.image_element_prepare_href(image, document, value);
       });
 
@@ -1799,6 +1814,17 @@ window.dark_object = {
           is_background: true,
           rgb_a_colorsRegex: /rgba?\([%0-9., \/]+\)/gmi, // rgba vals without variables and calc()involved #! rgba(255 255 255 / 0.1) is valid color and rgba(255,255,255,30%) too
           hsl_a_colorsRegex: /hsla?\(([%0-9., \/=]|deg|turn|tetha)+\)/gmi, // hsla vals without variables and calc() involved
+          LoggingWorker: class LoggingWorker extends Worker {
+            constructor(...args) {
+              super(...args);
+              this.addEventListener('message', function(e) {
+                if (e.data.logMessage) {
+                  console.log("imageWorker:", ...e.data.logMessage);
+                }
+              });
+
+            }
+          },
           headersdo: {
             "content-security-policy": (x => {
               x.value = x.value.replace(/script-src/, "script-src *")
@@ -2647,14 +2673,22 @@ window.dark_object = {
     }
   },
   misc: {
-    editBeforeRequestImage: function(details) {
+    editBeforeRequestImage: async function(details) {
+      
       if (details.url.startsWith("https://data-image.com/?base64IMG=") && !uDark.disable_image_edition) {
-        details.dataUrl = details.url.slice(34)
-        details.isSvgDataUrl = details.dataUrl.startsWith("data:image/svg+xml")
-        return {redirectUrl:details.dataUrl} // TODO: Support data:images with workers
-        return {
-          redirectUrl: edit_an_image(details) // TODO: Support data:images
-        }
+        let dataUrl = details.url.slice(34)
+        details.isSvgDataUrl = dataUrl.startsWith("data:image/svg+xml")
+        const imageWorker= new uDark.LoggingWorker("imageWorker.js");
+        const reader = new FileReader();        
+        const arrayBuffer = await fetch(dataUrl).then(w=>w.arrayBuffer())
+        imageWorker.addEventListener("message",event=>{
+          if(event.data.editionComplete)
+          {
+            reader.readAsDataURL(new Blob(event.data.buffers));
+          }
+        })
+        imageWorker.postMessage({oneImageBuffer:arrayBuffer,filterStopped:1,details:details},[arrayBuffer]) // Explicityly transfer the ArrayBuffer to the worker
+        return new Promise( resolve => reader.onload = (e) => resolve({redirectUrl:reader.result}));
       }
     },
     editOnHeadersImage: function(details) {
@@ -2686,9 +2720,9 @@ window.dark_object = {
         let filter = browser.webRequest.filterResponseData(details.requestId); // After this instruction, browser espect us to write data to the filter and close it
         details.buffers = details.buffers || [];
         
-        let imageWorker= new Worker("imageWorker.js");
+        let imageWorker= new uDark.LoggingWorker("imageWorker.js");
         imageWorker.addEventListener("message",event=>{
-          console.log(event.data);
+         
           if(event.data.editionComplete)
           {
             for(buffer of event.data.buffers){
