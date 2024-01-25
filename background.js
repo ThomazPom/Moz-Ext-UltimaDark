@@ -2461,6 +2461,7 @@ window.dark_object = {
       }
     },
     editOnHeadersImage: function(details) {
+      
       // Util 2024 jan 02 we were checking details.documentUrl, or details.url to know if a stylesheet was loaded in a excluded page
       // Since only CS ports that matches blaclist and whitelist are connected, we can simply check if this resource has a corresponding CS port
       if (!uDark.connected_cs_ports["port-from-cs-" + details.tabId + "-" + details.frameId]) {
@@ -2479,7 +2480,7 @@ window.dark_object = {
         while (n--) {
           details.headersLow[details.responseHeaders[n].name.toLowerCase()] = details.responseHeaders[n].value;
         }
-        if (!(details.headersLow["content-type"] || "text/html").includes("text/html")) return {}
+        
         details.charset = ((details.headersLow["content-type"] || "").match(/charset=([0-9A-Z-]+)/i) || ["", "utf-8"])[1]
         details.isSVGImage=(details.headersLow["content-type"] || "").includes("image/svg")
         
@@ -2492,7 +2493,6 @@ window.dark_object = {
         
         let secureTimeout = setTimeout(()=>{filter.disconnect()},30000) // Take care of very big images
         details.buffers = details.buffers || [];
-        
         if(details.isSVGImage)
         {
           let decoder = new TextDecoder(details.charset)
