@@ -450,7 +450,7 @@ uDark={
         ];
 
         if (
-          (complement.has("inside_a") ||
+          (complement.has("inside_clickable") ||
             imageURLObject.search.toLowerCase().includes("logo") ||
             (complement.has("class") && complement.get("class").toLowerCase().includes("logo")))
         ) {
