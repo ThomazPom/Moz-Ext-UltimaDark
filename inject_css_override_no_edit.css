@@ -10,6 +10,10 @@ iframe {
     color-scheme: light!important; /*Fortunately all css can be overriden unconditoonally in this file*/
   }
 
+svg text,svg tspan{
+    fill: var(--ud-fg--fill-color, #fff)!important; /*When we see fill text we will propose an alternate value which will be used. If no valuse fallback to white */
+}
+
 * {
     scrollbar-color:rgba(255,255,255,0.40) rgba(0,0,0,0.26)
 }

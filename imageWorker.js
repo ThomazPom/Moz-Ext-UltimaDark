@@ -443,12 +443,8 @@ uDark={
         let imageURLObject = new URL(details.url);
         
         // Determine the transformation function to use
-        let complemntIndex=imageURLObject.href.indexOf("µDark");
-        let complement = new URLSearchParams();
-        if(complemntIndex!=-1)
-        {
-            complement = new URLSearchParams(imageURLObject.hash.slice(complemntIndex+5));
-        }
+        let complementIndex = imageURLObject.hash.indexOf("µDark")
+        let complement=new URLSearchParams(complementIndex==-1?"":imageURLObject.hash.slice(complementIndex+5))
         let edition_order_hooks = [uDark.background_image_edit_hook,
           uDark.logo_image_edit_hook
         ];
