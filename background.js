@@ -73,7 +73,10 @@ window.dark_object = {
             uDark.edit_cssRules(styleSheet.cssRules, true);
           });
         },
-        image_element_prepare_href: function(image, aDocument, src_override) // Adds notable infos to the image element href, used by the image edition feature
+        search_clickable_parent(documentElement, selectorText) {
+          return documentElement.querySelector(`a ${selectorText},button ${selectorText}`);
+        },
+        image_element_prepare_href: function(image, documentElement, src_override) // Adds notable infos to the image element href, used by the image edition feature
         {
           if(!uDark.disable_lazy_loading)
           {
@@ -96,16 +99,15 @@ window.dark_object = {
           if(imageTrueSrc.includes("µDark")){
             return imageTrueSrc;
           }
-          let parentAnchor = aDocument.querySelector(`a ${selectorText}`);
-          if (parentAnchor) {
-            notableInfos["inside_a"] = true;
+          if (uDark.search_clickable_parent(documentElement, selectorText)) {
+            notableInfos.inside_clickable = true;
           }
           let usedChar = "#µDark"
           if(imageTrueSrc.includes("#"))
           {
             usedChar = "µDark"
           }
-          imageTrueSrc=uDark.send_data_image_to_parser(imageTrueSrc,false,{},notableInfos) 
+          imageTrueSrc=uDark.send_data_image_to_parser(imageTrueSrc,false,{notableInfos}) 
 
           return imageTrueSrc + usedChar + new URLSearchParams(notableInfos).toString();
         },
@@ -204,17 +206,18 @@ window.dark_object = {
           rules.unshift(...imports);
 
         },
-        send_data_image_to_parser: function(str, details, carried = {},notableInfos={}) {
+        send_data_image_to_parser: function(str, details, carried) {
           
           if (str.trim().toLowerCase().startsWith('data:') && !uDark.userSettings.disable_image_edition) {
             let isSvgDataUrl = str.startsWith("data:image/svg+xml");
             carried.changed = true;
+            carried.svgImage = true;
             if(isSvgDataUrl) // Synchronous edit for data SVGs images, we have some nice context and functions to work with
             { // This avoids loosing svg data including the size of the image, and the tags in the image
               isBase64 = str.includes("base64");
               str=str.split(",")[1]
               isBase64?str=atob(str):str=decodeURIComponent(str)
-              str=uDark.frontEditHTML(false,str)
+              str=uDark.frontEditHTML(false,str,carried)
               if(uDark.disable_reencode_data_svg_to_base64)
               {
                 str="data:image/svg+xml,"+encodeURIComponent(str)
@@ -232,16 +235,64 @@ window.dark_object = {
           }
           return str;
         },
-        get_fill_for_svg_elem: function(fillElem,override_value=false) {
+        
+        get_fill_for_svg_elem: function(fillElem,override_value=false,carried) {
+
             fillElem.setAttribute("udark-fill", true);
             let fillValue = override_value||fillElem.getAttribute("fill");
             if(["animate"].includes(fillElem.tagName)){return fillValue} // fill has another meaning for animate
-            let is_text=["text","tspan"].includes(fillElem.tagName);
+            let is_text=carried.notableInfos.guessed_type=="logo"
+            ||["text","tspan"].includes(fillElem.tagName);
             let edit_challenge=`${is_text?"":"background-"}color:${fillValue};`
             let edit_result=uDark.edit_str(edit_challenge).slice(is_text?7:18,-1)
             return  edit_result; 
         },
-        frontEditHTML: (elem, value) => {
+        frontEditSVG: function(svg,documentElement,carried) {
+          carried.notableInfos=carried.notableInfos||{};
+          svg.setAttribute("udark-fill", true);
+          svg.setAttribute("udark-id", Math.random());
+          let svgUdarkId = svg.getAttribute("udark-id");
+          if(!carried.notableInfos.inside_clickable)
+          {
+            if(uDark.search_clickable_parent(documentElement, `svg[udark-id='${svgUdarkId}']`))
+            {
+              carried.notableInfos.inside_clickable = true;
+              carried.notableInfos.guessed_type="logo";
+            }
+          }
+          let {  width,height  } = svg.getBoundingClientRect();
+          if (!width || !height) {
+            let {width2,height2} = svg.getBBox();
+            width,height=width2,height2
+          }
+          carried.notableInfos.width = width;
+          carried.notableInfos.height = height;
+          if((/logo|icon|alert|notif|cart|menu|tooltip|dropdown/).test(svg.parentNode.outerHTML))
+          {
+            carried.notableInfos.guessed_type="logo";
+          }
+          if(carried.notableInfos.width>500||carried.notableInfos.height>500)
+          {
+            carried.notableInfos.guessed_type="background";
+          }
+
+          if(!svg.querySelector("#udark-styled")&&carried.notableInfos.guessed_type=="logo")
+          {
+            svg.setAttribute("fill", "white");
+            let styleElem=document.createElement("style");
+            styleElem.id="udark-styled";
+            let textNode= document.createTextNode("")
+            styleElem.append(textNode)
+            // textNode.replaceData(0, 0, "*:not(fill){fill:white;}")
+            svg.prepend(styleElem);
+
+          }
+          svg.querySelectorAll("[fill]:not([udark-fill])").forEach(fillElem => {
+            fillElem.setAttribute("fill",uDark.get_fill_for_svg_elem(fillElem,false,carried))
+          })
+          svg.setAttribute("udark-infos", new URLSearchParams(carried.notableInfos).toString());
+        },
+        frontEditHTML: (elem, value,carried={}) => {
           if (elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement) {
             return uDark.edit_str(value)
           }
@@ -269,9 +320,12 @@ window.dark_object = {
             astyle.classList.add("ud-edited-content-script")
 
           });
-          documentElement.querySelectorAll("[fill]:not([udark-fill])").forEach(fillElem => {
-            fillElem.setAttribute("fill",uDark.get_fill_for_svg_elem(fillElem))
+
+          
+          documentElement.querySelectorAll("svg").forEach(svg => {
+            uDark.frontEditSVG(svg,documentElement,carried)
           })
+
           documentElement.querySelectorAll("[style]").forEach(astyle => {
             // console.log(details,astyle,astyle.innerHTML,astyle.innerHTML.includes(`button,[type="reset"],[type="button"],button:hover,[type="button"],[type="submit"],button:active:hover,[type="button"],[type="submi`))
             astyle.setAttribute("style", uDark.edit_str(astyle.getAttribute("style")));
@@ -739,8 +793,12 @@ window.dark_object = {
             {
               usedChar = "µDark"
             }
-            link = uDark.send_data_image_to_parser(link, false, carried,notableInfos);
-            link += usedChar + new URLSearchParams(notableInfos).toString();
+            carried.notableInfos = notableInfos;
+            link = uDark.send_data_image_to_parser(link, false, carried);
+            if(!carried.svgImage)
+            {
+              link += usedChar + new URLSearchParams(notableInfos).toString();
+            }
             return 'url("' + link + '")';
           })
 
@@ -2042,8 +2100,8 @@ window.dark_object = {
               }
               astyle.classList.add("ud-edited-background")
             });
-            documentElement.querySelectorAll("[fill]:not([udark-fill])").forEach(fillElem => {
-              fillElem.setAttribute("fill",uDark.get_fill_for_svg_elem(fillElem))
+            documentElement.querySelectorAll("svg").forEach(svg => {
+              uDark.frontEditSVG(svg,documentElement,carried)
             })
             aDocument.querySelectorAll("[style]").forEach(astyle => {
               // console.log(details,astyle,astyle.innerHTML,astyle.innerHTML.includes(`button,[type="reset"],[type="button"],button:hover,[type="button"],[type="submit"],button:active:hover,[type="button"],[type="submi`))
@@ -2500,11 +2558,11 @@ window.dark_object = {
           filter.ondata = event =>  details.buffers.push(event.data);
           let svgURLObject = new URL(details.url);
           let complementIndex = svgURLObject.hash.indexOf("µDark")
-          let complement=new URLSearchParams(complementIndex==-1?"":svgURLObject.hash.slice(complementIndex+5))
+          let notableInfos=new URLSearchParams(complementIndex==-1?"":svgURLObject.hash.slice(complementIndex+5))
           filter.onstop = event => {
             new Blob(details.buffers).arrayBuffer().then((buffer) => { 
               let svgString = decoder.decode(buffer,{stream:true});
-              let svgStringEdited = uDark.frontEditHTML(false,svgString,{},complement);
+              let svgStringEdited = uDark.frontEditHTML(false,svgString,{notableInfos});
               filter.write(encoder.encode(svgStringEdited));
               filter.disconnect();
               clearInterval(secureTimeout);
