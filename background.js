@@ -105,12 +105,7 @@ window.dark_object = {
           {
             usedChar = "µDark"
           }
-          if(image.alt=="What is 256-Bit Encryption? — Definition by Techslang")
-          {
-            
-          console.log("imageTrueSrc",imageTrueSrc,usedChar)
-          }
-          imageTrueSrc=uDark.send_data_image_to_parser(imageTrueSrc ) 
+          imageTrueSrc=uDark.send_data_image_to_parser(imageTrueSrc,false,{},notableInfos) 
 
           return imageTrueSrc + usedChar + new URLSearchParams(notableInfos).toString();
         },
@@ -119,20 +114,29 @@ window.dark_object = {
           // if (conditon) {
           //   console.log("VAdding condtition to", leType, leType.name, conditon, conditon.toString())
           // }
+          if(leType.concat)
+          {
+            return leType.forEach(aType=>uDark.valuePrototypeEditor(aType, atName, watcher, conditon, aftermath))
+          }
 
           if (leType.wrappedJSObject) { // Cross compatibilty with content script
             leType = leType.wrappedJSObject;
           }
-          var originalSet = Object.getOwnPropertyDescriptor(leType.prototype, atName).set;
+         
+          var originalSet = Object.getOwnPropertyDescriptor(leType.prototype, atName);
+          if(!originalSet)
+          {
+            console.log("No setter for '",atName,"'",leType,leType.name,leType.prototype)
+          }
           Object.defineProperty(leType.prototype, "o_ud_set_" + atName, {
-            set: originalSet
+            set: originalSet.set
           });
           // uDark.general_cache["o_ud_set_"+atName]=originalSet
           Object.defineProperty(leType.prototype, atName, {
             set: exportFunction(function(value) { // getters must be exported like regular functions
               // console.log("Setting", this, atName, value)
               var new_value = conditon && conditon(this, value) ? watcher(this, value) : value;
-              let call_result = originalSet.call(this, new_value || value);
+              let call_result = originalSet.set.call(this, new_value || value);
               aftermath && aftermath(this, value, new_value);
               return call_result;
             }, window)
@@ -200,17 +204,45 @@ window.dark_object = {
           rules.unshift(...imports);
 
         },
-        send_data_image_to_parser: function(str, details, carried = {}) {
+        send_data_image_to_parser: function(str, details, carried = {},notableInfos={}) {
           
           if (str.trim().toLowerCase().startsWith('data:') && !uDark.userSettings.disable_image_edition) {
-
+            let isSvgDataUrl = str.startsWith("data:image/svg+xml");
             carried.changed = true;
-            str = str.replace(/(?<!(base64IMG=))(data:image\/(png|jpe?g|svg\+xml);base64,([^\"]*?))([)'"]|$)/g, "https://data-image.com?base64IMG=$&")
+            if(isSvgDataUrl) // Synchronous edit for data SVGs images, we have some nice context and functions to work with
+            { // This avoids loosing svg data including the size of the image, and the tags in the image
+              isBase64 = str.includes("base64");
+              str=str.split(",")[1]
+              isBase64?str=atob(str):str=decodeURIComponent(str)
+              str=uDark.frontEditHTML(false,str)
+              if(uDark.disable_reencode_data_svg_to_base64)
+              {
+                str="data:image/svg+xml,"+encodeURIComponent(str)
+              }
+              else
+              {
+
+                str="data:image/svg+xml;base64,"+btoa(str)+" ";
+              }
+            }
+            else
+            {
+              str="https://data-image.com?base64IMG="+str; // Sending other images to the parser via the worker,
+            }
           }
           return str;
         },
+        get_fill_for_svg_elem: function(fillElem,override_value=false) {
+            fillElem.setAttribute("udark-fill", true);
+            let fillValue = override_value||fillElem.getAttribute("fill");
+            if(["animate"].includes(fillElem.tagName)){return fillValue} // fill has another meaning for animate
+            let is_text=["text","tspan"].includes(fillElem.tagName);
+            let edit_challenge=`${is_text?"":"background-"}color:${fillValue};`
+            let edit_result=uDark.edit_str(edit_challenge).slice(is_text?7:18,-1)
+            return  edit_result; 
+        },
         frontEditHTML: (elem, value) => {
-          if (elem instanceof HTMLStyleElement) {
+          if (elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement) {
             return uDark.edit_str(value)
           }
 
@@ -237,6 +269,9 @@ window.dark_object = {
             astyle.classList.add("ud-edited-content-script")
 
           });
+          documentElement.querySelectorAll("[fill]:not([udark-fill])").forEach(fillElem => {
+            fillElem.setAttribute("fill",uDark.get_fill_for_svg_elem(fillElem))
+          })
           documentElement.querySelectorAll("[style]").forEach(astyle => {
             // console.log(details,astyle,astyle.innerHTML,astyle.innerHTML.includes(`button,[type="reset"],[type="button"],button:hover,[type="button"],[type="submit"],button:active:hover,[type="button"],[type="submi`))
             astyle.setAttribute("style", uDark.edit_str(astyle.getAttribute("style")));
@@ -250,9 +285,6 @@ window.dark_object = {
             image.setAttribute("src", uDark.image_element_prepare_href(image, documentElement));
 
             // uDark.registerBackgroundItem(false,{selectorText:`img[src='${image.src}']`}, details)
-          })
-          documentElement.querySelectorAll("img[src*='data']").forEach(image => {
-            image.src = uDark.send_data_image_to_parser(image.getAttribute("src"))
           })
           let result_edited = undefined;
 
@@ -696,7 +728,6 @@ window.dark_object = {
             //changed = true;
             let link = g1.trim();
 
-            link = uDark.send_data_image_to_parser(link, false, carried);
             carried.changed = true;
             
             let notableInfos = {
@@ -708,6 +739,7 @@ window.dark_object = {
             {
               usedChar = "µDark"
             }
+            link = uDark.send_data_image_to_parser(link, false, carried,notableInfos);
             link += usedChar + new URLSearchParams(notableInfos).toString();
             return 'url("' + link + '")';
           })
@@ -730,6 +762,12 @@ window.dark_object = {
               }
               if (action.remove) {
                 cssStyle.removeProperty(key);
+              }
+              if (action.stickToProperty) {
+                let vars = action.stickToProperty;
+                let value = cssStyle.getPropertyValue(key)
+                let new_value = vars.stick(value);
+                cssStyle.setProperty(vars.rKey, new_value);
               }
               if (action.stickConcatToPropery) {
                 let vars = action.stickConcatToPropery;
@@ -817,7 +855,7 @@ window.dark_object = {
         },
 
         hexadecimalColorsRegex: /#[0-9a-f]{3,4}(?:[0-9a-f]{2})?(?:[0-9a-f]{2})?/gmi, // hexadecimal colors
-        foreground_color_css_properties: ["color", "fill"], // css properties that are foreground colors
+        foreground_color_css_properties: ["color"], // css properties that are foreground colors
         // Gradients can be set in background-image
         background_color_css_properties_regex: /color|fill|box-shadow|^background(?:-image|-color)?$/, // Background images can contain colors // css properties that are background colors
         edit_prefix_fg_vars: function(idk_mode, value, actions) {
@@ -947,6 +985,10 @@ window.dark_object = {
             }
 
             if (x.startsWith("--")) {
+              if(x.startsWith("--ud-fg--"))
+              {
+                continue
+              }
               variables_items.push(x);
               continue; // Eliminate Variables, i don't think its usefull to test them againt regexes
             }
@@ -1034,6 +1076,14 @@ window.dark_object = {
         }, // Not sure about this one, it's detected as a background color, and gets edited.
         "color-scheme": {
           replace: ["light", "dark"]
+        },
+        
+        "fill": {
+          stickToProperty: {
+            rKey: "--ud-fg--fill-color",
+            //function(anycolor, editColorF = false, cssRule = false, no_color = false)
+            stick: value=> uDark.eget_color(value,uDark.revert_rgba,false,false)
+          }
         },
         "mask-image": {
           stickConcatToPropery: {
@@ -1392,9 +1442,9 @@ window.dark_object = {
           return args;
         })
       // This is the one youtube uses
-      uDark.valuePrototypeEditor(Element, "innerHTML", uDark.frontEditHTML, (elem, value) => value && value.toString().includes('style') || elem instanceof HTMLStyleElement); // toString : sombe object can redefine tostring to generate thzir inner
+      uDark.valuePrototypeEditor(Element, "innerHTML", uDark.frontEditHTML, (elem, value) => value && value.toString().match(/style|fill/)|| elem instanceof HTMLStyleElement||elem instanceof SVGStyleElement); // toString : sombe object can redefine tostring to generate thzir inner
       //geo.fr uses this one
-      uDark.valuePrototypeEditor(Element, "outerHTML", uDark.frontEditHTML, (elem, value) => value && value.toString().includes('style') || elem instanceof HTMLStyleElement); // toString : sombe object can redefine tostring to generate thzir inner
+      uDark.valuePrototypeEditor(Element, "outerHTML", uDark.frontEditHTML, (elem, value) => value && value.toString().includes(/style|fill/) || elem instanceof HTMLStyleElement||elem instanceof SVGStyleElement); // toString : sombe object can redefine tostring to generate thzir inner
 
       // This is the one google uses
       uDark.functionPrototypeEditor(Element, Element.prototype.insertAdjacentHTML, (elem, args) => {
@@ -1408,15 +1458,12 @@ window.dark_object = {
       }, (elem, args) => args[0] == "style")
 
       uDark.valuePrototypeEditor(HTMLImageElement, "src", (image, value) => {
-        if(image.alt=="What is 256-Bit Encryption? — Definition by Techslang")
-        {
-          
-          let newvalue = uDark.image_element_prepare_href(image, document, value)
-          console.log("SETTING",image,value, newvalue)
-          return newvalue;
-        }
         return uDark.image_element_prepare_href(image, document, value);
       });
+      uDark.valuePrototypeEditor(SVGImageElement, "href", (image, value) => {
+            return uDark.image_element_prepare_href(image, document, value);
+      });
+      
 
       uDark.valuePrototypeEditor(HTMLLinkElement, "href", (elem, value) => {
         if (elem.rel.endsWith("icon")) {
@@ -1519,14 +1566,20 @@ window.dark_object = {
       uDark.valuePrototypeEditor(Node, "textContent", (elem, value) => {
         return uDark.edit_str(value)
 
-      }, (elem, value) => elem instanceof HTMLStyleElement)
+      }, (elem, value) => elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement)
 
       uDark.valuePrototypeEditor(CSS2Properties, "background", (elem, value) => {
         let possiblecolor = uDark.is_color(value);
         return possiblecolor ? uDark.rgba(...possiblecolor) : value;
 
       })
-
+      uDark.valuePrototypeEditor(CSS2Properties, "fill", (elem, value) => {
+        console.log(elem, value, "fill", "edited");
+        let randIdentifier= Math.random().toString().slice(2)
+        elem.floodColor=`var(--${randIdentifier})`
+        return uDark.get_fill_for_svg_elem(document.querySelector(`[style*='${randIdentifier}]`)
+        ||document.createElement('zz'), value);
+      })
       // uDark.valuePrototypeEditor(CSSRule, "cssText", (elem, value) => uDark.edit_str(value)) // As far as I know, this is not affects to edit css text directly on CSSRule
       uDark.valuePrototypeEditor(CSSStyleDeclaration, "cssText", (elem, value) => uDark.edit_str(value)) // However this one does ( on elements.style.cssText and on cssRules.style.cssText, it keeps the selector as is, but the css is edited: 'color: red')
 
@@ -1550,12 +1603,12 @@ window.dark_object = {
       // valuePrototypeEditor: function(leType, atName, watcher = x => x, conditon = x => x, aftermath = false) {
       uDark.valuePrototypeEditor(CSS2Properties, "background-color", (elem, value) => uDark.eget_color(value,uDark.rgba))
       uDark.valuePrototypeEditor(CSS2Properties, "color", (elem, value) => uDark.eget_color(value,uDark.revert_rgba))
-      uDark.valuePrototypeEditor(HTMLElement, "style", (elem, value) => uDark.edit_str(value)) // Care with "style and eget, this cause recursions"
+      uDark.valuePrototypeEditor([HTMLElement,SVGElement], "style", (elem, value) => uDark.edit_str(value)) // Care with "style and eget, this cause recursions"
       // TODO: Support CSS url(data-image) in all image relevant CSS properties like background-image etc
 
-      uDark.valuePrototypeEditor(HTMLElement, "innerText", (elem, value) => {
+      uDark.valuePrototypeEditor(HTMLElement,"innerText", (elem, value) => {
         return uDark.edit_str(value)
-      }, (elem, value) => value && elem instanceof HTMLStyleElement);
+      }, (elem, value) => value && (elem instanceof HTMLStyleElement)) // No innerText for SVGStyleElement, it's an HTMLElement feature
 
       console.info("UltimaDark", "Websites overrides ready", window, "elapsed:", (new Date() / 1) - start);
 
@@ -2273,6 +2326,9 @@ window.dark_object = {
               }
               astyle.classList.add("ud-edited-background")
             });
+            documentElement.querySelectorAll("[fill]:not([udark-fill])").forEach(fillElem => {
+              fillElem.setAttribute("fill",uDark.get_fill_for_svg_elem(fillElem))
+            })
             aDocument.querySelectorAll("[style]").forEach(astyle => {
               // console.log(details,astyle,astyle.innerHTML,astyle.innerHTML.includes(`button,[type="reset"],[type="button"],button:hover,[type="button"],[type="submit"],button:active:hover,[type="button"],[type="submi`))
               astyle.setAttribute("style", uDark.edit_str(astyle.getAttribute("style"), false, false, details));
@@ -2283,9 +2339,6 @@ window.dark_object = {
               if (m.httpEquiv.toLowerCase().trim() == "content-type" && m.content.includes("charset")) {
                 m.content = "text/html; charset=utf-8"
               }
-            })
-            aDocument.querySelectorAll("img[src*='data']").forEach(image => {
-              image.src = uDark.send_data_image_to_parser(image.getAttribute("src"), details)
             })
             aDocument.querySelectorAll("link[rel*='icon'][href]").forEach(link => {
               link.setAttribute("href", link.getAttribute('href') + "#ud_favicon");
@@ -2305,14 +2358,14 @@ window.dark_object = {
             //   });
             // /
 
-            aDocument.querySelectorAll("[fill],[color],path,[bgcolor]").forEach(coloreditem => {
-              for (const [key, afunction] of Object.entries(uDark.attfunc_map)) {
-                var possiblecolor = uDark.is_color(coloreditem.getAttribute(key))
-                if (possiblecolor) {
-                  coloreditem.setAttribute(key, afunction(...possiblecolor, uDark.hex_val))
-                }
-              }
-            })
+            // aDocument.querySelectorAll("[fill],[color],path,[bgcolor]").forEach(coloreditem => {
+            //   for (const [key, afunction] of Object.entries(uDark.attfunc_map)) {
+            //     var possiblecolor = uDark.is_color(coloreditem.getAttribute(key))
+            //     if (possiblecolor) {
+            //       coloreditem.setAttribute(key, afunction(...possiblecolor, uDark.hex_val))
+            //     }
+            //   }
+            // })
             if (details.datacount == 1) {
 
               var udStyle = document.createElement("style")
@@ -2676,17 +2729,17 @@ window.dark_object = {
     editBeforeRequestImage: async function(details) {
       
       if (details.url.startsWith("https://data-image.com/?base64IMG=") && !uDark.disable_image_edition) {
-        let dataUrl = details.url.slice(34)
-        details.isSvgDataUrl = dataUrl.startsWith("data:image/svg+xml")
+        const dataUrl = details.url.slice(34);
+        const arrayBuffer = await (await fetch(dataUrl)).arrayBuffer();
+        const reader = new FileReader() // Faster but ad what cost later ? 
         const imageWorker= new uDark.LoggingWorker("imageWorker.js");
-        const reader = new FileReader();        
-        const arrayBuffer = await fetch(dataUrl).then(w=>w.arrayBuffer())
         imageWorker.addEventListener("message",event=>{
           if(event.data.editionComplete)
           {
             reader.readAsDataURL(new Blob(event.data.buffers));
           }
         })
+        
         imageWorker.postMessage({oneImageBuffer:arrayBuffer,filterStopped:1,details:details},[arrayBuffer]) // Explicityly transfer the ArrayBuffer to the worker
         return new Promise( resolve => reader.onload = (e) => resolve({redirectUrl:reader.result}));
       }
@@ -2704,56 +2757,71 @@ window.dark_object = {
       if (details.url && (use2024Experimentalway = true)) {
 
         let imageURLObject = new URL(details.url);
-        for (header of details.responseHeaders) {
-          if (header.value.toLowerCase().includes("image/svg")) {
-            details.isSVGImage = true;
-          }
+        let n = details.responseHeaders.length;
+        
+        details.headersLow = {}
+        while (n--) {
+          details.headersLow[details.responseHeaders[n].name.toLowerCase()] = details.responseHeaders[n].value;
         }
-        if (details.isSVGImage) {
-          return {}; // TODO: Support SVG images
-        }
+        if (!(details.headersLow["content-type"] || "text/html").includes("text/html")) return {}
+        details.charset = ((details.headersLow["content-type"] || "").match(/charset=([0-9A-Z-]+)/i) || ["", "utf-8"])[1]
+        details.isSVGImage=(details.headersLow["content-type"] || "").includes("image/svg")
+        
         // Determine if the image deserves to be edited
         if (imageURLObject.pathname.startsWith("/favicon.ico") || imageURLObject.hash.endsWith("#ud_favicon")) {
           return {};
         }
 
         let filter = browser.webRequest.filterResponseData(details.requestId); // After this instruction, browser espect us to write data to the filter and close it
+        
+        let secureTimeout = setTimeout(()=>{filter.disconnect()},30000) // Take care of very big images
         details.buffers = details.buffers || [];
         
-        let imageWorker= new uDark.LoggingWorker("imageWorker.js");
-        imageWorker.addEventListener("message",event=>{
-         
-          if(event.data.editionComplete)
-          {
-            for(buffer of event.data.buffers){
-              try{
-                filter.write(buffer);
-              }
-              catch(e)
-              {
-                console.log(e.message)
-              }
-            }
-            filter.disconnect();
+        if(details.isSVGImage)
+        {
+          let decoder = new TextDecoder(details.charset)
+          let encoder = new TextEncoder();
+          filter.ondata = event =>  details.buffers.push(event.data);
+          let svgURLObject = new URL(details.url);
+          let complementIndex = svgURLObject.hash.indexOf("µDark")
+          let complement=new URLSearchParams(complementIndex==-1?"":svgURLObject.hash.slice(complementIndex+5))
+          filter.onstop = event => {
+            new Blob(details.buffers).arrayBuffer().then((buffer) => { 
+              let svgString = decoder.decode(buffer,{stream:true});
+              let svgStringEdited = uDark.frontEditHTML(false,svgString,{},complement);
+              filter.write(encoder.encode(svgStringEdited));
+              filter.disconnect();
+              clearInterval(secureTimeout);
+            });
           }
-        })
-        filter.ondata = event => {
-          // details.buffers.push(event.data);
-          imageWorker.postMessage({oneImageBuffer:event.data},[event.data]) // Explicityly transfer the ArrayBuffer to the worker
-          
         }
-        
-        filter.onstop = event => {
-          let image=new Image();
-          
-          imageWorker.postMessage({filterStopped:1,details});
-          // createImageBitmap(new Blob(details.buffers)).then(imageBitmap=>{
-          //   console.log(imageBitmap);
-          // })  // ImageBitmap is a transferable object, so we can transfer it to the worker, and its the firs kind of transferable which owns width and height properties
+        else
+        {
+          let imageWorker= new uDark.LoggingWorker("imageWorker.js");
+          imageWorker.addEventListener("message",event=>{
+            if(event.data.editionComplete)
+            {
+              for(buffer of event.data.buffers){
+                try{
+                  filter.write(buffer);
+                }
+                catch(e)
+                {
+                  console.log(e.message)
+                }
+              }
+              filter.disconnect();
+              clearInterval(secureTimeout);
+            }
+          })
+          filter.ondata = event => {
+            imageWorker.postMessage({oneImageBuffer:event.data},[event.data]) // Explicityly transfer the ArrayBuffer to the worker
             
-          
+          }
+          filter.onstop = event => {
+            imageWorker.postMessage({filterStopped:1,details});
+          }
         }
-        setTimeout(()=>{filter.disconnect()},5000)
         return {}
       }
       
