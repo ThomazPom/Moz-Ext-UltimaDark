@@ -1,5 +1,41 @@
 let imageBuffers = [];
+console.log=(...args)=>{
+        for (i = 0; i < args.length; i++) {
+            if(typeof args[i]=="function")
+            {
+                args[i]=args[i].name;
+            }
+            
+            
+            if(typeof args[i]=="object")
+            {
+                if(args[i].name)
+                {
+                    args[i]=args[i].name;
+                }
+                // args[i]=JSON.stringify(args[i]);
+            }
+        }
+    postMessage({logMessage:args})
+    // setTimeout(() => {
+    //     for (i = 0; i < args.length; i++) {
+    //         if(typeof args[i]=="undefined")
+    //         {   
 
+    //             args[i]="undefined";
+    //         }
+    //         if(args[i].name)
+    //         {
+    //             args[i]=args[i].name;
+    //         }
+    //         if (typeof args[i] == "object") {
+    //             args[i] = JSON.stringify(args[i]);
+    //         }
+    //         args[i] = args[i] + "";
+    //     }
+    //     throw new Error("MESSAGE FROM WORKER " + args.join("  --  "));
+    // }, 0);
+}
 
 console.log("Image Service worker started")
 
@@ -10,8 +46,8 @@ uDark={
     RGBToLightness: (r, g, b) => {
         return (Math.max(r, g, b) + Math.min(r, g, b)) / 2;
       },
-    trigger_number_colors_photo: 1900,
-    trigger_number_lightness_photo: 500,
+    trigger_ratio_size_number_colors: 393,
+    trigger_ratio_size_number_lightness_photo: 9835,
     check_image_lines_content: function(canvas, ctx) {
         const leftBorderImageData = ctx.getImageData(0, 0, 1, canvas.height);
         const rightBorderImageData = ctx.getImageData(canvas.width - 1, 0, 1, canvas.height);
@@ -87,7 +123,7 @@ uDark={
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
         // Now you can work with the imageData object
-        console.log(imageData, img.src);
+        // console.log(imageData, img.src);
 
         // The imageData object has a data property, a Uint8ClampedArray containing the color values of each pixel in the image.
         // It is easier to work with this array as 32-bit integers, so we create a new Uint32Array from the original one
@@ -146,9 +182,10 @@ uDark={
               } else {
                 editionStatus.alpha_qty++;
               }
-              editionStatus.is_photo =
-                editionStatus.opaqueColorCounter.size >= uDark.trigger_number_colors_photo ||
-                editionStatus.lightnessCounter.size >= uDark.trigger_number_lightness_photo;
+
+              editionStatus.is_photo = 
+                theImageDataUint32TMP.length/editionStatus.opaqueColorCounter.size <= uDark.trigger_ratio_size_number_colors
+                && theImageDataUint32TMP.length/ editionStatus.lightnessCounter.size <= uDark.trigger_ratio_size_number_lightness_photo;
             }
             // Standard way 2023 // very very very slow (1.5s for a 500 x 500 img)
             // 2024 way : Go faster by finding the right caclulation for each pixel
@@ -224,42 +261,47 @@ uDark={
 
         // Refuse bacground images on certain conditions
 
-        if (
-          complement.has("width") && !complement.get("width").includes("%") && complement.get("width").startsWith(img.width) // We fetched the image with the same size as the element
-          ||
-          complement.has("height") && !complement.get("height").includes("%") && complement.get("height").startsWith(img.height) // We fetched the image with the same size as the element
-        ) {
-          return false;
+        if(enable_background_pre_check=true)
+        {
+            if (
+                complement.has("width") && !complement.get("width").includes("%") && complement.get("width").startsWith(img.width) // We fetched the image with the same size as the element
+                ||
+                complement.has("height") && !complement.get("height").includes("%") && complement.get("height").startsWith(img.height) // We fetched the image with the same size as the element
+              ) {
+                return false;
+              }
+      
+      
+              if (complement.has("uDark_backgroundRepeat") && /repeat|round|space/i.test(complement.get("uDark_backgroundRepeat").replaceAll("no-repeat", "")) ||
+                complement.has("alt") && /background/i.test(complement.get("alt")) ||
+                complement.has("uDark_cssClass") && /sprite/i.test(imageURLObject.pathname)
+      
+              ) {
+                editionConfidence += 100;
+              }
+      
+
         }
 
         // Draw the image onto the canvas
         ctx.drawImage(img, 0, 0);
-        // Get the ImageData from the canvas
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
         // Now you can work with the imageData object
         // console.log(imageData, img.src);
 
         // The imageData object has a data property, a Uint8ClampedArray containing the color values of each pixel in the image.
         // It is easier to work with this array as 32-bit integers, so we create a new Uint32Array from the original one.
-
-        if (complement.has("uDark_backgroundRepeat") && /repeat|round|space/i.test(complement.get("uDark_backgroundRepeat").replaceAll("no-repeat", "")) ||
-          complement.has("alt") && /background/i.test(complement.get("alt")) ||
-          complement.has("uDark_cssClass") && /sprite/i.test(imageURLObject.pathname)
-
-        ) {
-          editionConfidence += 100;
-        }
-
         if (complement.has("uDark_cssClass") && !(editionConfidence >= 100)) {
-          let linesColorCheck = uDark.check_image_lines_content(canvas, ctx)
-          if ((linesColorCheck.linesAchromaticOpaqueCount > 2 || linesColorCheck.linesGradientsCount > 2)&&linesColorCheck.linesFullAlphaCount==0) {
+        let linesColorCheck = uDark.check_image_lines_content(canvas, ctx)
+        if ((linesColorCheck.linesAchromaticOpaqueCount > 2 || linesColorCheck.linesGradientsCount > 2)&&linesColorCheck.linesFullAlphaCount==0) {
             editionConfidence += 100;
-          }
-          editionStatus.linesColorCheck = linesColorCheck;
         }
-        
+        editionStatus.linesColorCheck = linesColorCheck;
+        }
+        editionConfidence=0;
 
+        // Get the ImageData from the canvas
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         let theImageDataBufferTMP = new ArrayBuffer(imageData.data.length);
         let theImageDataClamped8TMP = new Uint8ClampedArray(theImageDataBufferTMP);
         theImageDataClamped8TMP.set(imageData.data);
@@ -267,6 +309,7 @@ uDark={
         // let theImageDataUint32TMP = new Uint32Array(imageData.data);
 
         let n = theImageDataUint32TMP.length;
+        
         console.log("Background","Entering the loop",details.url,details.requestId,"Confidence:",editionStatus.editionConfidence,new Date()/1-start_date/1,)
         if (!editionStatus.statsComplete) {
           editionStatus.colorCounter = new Set();
@@ -326,9 +369,9 @@ uDark={
               });
             }
 
-            editionStatus.is_photo =
-              editionStatus.opaqueColorCounter.size >= uDark.trigger_number_colors_photo ||
-              editionStatus.lightnessCounter.size >= uDark.trigger_number_lightness_photo;
+            editionStatus.is_photo = 
+              theImageDataUint32TMP.length/editionStatus.opaqueColorCounter.size <= uDark.trigger_ratio_size_number_colors
+              && theImageDataUint32TMP.length/ editionStatus.lightnessCounter.size <= uDark.trigger_ratio_size_number_lightness_photo;
           }
           var newColor = ((a << 24)) | (b << 16) | (g << 8) | r;
           theImageDataUint32TMP[n] = newColor;
@@ -346,9 +389,11 @@ uDark={
           console.log("Background","Stat not complete", details.url,details.requestId, editionStatus);
           return false;
         }
+        // throw new Error(editionStatus.lightnessCounter.size+" "+details.url);
+        console.log("Background","Stats complete",editionStatus.statsComplete,details.requestId,"Confidence:",editionStatus.editionConfidence,new Date()/1-start_date/1,editionStatus,imageData)
         
-        console.log("Background","Stats complete",editionStatus.statsComplete,"Confidence:",editionStatus.editionConfidence,new Date()/1-start_date/1,editionStatus,imageData)
-        if (editionStatus.statsComplete) {
+        
+        if (editionStatus.statsComplete&&(enableBackgroundPostCheck=true)) {
           if (!(editionConfidence >= 100) && !editionStatus.is_photo) {
 
             if (editionStatus.contrast_percent > .77 &&
@@ -398,14 +443,14 @@ uDark={
         let imageURLObject = new URL(details.url);
         
         // Determine the transformation function to use
-
-        let complement = (new URLSearchParams(imageURLObject.hash.slice(1)));
+        let complementIndex = imageURLObject.hash.indexOf("µDark")
+        let complement=new URLSearchParams(complementIndex==-1?"":imageURLObject.hash.slice(complementIndex+5))
         let edition_order_hooks = [uDark.background_image_edit_hook,
           uDark.logo_image_edit_hook
         ];
 
         if (
-          (complement.has("inside_a") ||
+          (complement.has("inside_clickable") ||
             imageURLObject.search.toLowerCase().includes("logo") ||
             (complement.has("class") && complement.get("class").toLowerCase().includes("logo")))
         ) {
@@ -421,7 +466,7 @@ uDark={
           return {}
         }
         
-        console.log("Image", "Editing image", details.url,details.requestId, edition_order_hooks,details.isDataUrl);
+        console.log("Image", "Editing image", details.url,details.requestId,details.isDataUrl);
 
         // Do the common tasks required for all edited images
         let start_date = new Date();
@@ -439,10 +484,7 @@ uDark={
           //     then: x => details.dataUrl
           //   })
           // }
-          let blob = undefined;
-          if (!details.isDataUrl) {
-            blob = (new Blob(imageBuffers));
-          }
+          let blob = (new Blob(imageBuffers));
           console.log("Image","Blob created", new Date() / 1 - start_date ,details.url,details.requestId)
           let imageBitmap=await  createImageBitmap(blob);
           

@@ -1,9 +1,4 @@
 
-let workerPool=Array(3).fill(1).map(x=>{
-  console.log("Creating worker");
-  return new Worker("imageWorker.js");
-})
-console.log("Image Service worker started",workerPool)
 
 window.dark_object = {
 
@@ -14,8 +9,6 @@ window.dark_object = {
       const CSS_COLOR_NAMES = ["AliceBlue", "AntiqueWhite", "Aqua", "Aquamarine", "Azure", "Beige", "Bisque", "Black", "BlanchedAlmond", "Blue", "BlueViolet", "Brown", "BurlyWood", "CadetBlue", "Chartreuse", "Chocolate", "Coral", "CornflowerBlue", "Cornsilk", "Crimson", "Cyan", "DarkBlue", "DarkCyan", "DarkGoldenRod", "DarkGray", "DarkGrey", "DarkGreen", "DarkKhaki", "DarkMagenta", "DarkOliveGreen", "DarkOrange", "DarkOrchid", "DarkRed", "DarkSalmon", "DarkSeaGreen", "DarkSlateBlue", "DarkSlateGray", "DarkSlateGrey", "DarkTurquoise", "DarkViolet", "DeepPink", "DeepSkyBlue", "DimGray", "DimGrey", "DodgerBlue", "FireBrick", "FloralWhite", "ForestGreen", "Fuchsia", "Gainsboro", "GhostWhite", "Gold", "GoldenRod", "Gray", "Grey", "Green", "GreenYellow", "HoneyDew", "HotPink", "IndianRed", "Indigo", "Ivory", "Khaki", "Lavender", "LavenderBlush", "LawnGreen", "LemonChiffon", "LightBlue", "LightCoral", "LightCyan", "LightGoldenRodYellow", "LightGray", "LightGrey", "LightGreen", "LightPink", "LightSalmon", "LightSeaGreen", "LightSkyBlue", "LightSlateGray", "LightSlateGrey", "LightSteelBlue", "LightYellow", "Lime", "LimeGreen", "Linen", "Magenta", "Maroon", "MediumAquaMarine", "MediumBlue", "MediumOrchid", "MediumPurple", "MediumSeaGreen", "MediumSlateBlue", "MediumSpringGreen", "MediumTurquoise", "MediumVioletRed", "MidnightBlue", "MintCream", "MistyRose", "Moccasin", "NavajoWhite", "Navy", "OldLace", "Olive", "OliveDrab", "Orange", "OrangeRed", "Orchid", "PaleGoldenRod", "PaleGreen", "PaleTurquoise", "PaleVioletRed", "PapayaWhip", "PeachPuff", "Peru", "Pink", "Plum", "PowderBlue", "Purple", "RebeccaPurple", "Red", "RosyBrown", "RoyalBlue", "SaddleBrown", "Salmon", "SandyBrown", "SeaGreen", "SeaShell", "Sienna", "Silver", "SkyBlue", "SlateBlue", "SlateGray", "SlateGrey", "Snow", "SpringGreen", "SteelBlue", "Tan", "Teal", "Thistle", "Tomato", "Turquoise", "Violet", "Wheat", "White", "WhiteSmoke", "Yellow", "YellowGreen"]
 
       window.uDark = {
-        trigger_number_colors_photo: 1900,
-        trigger_number_lightness_photo: 750,
         rgb_a_colorsRegex: /rgba?\([%0-9., \/a-z_+*-]+\)/gmi, // rgba vals with variables names and calcs involved NOTE: #rgba(255 255 255 / 0.1) is valid color rgba(255,255,255,30%) is valid color too
         hsl_a_colorsRegex: /hsla?\(([%0-9., \/=a-z_+*-]|deg|turn|tetha)+\)/gmi, // hsla vals  with variables names and calcs involved  #rgba(255 255 255 / 0.1)
         direct_window_export: true,
@@ -80,15 +73,18 @@ window.dark_object = {
             uDark.edit_cssRules(styleSheet.cssRules, true);
           });
         },
-        image_element_prepare_href: function(image, aDocument, src_override) // Adds notable infos to the image element href, used by the image edition feature
+        search_clickable_parent(documentElement, selectorText) {
+          return documentElement.querySelector(`a ${selectorText},button ${selectorText}`);
+        },
+        image_element_prepare_href: function(image, documentElement, src_override) // Adds notable infos to the image element href, used by the image edition feature
         {
           if(!uDark.disable_lazy_loading)
           {
             image.loading="lazy";
           }
+
           // Do not parse url preventing adding context to it or interpreting it as a relative url or correcting its content by any way
           let imageTrueSrc = src_override || image.getAttribute("src")
-
           if (!image.hasAttribute("data-ud-selector")) {
             image.setAttribute("data-ud-selector", Math.random());
           }
@@ -100,31 +96,49 @@ window.dark_object = {
               notableInfos[attributeName] = infoValue;
             }
           }
-          let parentAnchor = aDocument.querySelector(`a ${selectorText}`);
-          if (parentAnchor) {
-            notableInfos["inside_a"] = true;
+          if(imageTrueSrc.includes("µDark")){
+            return imageTrueSrc;
           }
-          return imageTrueSrc + "#" + new URLSearchParams(notableInfos).toString();
+          if (uDark.search_clickable_parent(documentElement, selectorText)) {
+            notableInfos.inside_clickable = true;
+          }
+          let usedChar = "#µDark"
+          if(imageTrueSrc.includes("#"))
+          {
+            usedChar = "µDark"
+          }
+          imageTrueSrc=uDark.send_data_image_to_parser(imageTrueSrc,false,{notableInfos}) 
+
+          return imageTrueSrc + usedChar + new URLSearchParams(notableInfos).toString();
         },
         valuePrototypeEditor: function(leType, atName, watcher = x => x, conditon = x => x, aftermath = false) {
           //   console.log(leType,atName)
           // if (conditon) {
           //   console.log("VAdding condtition to", leType, leType.name, conditon, conditon.toString())
           // }
+          if(leType.concat)
+          {
+            return leType.forEach(aType=>uDark.valuePrototypeEditor(aType, atName, watcher, conditon, aftermath))
+          }
 
           if (leType.wrappedJSObject) { // Cross compatibilty with content script
             leType = leType.wrappedJSObject;
           }
-          var originalSet = Object.getOwnPropertyDescriptor(leType.prototype, atName).set;
+         
+          var originalSet = Object.getOwnPropertyDescriptor(leType.prototype, atName);
+          if(!originalSet)
+          {
+            console.log("No setter for '",atName,"'",leType,leType.name,leType.prototype)
+          }
           Object.defineProperty(leType.prototype, "o_ud_set_" + atName, {
-            set: originalSet
+            set: originalSet.set
           });
           // uDark.general_cache["o_ud_set_"+atName]=originalSet
           Object.defineProperty(leType.prototype, atName, {
             set: exportFunction(function(value) { // getters must be exported like regular functions
               // console.log("Setting", this, atName, value)
               var new_value = conditon && conditon(this, value) ? watcher(this, value) : value;
-              let call_result = originalSet.call(this, new_value || value);
+              let call_result = originalSet.set.call(this, new_value || value);
               aftermath && aftermath(this, value, new_value);
               return call_result;
             }, window)
@@ -192,19 +206,94 @@ window.dark_object = {
           rules.unshift(...imports);
 
         },
-        send_data_image_to_parser: function(str, details, carried = {}) {
-          if (!uDark.edit_data_images) {
-            return str;
-          }
+        send_data_image_to_parser: function(str, details, carried) {
+          
           if (str.trim().toLowerCase().startsWith('data:') && !uDark.userSettings.disable_image_edition) {
-
+            let isSvgDataUrl = str.startsWith("data:image/svg+xml");
             carried.changed = true;
-            str = str.replace(/(?<!(base64IMG=))(data:image\/(png|jpe?g|svg\+xml);base64,([^\"]*?))([)'"]|$)/g, "https://data-image.com?base64IMG=$&")
+            carried.svgImage = true;
+            if(isSvgDataUrl) // Synchronous edit for data SVGs images, we have some nice context and functions to work with
+            { // This avoids loosing svg data including the size of the image, and the tags in the image
+              isBase64 = str.includes("base64");
+              str=str.split(",")[1]
+              isBase64?str=atob(str):str=decodeURIComponent(str)
+              str=uDark.frontEditHTML(false,str,carried)
+              if(uDark.disable_reencode_data_svg_to_base64)
+              {
+                str="data:image/svg+xml,"+encodeURIComponent(str)
+              }
+              else
+              {
+
+                str="data:image/svg+xml;base64,"+btoa(str)+" ";
+              }
+            }
+            else
+            {
+              str="https://data-image.com?base64IMG="+str; // Sending other images to the parser via the worker,
+            }
           }
           return str;
         },
-        frontEditHTML: (elem, value) => {
-          if (elem instanceof HTMLStyleElement) {
+        
+        get_fill_for_svg_elem: function(fillElem,override_value=false,carried) {
+
+            fillElem.setAttribute("udark-fill", true);
+            let fillValue = override_value||fillElem.getAttribute("fill");
+            if(["animate"].includes(fillElem.tagName)){return fillValue} // fill has another meaning for animate
+            let is_text=carried.notableInfos.guessed_type=="logo"
+            ||["text","tspan"].includes(fillElem.tagName);
+            let edit_challenge=`${is_text?"":"background-"}color:${fillValue};`
+            let edit_result=uDark.edit_str(edit_challenge).slice(is_text?7:18,-1)
+            return  edit_result; 
+        },
+        frontEditSVG: function(svg,documentElement,carried) {
+          carried.notableInfos=carried.notableInfos||{};
+          svg.setAttribute("udark-fill", true);
+          svg.setAttribute("udark-id", Math.random());
+          let svgUdarkId = svg.getAttribute("udark-id");
+          if(!carried.notableInfos.inside_clickable)
+          {
+            if(uDark.search_clickable_parent(documentElement, `svg[udark-id='${svgUdarkId}']`))
+            {
+              carried.notableInfos.inside_clickable = true;
+              carried.notableInfos.guessed_type="logo";
+            }
+          }
+          let {  width,height  } = svg.getBoundingClientRect();
+          if (!width || !height) {
+            let {width2,height2} = svg.getBBox();
+            width,height=width2,height2
+          }
+          carried.notableInfos.width = width;
+          carried.notableInfos.height = height;
+          if((/logo|icon|alert|notif|cart|menu|tooltip|dropdown/).test(svg.parentNode.outerHTML))
+          {
+            carried.notableInfos.guessed_type="logo";
+          }
+          if(carried.notableInfos.width>500||carried.notableInfos.height>500)
+          {
+            carried.notableInfos.guessed_type="background";
+          }
+
+          if(!svg.querySelector("#udark-styled")&&carried.notableInfos.guessed_type=="logo")
+          {
+            svg.setAttribute("fill", "white");
+            let styleElem=document.createElement("style");
+            styleElem.id="udark-styled";
+            let textNode= document.createTextNode("")
+            styleElem.append(textNode)
+            // textNode.replaceData(0, 0, "*:not(fill){fill:white;}")
+            svg.prepend(styleElem);
+
+          }
+          svg.querySelectorAll("[fill]:not([udark-fill])").forEach(fillElem => {
+            fillElem.setAttribute("fill",uDark.get_fill_for_svg_elem(fillElem,false,carried))
+          })
+          svg.setAttribute("udark-infos", new URLSearchParams(carried.notableInfos).toString());
+        },
+        frontEditHTML: (elem, value,carried={}) => {
+          if (elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement) {
             return uDark.edit_str(value)
           }
 
@@ -231,6 +320,12 @@ window.dark_object = {
             astyle.classList.add("ud-edited-content-script")
 
           });
+
+          
+          documentElement.querySelectorAll("svg").forEach(svg => {
+            uDark.frontEditSVG(svg,documentElement,carried)
+          })
+
           documentElement.querySelectorAll("[style]").forEach(astyle => {
             // console.log(details,astyle,astyle.innerHTML,astyle.innerHTML.includes(`button,[type="reset"],[type="button"],button:hover,[type="button"],[type="submit"],button:active:hover,[type="button"],[type="submi`))
             astyle.setAttribute("style", uDark.edit_str(astyle.getAttribute("style")));
@@ -244,9 +339,6 @@ window.dark_object = {
             image.setAttribute("src", uDark.image_element_prepare_href(image, documentElement));
 
             // uDark.registerBackgroundItem(false,{selectorText:`img[src='${image.src}']`}, details)
-          })
-          documentElement.querySelectorAll("img[src*='data']").forEach(image => {
-            image.src = uDark.send_data_image_to_parser(image.getAttribute("src"))
           })
           let result_edited = undefined;
 
@@ -690,16 +782,23 @@ window.dark_object = {
             //changed = true;
             let link = g1.trim();
 
-            link = uDark.send_data_image_to_parser(link, false, carried);
             carried.changed = true;
-            let usedChar = link.includes("#") ? "&" : "?"
-            usedChar = "#";
+            
             let notableInfos = {
               "uDark_cssClass": encodeURI(cssRule.selectorText),
               "uDark_backgroundRepeat": cssStyle.backgroundRepeat,
             };
-
-            link += usedChar + new URLSearchParams(notableInfos).toString();
+            let usedChar = "#µDark"
+            if(link.includes("#"))
+            {
+              usedChar = "µDark"
+            }
+            carried.notableInfos = notableInfos;
+            link = uDark.send_data_image_to_parser(link, false, carried);
+            if(!carried.svgImage)
+            {
+              link += usedChar + new URLSearchParams(notableInfos).toString();
+            }
             return 'url("' + link + '")';
           })
 
@@ -721,6 +820,12 @@ window.dark_object = {
               }
               if (action.remove) {
                 cssStyle.removeProperty(key);
+              }
+              if (action.stickToProperty) {
+                let vars = action.stickToProperty;
+                let value = cssStyle.getPropertyValue(key)
+                let new_value = vars.stick(value);
+                cssStyle.setProperty(vars.rKey, new_value);
               }
               if (action.stickConcatToPropery) {
                 let vars = action.stickConcatToPropery;
@@ -808,7 +913,7 @@ window.dark_object = {
         },
 
         hexadecimalColorsRegex: /#[0-9a-f]{3,4}(?:[0-9a-f]{2})?(?:[0-9a-f]{2})?/gmi, // hexadecimal colors
-        foreground_color_css_properties: ["color", "fill"], // css properties that are foreground colors
+        foreground_color_css_properties: ["color"], // css properties that are foreground colors
         // Gradients can be set in background-image
         background_color_css_properties_regex: /color|fill|box-shadow|^background(?:-image|-color)?$/, // Background images can contain colors // css properties that are background colors
         edit_prefix_fg_vars: function(idk_mode, value, actions) {
@@ -938,6 +1043,10 @@ window.dark_object = {
             }
 
             if (x.startsWith("--")) {
+              if(x.startsWith("--ud-fg--"))
+              {
+                continue
+              }
               variables_items.push(x);
               continue; // Eliminate Variables, i don't think its usefull to test them againt regexes
             }
@@ -1025,6 +1134,14 @@ window.dark_object = {
         }, // Not sure about this one, it's detected as a background color, and gets edited.
         "color-scheme": {
           replace: ["light", "dark"]
+        },
+        
+        "fill": {
+          stickToProperty: {
+            rKey: "--ud-fg--fill-color",
+            //function(anycolor, editColorF = false, cssRule = false, no_color = false)
+            stick: value=> uDark.eget_color(value,uDark.revert_rgba,false,false)
+          }
         },
         "mask-image": {
           stickConcatToPropery: {
@@ -1383,9 +1500,9 @@ window.dark_object = {
           return args;
         })
       // This is the one youtube uses
-      uDark.valuePrototypeEditor(Element, "innerHTML", uDark.frontEditHTML, (elem, value) => value && value.toString().includes('style') || elem instanceof HTMLStyleElement); // toString : sombe object can redefine tostring to generate thzir inner
+      uDark.valuePrototypeEditor(Element, "innerHTML", uDark.frontEditHTML, (elem, value) => value && value.toString().match(/style|fill/)|| elem instanceof HTMLStyleElement||elem instanceof SVGStyleElement); // toString : sombe object can redefine tostring to generate thzir inner
       //geo.fr uses this one
-      uDark.valuePrototypeEditor(Element, "outerHTML", uDark.frontEditHTML, (elem, value) => value && value.toString().includes('style') || elem instanceof HTMLStyleElement); // toString : sombe object can redefine tostring to generate thzir inner
+      uDark.valuePrototypeEditor(Element, "outerHTML", uDark.frontEditHTML, (elem, value) => value && value.toString().includes(/style|fill/) || elem instanceof HTMLStyleElement||elem instanceof SVGStyleElement); // toString : sombe object can redefine tostring to generate thzir inner
 
       // This is the one google uses
       uDark.functionPrototypeEditor(Element, Element.prototype.insertAdjacentHTML, (elem, args) => {
@@ -1399,9 +1516,12 @@ window.dark_object = {
       }, (elem, args) => args[0] == "style")
 
       uDark.valuePrototypeEditor(HTMLImageElement, "src", (image, value) => {
-
         return uDark.image_element_prepare_href(image, document, value);
       });
+      uDark.valuePrototypeEditor(SVGImageElement, "href", (image, value) => {
+            return uDark.image_element_prepare_href(image, document, value);
+      });
+      
 
       uDark.valuePrototypeEditor(HTMLLinkElement, "href", (elem, value) => {
         if (elem.rel.endsWith("icon")) {
@@ -1504,14 +1624,20 @@ window.dark_object = {
       uDark.valuePrototypeEditor(Node, "textContent", (elem, value) => {
         return uDark.edit_str(value)
 
-      }, (elem, value) => elem instanceof HTMLStyleElement)
+      }, (elem, value) => elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement)
 
       uDark.valuePrototypeEditor(CSS2Properties, "background", (elem, value) => {
         let possiblecolor = uDark.is_color(value);
         return possiblecolor ? uDark.rgba(...possiblecolor) : value;
 
       })
-
+      uDark.valuePrototypeEditor(CSS2Properties, "fill", (elem, value) => {
+        console.log(elem, value, "fill", "edited");
+        let randIdentifier= Math.random().toString().slice(2)
+        elem.floodColor=`var(--${randIdentifier})`
+        return uDark.get_fill_for_svg_elem(document.querySelector(`[style*='${randIdentifier}]`)
+        ||document.createElement('zz'), value);
+      })
       // uDark.valuePrototypeEditor(CSSRule, "cssText", (elem, value) => uDark.edit_str(value)) // As far as I know, this is not affects to edit css text directly on CSSRule
       uDark.valuePrototypeEditor(CSSStyleDeclaration, "cssText", (elem, value) => uDark.edit_str(value)) // However this one does ( on elements.style.cssText and on cssRules.style.cssText, it keeps the selector as is, but the css is edited: 'color: red')
 
@@ -1535,12 +1661,12 @@ window.dark_object = {
       // valuePrototypeEditor: function(leType, atName, watcher = x => x, conditon = x => x, aftermath = false) {
       uDark.valuePrototypeEditor(CSS2Properties, "background-color", (elem, value) => uDark.eget_color(value,uDark.rgba))
       uDark.valuePrototypeEditor(CSS2Properties, "color", (elem, value) => uDark.eget_color(value,uDark.revert_rgba))
-      uDark.valuePrototypeEditor(HTMLElement, "style", (elem, value) => uDark.edit_str(value)) // Care with "style and eget, this cause recursions"
+      uDark.valuePrototypeEditor([HTMLElement,SVGElement], "style", (elem, value) => uDark.edit_str(value)) // Care with "style and eget, this cause recursions"
       // TODO: Support CSS url(data-image) in all image relevant CSS properties like background-image etc
 
-      uDark.valuePrototypeEditor(HTMLElement, "innerText", (elem, value) => {
+      uDark.valuePrototypeEditor(HTMLElement,"innerText", (elem, value) => {
         return uDark.edit_str(value)
-      }, (elem, value) => value && elem instanceof HTMLStyleElement);
+      }, (elem, value) => value && (elem instanceof HTMLStyleElement)) // No innerText for SVGStyleElement, it's an HTMLElement feature
 
       console.info("UltimaDark", "Websites overrides ready", window, "elapsed:", (new Date() / 1) - start);
 
@@ -1799,6 +1925,17 @@ window.dark_object = {
           is_background: true,
           rgb_a_colorsRegex: /rgba?\([%0-9., \/]+\)/gmi, // rgba vals without variables and calc()involved #! rgba(255 255 255 / 0.1) is valid color and rgba(255,255,255,30%) too
           hsl_a_colorsRegex: /hsla?\(([%0-9., \/=]|deg|turn|tetha)+\)/gmi, // hsla vals without variables and calc() involved
+          LoggingWorker: class LoggingWorker extends Worker {
+            constructor(...args) {
+              super(...args);
+              this.addEventListener('message', function(e) {
+                if (e.data.logMessage) {
+                  console.log("imageWorker:", ...e.data.logMessage);
+                }
+              });
+
+            }
+          },
           headersdo: {
             "content-security-policy": (x => {
               x.value = x.value.replace(/script-src/, "script-src *")
@@ -1847,235 +1984,6 @@ window.dark_object = {
               }
               setTimeout(x => resolve({}), 1000);
             });
-          },
-          edit_an_image_old: function(details) {
-            var theUrl = new URL(details.url);
-            details.isDataUrl = theUrl.hostname == "data-image.com"
-            if (details.isDataUrl) {
-              details.dataUrl = details.url.slice(34)
-              details.isSvgDataUrl = details.dataUrl.startsWith("data:image/svg+xml;base64,")
-            }
-            if (theUrl.search.includes("ud-bypass_image") ||
-              (theUrl.search = "" && theUrl.pathname == "/favicon.ico")) {
-              return {}; // avoid simple favicons
-            }
-
-            var is_background = (uDark.background_match).test(theUrl.pathname + theUrl.search);
-            is_background = is_background || details.url.includes("#ud-background")
-            if (theUrl.pathname.endsWith(".gif") && !is_background && !theUrl.pathname.match(/logo|icon/i)) {
-              return {}; // avoid animated gifs
-            }
-            var canvas = document.createElement('canvas');
-            var myImage = new Image;
-
-            if (theUrl.pathname.match(/\.svg$/) || details.isSvgDataUrl) {
-              return new Promise((resolve, reject) => { // on my way to do a reaaal svg url parsing
-                let svgSupport = function(text) {
-                  var div = document.createElement("div");
-                  div.innerHTML = text;
-                  document.body.appendChild(div)
-                  var svg = div.querySelector('svg')
-                  if (!svg) { // Problem for later me
-                    console.warn("No svg found in " + details.url, text)
-                    return reject("No svg found in " + details.url, text);
-                  }
-                  var {
-                    width,
-                    height
-                  } = svg.getBoundingClientRect();
-                  if (!width || !height) {
-                    var {
-                      width,
-                      height
-                    } = svg.getBBox();
-                  }
-                  // console.log(svg.getBoundingClientRect(),svg.getBBox())
-
-                  div.innerHTML = text.replace("<svg", `<svg width="${width}"  height="${height}" `);
-                  svg = div.querySelector('svg')
-                  var can = document.createElement("canvas")
-                  var ctx = can.getContext('2d');
-                  var sourceImage = new Image;
-                  can.width = width;
-                  can.height = height;
-
-                  sourceImage.onload = function() {
-                    //                               console.log(width,height);
-                    ctx.drawImage(sourceImage, 0, 0, width, height);
-                    div.remove()
-                    // So far  svg'sare only used for logos
-                    var islogo = uDark.edit_a_logo(ctx, width, height, details);
-                    // console.log(details,can.toDataURL())
-                    // img1.src = can.toDataURL();
-                    resolve({
-                      redirectUrl: islogo ? can.toDataURL() : details.dataUrl
-                    });
-                  };
-                  myImage.onerror = x => {
-                    resolve({})
-                  }
-                  setTimeout(x => resolve({}), 750);
-
-                  sourceImage.src = uDark.svgDataURL(svg)
-                }
-
-                details.isSvgDataUrl ?
-                  svgSupport(atob(details.dataUrl.slice(26))) :
-                  fetch(details.url).then(response => response.text()).then(svgSupport)
-
-              })
-            } else {
-              return new Promise((resolve, reject) => {
-                if (details.isDataUrl) {
-                  myImage.src = details.dataUrl;
-                } else {
-                  myImage.src = details.url;
-                }
-
-                var normalresolve = x => {
-
-                  // Very small data:images are often used as backgrounds
-                  is_background = is_background || details.isDataUrl && (5 - myImage.width < 0 || 5 - myImage.width < 0)
-
-                  canvas.width = myImage.width;
-                  canvas.height = myImage.height;
-                  var context = canvas.getContext('2d');
-                  context.drawImage(myImage, 0, 0);
-
-                  // is_background=is_background&&!((/(logo|icon)/i).test(theUrl.pathname+theUrl.search))
-
-                  var islogo = !is_background && uDark.edit_a_logo(context, myImage.width, myImage.height, details);
-                  /*&& !theUrl.pathname.endsWith(".jpg") // some websites renames png files in jpg */
-
-                  //   console.log(theUrl,is_background,islogo,theUrl.search.startsWith("?data-image="))
-
-                  if (islogo) {
-                    resolve({
-                      redirectUrl: canvas.toDataURL()
-                    });
-                  } else if (is_background) {
-                    if (details.url.includes("#ud-background-magic")) {
-                      uDark.magic_a_background(context, myImage.width, myImage.height, 0xff)
-                    } else {
-                      uDark.edit_a_background(context, myImage.width, myImage.height, 0xff)
-
-                    }
-                    // console.log(details, theUrl, canvas);
-                    resolve({
-                      redirectUrl: canvas.toDataURL()
-                    });
-                  } else if (details.isDataUrl) {
-                    resolve({
-                      redirectUrl: myImage.src
-                    });
-                  } else {
-                    resolve({});
-                  }
-                }
-                myImage.onload = normalresolve;
-                myImage.onerror = x => {
-                  resolve({})
-                }
-                setTimeout(x => resolve({}), 1000);
-              })
-            }
-          },
-          edit_a_logo: function(canvasContext, width, height, details) { // must found a better saturation, less brighness calc
-            if (width * height < 50 || width < 5 || height < 5) { // small images can't be logos or affect the page
-              // console.log(`${details.url} is too small: ${width} width, ${height} height `)
-              return false;
-            }
-            // console.log(width,height,details)
-            let theImageData = canvasContext.getImageData(0, 0, width, height),
-              theImageDataBufferTMP = new ArrayBuffer(theImageData.data.length),
-              theImageDataClamped8TMP = new Uint8ClampedArray(theImageDataBufferTMP),
-              theImageDataUint32TMP = new Uint32Array(theImageDataBufferTMP),
-              n = theImageDataUint32TMP.length;
-            theImageDataClamped8TMP.set(theImageData.data);
-            //    console.log(details,"willresolve")
-            var cornerpixs = [
-              0, // 1 top right pixel
-              parseInt(width / 2), // 2 midle top pixel
-              width - 1, // 3 top right pixel
-              width * parseInt(height / 2) - (width - 1), // 4
-              width * parseInt(height / 2), // 5
-              n - width, // 6
-              n - parseInt(width / 2), // 7
-              n - 1
-            ] // 8
-            // console.log(cornerpixs.map(x=>theImageDataUint32TMP[x]));
-            // cornerpixs = cornerpixs.map(x => theImageDataUint32TMP[x] <= 0x00ffffff) // superior to 0x00ffffff is not fully alpha
-            cornerpixs = cornerpixs.map(x => theImageDataUint32TMP[x] < 0xff000000) // inferior to 0xff000000 is at least a bit transparent
-            // console.log(cornerpixs)
-            var pixelcount1 = cornerpixs.slice(0, 4).reduce((a, b) => a + b)
-            var pixelcount2 = cornerpixs.slice(4).reduce((a, b) => a + b)
-            // console.log(pixelcount)
-
-            //  console.log(details.url,pixelcount1,pixelcount1)
-            if (!pixelcount1 || !pixelcount2) {
-
-              // console.log(details.url,"is not a logo : not enough trasnparent pixels",cornerpixs,theImageData)
-              return false;
-            }
-
-            var samplepixels = theImageDataUint32TMP;
-            if (uDark.sample_mode_active == false) {
-              //          var sampler = 40
-              //        var samplepixelscount = Math.round(n/sampler); 
-              //      samplepixels = Array.from({length: samplepixelscount}, (x, i) => i*sampler).map(x=>theImageDataUint32TMP[x])
-              // #was used for globalcol#.map(number=>[number & 0xff,(number >> 8) & 0xff,(number >> 16) & 0xff])
-            }
-            let unique = [...new Set(samplepixels)];
-            // var maxcol = Math.max(...[].concat(...samplepixels));
-            // var delta= 255-maxcol // 255 is the future logo brightness inversion; can be configurable
-            //   console.log(unique);
-            // console.log(details.url,maxcol,n,samplepixels,unique.length)
-            //  console.log(details.url, unique,unique.length);
-            // console.log(width, height, details.url, "alphapix:", pixelcount, "unique", unique, "fullset", theImageDataUint32TMP, "sampleset", samplepixels, theImageData, canvasContext)
-            // console.log(details.url, unique.length);
-            if (unique.length > 700 + details.url.match(/logo|icon/) * 700 /*|| unique.length == 256 */
-              /*|| unique.indexOf(0) == -1*/ // already tested before
-            ) {
-              return false;
-            }
-            var delta2 = unique.includes(0xffffffff) && unique.includes(0xff000000) ? 135 : 0 // care with pow
-            // one last time : 00 is the opacity level : 0xff means full opacity, 0x00 means full transparency
-            imgDataLoop: while (n--) {
-              var number = theImageDataUint32TMP[n];
-              var r = number & 0xff;
-              var g = (number >> 8) & 0xff;
-              var b = (number >> 16) & 0xff;
-              var a = (number >> 24) & 0xff;
-              {
-                // Standard way 2023
-                [r, g, b, a] = uDark.revert_rgba(r, g, b, a, (...args) => args);
-              }
-              //     {
-              //       /*if((r+g+b)/3>500)
-              //     {
-              //       continue imgDataLoop;
-              //     }*/
-              //     var maxcol = Math.max(r, g, b) // Local max col
-              //     var delta = 255 - maxcol // 255 is the future logo brightness; can be configurable
-              //     if (delta2 && a && (r + g + b) < 1) {
-              //       delta -= delta2; // Experimental : if pic has black and white do not set black entirely white
-
-              //     }
-
-              //   r = Math.min(Math.pow(r + delta,1.05),255);
-              //   g = Math.min(Math.pow(g + delta,1.05),255);
-              //   b = Math.min(Math.pow(b + delta,1.05),255); // experimental power up whites in logos; but how much ?
-
-              //  /*   r = r + delta;
-              //     g = g + delta;
-              //     b = b + delta;*/
-              //     }
-              var newColor = ((a << 24)) | (b << 16) | (g << 8) | r;
-              theImageDataUint32TMP[n] = newColor;
-            }
-            theImageData.data.set(theImageDataClamped8TMP);
-            canvasContext.putImageData(theImageData, 0, 0);
-            return true;
           },
           magic_a_background(canvasContext, width, height) {
             let theImageData = canvasContext.getImageData(0, 0, width, height),
@@ -2127,61 +2035,6 @@ window.dark_object = {
             theImageData.data.set(theImageDataClamped8TMP);
             canvasContext.putImageData(theImageData, 0, 0);
 
-          },
-          edit_a_background: function(canvasContext, width, height, max_a = 1) {
-            // where all the magic happens
-            let theImageData = canvasContext.getImageData(0, 0, width, height),
-              theImageDataBufferTMP = new ArrayBuffer(theImageData.data.length),
-              theImageDataClamped8TMP = new Uint8ClampedArray(theImageDataBufferTMP),
-              theImageDataUint32TMP = new Uint32Array(theImageDataBufferTMP),
-              n = theImageDataUint32TMP.length;
-            theImageDataClamped8TMP.set(theImageData.data);
-            let date_start = (new Date()) / 1
-            imgDataLoop: while (n--) {
-              var number = theImageDataUint32TMP[n];
-              var r = number & 0xff;
-              var g = (number >> 8) & 0xff;
-              var b = (number >> 16) & 0xff;
-              var a = (number >> 24) & max_a;
-              { // Standard way 2023
-                [r, g, b, a] = uDark.rgba(r, g, b, a, (...args) => args);
-              }
-              // {
-
-              //     if ((r+b+g)/3<150)
-              //     continue imgDataLoop; // does not work with gradients
-              // }
-              // {
-              //   var oa = a;
-
-              //   var rgbarr = [r,g,b].map(x => uDark.max_bright_bg *(x/uDark.max(r,g,b)));
-              //   r=uDark.max( r-100,0)// rgbarr[0];
-              //   g=uDark.max( g-100,0)// rgbarr[1];
-              //   b=uDark.max( b-100,0)// rgbarr[2];
-              //   r=rgbarr[0];
-              //   g=rgbarr[1];
-              //   b=rgbarr[2];
-              //   a=Math.abs(uDark.max(r,g,b)-255);
-              // }
-              // {
-              //   var oa = a;
-
-              //     a=uDark.min(a,(r+g+b)/-3+255); // linear
-              //    a = Math.min(a, Math.pow((r + g + b) / -3 + 255, 1.25)); // pow, solves gradients & keeps colors; 0 means full dark;
-              //   // cant fully alpha : if text is on white(to alpha) div and div on an image, text will be hard to read
-              //   if (a < 1) {
-              //     r = g = b = uDark.min_bright_bg_trigger;
-              //     a = oa;
-              //     // r=g=b=0;
-              //   }
-              // }
-              var newColor = ((a << 24)) | (b << 16) | (g << 8) | r;
-              theImageDataUint32TMP[n] = newColor;
-            }
-            theImageData.data.set(theImageDataClamped8TMP);
-            canvasContext.putImageData(theImageData, 0, 0);
-
-            console.log("BG Edited in", (new Date()) / 1 - date_start, "ms")
           },
           handleMessageFromCS: function(message, sender) {
             message.resolvedIDKVars && uDark.resolvedIDKVars_action(message.resolvedIDKVars, sender);
@@ -2247,6 +2100,9 @@ window.dark_object = {
               }
               astyle.classList.add("ud-edited-background")
             });
+            documentElement.querySelectorAll("svg").forEach(svg => {
+              uDark.frontEditSVG(svg,documentElement,carried)
+            })
             aDocument.querySelectorAll("[style]").forEach(astyle => {
               // console.log(details,astyle,astyle.innerHTML,astyle.innerHTML.includes(`button,[type="reset"],[type="button"],button:hover,[type="button"],[type="submit"],button:active:hover,[type="button"],[type="submi`))
               astyle.setAttribute("style", uDark.edit_str(astyle.getAttribute("style"), false, false, details));
@@ -2257,9 +2113,6 @@ window.dark_object = {
               if (m.httpEquiv.toLowerCase().trim() == "content-type" && m.content.includes("charset")) {
                 m.content = "text/html; charset=utf-8"
               }
-            })
-            aDocument.querySelectorAll("img[src*='data']").forEach(image => {
-              image.src = uDark.send_data_image_to_parser(image.getAttribute("src"), details)
             })
             aDocument.querySelectorAll("link[rel*='icon'][href]").forEach(link => {
               link.setAttribute("href", link.getAttribute('href') + "#ud_favicon");
@@ -2279,14 +2132,14 @@ window.dark_object = {
             //   });
             // /
 
-            aDocument.querySelectorAll("[fill],[color],path,[bgcolor]").forEach(coloreditem => {
-              for (const [key, afunction] of Object.entries(uDark.attfunc_map)) {
-                var possiblecolor = uDark.is_color(coloreditem.getAttribute(key))
-                if (possiblecolor) {
-                  coloreditem.setAttribute(key, afunction(...possiblecolor, uDark.hex_val))
-                }
-              }
-            })
+            // aDocument.querySelectorAll("[fill],[color],path,[bgcolor]").forEach(coloreditem => {
+            //   for (const [key, afunction] of Object.entries(uDark.attfunc_map)) {
+            //     var possiblecolor = uDark.is_color(coloreditem.getAttribute(key))
+            //     if (possiblecolor) {
+            //       coloreditem.setAttribute(key, afunction(...possiblecolor, uDark.hex_val))
+            //     }
+            //   }
+            // })
             if (details.datacount == 1) {
 
               var udStyle = document.createElement("style")
@@ -2647,17 +2500,26 @@ window.dark_object = {
     }
   },
   misc: {
-    editBeforeRequestImage: function(details) {
+    editBeforeRequestImage: async function(details) {
+      
       if (details.url.startsWith("https://data-image.com/?base64IMG=") && !uDark.disable_image_edition) {
-        details.dataUrl = details.url.slice(34)
-        details.isSvgDataUrl = details.dataUrl.startsWith("data:image/svg+xml")
-        return {redirectUrl:details.dataUrl} // TODO: Support data:images with workers
-        return {
-          redirectUrl: edit_an_image(details) // TODO: Support data:images
-        }
+        const dataUrl = details.url.slice(34);
+        const arrayBuffer = await (await fetch(dataUrl)).arrayBuffer();
+        const reader = new FileReader() // Faster but ad what cost later ? 
+        const imageWorker= new uDark.LoggingWorker("imageWorker.js");
+        imageWorker.addEventListener("message",event=>{
+          if(event.data.editionComplete)
+          {
+            reader.readAsDataURL(new Blob(event.data.buffers));
+          }
+        })
+        
+        imageWorker.postMessage({oneImageBuffer:arrayBuffer,filterStopped:1,details:details},[arrayBuffer]) // Explicityly transfer the ArrayBuffer to the worker
+        return new Promise( resolve => reader.onload = (e) => resolve({redirectUrl:reader.result}));
       }
     },
     editOnHeadersImage: function(details) {
+      
       // Util 2024 jan 02 we were checking details.documentUrl, or details.url to know if a stylesheet was loaded in a excluded page
       // Since only CS ports that matches blaclist and whitelist are connected, we can simply check if this resource has a corresponding CS port
       if (!uDark.connected_cs_ports["port-from-cs-" + details.tabId + "-" + details.frameId]) {
@@ -2670,56 +2532,70 @@ window.dark_object = {
       if (details.url && (use2024Experimentalway = true)) {
 
         let imageURLObject = new URL(details.url);
-        for (header of details.responseHeaders) {
-          if (header.value.toLowerCase().includes("image/svg")) {
-            details.isSVGImage = true;
-          }
+        let n = details.responseHeaders.length;
+        
+        details.headersLow = {}
+        while (n--) {
+          details.headersLow[details.responseHeaders[n].name.toLowerCase()] = details.responseHeaders[n].value;
         }
-        if (details.isSVGImage) {
-          return {}; // TODO: Support SVG images
-        }
+        
+        details.charset = ((details.headersLow["content-type"] || "").match(/charset=([0-9A-Z-]+)/i) || ["", "utf-8"])[1]
+        details.isSVGImage=(details.headersLow["content-type"] || "").includes("image/svg")
+        
         // Determine if the image deserves to be edited
         if (imageURLObject.pathname.startsWith("/favicon.ico") || imageURLObject.hash.endsWith("#ud_favicon")) {
           return {};
         }
 
         let filter = browser.webRequest.filterResponseData(details.requestId); // After this instruction, browser espect us to write data to the filter and close it
+        
+        let secureTimeout = setTimeout(()=>{filter.disconnect()},30000) // Take care of very big images
         details.buffers = details.buffers || [];
-        
-        let imageWorker= new Worker("imageWorker.js");
-        imageWorker.addEventListener("message",event=>{
-          console.log(event.data);
-          if(event.data.editionComplete)
-          {
-            for(buffer of event.data.buffers){
-              try{
-                filter.write(buffer);
-              }
-              catch(e)
-              {
-                console.log(e.message)
-              }
-            }
-            filter.disconnect();
+        if(details.isSVGImage)
+        {
+          let decoder = new TextDecoder(details.charset)
+          let encoder = new TextEncoder();
+          filter.ondata = event =>  details.buffers.push(event.data);
+          let svgURLObject = new URL(details.url);
+          let complementIndex = svgURLObject.hash.indexOf("µDark")
+          let notableInfos=new URLSearchParams(complementIndex==-1?"":svgURLObject.hash.slice(complementIndex+5))
+          filter.onstop = event => {
+            new Blob(details.buffers).arrayBuffer().then((buffer) => { 
+              let svgString = decoder.decode(buffer,{stream:true});
+              let svgStringEdited = uDark.frontEditHTML(false,svgString,{notableInfos});
+              filter.write(encoder.encode(svgStringEdited));
+              filter.disconnect();
+              clearInterval(secureTimeout);
+            });
           }
-        })
-        filter.ondata = event => {
-          // details.buffers.push(event.data);
-          imageWorker.postMessage({oneImageBuffer:event.data},[event.data]) // Explicityly transfer the ArrayBuffer to the worker
-          
         }
-        
-        filter.onstop = event => {
-          let image=new Image();
-          
-          imageWorker.postMessage({filterStopped:1,details});
-          // createImageBitmap(new Blob(details.buffers)).then(imageBitmap=>{
-          //   console.log(imageBitmap);
-          // })  // ImageBitmap is a transferable object, so we can transfer it to the worker, and its the firs kind of transferable which owns width and height properties
+        else
+        {
+          let imageWorker= new uDark.LoggingWorker("imageWorker.js");
+          imageWorker.addEventListener("message",event=>{
+            if(event.data.editionComplete)
+            {
+              for(buffer of event.data.buffers){
+                try{
+                  filter.write(buffer);
+                }
+                catch(e)
+                {
+                  console.log(e.message)
+                }
+              }
+              filter.disconnect();
+              clearInterval(secureTimeout);
+            }
+          })
+          filter.ondata = event => {
+            imageWorker.postMessage({oneImageBuffer:event.data},[event.data]) // Explicityly transfer the ArrayBuffer to the worker
             
-          
+          }
+          filter.onstop = event => {
+            imageWorker.postMessage({filterStopped:1,details});
+          }
         }
-        setTimeout(()=>{filter.disconnect()},5000)
         return {}
       }
       
