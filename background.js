@@ -141,6 +141,18 @@ window.dark_object = {
             }, window)
           });
         },
+        functionWrapper: function(leType, laFonction,fName, watcher = x => x, conditon = x => x, result_editor = x => x) {
+          let originalFunction = leType.prototype["o_ud_wrap_" + fName]=laFonction;
+          leType.prototype[fName] = function(...args) {
+            if (conditon && conditon(this, arguments)) {
+              let watcher_result = watcher(this,arguments);
+              let result = originalFunction.apply(...watcher_result)
+              return result_editor(result, this, watcher_result);
+            } else {
+              return (originalFunction.apply(this, arguments));
+            }
+          }
+        },
         functionPrototypeEditor: function(leType, laFonction, watcher = x => x, conditon = x => x, result_editor = x => x) {
           //  console.log(leType,leType.name,leType.prototype,laFonction,laFonction.name)
           if (laFonction.concat) {
@@ -245,7 +257,16 @@ window.dark_object = {
           } // fill has another meaning for animate
           let is_text = carried.notableInfos.guessed_type == "logo" ||
             ["text", "tspan"].includes(fillElem.tagName);
-
+            
+            if(!is_text&&["path"].includes(fillElem.tagName)){
+              let draw_path=fillElem.getAttribute("d");
+              if(draw_path)
+              {
+                if([...draw_path.matchAll(/Z/ig)].length>=5||draw_path>0){                
+                  is_text=true; // Lot of stop path in in path, it's probably a text
+                }
+              }
+            }
           let edit_challenge = `${is_text?"":"background-"}color:${fillValue};`
           let edit_result = uDark.edit_str(edit_challenge, false, false, false, false, carried).slice(is_text ? 7 : 18, -1)
           return edit_result || fillValue;
@@ -260,7 +281,9 @@ window.dark_object = {
               carried.notableInfos.inside_clickable = true;
             }
           }
-          if ((/logo|icon|alert|notif|cart|menu|tooltip|dropdown/).test(svg.parentNode.outerHTML) ||
+          if ((/avatar|logo|icon|alert|notif|cart|menu|tooltip|dropdown/i).test(
+            svg.parentNode.outerHTML+carried.notableInfos.uDark_cssClass
+            ) ||
             carried.notableInfos.inside_clickable) {
             carried.notableInfos.guessed_type = "logo";
           }
@@ -793,7 +816,7 @@ window.dark_object = {
             carried.notableInfos = notableInfos;
             link = uDark.send_data_image_to_parser(link, false, carried);
             if (!carried.svgImage) {
-              let usedChar = (link.includes("#") ? "#" : "") + "_uDark"
+              let usedChar = (link.includes("#") ? "" : "#") + "_uDark"
               link += usedChar + new URLSearchParams(notableInfos).toString();
             }
             return 'url("' + link + '")';
@@ -1537,6 +1560,25 @@ window.dark_object = {
         }
       })
 
+      uDark.functionWrapper(SVGSVGElement,SVGSVGElement.prototype.setAttribute,"setAttribute",function(elem,args){
+        elem.addEventListener("js_svg_loaded", z=>uDark.frontEditSVG(elem,document));
+        setTimeout(()=>elem.dispatchEvent(new Event("js_svg_loaded")),50);
+        return [elem,args]
+      },
+      (elem,args)=>args[0]=="viewBox" )
+
+      uDark.functionWrapper(HTMLUnknownElement,HTMLUnknownElement.prototype.setAttribute,"setAttribute",function(elem,args){
+        elem.addEventListener("js_svg_loaded", z=>uDark.frontEditSVG(elem,document));
+        setTimeout(()=>elem.dispatchEvent(new Event("js_svg_loaded")),50);
+        return [elem,args]
+      },
+      (elem,args)=>args[0]=="viewBox" && elem.tagName=="SVG" )
+      // uDark.valuePrototypeEditor(SVGSVGElement, "viewBox", (elem, value) => {
+      //   console.log("Viewbox set on",elem,value);
+      //   return value;
+      // })
+
+      // uDark.checkDomEdit = true;
       if (uDark.checkDomEdit) {
 
         uDark.functionPrototypeEditor(Node, [Node.prototype.insertBefore, Node.prototype.appendChild], (elem, args) => {
@@ -2102,6 +2144,7 @@ window.dark_object = {
               astyle.classList.add("ud-edited-background")
             });
             documentElement.querySelectorAll("svg").forEach(svg => {
+              console.log(svg.classList)
               uDark.frontEditSVG(svg, documentElement)
             })
             aDocument.querySelectorAll("[style]").forEach(astyle => {

@@ -1,6 +1,6 @@
 let imageBuffers = [];
 console.log=(...args)=>{
-        for (i = 0; i < args.length; i++) {
+        for (let i = 0; i < args.length; i++) {
             if(typeof args[i]=="function")
             {
                 args[i]=args[i].name;
@@ -40,7 +40,7 @@ console.log=(...args)=>{
 console.log("Image Service worker started")
 
 
-uDark={
+let uDark={
     background_match:/background|sprite|(?<![a-z])(bg|box|panel|fond|fundo|bck)(?![a-z])/i,
         
     RGBToLightness: (r, g, b) => {
@@ -61,7 +61,7 @@ uDark={
         let linesAchromaticOpaqueCount = 0;
         let linesGradientsCount=0;
         let list_test = [leftBorderImageData, rightBorderImageData, topBorderImageData, bottomBorderImageData,centerVerticalLineImageData,centerHorizontalLineImageData]
-        for (i = 0; i < list_test.length; i++) {
+        for (let i = 0; i < list_test.length; i++) {
           let imageData = list_test[i];
           let theImageDataBufferTMP = new ArrayBuffer(imageData.data.length);
           let theImageDataClamped8TMP = new Uint8ClampedArray(theImageDataBufferTMP);
@@ -81,7 +81,7 @@ uDark={
           }
           let isGradient = true;
           let currentLightness=Math.max(uDark.RGBToLightness(r, g, b),a);
-          for (n = 1; n < theImageDataUint32TMP.length; n++) {
+          for (let n = 1; n < theImageDataUint32TMP.length; n++) {
             number = theImageDataUint32TMP[n];
             r = number & 0xff;
             g = (number >> 8) & 0xff;
@@ -113,7 +113,7 @@ uDark={
       },
       logo_image_edit_hook: function(editionStatus, canvas, ctx, img, blob, details, imageURLObject, complement) {
 
-        start_date = new Date();
+        let start_date = new Date();
         console.log("Logos","Entering edition",details.url,details.requestId,uDark.logo_image_edit_hook)
 
         let editionConfidence = 0 +(editionStatus.editionConfidenceLogo);
@@ -165,7 +165,7 @@ uDark={
           var b = (number >> 16) & 0xff;
           var a = (number >> 24) & 0xff;
           {
-            lightness = uDark.RGBToLightness(r, g, b);
+            let lightness = uDark.RGBToLightness(r, g, b);
 
             if (!editionStatus.statsComplete) {
               editionStatus.colorCounter.add(number);
@@ -256,12 +256,12 @@ uDark={
       },
       background_image_edit_hook: function(editionStatus, canvas, ctx, img, blob, details, imageURLObject, complement) {
         let editionConfidence = 0 +(editionStatus.editionConfidenceBackground);
-        start_date = new Date();
+        let start_date = new Date();
         console.log("Background","Entering edition",details.url,details.requestId,uDark.background_image_edit_hook)
 
         // Refuse bacground images on certain conditions
 
-        if(enable_background_pre_check=true)
+        if(!uDark.disableBackgroundPostCheck)
         {
             if (
                 complement.has("width") && !complement.get("width").includes("%") && complement.get("width").startsWith(img.width) // We fetched the image with the same size as the element
@@ -335,7 +335,7 @@ uDark={
           var b = (number >> 16) & 0xff;
           var a = (number >> 24) & 0xff;
           {
-            lightness = uDark.RGBToLightness(r, g, b);
+            let lightness = uDark.RGBToLightness(r, g, b);
 
             editionStatus.colorCounter.add(number);
             let lightnessWithAlpha = Math.min(lightness, a); // Alpha kills lightness
@@ -391,7 +391,7 @@ uDark={
         console.log("Background","Stats complete",editionStatus.statsComplete,details.requestId,"Confidence:",editionStatus.editionConfidence,new Date()/1-start_date/1,editionStatus,imageData)
         
         
-        if (editionStatus.statsComplete&&(enableBackgroundPostCheck=true)) {
+        if (editionStatus.statsComplete&&!uDark.disableBackgroundPostCheck) {
           if (!(editionConfidence >= 100) && !editionStatus.is_photo) {
 
             if (editionStatus.contrast_percent > .77 &&

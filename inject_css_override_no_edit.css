@@ -13,7 +13,8 @@ iframe {
 svg text,
 svg tspan,
 svg[udark-guess="logo"] [class]:not([fill]),
-svg[udark-guess="logo"] [style]:not([fill])
+svg[udark-guess="logo"] [style]:not([fill]),
+svg[udark-guess="logo"] :not([fill]):not([style]):not([class]) 
  {
     fill: var(--ud-fg--fill-color, #fff)!important; /*When we see fill text we will propose an alternate value which will be used. If no valuse fallback to white */
 }
