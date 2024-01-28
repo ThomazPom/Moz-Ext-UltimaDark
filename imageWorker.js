@@ -41,7 +41,7 @@ console.log("Image Service worker started")
 
 
 uDark={
-    background_match:/background|(?<![a-z])(bg|box|panel|fond|fundo|bck)(?![a-z])/i,
+    background_match:/background|sprite|(?<![a-z])(bg|box|panel|fond|fundo|bck)(?![a-z])/i,
         
     RGBToLightness: (r, g, b) => {
         return (Math.max(r, g, b) + Math.min(r, g, b)) / 2;
@@ -273,8 +273,7 @@ uDark={
       
       
               if (complement.has("uDark_backgroundRepeat") && /repeat|round|space/i.test(complement.get("uDark_backgroundRepeat").replaceAll("no-repeat", "")) ||
-                complement.has("alt") && /background/i.test(complement.get("alt")) ||
-                complement.has("uDark_cssClass") && /sprite/i.test(imageURLObject.pathname)
+                complement.has("alt") && /background/i.test(complement.get("alt"))
       
               ) {
                 editionConfidence += 100;
@@ -298,7 +297,6 @@ uDark={
         }
         editionStatus.linesColorCheck = linesColorCheck;
         }
-        editionConfidence=0;
 
         // Get the ImageData from the canvas
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -310,7 +308,7 @@ uDark={
 
         let n = theImageDataUint32TMP.length;
         
-        console.log("Background","Entering the loop",details.url,details.requestId,"Confidence:",editionStatus.editionConfidence,new Date()/1-start_date/1,)
+        console.log("Background","Entering the loop",details.url,details.requestId,"Confidence:",editionConfidence,new Date()/1-start_date/1,)
         if (!editionStatus.statsComplete) {
           editionStatus.colorCounter = new Set();
           editionStatus.opaqueColorCounter = new Set();
@@ -443,8 +441,8 @@ uDark={
         let imageURLObject = new URL(details.url);
         
         // Determine the transformation function to use
-        let complementIndex = imageURLObject.hash.indexOf("µDark")
-        let complement=new URLSearchParams(complementIndex==-1?"":imageURLObject.hash.slice(complementIndex+5))
+        let complementIndex = imageURLObject.hash.indexOf("_uDark")
+        let complement=new URLSearchParams(complementIndex==-1?"":imageURLObject.hash.slice(complementIndex+6))
         let edition_order_hooks = [uDark.background_image_edit_hook,
           uDark.logo_image_edit_hook
         ];
