@@ -1,7 +1,3 @@
-var uDark, fMurmurHash3Hash, dark_object = {} // Happy Linter
-let CSS2Properties = globalThis.CSS2Properties
-let cloneInto = globalThis.cloneInto;
-
 window.dark_object = {
 
   all_levels: {
@@ -254,7 +250,7 @@ window.dark_object = {
           let edit_result = uDark.edit_str(edit_challenge, false, false, false, false, carried).slice(is_text ? 7 : 18, -1)
           return edit_result || fillValue;
         },
-        frontEditSVG: function(svg, documentElement, carried) {
+        frontEditSVG: function(svg, documentElement, carried={}) {
           carried.notableInfos = carried.notableInfos || {};
           svg.setAttribute("udark-fill", true);
           svg.setAttribute("udark-id", Math.random());
@@ -1353,7 +1349,7 @@ window.dark_object = {
 
       }
 
-      window.browser.storage.local.get(null, function(res) {
+      globalThis.browser.storage.local.get(null, function(res) {
         window.uDark.userSettings = res;
         if (uDark.direct_window_export) {
           // let loadSettings = function() {
@@ -1388,7 +1384,7 @@ window.dark_object = {
 
       }
 
-      let myPort = window.browser.runtime.connect({
+      let myPort = globalThis.browser.runtime.connect({
         name: "port-from-cs"
       });
 
@@ -1684,7 +1680,7 @@ window.dark_object = {
       return x.match(/<all_urls>|^(https?|wss?|file|ftp|\*):\/\/(\*|\*\.[^*/]+|[^*/]+)\/.*$|^file:\/\/\/.*$|^resource:\/\/(\*|\*\.[^*/]+|[^*/]+)\/.*$|^about:$/)
     },
     setListener: function() {
-      window.browser.storage.local.get(null, function(res) {
+      globalThis.browser.storage.local.get(null, function(res) {
         uDark.userSettings = res;
         uDark.userSettings.properWhiteList = (res.white_list || dark_object.background.defaultRegexes.white_list).split("\n").filter(dark_object.background.filterContentScript)
         uDark.userSettings.properBlackList = (res.black_list || dark_object.background.defaultRegexes.black_list).split("\n").filter(dark_object.background.filterContentScript)
@@ -1695,11 +1691,11 @@ window.dark_object = {
         uDark.resolvedIDKVars_action_timeout = 400; // edit_str from 2024 january was ok with 210 for both editing and messaging, 250 Should be enough for now
         uDark.fixedRandom = Math.random();
 
-        window.browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editBeforeData);
-        window.browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.editBeforeRequestStyleSheet);
-        window.browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.editBeforeRequestImage);
-        window.browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editOnHeadersImage);
-        window.browser.webRequest.onCompleted.removeListener(dark_object.misc.onCompletedStylesheet);
+        globalThis.browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editBeforeData);
+        globalThis.browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.editBeforeRequestStyleSheet);
+        globalThis.browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.editBeforeRequestImage);
+        globalThis.browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editOnHeadersImage);
+        globalThis.browser.webRequest.onCompleted.removeListener(dark_object.misc.onCompletedStylesheet);
         /*Experimental*/
         // browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editHeadersOnHeadersReceived);
         /*end of Experimental*/
@@ -1708,13 +1704,13 @@ window.dark_object = {
           uDark.regiteredCS = null
         }
         if (!res.disable_webext && uDark.userSettings.properWhiteList.length) {
-          window.browser.webRequest.onHeadersReceived.addListener(dark_object.misc.editBeforeData, {
+          globalThis.browser.webRequest.onHeadersReceived.addListener(dark_object.misc.editBeforeData, {
               urls: uDark.userSettings.properWhiteList,
               types: ["main_frame", "sub_frame"]
             },
             ["blocking", "responseHeaders"]);
 
-          window.browser.webRequest.onBeforeRequest.addListener(dark_object.misc.editBeforeRequestStyleSheet, {
+          globalThis.browser.webRequest.onBeforeRequest.addListener(dark_object.misc.editBeforeRequestStyleSheet, {
               // urls: uDark.userSettings.properWhiteList, // We can't assume the css is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
               urls: ["<all_urls>"],
               types: ["stylesheet"]
@@ -1730,20 +1726,20 @@ window.dark_object = {
           //   ["blocking"]);
           /*end of Experimental*/
 
-          window.browser.webRequest.onBeforeRequest.addListener(dark_object.misc.editBeforeRequestImage, {
+          globalThis.browser.webRequest.onBeforeRequest.addListener(dark_object.misc.editBeforeRequestImage, {
               urls: ["<all_urls>"],
               // urls: uDark.userSettings.properWhiteList, // We can't assume the image is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
               types: ["image"]
             },
             ["blocking"]);
-          window.browser.webRequest.onHeadersReceived.addListener(dark_object.misc.editOnHeadersImage, {
+          globalThis.browser.webRequest.onHeadersReceived.addListener(dark_object.misc.editOnHeadersImage, {
               urls: ["<all_urls>"],
               // urls: uDark.userSettings.properWhiteList, // We can't assume the image is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
               types: ["image"]
             },
             ["blocking", "responseHeaders"]);
 
-          window.browser.webRequest.onCompleted.addListener(dark_object.misc.onCompletedStylesheet, {
+          globalThis.browser.webRequest.onCompleted.addListener(dark_object.misc.onCompletedStylesheet, {
             // urls: uDark.userSettings.properWhiteList, // We can't assume the css is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
             urls: ["<all_urls>"],
             types: ["stylesheet"]
@@ -1801,14 +1797,14 @@ window.dark_object = {
           if (!uDark.userSettings.properBlackList.length) {
             delete contentScript.excludeMatches;
           }
-          window.browser.contentScripts.register(contentScript).then(x => {
+          globalThis.browser.contentScripts.register(contentScript).then(x => {
             uDark.regiteredCS = x
           });
         } else
           console.info("UD Did not load : ", "White list", uDark.userSettings.properWhiteList, "Enabled", !res.disable_webext)
       });
-      window.browser.webRequest.handlerBehaviorChanged().then(x => console.info(`In-memory cache flushed`), error => console.error(`Error: ${error}`));
-      window.browser.browsingData.removeCache({}).then(x => console.info(`Browser cache flushed`), error => console.error(`Error: ${error}`));
+      globalThis.browser.webRequest.handlerBehaviorChanged().then(x => console.info(`In-memory cache flushed`), error => console.error(`Error: ${error}`));
+      globalThis.browser.browsingData.removeCache({}).then(x => console.info(`Browser cache flushed`), error => console.error(`Error: ${error}`));
 
     },
     install: function() {
@@ -1865,12 +1861,12 @@ window.dark_object = {
           connectedPort.onMessage.addListener(function(m) {
 
             if (m.updateSettings) {
-              window.browser.storage.local.set(m.updateSettings, dark_object.background.setListener);
+              globalThis.browser.storage.local.set(m.updateSettings, dark_object.background.setListener);
             }
           });
         }
       }
-      window.browser.runtime.onConnect.addListener(connected);
+      globalThis.browser.runtime.onConnect.addListener(connected);
       // Promises before starting :
       function getInjectCSS(resourcesPaths, actions = {}) {
         if (typeof resourcesPaths == "string") resourcesPaths = [resourcesPaths]
@@ -2223,7 +2219,7 @@ window.dark_object = {
           // Asking front trough a message to get the css can be costly so we can only do it when it's absolutely necessary: when the cors does not allow us to get the css directly;
           // In the other hand  doing it for all CSS allows to cache only finalised css, so both options are good
           disable_remote_idk_css_edit: false,
-          on_idk_missing: "fill_minimum",
+          on_idk_missing: "fill_minimum", // "fill_black" or "fill_minimum" or "restore" or "fill_color"
           idk_minimum_editor: 0.2,
           connected_cs_ports: {},
           connected_options_ports_count: 0,
@@ -2555,10 +2551,13 @@ window.dark_object = {
 
         // return {};
       }
-      let filter = window.browser.webRequest.filterResponseData(details.requestId); // After this instruction, browser espect us to write data to the filter and close it
+      let filter = globalThis.browser.webRequest.filterResponseData(details.requestId); // After this instruction, browser espect us to write data to the filter and close it
 
       let secureTimeout = setTimeout(() => {
-        filter.disconnect()
+        try {
+          filter.disconnect();
+        }
+        catch(e){}
       }, 30000) // Take care of very big images
       details.buffers = details.buffers || [];
       if (details.isSVGImage) {
@@ -2760,7 +2759,7 @@ window.dark_object = {
         return {}
       }
 
-      let filter = window.browser.webRequest.filterResponseData(details.requestId); // After this instruction, browser espect us to write data to the filter and close it
+      let filter = globalThis.browser.webRequest.filterResponseData(details.requestId); // After this instruction, browser espect us to write data to the filter and close it
 
       let decoder = new TextDecoder()
       let encoder = new TextEncoder();
@@ -2910,7 +2909,7 @@ window.dark_object = {
       if (possibleCacheKey in uDark.idk_cache) {
         setTimeout(w => {
           // console.log("Removing cache for", details.url);
-          window.browser.browsingData.removeCache({
+          globalThis.browser.browsingData.removeCache({
               since: (Date.now() - details.timeStamp),
               hostnames: [uDark.idk_cache[possibleCacheKey]]
             })
@@ -2981,7 +2980,7 @@ window.dark_object = {
         return a_filter ? a_filter(x) : true;
       })
       if (!details.fromCache) { // We don't want to edit cached pages, as they are already edited and put in cache !
-        let filter = window.browser.webRequest.filterResponseData(details.requestId);
+        let filter = globalThis.browser.webRequest.filterResponseData(details.requestId);
         let decoder = new TextDecoder(details.charset)
         let encoder = new TextEncoder();
         details.datacount = 0;
@@ -3010,7 +3009,7 @@ window.dark_object = {
 dark_object.all_levels.install();
 dark_object.both.install()
 
-if (window.browser.webRequest) {
+if (globalThis.browser.webRequest) {
   dark_object.background.install();
 } else {
   dark_object.content_script.install();
