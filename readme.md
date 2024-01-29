@@ -62,4 +62,4 @@ Bug reports help developers to find out about issues they may not have experienc
 
 # Backporting 
 
-Without an unreasonable level of effort, this extension will not be compatible with Pre-Quantum versions of Firefox (56 and lower). However, it should be theoretically possible to get working on 57 and higher. Contributions towards this broader compatibility would be greatly appreciated. 
+Without an unreasonable level of effort, this extension will not be compatible with Pre-Quantum versions of Firefox (56 and lower). However, it should be theoretically possible to get working on 57 and higher (excluding the ImageEdition rewrite which requires Firefox 105 or above). Contributions towards this broader compatibility would be greatly appreciated. 
