@@ -464,7 +464,7 @@ let uDark={
           return {}
         }
         
-        console.log("Image", "Editing image", details.url,details.requestId,details.isDataUrl);
+        console.log("Image", "Editing image",details.fromCache, details.url,details.requestId,details.isDataUrl);
 
         // Do the common tasks required for all edited images
         let start_date = new Date();
@@ -484,8 +484,19 @@ let uDark={
           // }
           let blob = (new Blob(imageBuffers));
           console.log("Image","Blob created", new Date() / 1 - start_date ,details.url,details.requestId)
-          let imageBitmap=await  createImageBitmap(blob);
-          
+          let imageBitmap;
+          try
+          {
+            
+            imageBitmap=await  createImageBitmap(blob);
+          }
+          catch(e)
+          {
+
+            // Invalid or disposed image.
+            return editionStatus;
+
+          }
 
           // blob.arrayBuffer().then((buffer) => {
             {
@@ -555,8 +566,10 @@ onmessage = async (e) => {
     }
     if(e.data.filterStopped)
     {   
-        let editionResult = await uDark.edit_an_image(e.data.details);
+
+        let editionResult = {};
         
+        editionResult = await uDark.edit_an_image(e.data.details);
         if(editionResult.editedBuffer)
         {
             imageBuffers=[editionResult.editedBuffer];
