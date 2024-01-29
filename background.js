@@ -76,7 +76,8 @@ window.dark_object = {
         },
         image_element_prepare_href: function(image, documentElement, src_override) // Adds notable infos to the image element href, used by the image edition feature
         {
-          if (!uDark.disable_lazy_loading) {
+          uDark.disable_lazy_loading=true;
+          if (!uDark.disable_lazy_loading) { // Too much problems
             image.loading = "lazy";
 
           }
@@ -236,6 +237,7 @@ window.dark_object = {
                 atob(imageData) :
                 decodeURIComponent(imageData)
               imageData = uDark.frontEditHTML(false, imageData, carried)
+              // uDark.disable_reencode_data_svg_to_base64=true;
               if (uDark.disable_reencode_data_svg_to_base64) {
                 str = "data:image/svg+xml," + encodeURIComponent(imageData)
               } else {
@@ -260,12 +262,10 @@ window.dark_object = {
             
             if(!is_text&&["path"].includes(fillElem.tagName)){
               let draw_path=fillElem.getAttribute("d");
-              if(draw_path)
-              {
-                if([...draw_path.matchAll(/Z/ig)].length>=5||draw_path>0){                
-                  is_text=true; // Lot of stop path in in path, it's probably a text
-                }
-              }
+              // Lot of stop path in in path, it's probably a text
+              is_text = draw_path && ([...draw_path.matchAll(/Z/ig)].length>=5||draw_path.length>400)          
+                
+              
             }
           let edit_challenge = `${is_text?"":"background-"}color:${fillValue};`
           let edit_result = uDark.edit_str(edit_challenge, false, false, false, false, carried).slice(is_text ? 7 : 18, -1)
@@ -578,7 +578,6 @@ window.dark_object = {
             return false
           }
           if (uDark.website_context && possiblecolor.includes("var(")) {
-            console.log("Going var for ", possiblecolor)
             return uDark.is_color_var(possiblecolor, as_float, fill, cssRule, spanp)
           }
 
@@ -598,6 +597,11 @@ window.dark_object = {
                 result = result.match(/[0-9\.]+/g).map(parseFloat)
               }
             }
+            
+            if (fill) {
+              result = result.concat(Array(4 - result.length).fill(1))
+            }
+            
             if (!uDark.userSettings.disable_cache) {
               uDark.general_cache[cache_key] = result;
             }
@@ -1966,6 +1970,7 @@ window.dark_object = {
           is_background: true,
           rgb_a_colorsRegex: /rgba?\([%0-9., \/]+\)/gmi, // rgba vals without variables and calc()involved #! rgba(255 255 255 / 0.1) is valid color and rgba(255,255,255,30%) too
           hsl_a_colorsRegex: /hsla?\(([%0-9., \/=]|deg|turn|tetha)+\)/gmi, // hsla vals without variables and calc() involved
+          // loggingWorkersActiveLogging:true,
           LoggingWorker: class LoggingWorker extends Worker {
             constructor(...args) {
               super(...args);
@@ -1991,9 +1996,13 @@ window.dark_object = {
               return true;
             }),
           },
-          attfunc_map: {
-            "fill": uDark.revert_rgba,
-            "color": uDark.revert_rgba,
+          attributes_function_map: {
+            "color": (r,g,b,a,render,elem)=>{
+              elem.style.setProperty("--ud-html4-color", uDark.revert_rgba(r,g,b,a,render));
+              elem.setAttribute("ud-html4-support",true);
+              elem.removeAttribute("color");
+            },
+            "text":"color",
             "bgcolor": uDark.rgba
           },
           edit_background_image_urls: function(str) {
@@ -2144,7 +2153,6 @@ window.dark_object = {
               astyle.classList.add("ud-edited-background")
             });
             documentElement.querySelectorAll("svg").forEach(svg => {
-              console.log(svg.classList)
               uDark.frontEditSVG(svg, documentElement)
             })
             aDocument.querySelectorAll("[style]").forEach(astyle => {
@@ -2176,14 +2184,24 @@ window.dark_object = {
             //   });
             // /
 
-            // aDocument.querySelectorAll("[fill],[color],path,[bgcolor]").forEach(coloreditem => {
-            //   for (const [key, afunction] of Object.entries(uDark.attfunc_map)) {
-            //     var possiblecolor = uDark.is_color(coloreditem.getAttribute(key))
-            //     if (possiblecolor) {
-            //       coloreditem.setAttribute(key, afunction(...possiblecolor, uDark.hex_val))
-            //     }
-            //   }
-            // })
+            aDocument.querySelectorAll("[color],[bgcolor]").forEach(coloreditem => {
+              for (let [key, afunction] of Object.entries(uDark.attributes_function_map)) {
+                if (typeof afunction == "string")
+                {
+                  afunction=uDark.attributes_function_map[afunction]
+                }
+                let attributeValue  =coloreditem.getAttribute(key);
+                if(attributeValue&&attributeValue.startsWith("#")&&attributeValue.length==6){
+                  attributeValue +="0"// Color definition for html4 was different
+                  console.log(attributeValue)
+                }
+                var possiblecolor = uDark.is_color(attributeValue  ,true,true)
+                if (possiblecolor) { 
+                  let call_result= afunction(...possiblecolor,uDark.rgba_val,coloreditem);
+                  call_result && coloreditem.setAttribute(key,call_result)
+                }
+              }
+            })
             if (details.datacount == 1) {
 
               var udStyle = document.createElement("style")
@@ -2556,15 +2574,16 @@ window.dark_object = {
             reader.readAsDataURL(new Blob(event.data.buffers));
           }
         })
-
+        
         imageWorker.postMessage({
           oneImageBuffer: arrayBuffer,
           filterStopped: 1,
           details: details
         }, [arrayBuffer]) // Explicityly transfer the ArrayBuffer to the worker
-        return new Promise(resolve => reader.onload = (e) => resolve({
+        let to_return = await new Promise(resolve => reader.onload = (e) => resolve({
           redirectUrl: reader.result
         }));
+        return to_return;
       }
     },
     editOnHeadersImage: function(details) {
@@ -2577,7 +2596,6 @@ window.dark_object = {
 
       let imageURLObject = new URL(details.url);
       let n = details.responseHeaders.length;
-
       details.headersLow = {}
       while (n--) {
         details.headersLow[details.responseHeaders[n].name.toLowerCase()] = details.responseHeaders[n].value;
@@ -2608,6 +2626,11 @@ window.dark_object = {
         let encoder = new TextEncoder();
         filter.ondata = event => details.buffers.push(event.data);
         let svgURLObject = new URL(details.url);
+        { // Sometimes the website reencodes as html chars the data
+          let HTMLDecoderOption=new Option();
+          HTMLDecoderOption.innerHTML=svgURLObject.hash;
+          svgURLObject.hash=HTMLDecoderOption.textContent;
+        }
         let complementIndex = svgURLObject.hash.indexOf("_uDark")
         let notableInfos = new URLSearchParams(complementIndex == -1 ? "" : svgURLObject.hash.slice(complementIndex + 6))
         notableInfos = Object.fromEntries(notableInfos.entries());
@@ -2627,13 +2650,14 @@ window.dark_object = {
         }
       } else {
         let imageWorker = new uDark.LoggingWorker("imageWorker.js");
+        let datacount=0;
         imageWorker.addEventListener("message", event => {
           if (event.data.editionComplete) {
             for (let buffer of event.data.buffers) {
               try {
                 filter.write(buffer);
               } catch (e) {
-                console.log(e.message)
+                console.log("Error",e.message)
               }
             }
             filter.disconnect();

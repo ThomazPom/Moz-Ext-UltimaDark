@@ -10,6 +10,10 @@ iframe {
     color-scheme: light!important; /*Fortunately all css can be overriden unconditoonally in this file*/
   }
 
+[ud-html4-support]{
+    color: var(--ud-html4-color,white)!important;
+}
+
 svg text,
 svg tspan,
 svg[udark-guess="logo"] [class]:not([fill]),
