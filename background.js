@@ -299,7 +299,6 @@ window.dark_object = {
               options.notableInfos.logo_match = true;
             }
           }
-          console.log(parent.outerHTML,details.url)
           if (options.notableInfos.logo_match || options.notableInfos.inside_clickable) {
             options.notableInfos.guessed_type = "logo";
           }
