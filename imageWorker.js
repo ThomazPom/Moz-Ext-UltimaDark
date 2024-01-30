@@ -136,7 +136,7 @@ let uDark={
 
         let n = theImageDataUint32TMP.length;
 
-        console.log("Logos","Entering the loop",details.url,details.requestId,"Confidence:",editionStatus.editionConfidence,new Date()/1-start_date/1)
+        console.log("Logos","Entering the loop",details.url,details.requestId,"Confidence:",editionConfidence,new Date()/1-start_date/1)
         if (!editionStatus.statsComplete) {
           editionStatus.colorCounter = new Set();
           editionStatus.opaqueColorCounter = new Set();
@@ -190,12 +190,13 @@ let uDark={
             // Standard way 2023 // very very very slow (1.5s for a 500 x 500 img)
             // 2024 way : Go faster by finding the right caclulation for each pixel
             // [r, g, b, a] = uDark.revert_rgba(r, g, b, a, (...args) => args);
-            if (lightness < 127) {
+            let lightenUnder=127;
+            if (lightness < lightenUnder) {
               // [r,g,b]=[r,g,b].map((x)=>x/2);
               [r, g, b] = [r, g, b].map((x) => {
                 x = x + Math.pow(
-                  (127 - lightness) // The less the lightness the more the color is lightened
-                  , 1.11); // Increase the lightening effect a bit
+                  (lightenUnder - lightness) // The less the lightness the more the color is lightened
+                  , 1+.11); // Increase the lightening effect a bit
                 return x;
 
               });
@@ -205,20 +206,26 @@ let uDark={
           theImageDataUint32TMP[n] = newColor;
 
         }
-        if (n === -1 && !editionStatus.statsComplete) {
-          editionStatus.avg_ligtness = (editionStatus.lightness_sum / theImageDataUint32TMP.length);
-          editionStatus.alpha_percent = editionStatus.alpha_qty / theImageDataUint32TMP.length;
-          editionStatus.contrast = Math.max(...editionStatus.lightnessCounter) - Math.min(...editionStatus.lightnessCounter);
-          editionStatus.contrast_percent = editionStatus.contrast / 255;
-          editionStatus.max_lightness = Math.max(...editionStatus.lightnessCounter);
-          editionStatus.min_lightness = Math.min(...editionStatus.lightnessCounter);
-          editionStatus.statsComplete = true;
-        } else {
-          console.log("Logos","Stat not complete", details.url,details.requestId, editionStatus);
-          return false;
+        if(!editionStatus.statsComplete)
+        {
+          if(n === -1)
+          {
+              editionStatus.avg_ligtness = (editionStatus.lightness_sum / theImageDataUint32TMP.length);
+              editionStatus.alpha_percent = editionStatus.alpha_qty / theImageDataUint32TMP.length;
+              editionStatus.contrast = Math.max(...editionStatus.lightnessCounter) - Math.min(...editionStatus.lightnessCounter);
+              editionStatus.contrast_percent = editionStatus.contrast / 255;
+              editionStatus.max_lightness = Math.max(...editionStatus.lightnessCounter);
+              editionStatus.min_lightness = Math.min(...editionStatus.lightnessCounter);
+              editionStatus.statsComplete = true;
+          }
+          else {
+            console.log("Logos","Stat not complete", details.url,details.requestId, editionStatus);
+            return false;
+          }
         }
+         
         
-        console.log("Logos",editionStatus.statsComplete,"Confidence:",editionStatus.editionConfidence,new Date()/1-start_date/1,editionStatus,imageData)
+        console.log("Logos",editionStatus.statsComplete,"Confidence:",editionConfidence,new Date()/1-start_date/1,editionStatus,details.requestId,imageData)
         
         if (editionStatus.statsComplete) {
 
@@ -232,8 +239,23 @@ let uDark={
               if (editionStatus.min_lightness > max_bright_trigger) {
                 return false; // This is a bright image with which does not need lightening, because even the darkest pixel is bright enough
               }
-              if (editionStatus.contrast_percent > .60) {
-                return false;
+              if (editionStatus.contrast_percent > .70) {
+                // return false;
+                                
+                // ctx.shadowColor = "white";
+                // ctx.shadowBlur = 10;
+                
+              ctx.filter = "brightness(3) invert(1) blur(8px) hue-rotate(0deg)"; // Can use it to shift a bit the hue, allowing better reading of the text
+                for (let i = 0; i < 5; i++) {
+                  ctx.drawImage(img, 0, 0);
+                }
+                ctx.filter = "none";
+                ctx.drawImage(img, 0, 0);
+                //ctx.fillStyle = "red";
+                //ctx.fillRect(0, 0, canvas.width, canvas.height);
+                editionStatus.edited=true;
+                return true;
+                
               }
 
             }
@@ -242,6 +264,7 @@ let uDark={
 
         }
 
+        // Pro tip Reset the image at any time : theImageDataClamped8TMP.set(imageData.data);
 
         console.log("Logos", details.url,details.requestId, "Logo edited in", new Date() / 1 - start_date / 1);
         imageData.data.set(theImageDataClamped8TMP);
@@ -276,7 +299,7 @@ let uDark={
                 complement.has("alt") && /background/i.test(complement.get("alt"))
       
               ) {
-                editionConfidence += 100;
+                editionConfidence += 200;
               }
       
 
@@ -367,28 +390,37 @@ let uDark={
               });
             }
 
-            editionStatus.is_photo = 
-              theImageDataUint32TMP.length/editionStatus.opaqueColorCounter.size <= uDark.trigger_ratio_size_number_colors
-              && theImageDataUint32TMP.length/ editionStatus.lightnessCounter.size <= uDark.trigger_ratio_size_number_lightness_photo;
+            let opaqueColorCounterRatio = theImageDataUint32TMP.length/editionStatus.opaqueColorCounter.size
+            let ligthnessCounterRatio = theImageDataUint32TMP.length/editionStatus.lightnessCounter.size
+            editionStatus.is_photo = opaqueColorCounterRatio <= uDark.trigger_ratio_size_number_colors
+              && ligthnessCounterRatio <= uDark.trigger_ratio_size_number_lightness_photo
+              && ligthnessCounterRatio>uDark.trigger_ratio_size_number_lightness_photo*0.07;
+            if(editionStatus.is_photo)
+            {
+              editionConfidence--;
+            }
           }
           var newColor = ((a << 24)) | (b << 16) | (g << 8) | r;
           theImageDataUint32TMP[n] = newColor;
 
         }
-        if (n === -1 && !editionStatus.statsComplete) {
-          editionStatus.avg_ligtness = (editionStatus.lightness_sum / theImageDataUint32TMP.length);
-          editionStatus.alpha_percent = editionStatus.alpha_qty / theImageDataUint32TMP.length;
-          editionStatus.contrast = Math.max(...editionStatus.lightnessCounter) - Math.min(...editionStatus.lightnessCounter);
-          editionStatus.contrast_percent = editionStatus.contrast / 255;
-          editionStatus.max_lightness = Math.max(...editionStatus.lightnessCounter);
-          editionStatus.min_lightness = Math.min(...editionStatus.lightnessCounter);
-          editionStatus.statsComplete = true;
-        } else {
-          console.log("Background","Stat not complete", details.url,details.requestId, editionStatus);
-          return false;
+        if(!editionStatus.statsComplete)
+        {
+          if (n === -1) {
+            editionStatus.avg_ligtness = (editionStatus.lightness_sum / theImageDataUint32TMP.length);
+            editionStatus.alpha_percent = editionStatus.alpha_qty / theImageDataUint32TMP.length;
+            editionStatus.contrast = Math.max(...editionStatus.lightnessCounter) - Math.min(...editionStatus.lightnessCounter);
+            editionStatus.contrast_percent = editionStatus.contrast / 255;
+            editionStatus.max_lightness = Math.max(...editionStatus.lightnessCounter);
+            editionStatus.min_lightness = Math.min(...editionStatus.lightnessCounter);
+            editionStatus.statsComplete = true;
+          } else {
+            console.log("Background","Stat not complete", details.url,details.requestId, editionStatus);
+            return false;
+          }
         }
         // throw new Error(editionStatus.lightnessCounter.size+" "+details.url);
-        console.log("Background","Stats complete",editionStatus.statsComplete,details.requestId,"Confidence:",editionStatus.editionConfidence,new Date()/1-start_date/1,editionStatus,imageData)
+        console.log("Background","Stats complete",editionStatus.statsComplete,details.requestId,"Confidence:",editionConfidence,new Date()/1-start_date/1,editionStatus,imageData)
         
         
         if (editionStatus.statsComplete&&!uDark.disableBackgroundPostCheck) {
@@ -430,6 +462,8 @@ let uDark={
         editionStatus.edited = true;
       },
       edit_an_image: async function(details) {
+        
+        details.requestId=details.url.split('').map(v=>v.charCodeAt(0)).reduce((a,v)=>a+((a<<7)+(a<<3))^v).toString(16);
         let editionStatus = {
           edited: false,
           statsComplete: false,
@@ -470,7 +504,6 @@ let uDark={
         let start_date = new Date();
 
           console.log("Image", "Filter has stopped", new Date() / 1 - start_date / 1,details.url,details.requestId);
-          details.requestId=details.url.split('').map(v=>v.charCodeAt(0)).reduce((a,v)=>a+((a<<7)+(a<<3))^v).toString(16);
           // NOTE: TODO: Improve: If the image has a 404 state the server returns html, and canvas can't draw it and loose at least 3 seconds understanding it
           if (details.statusCode && details.statusCode >= 400) {
             return editionStatus;
@@ -492,7 +525,7 @@ let uDark={
           }
           catch(e)
           {
-
+            console.log("Image","Invalid or disposed image", new Date() / 1 - start_date ,details.url,details.requestId)
             // Invalid or disposed image.
             return editionStatus;
 
