@@ -2637,9 +2637,9 @@ window.dark_object = {
   },
   misc: {
     editBeforeRequestImage: async function(details) {
-
       if (details.url.startsWith("https://data-image/?base64IMG=") && !uDark.disable_image_edition) {
-        const dataUrl = details.url.slice(34);
+        
+        const dataUrl = details.url.slice(30);
         const arrayBuffer = await (await fetch(dataUrl)).arrayBuffer();
         const reader = new FileReader() // Faster but ad what cost later ? 
         const imageWorker = new uDark.LoggingWorker("imageWorker.js");
