@@ -294,7 +294,6 @@ window.dark_object = {
             }
           }
           if (!options.notableInfos.logo_match) {
-            console.log(svg,options,svg.outerHTML)
             if (uDark.search_container_logo(svg,options.notableInfos)) {
               options.notableInfos.logo_match = true;
             }
@@ -330,9 +329,6 @@ window.dark_object = {
           uDark.edit_styles_attributes(svg, details,options);
           uDark.edit_styles_elements(svg, details,"ud-edited-background",options);
           
-          if (options.debugSVG) {
-            console.log("SVG Debugging", svg, fMurmurHash3Hash(svg.innerHTML), fMurmurHash3Hash(svg.outerHTML), svg.outerHTML, options)
-          }
         },
         edit_styles_attributes: function(parentElement, details, options={}) {
           parentElement.querySelectorAll("[style]").forEach(astyle => {
@@ -433,10 +429,6 @@ window.dark_object = {
             cssStyleSheet.o_ud_replaceSync ? cssStyleSheet.o_ud_replaceSync(valueReplace) : cssStyleSheet.replaceSync(valueReplace);
           } else if (!cssStyleSheet.rules.length) {
             return str; // Empty styles from domparser can't be edited as they are not "constructed"
-          }
-          if(options.remoteSVG)
-          {
-            console.log(options	,cssStyleSheet);
           }
           let nochunk = !verifyIntegrity && !cssStyleSheet.cssRules.length; // if we want to check integrity, it means we have a chunked css
           if (nochunk) {
@@ -1174,9 +1166,6 @@ window.dark_object = {
           options.darken=options.darken||uDark.rgba;
           options.render=options.render||uDark.rgba_val;
           
-          if(options.debugSVG){
-            console.log("BEFORE",cssRule.cssText)
-          }
           // Passed by reference. // request details are shared so we use a new object. We could have emedded it into details though
           let topLevelRule = uDark.get_top_level_rule(cssRule);
           wording_action.length && uDark.css_properties_wording_action(cssRule.style, wording_action, details, cssRule, topLevelRule, options);
@@ -1522,7 +1511,6 @@ window.dark_object = {
             let ikd_chunk_resolved = uDark.edit_str(data.chunk, false, false, false, true);
 
             let props_and_var_only_color_idk = uDark.edit_str(data.chunk_variables, false, false, false, "partial_idk");
-            console.log(data.chunk_variables)
             let tempVariablesStyle = document.createElement("style");
             tempVariablesStyle.id = "UltimaDarkTempVariablesStyle";
 
@@ -1758,7 +1746,6 @@ window.dark_object = {
 
       })
       uDark.valuePrototypeEditor(CSS2Properties, "fill", (elem, value) => {
-        console.log(elem, value, "fill", "edited");
         let randIdentifier = Math.random().toString().slice(2)
         elem.floodColor = `var(--${randIdentifier})`
         return uDark.get_fill_for_svg_elem(document.querySelector(`[style*='${randIdentifier}]`) ||
@@ -1939,7 +1926,7 @@ window.dark_object = {
       function connected(connectedPort) {
 
         console.info("Connected", connectedPort.sender.url, connectedPort.sender.contextId);
-        if (connectedPort.name == "port-from-cs") {
+        if (connectedPort.name == "port-from-cs" && connectedPort.sender.tab) {
           // At first, we used exclude_regex here to not register some content scripts, but thent we used it earlier, in the content script registration
 
           let portKey = `port-from-cs-${connectedPort.sender.tab.id}-${connectedPort.sender.frameId}`
@@ -2258,7 +2245,6 @@ window.dark_object = {
                 let attributeValue  =coloreditem.getAttribute(key);
                 if(attributeValue&&attributeValue.startsWith("#")&&attributeValue.length==6){
                   attributeValue +="0"// Color definition for html4 was different
-                  console.log(attributeValue)
                 }
                 var possiblecolor = uDark.is_color(attributeValue  ,true,true)
                 if (possiblecolor) { 
