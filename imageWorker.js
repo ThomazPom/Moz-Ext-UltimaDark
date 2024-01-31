@@ -40,7 +40,7 @@ console.log=(...args)=>{
 console.log("Image Service worker started")
 
 
-let uDark={
+var uDark={
     background_match:/background|sprite|(?<![a-z])(bg|box|panel|fond|fundo|bck)(?![a-z])/i,
         
     RGBToLightness: (r, g, b) => {
@@ -82,6 +82,7 @@ let uDark={
           let isGradient = true;
           let currentLightness=Math.max(uDark.RGBToLightness(r, g, b),a);
           for (let n = 1; n < theImageDataUint32TMP.length; n++) {
+            // Start to 1 as we already checked the first pixel
             number = theImageDataUint32TMP[n];
             r = number & 0xff;
             g = (number >> 8) & 0xff;
@@ -191,7 +192,8 @@ let uDark={
             // 2024 way : Go faster by finding the right caclulation for each pixel
             // [r, g, b, a] = uDark.revert_rgba(r, g, b, a, (...args) => args);
             let lightenUnder=127;
-            if (lightness < lightenUnder) {
+            let edit_under_lightness=100;
+            if (lightness < lightenUnder && lightness<edit_under_lightness) {
               // [r,g,b]=[r,g,b].map((x)=>x/2);
               [r, g, b] = [r, g, b].map((x) => {
                 x = x + Math.pow(
@@ -240,21 +242,68 @@ let uDark={
                 return false; // This is a bright image with which does not need lightening, because even the darkest pixel is bright enough
               }
               if (editionStatus.contrast_percent > .70) {
-                // return false;
-                                
-                // ctx.shadowColor = "white";
-                // ctx.shadowBlur = 10;
-                
-              ctx.filter = "brightness(3) invert(1) blur(8px) hue-rotate(0deg)"; // Can use it to shift a bit the hue, allowing better reading of the text
-                for (let i = 0; i < 5; i++) {
-                  ctx.drawImage(img, 0, 0);
+                // ADD SHADOW TO IMAGE PARTS WITH LIGHTNESS < 25
+                // Note 25 is < 100-70 there is no conflict with the previous condition
+                theImageDataClamped8TMP.set(imageData.data);
+                let theImageDataUint32TMP = new Uint32Array(theImageDataBufferTMP)
+                let n=theImageDataUint32TMP.length;
+                imgDataLoop: while (n--) {
+                    var number = theImageDataUint32TMP[n];
+                    var r = number & 0xff;
+                    var g = (number >> 8) & 0xff;
+                    var b = (number >> 16) & 0xff;
+                    var a = (number >> 24) & 0xff;
+                    var newColor = ((a << 24)) | (b << 16) | (g << 8) | r;
+                    let lightness=(Math.max(r, g, b,255-a) + Math.min(r, g, b, 255-a)) / 2;
+                    // lightness=Math.min(lightness); // Alpha kills lightness
+                    if(lightness<25){
+                      number=0xffffffff;
+                    }
+                    else{
+                      number=0x00000000;
+                    }
+                    theImageDataUint32TMP[n] = number;
+                } 
+                imageData.data.set(theImageDataClamped8TMP);
+                ctx.putImageData(imageData, 0, 0);
+                ctx.filter = "blur(3px)";
+                let resource=canvas;
+                let options={viaBitmap:false,repetitions:5};
+                if(options.viaBitmap)
+                {
+                  resource=canvas.transferToImageBitmap();
+                }
+                for(let i=0;i<options.repetitions;i++)
+                {
+                  ctx.drawImage(resource,0,0);
                 }
                 ctx.filter = "none";
                 ctx.drawImage(img, 0, 0);
-                //ctx.fillStyle = "red";
-                //ctx.fillRect(0, 0, canvas.width, canvas.height);
                 editionStatus.edited=true;
                 return true;
+                //   let shadowImageBitmap = canvas.transferToImageBitmap();
+                //   editionStatus.edited=true;
+                //   return true;
+              //   ctx.drawImage(img, 0, 0);
+                
+                
+              //   // return false;
+                                
+              //   // ctx.shadowColor = "white";
+              //   // ctx.shadowBlur = 10;
+                
+              //   // ctx.filter = "contrast(0%) brightness(3) blur(3px)"; // White border no matter what
+              //  ctx.filter=" grayscale()  invert(1) brightness(0.6) contrast(900%)";
+              
+              // // ctx.filter = "brightness(3) invert(1) blur(8px) grayscale() hue-rotate(0deg)"; // Can use it to shift a bit the hue, allowing better reading of the text
+              //   for (let i = 0; i < 5; i++) {
+              //     ctx.drawImage(img, 0, 0);
+              //   }
+              //   ctx.filter = "none";
+              //   //ctx.fillStyle = "red";
+              //   //ctx.fillRect(0, 0, canvas.width, canvas.height);
+              //   editionStatus.edited=true;
+              //   return true;
                 
               }
 

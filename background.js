@@ -116,6 +116,7 @@ window.dark_object = {
             usedChar = "_uDark"
           }
           imageTrueSrc = uDark.send_data_image_to_parser(imageTrueSrc, false, {
+            image,
             notableInfos
           })
 
@@ -227,7 +228,7 @@ window.dark_object = {
 
         },
         send_data_image_to_parser: function(str, details, options) {
-
+          // uDark..disable_data_image_edition=true;
           if (str.trim().toLowerCase().startsWith('data:') && !uDark.userSettings.disable_image_edition && !uDark.disable_data_image_edition) {
             let isSvgDataUrl = str.startsWith("data:image/svg+xml");
             options.changed = true;
@@ -251,10 +252,18 @@ window.dark_object = {
               if (uDark.disable_reencode_data_svg_to_base64) {
                 str = "data:image/svg+xml," + encodeURIComponent(imageData)
               } else {
-                str = "data:image/svg+xml;base64," + btoa(imageData) + " ";
+                try {
+                  str = "data:image/svg+xml;base64," + btoa(imageData) + " ";
+                }
+                catch(e){ // String mich include invalid characters for base64 encoding, fallback to url encoding
+                  str = "data:image/svg+xml," + encodeURIComponent(imageData)
+                }
               }
             } else {
-              str = "https://data-image.com?base64IMG=" + str; // Sending other images to the parser via the worker,
+              str = "https://data-image?base64IMG=" + str; // Sending other images to the parser via the worker,
+              if(options.image){
+                options.image.removeAttribute("crossorigin"); // data images are not CORS with this domain, so we remove the attribute to avoid CORS errors
+              }
             }
           }
           return str;
@@ -281,9 +290,12 @@ window.dark_object = {
           return edit_result.new_value;
         },
         frontEditSVG: function(svg, documentElement,details, options={}) {
-          options.notableInfos = options.notableInfos || {};
-          options.lighten = uDark.revert_rgba_rgb_raw;
-          options.darken = uDark.rgba_rgb_raw;
+
+          options={...options, // Do not edit the original object, it may be used by other functions by reference
+              notableInfos:options.notableInfos || {},
+              lighten: uDark.revert_rgba_rgb_raw,
+              darken: uDark.rgba_rgb_raw,
+          }
           
           svg.setAttribute("udark-fill", true);
           svg.setAttribute("udark-id", Math.random());
@@ -304,6 +316,9 @@ window.dark_object = {
 
           if (options.notableInfos.guessed_type == "logo") {
             svg.setAttribute("fill", "white");
+            // svg.removeAttribute("fill");
+            // svg.setAttribute("fill", "currentColor");
+ 
             if (options.notableInfos.remoteSVG) // If there is no style element, we don't need to create one
             {
               let styleElem = document.createElement("style");
@@ -312,12 +327,6 @@ window.dark_object = {
               svg.append(styleElem);
             }
             
-            //   let styleElem=document.createElement("style");
-            //   styleElem.id="udark-styled";
-            //   let textNode= document.createTextNode("")
-            //   styleElem.append(textNode)
-            //   // textNode.replaceData(0, 0, "*:not(fill){fill:white;}")
-            //   svg.prepend(styleElem);
 
           }
           svg.querySelectorAll("[fill]:not([udark-fill])").forEach(fillElem => {
@@ -347,14 +356,14 @@ window.dark_object = {
             // As long as we are returing a STR, we have to edit the style element innerHTML;
             // astyle.innerHTML=uDark.edit_css(astyle.innerHTML,astyle.sheet);
             if (options.hasUnresolvedVars_idk_vars) {
-              astyle.classList.add("ud-idk-vars");
+              astyle.classList.add("ud-idk-vars"); // Allows IDK mode to edit this eligible style element
             }
             astyle.classList.add(add_class)
           });
         },
         frontEditHTML: (elem, value, details, options = {}) => {
           if (elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement) {
-            return uDark.edit_str(str, false, false, undefined, false, options)
+            return uDark.edit_str(value, false, false, undefined, false, options)
           }
 
           let hasBody = value.includes("body");
@@ -386,6 +395,7 @@ window.dark_object = {
             // Edit styles of svg elements before editing documentElement styles
           });
           
+          uDark.edit_styles_attributes(documentElement, details,options);
           uDark.edit_styles_elements(documentElement, details,"ud-edited-foreground");
 
           documentElement.querySelectorAll("[style]").forEach(astyle => {
@@ -724,13 +734,15 @@ window.dark_object = {
           render = (render || uDark.rgba_val)
           // console.log("I HAVE BEEN CALLED","revert_rgba_rgb_raw",[r, g, b, a].join("_"))
           let lightness = uDark.RGBToLightness(r, g, b);
-          let lightenUnder=50;
-            if (lightness < lightenUnder) {
+          let lightenUnder=127;
+          let edit_under=50;
+            if (lightness < lightenUnder && lightness<edit_under) {
               // [r,g,b]=[r,g,b].map((x)=>x/2);
               [r, g, b] = [r, g, b].map((x) => {
                 x = x + Math.pow(
-                  (127 - lightness) // The less the lightness the more the color is lightened
-                  , 1.4); // Increase the lightening effect a bit
+                  // Very important to report lighenUnder here, to get the correct calculation
+                  (lightenUnder - lightness) // The less the lightness the more the color is lightened
+                  , 1.11); // Increase the lightening effect a bit
                 return x;
 
               });
@@ -870,6 +882,9 @@ window.dark_object = {
 
           // Instead of registering the image as a background, we will encode the selector in the URL 
           // and register the image as a background image only when it is downloaded, in the filter script
+          
+
+          options={...options,changed:false}; // Do not edit the options object, it is shared between all calls
 
           value = value.replace(uDark.regex_search_for_url, (match, g1) => {
             //changed = true;
@@ -1159,12 +1174,15 @@ window.dark_object = {
           }
           // NOTE: Once i tried to disable variables_items, on partial idk mode, but it was an error: some variables can be used in background or foreground colors as is (--rgb(var(--ud-fg--color_1),0.5))
           // And must therefore be edited
-
-          options.hasUnresolvedVars = false;
-
-          options.lighten=options.lighten||uDark.revert_rgba;
-          options.darken=options.darken||uDark.rgba;
-          options.render=options.render||uDark.rgba_val;
+          options = { // Pass a copy of options, as we will edit it and it is shared between all calls
+            ...options,
+            ...{
+              lighten: options.lighten||uDark.revert_rgba,
+              darken: options.darken||uDark.rgba,
+              render: options.render||uDark.rgba_val,
+              hasUnresolvedVars: false,
+            }
+          }
           
           // Passed by reference. // request details are shared so we use a new object. We could have emedded it into details though
           let topLevelRule = uDark.get_top_level_rule(cssRule);
@@ -1596,9 +1614,9 @@ window.dark_object = {
           return args;
         })
       // This is the one youtube uses
-      uDark.valuePrototypeEditor(Element, "innerHTML", uDark.frontEditHTML, (elem, value) => value && value.toString().match(/style|fill/) || elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement); // toString : sombe object can redefine tostring to generate thzir inner
+      uDark.valuePrototypeEditor(Element, "innerHTML", uDark.frontEditHTML, (elem, value) => value && /style|fill/.test(value)  || elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement); // toString : sombe object can redefine tostring to generate thzir inner
       //geo.fr uses this one
-      uDark.valuePrototypeEditor(Element, "outerHTML", uDark.frontEditHTML, (elem, value) => value && value.toString().includes(/style|fill/) || elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement); // toString : sombe object can redefine tostring to generate thzir inner
+      uDark.valuePrototypeEditor(Element, "outerHTML", uDark.frontEditHTML, (elem, value) => value &&  /style|fill/.test(value)  || elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement); // toString : sombe object can redefine tostring to generate thzir inner
 
       // This is the one google uses
       uDark.functionPrototypeEditor(Element, Element.prototype.insertAdjacentHTML, (elem, args) => {
@@ -2207,10 +2225,12 @@ window.dark_object = {
               let temp_replace = document.createElement("svg_secured");
               svgElements.push([svg,temp_replace]);
               svg.replaceWith(temp_replace);
-              uDark.frontEditSVG(svg, documentElement,details);
+              uDark.frontEditSVG(svg, aDocument,details);
               // Edit styles of svg elements before editing documentElement styles
             });
-            uDark.edit_styles_elements(documentElement, details,"ud-edited-background");
+            
+            uDark.edit_styles_attributes(aDocument, details);
+            uDark.edit_styles_elements(aDocument, details,"ud-edited-background");
             
             //EXPERIMENTAL
             aDocument.querySelectorAll("meta").forEach(m => {
@@ -2330,7 +2350,7 @@ window.dark_object = {
             fill_color: "red"
           } ["restore"],
           unResolvableVarsRegex: /(?:hsl|rgb)a?\([^)]*\(/, // vars that can't be resolved by the background script
-          keepIdkProperties: true,
+          keepIdkProperties: false,
           // Asking front trough a message to get the css can be costly so we can only do it when it's absolutely necessary: when the cors does not allow us to get the css directly;
           // In the other hand  doing it for all CSS allows to cache only finalised css, so both options are good
           disable_remote_idk_css_edit: false,
@@ -2618,7 +2638,7 @@ window.dark_object = {
   misc: {
     editBeforeRequestImage: async function(details) {
 
-      if (details.url.startsWith("https://data-image.com/?base64IMG=") && !uDark.disable_image_edition) {
+      if (details.url.startsWith("https://data-image/?base64IMG=") && !uDark.disable_image_edition) {
         const dataUrl = details.url.slice(34);
         const arrayBuffer = await (await fetch(dataUrl)).arrayBuffer();
         const reader = new FileReader() // Faster but ad what cost later ? 
@@ -2835,7 +2855,7 @@ window.dark_object = {
       // END OF PROOF OF CONCEPT EDITING IMAGES BUFFERS WIHOUT FETCHING THEM IS POSSIBLE
 
       ////////////////////////
-      // Here we catch any image, including data:images <3 ( in the form of data-image.com)
+      // Here we catch any image, including data:images <3 ( in the form of data-image)
       let resultEdit = {}
 
       // If resultEdit is a promise, image will be edited (foreground or background), otherwise it may be a big background image to include under text
@@ -2873,7 +2893,7 @@ window.dark_object = {
       // let stylesheetURL=(new URL(details.url));
 
       console.log("Loading CSS", details.url, details.requestId, details.fromCache)
-
+   
       // Util 2024 jan 02 we were checking details.documentUrl, or details.url to know if a stylesheet was loaded in a excluded page
       // Since only CS ports that matches blaclist and whitelist are connected, we can simply check if this resource has a corresponding CS port
       if (!uDark.connected_cs_ports["port-from-cs-" + details.tabId + "-" + details.frameId]) {
