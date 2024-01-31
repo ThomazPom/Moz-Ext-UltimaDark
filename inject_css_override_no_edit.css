@@ -17,10 +17,16 @@ iframe {
 svg text,
 svg tspan,
 svg[udark-guess="logo"] [class]:not([fill]),
-svg[udark-guess="logo"] [style]:not([fill]),
-svg[udark-guess="logo"] :not([fill]):not([style]):not([class]) 
+svg[udark-guess="logo"] [style]:not([fill])
+,svg[udark-guess="logo"] :not([fill]):not([style]):not([class]) 
  {
-    fill: var(--ud-fg--fill-color, #fff)!important; /*When we see fill text we will propose an alternate value which will be used. If no valuse fallback to white */
+    fill: var(--ud-fg--fill-color,currentColor)!important;
+    /*When we see fill we will propose an alternate value which will be used on detected logos.
+     If no fill value was set, use the inherited color attribute, which is defined in currentColor ( And edited ) and if there is none, it will fallback to body color which is white
+     Theorically, it's perfect. How long before proven wrong?
+     The only Con is the currentColor is edited by a different ligtening algorithm. But it's close enough.
+     Note: fill and color in website stylesheets are edited by the same algorithm : revert_rgba which is different from revert_rgba_raw used for the svg stylesheets
+     */
 }
 
 * {
