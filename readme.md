@@ -38,7 +38,7 @@ You can review the transformation function here: [Desmos Background Transformati
 UltimaDark also has the capability to edit pixels in images ("Image Edition" toggle), although this feature is currently experimental and not fully functional. An example of the broken functionality can be seen on the Apple support page: [Broken Example](https://support.apple.com/fr-fr/HT205189). On the other hand, the feature works better on the Sushi Spirit website: [Not-So-Bad Example](https://www.sushispirit.com/).
 
 # Compatibility
-- Currently running on Firefox [102.15.1 ESR](https://ftp.mozilla.org/pub/firefox/releases/102.15.1esr/) and [higher](https://www.mozilla.org/firefox/new/)
+- Currently running on Firefox [115.0.3 ESR](https://ftp.mozilla.org/pub/firefox/releases/115.0.3esr/) and [higher](https://www.mozilla.org/firefox/new/)
 - [Mercury](https://thorium.rocks/mercury)
 - [Waterfox G6.0.7 or higher](https://www.waterfox.net/) 
 - [LibreWolf](https://librewolf.net/)
@@ -71,4 +71,4 @@ Bug reports help developers to find out about issues they may not have experienc
 
 # Backporting 
 
-Without an unreasonable level of effort, this extension will not be compatible with Pre-Quantum versions of Firefox (56 and lower). However, it should be theoretically possible to get working on 57 and higher. Contributions towards this broader compatibility would be greatly appreciated. 
+Without an unreasonable level of effort, this extension will not be compatible with Pre-Quantum versions of Firefox (56 and lower). However, it should be theoretically possible to get working on 57 and higher (excluding the ImageEdition rewrite which requires Firefox 105 or above). Contributions towards this broader compatibility would be greatly appreciated. 
