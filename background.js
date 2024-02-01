@@ -15,7 +15,7 @@ window.dark_object = {
         userSettings: {},
         regex_search_for_url: /url\("(.+?)(?<!\\)("\))/g,
         background_match: /background|(?<![a-z])(bg|box|panel|fond|fundo|bck)(?![a-z])/i,
-        logo_match: /avatar|logo|icon|alert|notif|cart|menu|tooltip|dropdown/i,
+        logo_match: /avatar|logo|icon|alert|notif|cart|menu|tooltip|dropdown|control/i,
         chunk_stylesheets_idk_only_cors: false,
         namedColorsRegex: (new RegExp(`(?<![_a-z0-9-])(${CSS_COLOR_NAMES.join("|")})(?![_a-z0-9-])`, "gmi")),
         min_bright_fg: 0.65, // Text with luminance  under this value will be brightened
@@ -269,8 +269,7 @@ window.dark_object = {
           return str;
         },
 
-        get_fill_for_svg_elem: function(fillElem, override_value = false, options) {
-
+        get_fill_for_svg_elem: function(fillElem, override_value = false, options={}) {
           fillElem.setAttribute("udark-fill", true);
           let fillValue = override_value || fillElem.getAttribute("fill");
           if (["animate"].includes(fillElem.tagName)) {
@@ -287,6 +286,9 @@ window.dark_object = {
               
             }
           let edit_result=uDark.transform_color(fillValue,is_text?uDark.revert_rgba_rgb_raw:uDark.rgba_rgb_raw )
+          // edit_result={
+          //   new_value:"red",
+          // }
           return edit_result.new_value;
         },
         frontEditSVG: function(svg, documentElement,details, options={}) {
@@ -305,6 +307,7 @@ window.dark_object = {
               options.notableInfos.inside_clickable = true;
             }
           }
+          
           if (!options.notableInfos.logo_match) {
             if (uDark.search_container_logo(svg,options.notableInfos)) {
               options.notableInfos.logo_match = true;
@@ -319,7 +322,7 @@ window.dark_object = {
             // svg.removeAttribute("fill");
             // svg.setAttribute("fill", "currentColor");
  
-            if (options.notableInfos.remoteSVG) // If there is no style element, we don't need to create one
+            if (options.remoteSVG||options.svgDataImage) // If there is no style element, we don't need to create one
             {
               let styleElem = document.createElement("style");
               styleElem.id = "udark-styled";
@@ -330,7 +333,7 @@ window.dark_object = {
 
           }
           svg.querySelectorAll("[fill]:not([udark-fill])").forEach(fillElem => {
-            fillElem.setAttribute("fill", uDark.get_fill_for_svg_elem(fillElem, false, options))
+            fillElem.setAttribute("fill", uDark.get_fill_for_svg_elem(fillElem, false,options))
           })
           svg.setAttribute("udark-guess", options.notableInfos.guessed_type);
           svg.setAttribute("udark-infos", new URLSearchParams(options.notableInfos).toString());
@@ -735,7 +738,7 @@ window.dark_object = {
           // console.log("I HAVE BEEN CALLED","revert_rgba_rgb_raw",[r, g, b, a].join("_"))
           let lightness = uDark.RGBToLightness(r, g, b);
           let lightenUnder=127;
-          let edit_under=50;
+          let edit_under=65;
             if (lightness < lightenUnder && lightness<edit_under) {
               // [r,g,b]=[r,g,b].map((x)=>x/2);
               [r, g, b] = [r, g, b].map((x) => {
@@ -1767,7 +1770,7 @@ window.dark_object = {
         let randIdentifier = Math.random().toString().slice(2)
         elem.floodColor = `var(--${randIdentifier})`
         return uDark.get_fill_for_svg_elem(document.querySelector(`[style*='${randIdentifier}]`) ||
-          document.createElement('zz'), value);
+          document.createElement('zz'), value,{notableInfos:{}});
       })
       // uDark.valuePrototypeEditor(CSSRule, "cssText", (elem, value) => uDark.edit_str(value)) // As far as I know, this is not affects to edit css text directly on CSSRule
       uDark.valuePrototypeEditor(CSSStyleDeclaration, "cssText", (elem, value) => uDark.edit_str(value)) // However this one does ( on elements.style.cssText and on cssRules.style.cssText, it keeps the selector as is, but the css is edited: 'color: red')
