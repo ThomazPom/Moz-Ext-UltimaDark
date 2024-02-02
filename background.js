@@ -2122,7 +2122,7 @@ window.dark_object = {
           is_background: true,
           rgb_a_colorsRegex: /rgba?\([%0-9., \/]+\)/gmi, // rgba vals without variables and calc()involved #! rgba(255 255 255 / 0.1) is valid color and rgba(255,255,255,30%) too
           hsl_a_colorsRegex: /hsla?\(([%0-9., \/=]|deg|turn|tetha)+\)/gmi, // hsla vals without variables and calc() involved
-          loggingWorkersActiveLogging:true,
+          // loggingWorkersActiveLogging:true,
           LoggingWorker: class LoggingWorker extends Worker {
             constructor(...args) {
               super(...args);
