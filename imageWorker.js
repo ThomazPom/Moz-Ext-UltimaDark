@@ -42,7 +42,7 @@ console.log("Image Service worker started")
 
 var uDark={
     background_match:/background|sprite|(?<![a-z])(bg|box|panel|fond|fundo|bck)(?![a-z])/i,
-        
+    logo_match: /avatar|logo|icon|alert|notif|cart|menu|tooltip|dropdown|control/i,
     RGBToLightness: (r, g, b) => {
         return (Math.max(r, g, b) + Math.min(r, g, b)) / 2;
       },
@@ -530,17 +530,17 @@ var uDark={
           uDark.logo_image_edit_hook
         ];
 
-        if (
-          (complement.has("inside_clickable") ||
-            imageURLObject.search.toLowerCase().includes("logo") ||
-            (complement.has("class") && complement.get("class").toLowerCase().includes("logo")))
-        ) {
-          edition_order_hooks = [uDark.logo_image_edit_hook];
-        }
-        if(uDark.background_match.test(imageURLObject.pathname))
+        if(uDark.background_match.test(imageURLObject.search+ complement.get("class")+complement.get("uDark_cssClass")))
         {
           editionStatus.editionConfidenceBackground=100;
           edition_order_hooks = [uDark.background_image_edit_hook];
+        }
+        if (
+          complement.has("inside_clickable")
+          || uDark.logo_match.test(imageURLObject.search+ complement.get("class")+complement.get("uDark_cssClass"))
+        ) {
+          
+          edition_order_hooks = [uDark.logo_image_edit_hook];
         }
 
         if (!edition_order_hooks.length) {

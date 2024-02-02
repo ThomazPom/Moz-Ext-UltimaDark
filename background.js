@@ -14,7 +14,7 @@ window.dark_object = {
         general_cache: {},
         userSettings: {},
         regex_search_for_url: /url\("(.+?)(?<!\\)("\))/g,
-        background_match: /background|(?<![a-z])(bg|box|panel|fond|fundo|bck)(?![a-z])/i,
+        background_match:/background|sprite|(?<![a-z])(bg|box|panel|fond|fundo|bck)(?![a-z])/i,
         logo_match: /avatar|logo|icon|alert|notif|cart|menu|tooltip|dropdown|control/i,
         chunk_stylesheets_idk_only_cors: false,
         namedColorsRegex: (new RegExp(`(?<![_a-z0-9-])(${CSS_COLOR_NAMES.join("|")})(?![_a-z0-9-])`, "gmi")),
@@ -25,6 +25,33 @@ window.dark_object = {
         min_bright_bg_trigger: 0.2, // backgrounds with luminace under this value will remain as is
         min_bright_bg: 0.1, // background with value over min_bright_bg_trigger will be darkened from this value up to max_bright_bg
         max_bright_bg: 0.4, // background with value over min_bright_bg_trigger will be darkened from min_bright_bg up to this value
+        
+        sRGBtoLin: (colorChannel) => {
+          // Send this function a decimal sRGB gamma encoded color value
+          // between 0.0 and 1.0, and it returns a linearized value.
+
+          if (colorChannel <= 0.04045) {
+            return colorChannel / 12.92;
+          } else {
+            return Math.pow(((colorChannel + 0.055) / 1.055), 2.4);
+          }
+        },
+        getLuminance: (r, g, b) => {
+          return (0.2126 * uDark.sRGBtoLin(r / 255) + 0.7152 * uDark.sRGBtoLin(g / 255) + 0.0722 * uDark.sRGBtoLin(b / 255));
+        },
+        getPerceivedLigtness: (r, g, b) => {
+          return uDark.YtoLstar(uDark.getLuminance(r, g, b));
+        },
+        YtoLstar: (Y) => {
+          // Send this function a luminance value between 0.0 and 1.0,
+          // and it returns L* which is "perceptual lightness"
+
+          if (Y <= (216 / 24389)) { // The CIE standard states 0.008856 but 216/24389 is the intent for 0.008856451679036
+            return Y * (24389 / 27); // The CIE standard states 903.3, but 24389/27 is the intent, making 903.296296296296296
+          } else {
+            return Math.pow(Y, (1 / 3)) * 116 - 16;
+          }
+        },
         do_idk_mode_timed: function(duration, interval) {
           if (!uDark.enable_idk_mode) {
             return;
@@ -91,6 +118,11 @@ window.dark_object = {
 
           // Do not parse url preventing adding context to it or interpreting it as a relative url or correcting its content by any way
           let imageTrueSrc = src_override || image.getAttribute("src")
+
+          if(uDark.userSettings.disable_image_edition){
+            return imageTrueSrc;
+          }
+
           if (!image.hasAttribute("data-ud-selector")) {
             image.setAttribute("data-ud-selector", Math.random());
           }
@@ -243,10 +275,18 @@ window.dark_object = {
               }
               let commaIndex = str.indexOf(","); // String.splt is broken: It limits the number of elems in returned array instaed of lititting the nujmber of splits
               let [imageHeader, imageData] = [str.substring(0, commaIndex), str.substring(commaIndex + 1)]
+ 
+              try{
 
-              imageData = imageHeader.toLowerCase().includes("base64") ?
+                imageData = imageHeader.toLowerCase().includes("base64") ?
                 atob(imageData) :
                 decodeURIComponent(imageData)
+              }
+              catch(e){
+                console.warn("Error decoding data image",str,e)
+                return str;
+
+              }
               imageData = uDark.frontEditHTML(false, imageData,details, options)
               // uDark.disable_reencode_data_svg_to_base64=true;
               if (uDark.disable_reencode_data_svg_to_base64) {
@@ -272,6 +312,10 @@ window.dark_object = {
         get_fill_for_svg_elem: function(fillElem, override_value = false, options={}) {
           fillElem.setAttribute("udark-fill", true);
           let fillValue = override_value || fillElem.getAttribute("fill");
+          if(!fillValue)
+          {
+            console.log(fillElem,override_value,options,fillValue)
+          }
           if (["animate"].includes(fillElem.tagName)) {
             return fillValue
           } // fill has another meaning for animate
@@ -292,7 +336,12 @@ window.dark_object = {
           return edit_result.new_value;
         },
         frontEditSVG: function(svg, documentElement,details, options={}) {
-
+          if(uDark.userSettings.disable_image_edition)
+          {
+            return;
+          }
+          uDark.edit_styles_attributes(svg, details,options);
+          uDark.edit_styles_elements(svg, details,"ud-edited-background",options);
           options={...options, // Do not edit the original object, it may be used by other functions by reference
               notableInfos:options.notableInfos || {},
               lighten: uDark.revert_rgba_rgb_raw,
@@ -327,6 +376,8 @@ window.dark_object = {
               let styleElem = document.createElement("style");
               styleElem.id = "udark-styled";
               styleElem.append(document.createTextNode(uDark.inject_css_override))
+              styleElem.append(document.createTextNode("svg {color:white}")) // Allows "currentColor" to take effect
+              
               svg.append(styleElem);
             }
             
@@ -338,8 +389,6 @@ window.dark_object = {
           svg.setAttribute("udark-guess", options.notableInfos.guessed_type);
           svg.setAttribute("udark-infos", new URLSearchParams(options.notableInfos).toString());
 
-          uDark.edit_styles_attributes(svg, details,options);
-          uDark.edit_styles_elements(svg, details,"ud-edited-background",options);
           
         },
         edit_styles_attributes: function(parentElement, details, options={}) {
@@ -395,7 +444,7 @@ window.dark_object = {
             svgElements.push([svg,temp_replace]);
             svg.replaceWith(temp_replace);
             uDark.frontEditSVG(svg, documentElement,details,options);
-            // Edit styles of svg elements before editing documentElement styles
+            // Edit styles of svg elements before editing documentElement styles, and by the same time protect the svg from being edited by the main function if image edition is disabled
           });
           
           uDark.edit_styles_attributes(documentElement, details,options);
@@ -738,10 +787,14 @@ window.dark_object = {
           // console.log("I HAVE BEEN CALLED","revert_rgba_rgb_raw",[r, g, b, a].join("_"))
           let lightness = uDark.RGBToLightness(r, g, b);
           let lightenUnder=127;
-          let edit_under=65;
+          let edit_under=100;
             if (lightness < lightenUnder && lightness<edit_under) {
-              // [r,g,b]=[r,g,b].map((x)=>x/2);
-              [r, g, b] = [r, g, b].map((x) => {
+              let plightness=uDark.getPerceivedLigtness(r,g,b); // Adding perceived lightness for svg:
+              // Otherwise [uDark.RGBToLightness(66,82,110)  ,uDark.getPerceivedLigtness(66,82,110) are greater than uDark.getPerceivedLigtness(0,89,146) ,uDark.RGBToLightness(0,89,146)  ]
+              let edit_under_perceived=35;
+              if(plightness<edit_under_perceived)
+              {
+                [r, g, b] = [r, g, b].map((x) => {
                 x = x + Math.pow(
                   // Very important to report lighenUnder here, to get the correct calculation
                   (lightenUnder - lightness) // The less the lightness the more the color is lightened
@@ -749,6 +802,7 @@ window.dark_object = {
                 return x;
 
               });
+            }
           }
           return render(...[r, g, b], a);
         },
@@ -878,6 +932,11 @@ window.dark_object = {
         },
 
         edit_css_urls: function(cssStyle, cssRule, details, topLevelRule, options, vars) {
+          if(uDark.userSettings.disable_image_edition)
+          {
+            return;
+          }
+
           vars = vars || {};
           vars.property = vars.property || "background-image";
           let value = cssStyle.getPropertyValue(vars.property);
@@ -1770,7 +1829,7 @@ window.dark_object = {
         let randIdentifier = Math.random().toString().slice(2)
         elem.floodColor = `var(--${randIdentifier})`
         return uDark.get_fill_for_svg_elem(document.querySelector(`[style*='${randIdentifier}]`) ||
-          document.createElement('zz'), value,{notableInfos:{}});
+          document.createElement('zz'), value||"currentColor",{notableInfos:{}});
       })
       // uDark.valuePrototypeEditor(CSSRule, "cssText", (elem, value) => uDark.edit_str(value)) // As far as I know, this is not affects to edit css text directly on CSSRule
       uDark.valuePrototypeEditor(CSSStyleDeclaration, "cssText", (elem, value) => uDark.edit_str(value)) // However this one does ( on elements.style.cssText and on cssRules.style.cssText, it keeps the selector as is, but the css is edited: 'color: red')
@@ -1861,7 +1920,9 @@ window.dark_object = {
           //   ["blocking"]);
           /*end of Experimental*/
 
-          globalThis.browser.webRequest.onBeforeRequest.addListener(dark_object.misc.editBeforeRequestImage, {
+          if(!uDark.userSettings.disable_image_edition)
+          {
+            globalThis.browser.webRequest.onBeforeRequest.addListener(dark_object.misc.editBeforeRequestImage, {
               urls: ["<all_urls>"],
               // urls: uDark.userSettings.properWhiteList, // We can't assume the image is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
               types: ["image"]
@@ -1873,6 +1934,8 @@ window.dark_object = {
               types: ["image"]
             },
             ["blocking", "responseHeaders"]);
+
+          }
 
           globalThis.browser.webRequest.onCompleted.addListener(dark_object.misc.onCompletedStylesheet, {
             // urls: uDark.userSettings.properWhiteList, // We can't assume the css is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
@@ -2059,7 +2122,7 @@ window.dark_object = {
           is_background: true,
           rgb_a_colorsRegex: /rgba?\([%0-9., \/]+\)/gmi, // rgba vals without variables and calc()involved #! rgba(255 255 255 / 0.1) is valid color and rgba(255,255,255,30%) too
           hsl_a_colorsRegex: /hsla?\(([%0-9., \/=]|deg|turn|tetha)+\)/gmi, // hsla vals without variables and calc() involved
-          // loggingWorkersActiveLogging:true,
+          loggingWorkersActiveLogging:true,
           LoggingWorker: class LoggingWorker extends Worker {
             constructor(...args) {
               super(...args);
@@ -2361,32 +2424,6 @@ window.dark_object = {
           idk_minimum_editor: 0.2,
           connected_cs_ports: {},
           connected_options_ports_count: 0,
-          sRGBtoLin: (colorChannel) => {
-            // Send this function a decimal sRGB gamma encoded color value
-            // between 0.0 and 1.0, and it returns a linearized value.
-
-            if (colorChannel <= 0.04045) {
-              return colorChannel / 12.92;
-            } else {
-              return Math.pow(((colorChannel + 0.055) / 1.055), 2.4);
-            }
-          },
-          getLuminance: (r, g, b) => {
-            return (0.2126 * uDark.sRGBtoLin(r / 255) + 0.7152 * uDark.sRGBtoLin(g / 255) + 0.0722 * uDark.sRGBtoLin(b / 255));
-          },
-          getPerceivedLigtness: (r, g, b) => {
-            return uDark.YtoLstar(uDark.getLuminance(r, g, b));
-          },
-          YtoLstar: (Y) => {
-            // Send this function a luminance value between 0.0 and 1.0,
-            // and it returns L* which is "perceptual lightness"
-
-            if (Y <= (216 / 24389)) { // The CIE standard states 0.008856 but 216/24389 is the intent for 0.008856451679036
-              return Y * (24389 / 27); // The CIE standard states 903.3, but 24389/27 is the intent, making 903.296296296296296
-            } else {
-              return Math.pow(Y, (1 / 3)) * 116 - 16;
-            }
-          },
           calcMaxPerceiveidLigtness: () => {
             console.info("Processing max perceveid light with actual settings, please wait ...")
             let actualPerceivedLigtness = 0;
@@ -2640,7 +2677,7 @@ window.dark_object = {
   },
   misc: {
     editBeforeRequestImage: async function(details) {
-      if (details.url.startsWith("https://data-image/?base64IMG=") && !uDark.disable_image_edition) {
+      if (details.url.startsWith("https://data-image/?base64IMG=")) {
         
         const dataUrl = details.url.slice(30);
         const arrayBuffer = await (await fetch(dataUrl)).arrayBuffer();
