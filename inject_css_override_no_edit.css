@@ -18,7 +18,7 @@ svg text,
 svg tspan,
 svg[udark-guess="logo"] [class]:not([fill]),
 svg[udark-guess="logo"] [style]:not([fill])
-,svg[udark-guess="logo"] :not([fill]):not([style]):not([class]) 
+,svg[udark-guess="logo"] :not([fill]):not([style]):not([class])
  {
     fill: var(--ud-fg--fill-color,currentColor)!important;
     /*When we see fill we will propose an alternate value which will be used on detected logos.
@@ -27,6 +27,11 @@ svg[udark-guess="logo"] [style]:not([fill])
      The only Con is the currentColor is edited by a different ligtening algorithm. But it's close enough.
      Note: fill and color in website stylesheets are edited by the same algorithm : revert_rgba which is different from revert_rgba_raw used for the svg stylesheets
      */
+}
+
+svg[udark-guess="logo"] [stroke]:not([fill]):not([style]):not([class])
+{
+    color:transparent!important; /*Do not fill elems used only for borders in previous class*/
 }
 
 * {
