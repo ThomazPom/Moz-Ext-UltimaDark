@@ -5,6 +5,27 @@ window.dark_object = {
       { // Any level protected proptotypes
         CSS2Properties.prototype.p_ud_setProperty=CSS2Properties.prototype.setProperty;
       }
+      {
+        // Very special functions
+        String.prototype.hashCode = function(under=100,over=0) {
+          var hash = 0,
+            i, chr;
+          if (this.length === 0) return hash;
+          for (i = 0; i < this.length; i++) {
+            chr = this.charCodeAt(i);
+            hash = ((hash << 5) - hash) + chr;
+            hash |= 0 ; // Convert to 32bit integer
+          }
+          hash+=2147483647 + 1;
+          hash%=under;
+          if(hash<=over)
+          {
+             hash=(this+"z").hashCode(under,over)
+          }
+          return hash;
+        };
+      }
+
       const CSS_COLOR_NAMES = ["AliceBlue", "AntiqueWhite", "Aqua", "Aquamarine", "Azure", "Beige", "Bisque", "Black", "BlanchedAlmond", "Blue", "BlueViolet", "Brown", "BurlyWood", "CadetBlue", "Chartreuse", "Chocolate", "Coral", "CornflowerBlue", "Cornsilk", "Crimson", "Cyan", "DarkBlue", "DarkCyan", "DarkGoldenRod", "DarkGray", "DarkGrey", "DarkGreen", "DarkKhaki", "DarkMagenta", "DarkOliveGreen", "DarkOrange", "DarkOrchid", "DarkRed", "DarkSalmon", "DarkSeaGreen", "DarkSlateBlue", "DarkSlateGray", "DarkSlateGrey", "DarkTurquoise", "DarkViolet", "DeepPink", "DeepSkyBlue", "DimGray", "DimGrey", "DodgerBlue", "FireBrick", "FloralWhite", "ForestGreen", "Fuchsia", "Gainsboro", "GhostWhite", "Gold", "GoldenRod", "Gray", "Grey", "Green", "GreenYellow", "HoneyDew", "HotPink", "IndianRed", "Indigo", "Ivory", "Khaki", "Lavender", "LavenderBlush", "LawnGreen", "LemonChiffon", "LightBlue", "LightCoral", "LightCyan", "LightGoldenRodYellow", "LightGray", "LightGrey", "LightGreen", "LightPink", "LightSalmon", "LightSeaGreen", "LightSkyBlue", "LightSlateGray", "LightSlateGrey", "LightSteelBlue", "LightYellow", "Lime", "LimeGreen", "Linen", "Magenta", "Maroon", "MediumAquaMarine", "MediumBlue", "MediumOrchid", "MediumPurple", "MediumSeaGreen", "MediumSlateBlue", "MediumSpringGreen", "MediumTurquoise", "MediumVioletRed", "MidnightBlue", "MintCream", "MistyRose", "Moccasin", "NavajoWhite", "Navy", "OldLace", "Olive", "OliveDrab", "Orange", "OrangeRed", "Orchid", "PaleGoldenRod", "PaleGreen", "PaleTurquoise", "PaleVioletRed", "PapayaWhip", "PeachPuff", "Peru", "Pink", "Plum", "PowderBlue", "Purple", "RebeccaPurple", "Red", "RosyBrown", "RoyalBlue", "SaddleBrown", "Salmon", "SandyBrown", "SeaGreen", "SeaShell", "Sienna", "Silver", "SkyBlue", "SlateBlue", "SlateGray", "SlateGrey", "Snow", "SpringGreen", "SteelBlue", "Tan", "Teal", "Thistle", "Tomato", "Turquoise", "Violet", "Wheat", "White", "WhiteSmoke", "Yellow", "YellowGreen"]
 
       window.uDark = {
@@ -312,9 +333,8 @@ window.dark_object = {
 
         get_fill_for_svg_elem: function(fillElem, override_value = false, options={},class_name="udark-fill") {
           let fillValue = override_value || fillElem.getAttribute("fill");
-          if(!fillValue)
-          {
-            console.log(fillElem,override_value,options,fillValue)
+          if(!uDark.is_color(fillValue)){
+            fillValue="#000000";
           }
           if (["animate"].includes(fillElem.tagName)) {
             return fillValue
@@ -348,6 +368,7 @@ window.dark_object = {
               lighten: uDark.revert_rgba_rgb_raw,
               darken: uDark.rgba_rgb_raw,
           }
+
           
           svg.setAttribute("udark-fill", true);
           svg.setAttribute("udark-id", Math.random());
@@ -368,6 +389,10 @@ window.dark_object = {
           }
 
           if (options.notableInfos.guessed_type == "logo") {
+
+            
+
+
             svg.setAttribute("fill", "white");
             // svg.removeAttribute("fill");
             // svg.setAttribute("fill", "currentColor");
@@ -390,7 +415,11 @@ window.dark_object = {
           svg.querySelectorAll("[stroke]:not([udark-stroke])").forEach(fillElem => {
             fillElem.setAttribute("stroke", uDark.get_fill_for_svg_elem(fillElem, fillElem.getAttribute("stroke"),options),"udark-stroke")
           })
-          
+          svg.querySelectorAll("circle").forEach(fillElem => {
+            fillElem.setAttribute("ud-brightness-"+fillElem.outerHTML.hashCode(60,35), true);
+            
+            fillElem.setAttribute("fill", "black");
+          })
           svg.setAttribute("udark-guess", options.notableInfos.guessed_type);
           svg.setAttribute("udark-infos", new URLSearchParams(options.notableInfos).toString());
 

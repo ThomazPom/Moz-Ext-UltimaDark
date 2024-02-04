@@ -1,4 +1,3 @@
-
 .ud_overImage {
     color: white;
     mix-blend-mode: exclusion;
@@ -19,6 +18,7 @@ svg tspan,
 svg[udark-guess="logo"] [class]:not([fill]),
 svg[udark-guess="logo"] [style]:not([fill])
 ,svg[udark-guess="logo"] :not([fill]):not([style]):not([class])
+,svg[udark-guess="undefined"]  path:not([fill]):not([style]):not([class])
  {
     fill: var(--ud-fg--fill-color,currentColor)!important;
     /*When we see fill we will propose an alternate value which will be used on detected logos.
@@ -29,6 +29,8 @@ svg[udark-guess="logo"] [style]:not([fill])
      */
 }
 
+
+
 svg[udark-guess="logo"] [stroke]:not([fill]):not([style]):not([class])
 {
     color:transparent!important; /*Do not fill elems used only for borders in previous class*/
@@ -37,3 +39,106 @@ svg[udark-guess="logo"] [stroke]:not([fill]):not([style]):not([class])
 * {
     scrollbar-color:rgba(255,255,255,0.40) rgba(0,0,0,0.26)
 }
+
+
+[ud-brightness-0]{fill-opacity:.0!important;}
+[ud-brightness-1]{fill-opacity:.1!important;}
+[ud-brightness-2]{fill-opacity:.2!important;}
+[ud-brightness-3]{fill-opacity:.3!important;}
+[ud-brightness-4]{fill-opacity:.4!important;}
+[ud-brightness-5]{fill-opacity:.5!important;}
+[ud-brightness-6]{fill-opacity:.6!important;}
+[ud-brightness-7]{fill-opacity:.7!important;}
+[ud-brightness-8]{fill-opacity:.8!important;}
+[ud-brightness-9]{fill-opacity:.9!important;}
+[ud-brightness-10]{fill-opacity:.10!important;}
+[ud-brightness-11]{fill-opacity:.11!important;}
+[ud-brightness-12]{fill-opacity:.12!important;}
+[ud-brightness-13]{fill-opacity:.13!important;}
+[ud-brightness-14]{fill-opacity:.14!important;}
+[ud-brightness-15]{fill-opacity:.15!important;}
+[ud-brightness-16]{fill-opacity:.16!important;}
+[ud-brightness-17]{fill-opacity:.17!important;}
+[ud-brightness-18]{fill-opacity:.18!important;}
+[ud-brightness-19]{fill-opacity:.19!important;}
+[ud-brightness-20]{fill-opacity:.20!important;}
+[ud-brightness-21]{fill-opacity:.21!important;}
+[ud-brightness-22]{fill-opacity:.22!important;}
+[ud-brightness-23]{fill-opacity:.23!important;}
+[ud-brightness-24]{fill-opacity:.24!important;}
+[ud-brightness-25]{fill-opacity:.25!important;}
+[ud-brightness-26]{fill-opacity:.26!important;}
+[ud-brightness-27]{fill-opacity:.27!important;}
+[ud-brightness-28]{fill-opacity:.28!important;}
+[ud-brightness-29]{fill-opacity:.29!important;}
+[ud-brightness-30]{fill-opacity:.30!important;}
+[ud-brightness-31]{fill-opacity:.31!important;}
+[ud-brightness-32]{fill-opacity:.32!important;}
+[ud-brightness-33]{fill-opacity:.33!important;}
+[ud-brightness-34]{fill-opacity:.34!important;}
+[ud-brightness-35]{fill-opacity:.35!important;}
+[ud-brightness-36]{fill-opacity:.36!important;}
+[ud-brightness-37]{fill-opacity:.37!important;}
+[ud-brightness-38]{fill-opacity:.38!important;}
+[ud-brightness-39]{fill-opacity:.39!important;}
+[ud-brightness-40]{fill-opacity:.40!important;}
+[ud-brightness-41]{fill-opacity:.41!important;}
+[ud-brightness-42]{fill-opacity:.42!important;}
+[ud-brightness-43]{fill-opacity:.43!important;}
+[ud-brightness-44]{fill-opacity:.44!important;}
+[ud-brightness-45]{fill-opacity:.45!important;}
+[ud-brightness-46]{fill-opacity:.46!important;}
+[ud-brightness-47]{fill-opacity:.47!important;}
+[ud-brightness-48]{fill-opacity:.48!important;}
+[ud-brightness-49]{fill-opacity:.49!important;}
+[ud-brightness-50]{fill-opacity:.50!important;}
+[ud-brightness-51]{fill-opacity:.51!important;}
+[ud-brightness-52]{fill-opacity:.52!important;}
+[ud-brightness-53]{fill-opacity:.53!important;}
+[ud-brightness-54]{fill-opacity:.54!important;}
+[ud-brightness-55]{fill-opacity:.55!important;}
+[ud-brightness-56]{fill-opacity:.56!important;}
+[ud-brightness-57]{fill-opacity:.57!important;}
+[ud-brightness-58]{fill-opacity:.58!important;}
+[ud-brightness-59]{fill-opacity:.59!important;}
+[ud-brightness-60]{fill-opacity:.60!important;}
+[ud-brightness-61]{fill-opacity:.61!important;}
+[ud-brightness-62]{fill-opacity:.62!important;}
+[ud-brightness-63]{fill-opacity:.63!important;}
+[ud-brightness-64]{fill-opacity:.64!important;}
+[ud-brightness-65]{fill-opacity:.65!important;}
+[ud-brightness-66]{fill-opacity:.66!important;}
+[ud-brightness-67]{fill-opacity:.67!important;}
+[ud-brightness-68]{fill-opacity:.68!important;}
+[ud-brightness-69]{fill-opacity:.69!important;}
+[ud-brightness-70]{fill-opacity:.70!important;}
+[ud-brightness-71]{fill-opacity:.71!important;}
+[ud-brightness-72]{fill-opacity:.72!important;}
+[ud-brightness-73]{fill-opacity:.73!important;}
+[ud-brightness-74]{fill-opacity:.74!important;}
+[ud-brightness-75]{fill-opacity:.75!important;}
+[ud-brightness-76]{fill-opacity:.76!important;}
+[ud-brightness-77]{fill-opacity:.77!important;}
+[ud-brightness-78]{fill-opacity:.78!important;}
+[ud-brightness-79]{fill-opacity:.79!important;}
+[ud-brightness-80]{fill-opacity:.80!important;}
+[ud-brightness-81]{fill-opacity:.81!important;}
+[ud-brightness-82]{fill-opacity:.82!important;}
+[ud-brightness-83]{fill-opacity:.83!important;}
+[ud-brightness-84]{fill-opacity:.84!important;}
+[ud-brightness-85]{fill-opacity:.85!important;}
+[ud-brightness-86]{fill-opacity:.86!important;}
+[ud-brightness-87]{fill-opacity:.87!important;}
+[ud-brightness-88]{fill-opacity:.88!important;}
+[ud-brightness-89]{fill-opacity:.89!important;}
+[ud-brightness-90]{fill-opacity:.90!important;}
+[ud-brightness-91]{fill-opacity:.91!important;}
+[ud-brightness-92]{fill-opacity:.92!important;}
+[ud-brightness-93]{fill-opacity:.93!important;}
+[ud-brightness-94]{fill-opacity:.94!important;}
+[ud-brightness-95]{fill-opacity:.95!important;}
+[ud-brightness-96]{fill-opacity:.96!important;}
+[ud-brightness-97]{fill-opacity:.97!important;}
+[ud-brightness-98]{fill-opacity:.98!important;}
+[ud-brightness-99]{fill-opacity:.99!important;}
+
