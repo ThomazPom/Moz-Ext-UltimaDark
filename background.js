@@ -330,10 +330,9 @@ window.dark_object = {
           }
           return str;
         },
-
-        get_fill_for_svg_elem: function(fillElem, override_value = false, options={},class_name="udark-fill") {
+        get_fill_for_svg_elem: function(fillElem, override_value = false, options={},class_name="udark-fill",transform=true) {
           let fillValue = override_value || fillElem.getAttribute("fill");
-          if(!uDark.is_color(fillValue)){
+          if(override_value=="none"||!uDark.is_color(fillValue)){
             fillValue="#000000";
           }
           if (["animate"].includes(fillElem.tagName)) {
@@ -349,12 +348,13 @@ window.dark_object = {
                 
               
             }
+          fillElem.setAttribute("udark-edit", true);
           fillElem.setAttribute(class_name, `${options.notableInfos.guessed_type}${is_text?"-text":""}`);
-          let edit_result=uDark.transform_color(fillValue,{prefix_fg_vars:is_text},is_text?uDark.revert_rgba_rgb_raw:uDark.rgba_rgb_raw )
-          // edit_result={
-          //   new_value:"red",
-          // }
-          return edit_result.new_value;
+          if(transform){
+            let edit_result=uDark.transform_color(fillValue,{prefix_fg_vars:is_text},is_text?uDark.revert_rgba_rgb_raw:uDark.rgba_rgb_raw )
+            return edit_result.new_value;
+          }
+          return is_text
         },
         frontEditSVG: function(svg, documentElement,details, options={}) {
           if(uDark.userSettings.disable_image_edition)
@@ -413,13 +413,28 @@ window.dark_object = {
             fillElem.setAttribute("fill", uDark.get_fill_for_svg_elem(fillElem, false,options))
           })
           svg.querySelectorAll("[stroke]:not([udark-stroke])").forEach(fillElem => {
-            fillElem.setAttribute("stroke", uDark.get_fill_for_svg_elem(fillElem, fillElem.getAttribute("stroke"),options),"udark-stroke")
+            fillElem.setAttribute("stroke", uDark.get_fill_for_svg_elem(fillElem, fillElem.getAttribute("stroke"),options).replace(/currentColor/i,"white"),"udark-stroke")
           })
-          svg.querySelectorAll("circle").forEach(fillElem => {
-            fillElem.setAttribute("ud-brightness-"+fillElem.outerHTML.hashCode(60,35), true);
+          // svg.querySelectorAll("circle").forEach(fillElem => {
+          //   fillElem.setAttribute("ud-brightness-"+fillElem.outerHTML.hashCode(60,35), true);
             
-            fillElem.setAttribute("fill", "black");
-          })
+          //    fillElem.setAttribute("fill", "black");
+          // })
+          
+          let all_svg_elems=svg.querySelectorAll("*");
+          all_svg_elems.forEach((fillElem,index) => {
+            if(fillElem.hasAttribute("fill")){
+              return;
+            }
+            let is_text=uDark.get_fill_for_svg_elem(fillElem, false,{notableInfos:{}},class_name="udark-gradient",transform=false)
+            if(!is_text){
+               fillElem.setAttribute("ud-brightness-"+Math.floor((uDark.min_bright_bg+(index/all_svg_elems.length))*100), true);
+            }
+            
+          });
+          
+
+
           svg.setAttribute("udark-guess", options.notableInfos.guessed_type);
           svg.setAttribute("udark-infos", new URLSearchParams(options.notableInfos).toString());
 
@@ -2214,7 +2229,7 @@ window.dark_object = {
           is_background: true,
           rgb_a_colorsRegex: /rgba?\([%0-9., \/]+\)/gmi, // rgba vals without variables and calc()involved #! rgba(255 255 255 / 0.1) is valid color and rgba(255,255,255,30%) too
           hsl_a_colorsRegex: /hsla?\(([%0-9., \/=]|deg|turn|tetha)+\)/gmi, // hsla vals without variables and calc() involved
-          // loggingWorkersActiveLogging:true,
+          loggingWorkersActiveLogging:true,
           LoggingWorker: class LoggingWorker extends Worker {
             constructor(...args) {
               super(...args);

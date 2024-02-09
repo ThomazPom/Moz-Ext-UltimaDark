@@ -18,7 +18,6 @@ svg tspan,
 svg[udark-guess="logo"] [class]:not([fill]),
 svg[udark-guess="logo"] [style]:not([fill])
 ,svg[udark-guess="logo"] :not([fill]):not([style]):not([class])
-,svg[udark-guess="undefined"]  path:not([fill]):not([style]):not([class])
  {
     fill: var(--ud-fg--fill-color,currentColor)!important;
     /*When we see fill we will propose an alternate value which will be used on detected logos.
@@ -40,105 +39,104 @@ svg[udark-guess="logo"] [stroke]:not([fill]):not([style]):not([class])
     scrollbar-color:rgba(255,255,255,0.40) rgba(0,0,0,0.26)
 }
 
-
-[ud-brightness-0]{fill-opacity:.0!important;}
-[ud-brightness-1]{fill-opacity:.1!important;}
-[ud-brightness-2]{fill-opacity:.2!important;}
-[ud-brightness-3]{fill-opacity:.3!important;}
-[ud-brightness-4]{fill-opacity:.4!important;}
-[ud-brightness-5]{fill-opacity:.5!important;}
-[ud-brightness-6]{fill-opacity:.6!important;}
-[ud-brightness-7]{fill-opacity:.7!important;}
-[ud-brightness-8]{fill-opacity:.8!important;}
-[ud-brightness-9]{fill-opacity:.9!important;}
-[ud-brightness-10]{fill-opacity:.10!important;}
-[ud-brightness-11]{fill-opacity:.11!important;}
-[ud-brightness-12]{fill-opacity:.12!important;}
-[ud-brightness-13]{fill-opacity:.13!important;}
-[ud-brightness-14]{fill-opacity:.14!important;}
-[ud-brightness-15]{fill-opacity:.15!important;}
-[ud-brightness-16]{fill-opacity:.16!important;}
-[ud-brightness-17]{fill-opacity:.17!important;}
-[ud-brightness-18]{fill-opacity:.18!important;}
-[ud-brightness-19]{fill-opacity:.19!important;}
-[ud-brightness-20]{fill-opacity:.20!important;}
-[ud-brightness-21]{fill-opacity:.21!important;}
-[ud-brightness-22]{fill-opacity:.22!important;}
-[ud-brightness-23]{fill-opacity:.23!important;}
-[ud-brightness-24]{fill-opacity:.24!important;}
-[ud-brightness-25]{fill-opacity:.25!important;}
-[ud-brightness-26]{fill-opacity:.26!important;}
-[ud-brightness-27]{fill-opacity:.27!important;}
-[ud-brightness-28]{fill-opacity:.28!important;}
-[ud-brightness-29]{fill-opacity:.29!important;}
-[ud-brightness-30]{fill-opacity:.30!important;}
-[ud-brightness-31]{fill-opacity:.31!important;}
-[ud-brightness-32]{fill-opacity:.32!important;}
-[ud-brightness-33]{fill-opacity:.33!important;}
-[ud-brightness-34]{fill-opacity:.34!important;}
-[ud-brightness-35]{fill-opacity:.35!important;}
-[ud-brightness-36]{fill-opacity:.36!important;}
-[ud-brightness-37]{fill-opacity:.37!important;}
-[ud-brightness-38]{fill-opacity:.38!important;}
-[ud-brightness-39]{fill-opacity:.39!important;}
-[ud-brightness-40]{fill-opacity:.40!important;}
-[ud-brightness-41]{fill-opacity:.41!important;}
-[ud-brightness-42]{fill-opacity:.42!important;}
-[ud-brightness-43]{fill-opacity:.43!important;}
-[ud-brightness-44]{fill-opacity:.44!important;}
-[ud-brightness-45]{fill-opacity:.45!important;}
-[ud-brightness-46]{fill-opacity:.46!important;}
-[ud-brightness-47]{fill-opacity:.47!important;}
-[ud-brightness-48]{fill-opacity:.48!important;}
-[ud-brightness-49]{fill-opacity:.49!important;}
-[ud-brightness-50]{fill-opacity:.50!important;}
-[ud-brightness-51]{fill-opacity:.51!important;}
-[ud-brightness-52]{fill-opacity:.52!important;}
-[ud-brightness-53]{fill-opacity:.53!important;}
-[ud-brightness-54]{fill-opacity:.54!important;}
-[ud-brightness-55]{fill-opacity:.55!important;}
-[ud-brightness-56]{fill-opacity:.56!important;}
-[ud-brightness-57]{fill-opacity:.57!important;}
-[ud-brightness-58]{fill-opacity:.58!important;}
-[ud-brightness-59]{fill-opacity:.59!important;}
-[ud-brightness-60]{fill-opacity:.60!important;}
-[ud-brightness-61]{fill-opacity:.61!important;}
-[ud-brightness-62]{fill-opacity:.62!important;}
-[ud-brightness-63]{fill-opacity:.63!important;}
-[ud-brightness-64]{fill-opacity:.64!important;}
-[ud-brightness-65]{fill-opacity:.65!important;}
-[ud-brightness-66]{fill-opacity:.66!important;}
-[ud-brightness-67]{fill-opacity:.67!important;}
-[ud-brightness-68]{fill-opacity:.68!important;}
-[ud-brightness-69]{fill-opacity:.69!important;}
-[ud-brightness-70]{fill-opacity:.70!important;}
-[ud-brightness-71]{fill-opacity:.71!important;}
-[ud-brightness-72]{fill-opacity:.72!important;}
-[ud-brightness-73]{fill-opacity:.73!important;}
-[ud-brightness-74]{fill-opacity:.74!important;}
-[ud-brightness-75]{fill-opacity:.75!important;}
-[ud-brightness-76]{fill-opacity:.76!important;}
-[ud-brightness-77]{fill-opacity:.77!important;}
-[ud-brightness-78]{fill-opacity:.78!important;}
-[ud-brightness-79]{fill-opacity:.79!important;}
-[ud-brightness-80]{fill-opacity:.80!important;}
-[ud-brightness-81]{fill-opacity:.81!important;}
-[ud-brightness-82]{fill-opacity:.82!important;}
-[ud-brightness-83]{fill-opacity:.83!important;}
-[ud-brightness-84]{fill-opacity:.84!important;}
-[ud-brightness-85]{fill-opacity:.85!important;}
-[ud-brightness-86]{fill-opacity:.86!important;}
-[ud-brightness-87]{fill-opacity:.87!important;}
-[ud-brightness-88]{fill-opacity:.88!important;}
-[ud-brightness-89]{fill-opacity:.89!important;}
-[ud-brightness-90]{fill-opacity:.90!important;}
-[ud-brightness-91]{fill-opacity:.91!important;}
-[ud-brightness-92]{fill-opacity:.92!important;}
-[ud-brightness-93]{fill-opacity:.93!important;}
-[ud-brightness-94]{fill-opacity:.94!important;}
-[ud-brightness-95]{fill-opacity:.95!important;}
-[ud-brightness-96]{fill-opacity:.96!important;}
-[ud-brightness-97]{fill-opacity:.97!important;}
-[ud-brightness-98]{fill-opacity:.98!important;}
-[ud-brightness-99]{fill-opacity:.99!important;}
+svg[udark-guess="logo"] [ud-brightness-0]{color: hsl(0, 0%, 0%)!important}
+svg[udark-guess="logo"] [ud-brightness-1]{color: hsl(0, 0%, 1%)!important}
+svg[udark-guess="logo"] [ud-brightness-2]{color: hsl(0, 0%, 2%)!important}
+svg[udark-guess="logo"] [ud-brightness-3]{color: hsl(0, 0%, 3%)!important}
+svg[udark-guess="logo"] [ud-brightness-4]{color: hsl(0, 0%, 4%)!important}
+svg[udark-guess="logo"] [ud-brightness-5]{color: hsl(0, 0%, 5%)!important}
+svg[udark-guess="logo"] [ud-brightness-6]{color: hsl(0, 0%, 6%)!important}
+svg[udark-guess="logo"] [ud-brightness-7]{color: hsl(0, 0%, 7%)!important}
+svg[udark-guess="logo"] [ud-brightness-8]{color: hsl(0, 0%, 8%)!important}
+svg[udark-guess="logo"] [ud-brightness-9]{color: hsl(0, 0%, 9%)!important}
+svg[udark-guess="logo"] [ud-brightness-10]{color: hsl(0, 0%, 10%)!important}
+svg[udark-guess="logo"] [ud-brightness-11]{color: hsl(0, 0%, 11%)!important}
+svg[udark-guess="logo"] [ud-brightness-12]{color: hsl(0, 0%, 12%)!important}
+svg[udark-guess="logo"] [ud-brightness-13]{color: hsl(0, 0%, 13%)!important}
+svg[udark-guess="logo"] [ud-brightness-14]{color: hsl(0, 0%, 14%)!important}
+svg[udark-guess="logo"] [ud-brightness-15]{color: hsl(0, 0%, 15%)!important}
+svg[udark-guess="logo"] [ud-brightness-16]{color: hsl(0, 0%, 16%)!important}
+svg[udark-guess="logo"] [ud-brightness-17]{color: hsl(0, 0%, 17%)!important}
+svg[udark-guess="logo"] [ud-brightness-18]{color: hsl(0, 0%, 18%)!important}
+svg[udark-guess="logo"] [ud-brightness-19]{color: hsl(0, 0%, 19%)!important}
+svg[udark-guess="logo"] [ud-brightness-20]{color: hsl(0, 0%, 20%)!important}
+svg[udark-guess="logo"] [ud-brightness-21]{color: hsl(0, 0%, 21%)!important}
+svg[udark-guess="logo"] [ud-brightness-22]{color: hsl(0, 0%, 22%)!important}
+svg[udark-guess="logo"] [ud-brightness-23]{color: hsl(0, 0%, 23%)!important}
+svg[udark-guess="logo"] [ud-brightness-24]{color: hsl(0, 0%, 24%)!important}
+svg[udark-guess="logo"] [ud-brightness-25]{color: hsl(0, 0%, 25%)!important}
+svg[udark-guess="logo"] [ud-brightness-26]{color: hsl(0, 0%, 26%)!important}
+svg[udark-guess="logo"] [ud-brightness-27]{color: hsl(0, 0%, 27%)!important}
+svg[udark-guess="logo"] [ud-brightness-28]{color: hsl(0, 0%, 28%)!important}
+svg[udark-guess="logo"] [ud-brightness-29]{color: hsl(0, 0%, 29%)!important}
+svg[udark-guess="logo"] [ud-brightness-30]{color: hsl(0, 0%, 30%)!important}
+svg[udark-guess="logo"] [ud-brightness-31]{color: hsl(0, 0%, 31%)!important}
+svg[udark-guess="logo"] [ud-brightness-32]{color: hsl(0, 0%, 32%)!important}
+svg[udark-guess="logo"] [ud-brightness-33]{color: hsl(0, 0%, 33%)!important}
+svg[udark-guess="logo"] [ud-brightness-34]{color: hsl(0, 0%, 34%)!important}
+svg[udark-guess="logo"] [ud-brightness-35]{color: hsl(0, 0%, 35%)!important}
+svg[udark-guess="logo"] [ud-brightness-36]{color: hsl(0, 0%, 36%)!important}
+svg[udark-guess="logo"] [ud-brightness-37]{color: hsl(0, 0%, 37%)!important}
+svg[udark-guess="logo"] [ud-brightness-38]{color: hsl(0, 0%, 38%)!important}
+svg[udark-guess="logo"] [ud-brightness-39]{color: hsl(0, 0%, 39%)!important}
+svg[udark-guess="logo"] [ud-brightness-40]{color: hsl(0, 0%, 40%)!important}
+svg[udark-guess="logo"] [ud-brightness-41]{color: hsl(0, 0%, 41%)!important}
+svg[udark-guess="logo"] [ud-brightness-42]{color: hsl(0, 0%, 42%)!important}
+svg[udark-guess="logo"] [ud-brightness-43]{color: hsl(0, 0%, 43%)!important}
+svg[udark-guess="logo"] [ud-brightness-44]{color: hsl(0, 0%, 44%)!important}
+svg[udark-guess="logo"] [ud-brightness-45]{color: hsl(0, 0%, 45%)!important}
+svg[udark-guess="logo"] [ud-brightness-46]{color: hsl(0, 0%, 46%)!important}
+svg[udark-guess="logo"] [ud-brightness-47]{color: hsl(0, 0%, 47%)!important}
+svg[udark-guess="logo"] [ud-brightness-48]{color: hsl(0, 0%, 48%)!important}
+svg[udark-guess="logo"] [ud-brightness-49]{color: hsl(0, 0%, 49%)!important}
+svg[udark-guess="logo"] [ud-brightness-50]{color: hsl(0, 0%, 50%)!important}
+svg[udark-guess="logo"] [ud-brightness-51]{color: hsl(0, 0%, 51%)!important}
+svg[udark-guess="logo"] [ud-brightness-52]{color: hsl(0, 0%, 52%)!important}
+svg[udark-guess="logo"] [ud-brightness-53]{color: hsl(0, 0%, 53%)!important}
+svg[udark-guess="logo"] [ud-brightness-54]{color: hsl(0, 0%, 54%)!important}
+svg[udark-guess="logo"] [ud-brightness-55]{color: hsl(0, 0%, 55%)!important}
+svg[udark-guess="logo"] [ud-brightness-56]{color: hsl(0, 0%, 56%)!important}
+svg[udark-guess="logo"] [ud-brightness-57]{color: hsl(0, 0%, 57%)!important}
+svg[udark-guess="logo"] [ud-brightness-58]{color: hsl(0, 0%, 58%)!important}
+svg[udark-guess="logo"] [ud-brightness-59]{color: hsl(0, 0%, 59%)!important}
+svg[udark-guess="logo"] [ud-brightness-60]{color: hsl(0, 0%, 60%)!important}
+svg[udark-guess="logo"] [ud-brightness-61]{color: hsl(0, 0%, 61%)!important}
+svg[udark-guess="logo"] [ud-brightness-62]{color: hsl(0, 0%, 62%)!important}
+svg[udark-guess="logo"] [ud-brightness-63]{color: hsl(0, 0%, 63%)!important}
+svg[udark-guess="logo"] [ud-brightness-64]{color: hsl(0, 0%, 64%)!important}
+svg[udark-guess="logo"] [ud-brightness-65]{color: hsl(0, 0%, 65%)!important}
+svg[udark-guess="logo"] [ud-brightness-66]{color: hsl(0, 0%, 66%)!important}
+svg[udark-guess="logo"] [ud-brightness-67]{color: hsl(0, 0%, 67%)!important}
+svg[udark-guess="logo"] [ud-brightness-68]{color: hsl(0, 0%, 68%)!important}
+svg[udark-guess="logo"] [ud-brightness-69]{color: hsl(0, 0%, 69%)!important}
+svg[udark-guess="logo"] [ud-brightness-70]{color: hsl(0, 0%, 70%)!important}
+svg[udark-guess="logo"] [ud-brightness-71]{color: hsl(0, 0%, 71%)!important}
+svg[udark-guess="logo"] [ud-brightness-72]{color: hsl(0, 0%, 72%)!important}
+svg[udark-guess="logo"] [ud-brightness-73]{color: hsl(0, 0%, 73%)!important}
+svg[udark-guess="logo"] [ud-brightness-74]{color: hsl(0, 0%, 74%)!important}
+svg[udark-guess="logo"] [ud-brightness-75]{color: hsl(0, 0%, 75%)!important}
+svg[udark-guess="logo"] [ud-brightness-76]{color: hsl(0, 0%, 76%)!important}
+svg[udark-guess="logo"] [ud-brightness-77]{color: hsl(0, 0%, 77%)!important}
+svg[udark-guess="logo"] [ud-brightness-78]{color: hsl(0, 0%, 78%)!important}
+svg[udark-guess="logo"] [ud-brightness-79]{color: hsl(0, 0%, 79%)!important}
+svg[udark-guess="logo"] [ud-brightness-80]{color: hsl(0, 0%, 80%)!important}
+svg[udark-guess="logo"] [ud-brightness-81]{color: hsl(0, 0%, 81%)!important}
+svg[udark-guess="logo"] [ud-brightness-82]{color: hsl(0, 0%, 82%)!important}
+svg[udark-guess="logo"] [ud-brightness-83]{color: hsl(0, 0%, 83%)!important}
+svg[udark-guess="logo"] [ud-brightness-84]{color: hsl(0, 0%, 84%)!important}
+svg[udark-guess="logo"] [ud-brightness-85]{color: hsl(0, 0%, 85%)!important}
+svg[udark-guess="logo"] [ud-brightness-86]{color: hsl(0, 0%, 86%)!important}
+svg[udark-guess="logo"] [ud-brightness-87]{color: hsl(0, 0%, 87%)!important}
+svg[udark-guess="logo"] [ud-brightness-88]{color: hsl(0, 0%, 88%)!important}
+svg[udark-guess="logo"] [ud-brightness-89]{color: hsl(0, 0%, 89%)!important}
+svg[udark-guess="logo"] [ud-brightness-90]{color: hsl(0, 0%, 90%)!important}
+svg[udark-guess="logo"] [ud-brightness-91]{color: hsl(0, 0%, 91%)!important}
+svg[udark-guess="logo"] [ud-brightness-92]{color: hsl(0, 0%, 92%)!important}
+svg[udark-guess="logo"] [ud-brightness-93]{color: hsl(0, 0%, 93%)!important}
+svg[udark-guess="logo"] [ud-brightness-94]{color: hsl(0, 0%, 94%)!important}
+svg[udark-guess="logo"] [ud-brightness-95]{color: hsl(0, 0%, 95%)!important}
+svg[udark-guess="logo"] [ud-brightness-96]{color: hsl(0, 0%, 96%)!important}
+svg[udark-guess="logo"] [ud-brightness-97]{color: hsl(0, 0%, 97%)!important}
+svg[udark-guess="logo"] [ud-brightness-98]{color: hsl(0, 0%, 98%)!important}
+svg[udark-guess="logo"] [ud-brightness-99]{color: hsl(0, 0%, 99%)!important}
 
