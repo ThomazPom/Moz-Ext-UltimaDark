@@ -344,7 +344,7 @@ window.dark_object = {
             if(!is_text&&["path"].includes(fillElem.tagName)){
               let draw_path=fillElem.getAttribute("d");
               // Lot of stop path in in path, it's probably a text
-              is_text = draw_path && ([...draw_path.matchAll(/Z/ig)].length>=5||draw_path.length>400)          
+              is_text = draw_path && ([...draw_path.matchAll(/Z/ig)].length>=3||draw_path.length>200)          
                 
               
             }
