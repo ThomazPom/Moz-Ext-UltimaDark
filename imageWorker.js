@@ -48,6 +48,114 @@ var uDark={
       },
     trigger_ratio_size_number_colors: 393,
     trigger_ratio_size_number_lightness_photo: 9835,
+
+    is_photo:(targetBitmap,editionStatus)=> {
+      console.log(targetBitmap,targetBitmap.width, targetBitmap.height, "is_photo")
+      const canvas = new OffscreenCanvas(targetBitmap.width, targetBitmap.height);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(targetBitmap, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      let pixelCount = data.length / 4;
+      
+      let opaqueColorCounter = new Set();
+      let lightnessCounter = new Set();
+
+      let trigger_ratio_size_number_lightness_photo=uDark.trigger_ratio_size_number_lightness_photo;
+      let trigger_ratio_size_number_colors=uDark.trigger_ratio_size_number_colors;
+
+      if(editionStatus.isGrayscale)
+      {
+        trigger_ratio_size_number_lightness_photo=trigger_ratio_size_number_lightness_photo*2;
+        trigger_ratio_size_number_colors=trigger_ratio_size_number_colors*2;
+      }
+
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const a = data[i + 3];
+        let number= ((a << 24)) | (b << 16) | (g << 8) | r
+        
+        lightnessCounter.add(number)
+        if(a==255){
+          opaqueColorCounter.add(number);
+        }
+        let is_photo = pixelCount/opaqueColorCounter.size <= trigger_ratio_size_number_colors
+        && pixelCount/lightnessCounter.size <= trigger_ratio_size_number_lightness_photo;
+        if(is_photo)
+        {
+          return true;
+        }
+      }
+      return false;
+    },
+    is_photo_stat: async function(editionStatus, sourceBitmap,details) {
+      let targetGrid=50;
+      let targetGridCount=5;
+      let targetGridWidth=targetGrid*targetGridCount;
+      let resizeWidth=Math.min(sourceBitmap.width,targetGridWidth),resizeHeight=Math.min(sourceBitmap.height,targetGridWidth);
+
+      const targetBitmap = await createImageBitmap(sourceBitmap, 0, 0, sourceBitmap.width, sourceBitmap.height,{
+        resizeWidth,resizeHeight
+      });
+      
+      
+      const isGrayscaleImage = uDark.isGrayscale(targetBitmap,details);
+      
+      editionStatus.isGrayscale = isGrayscaleImage;
+      console.log("Image","is_photo_stat isGrayscale",details.url,details.requestId,editionStatus.isGrayscale )
+
+    
+      if(resizeHeight==targetGridWidth&&resizeWidth==targetGridWidth)
+      {
+        
+        for (let row = 0; row < targetGridCount; row++) {
+          for (let col = 0; col < targetGridCount; col++) {
+            
+        
+      console.log("Image","is_photo_stat isGrayscale",details.url,details.requestId,editionStatus.isGrayscale,row,col )
+            let testBitmap=await createImageBitmap(targetBitmap, col*targetGrid, row*targetGrid, targetGrid, targetGrid);
+            let is_photo=uDark.is_photo(testBitmap,editionStatus);
+            if(is_photo)
+            {
+        
+              console.log("Image","is_photo_stat isPhotoYes",details.url,details.requestId,editionStatus.isGrayscale,testBitmap )
+              return true;
+            }
+          }
+        }
+      }
+      else
+      {
+        return uDark.is_photo(targetBitmap,editionStatus);
+      }
+      // Use the targetBitmap for further processing
+
+      return false;
+    },
+
+    isGrayscale: (targetBitmap, tolerance=4) => {
+      console.log(targetBitmap, targetBitmap.width, targetBitmap.height, "isGrayscale");
+      const canvas = new OffscreenCanvas(targetBitmap.width, targetBitmap.height);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(targetBitmap, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        let vmax=Math.max(r, g, b);
+        let vmin=Math.min(r, g, b);
+        if(vmax-vmin>tolerance)
+        {
+          return false;
+        }
+      }
+      return true;
+    },
+
     check_image_lines_content: function(canvas, ctx) {
         const leftBorderImageData = ctx.getImageData(0, 0, 1, canvas.height);
         const rightBorderImageData = ctx.getImageData(canvas.width - 1, 0, 1, canvas.height);
@@ -392,7 +500,6 @@ var uDark={
           editionStatus.alpha_sum = 0;
           editionStatus.alpha_qty = 0;
         }
-
         imgDataLoop: while (n--) {
 
           if (editionStatus.is_photo && !(editionConfidence >= 100)) { // stop the loop if a photo is detected
@@ -564,6 +671,7 @@ var uDark={
           //     then: x => details.dataUrl
           //   })
           // }
+          
           let blob = (new Blob(imageBuffers));
           console.log("Image","Blob created", new Date() / 1 - start_date ,details.url,details.requestId)
           let imageBitmap;
@@ -579,7 +687,9 @@ var uDark={
             return editionStatus;
 
           }
-
+          
+            editionStatus.is_photo = await uDark.is_photo_stat(editionStatus, imageBitmap,details);
+            if(editionStatus.is_photo){editionStatus.editionConfidenceBackground=-1000}
           // blob.arrayBuffer().then((buffer) => {
             {
 
