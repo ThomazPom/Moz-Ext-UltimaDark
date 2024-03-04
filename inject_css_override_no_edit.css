@@ -1,4 +1,3 @@
-
 .ud_overImage {
     color: white;
     mix-blend-mode: exclusion;
@@ -18,7 +17,7 @@ svg text,
 svg tspan,
 svg[udark-guess="logo"] [class]:not([fill]),
 svg[udark-guess="logo"] [style]:not([fill])
-,svg[udark-guess="logo"] :not([fill]):not([style]):not([class]) 
+,svg[udark-guess="logo"] :not([fill]):not([style]):not([class])
  {
     fill: var(--ud-fg--fill-color,currentColor)!important;
     /*When we see fill we will propose an alternate value which will be used on detected logos.
@@ -29,6 +28,115 @@ svg[udark-guess="logo"] [style]:not([fill])
      */
 }
 
+
+
+svg[udark-guess="logo"] [stroke]:not([fill]):not([style]):not([class])
+{
+    color:transparent!important; /*Do not fill elems used only for borders in previous class*/
+}
+
 * {
     scrollbar-color:rgba(255,255,255,0.40) rgba(0,0,0,0.26)
 }
+
+svg[udark-guess="logo"] [ud-brightness-0]{color: hsl(0, 0%, 0%)!important}
+svg[udark-guess="logo"] [ud-brightness-1]{color: hsl(0, 0%, 1%)!important}
+svg[udark-guess="logo"] [ud-brightness-2]{color: hsl(0, 0%, 2%)!important}
+svg[udark-guess="logo"] [ud-brightness-3]{color: hsl(0, 0%, 3%)!important}
+svg[udark-guess="logo"] [ud-brightness-4]{color: hsl(0, 0%, 4%)!important}
+svg[udark-guess="logo"] [ud-brightness-5]{color: hsl(0, 0%, 5%)!important}
+svg[udark-guess="logo"] [ud-brightness-6]{color: hsl(0, 0%, 6%)!important}
+svg[udark-guess="logo"] [ud-brightness-7]{color: hsl(0, 0%, 7%)!important}
+svg[udark-guess="logo"] [ud-brightness-8]{color: hsl(0, 0%, 8%)!important}
+svg[udark-guess="logo"] [ud-brightness-9]{color: hsl(0, 0%, 9%)!important}
+svg[udark-guess="logo"] [ud-brightness-10]{color: hsl(0, 0%, 10%)!important}
+svg[udark-guess="logo"] [ud-brightness-11]{color: hsl(0, 0%, 11%)!important}
+svg[udark-guess="logo"] [ud-brightness-12]{color: hsl(0, 0%, 12%)!important}
+svg[udark-guess="logo"] [ud-brightness-13]{color: hsl(0, 0%, 13%)!important}
+svg[udark-guess="logo"] [ud-brightness-14]{color: hsl(0, 0%, 14%)!important}
+svg[udark-guess="logo"] [ud-brightness-15]{color: hsl(0, 0%, 15%)!important}
+svg[udark-guess="logo"] [ud-brightness-16]{color: hsl(0, 0%, 16%)!important}
+svg[udark-guess="logo"] [ud-brightness-17]{color: hsl(0, 0%, 17%)!important}
+svg[udark-guess="logo"] [ud-brightness-18]{color: hsl(0, 0%, 18%)!important}
+svg[udark-guess="logo"] [ud-brightness-19]{color: hsl(0, 0%, 19%)!important}
+svg[udark-guess="logo"] [ud-brightness-20]{color: hsl(0, 0%, 20%)!important}
+svg[udark-guess="logo"] [ud-brightness-21]{color: hsl(0, 0%, 21%)!important}
+svg[udark-guess="logo"] [ud-brightness-22]{color: hsl(0, 0%, 22%)!important}
+svg[udark-guess="logo"] [ud-brightness-23]{color: hsl(0, 0%, 23%)!important}
+svg[udark-guess="logo"] [ud-brightness-24]{color: hsl(0, 0%, 24%)!important}
+svg[udark-guess="logo"] [ud-brightness-25]{color: hsl(0, 0%, 25%)!important}
+svg[udark-guess="logo"] [ud-brightness-26]{color: hsl(0, 0%, 26%)!important}
+svg[udark-guess="logo"] [ud-brightness-27]{color: hsl(0, 0%, 27%)!important}
+svg[udark-guess="logo"] [ud-brightness-28]{color: hsl(0, 0%, 28%)!important}
+svg[udark-guess="logo"] [ud-brightness-29]{color: hsl(0, 0%, 29%)!important}
+svg[udark-guess="logo"] [ud-brightness-30]{color: hsl(0, 0%, 30%)!important}
+svg[udark-guess="logo"] [ud-brightness-31]{color: hsl(0, 0%, 31%)!important}
+svg[udark-guess="logo"] [ud-brightness-32]{color: hsl(0, 0%, 32%)!important}
+svg[udark-guess="logo"] [ud-brightness-33]{color: hsl(0, 0%, 33%)!important}
+svg[udark-guess="logo"] [ud-brightness-34]{color: hsl(0, 0%, 34%)!important}
+svg[udark-guess="logo"] [ud-brightness-35]{color: hsl(0, 0%, 35%)!important}
+svg[udark-guess="logo"] [ud-brightness-36]{color: hsl(0, 0%, 36%)!important}
+svg[udark-guess="logo"] [ud-brightness-37]{color: hsl(0, 0%, 37%)!important}
+svg[udark-guess="logo"] [ud-brightness-38]{color: hsl(0, 0%, 38%)!important}
+svg[udark-guess="logo"] [ud-brightness-39]{color: hsl(0, 0%, 39%)!important}
+svg[udark-guess="logo"] [ud-brightness-40]{color: hsl(0, 0%, 40%)!important}
+svg[udark-guess="logo"] [ud-brightness-41]{color: hsl(0, 0%, 41%)!important}
+svg[udark-guess="logo"] [ud-brightness-42]{color: hsl(0, 0%, 42%)!important}
+svg[udark-guess="logo"] [ud-brightness-43]{color: hsl(0, 0%, 43%)!important}
+svg[udark-guess="logo"] [ud-brightness-44]{color: hsl(0, 0%, 44%)!important}
+svg[udark-guess="logo"] [ud-brightness-45]{color: hsl(0, 0%, 45%)!important}
+svg[udark-guess="logo"] [ud-brightness-46]{color: hsl(0, 0%, 46%)!important}
+svg[udark-guess="logo"] [ud-brightness-47]{color: hsl(0, 0%, 47%)!important}
+svg[udark-guess="logo"] [ud-brightness-48]{color: hsl(0, 0%, 48%)!important}
+svg[udark-guess="logo"] [ud-brightness-49]{color: hsl(0, 0%, 49%)!important}
+svg[udark-guess="logo"] [ud-brightness-50]{color: hsl(0, 0%, 50%)!important}
+svg[udark-guess="logo"] [ud-brightness-51]{color: hsl(0, 0%, 51%)!important}
+svg[udark-guess="logo"] [ud-brightness-52]{color: hsl(0, 0%, 52%)!important}
+svg[udark-guess="logo"] [ud-brightness-53]{color: hsl(0, 0%, 53%)!important}
+svg[udark-guess="logo"] [ud-brightness-54]{color: hsl(0, 0%, 54%)!important}
+svg[udark-guess="logo"] [ud-brightness-55]{color: hsl(0, 0%, 55%)!important}
+svg[udark-guess="logo"] [ud-brightness-56]{color: hsl(0, 0%, 56%)!important}
+svg[udark-guess="logo"] [ud-brightness-57]{color: hsl(0, 0%, 57%)!important}
+svg[udark-guess="logo"] [ud-brightness-58]{color: hsl(0, 0%, 58%)!important}
+svg[udark-guess="logo"] [ud-brightness-59]{color: hsl(0, 0%, 59%)!important}
+svg[udark-guess="logo"] [ud-brightness-60]{color: hsl(0, 0%, 60%)!important}
+svg[udark-guess="logo"] [ud-brightness-61]{color: hsl(0, 0%, 61%)!important}
+svg[udark-guess="logo"] [ud-brightness-62]{color: hsl(0, 0%, 62%)!important}
+svg[udark-guess="logo"] [ud-brightness-63]{color: hsl(0, 0%, 63%)!important}
+svg[udark-guess="logo"] [ud-brightness-64]{color: hsl(0, 0%, 64%)!important}
+svg[udark-guess="logo"] [ud-brightness-65]{color: hsl(0, 0%, 65%)!important}
+svg[udark-guess="logo"] [ud-brightness-66]{color: hsl(0, 0%, 66%)!important}
+svg[udark-guess="logo"] [ud-brightness-67]{color: hsl(0, 0%, 67%)!important}
+svg[udark-guess="logo"] [ud-brightness-68]{color: hsl(0, 0%, 68%)!important}
+svg[udark-guess="logo"] [ud-brightness-69]{color: hsl(0, 0%, 69%)!important}
+svg[udark-guess="logo"] [ud-brightness-70]{color: hsl(0, 0%, 70%)!important}
+svg[udark-guess="logo"] [ud-brightness-71]{color: hsl(0, 0%, 71%)!important}
+svg[udark-guess="logo"] [ud-brightness-72]{color: hsl(0, 0%, 72%)!important}
+svg[udark-guess="logo"] [ud-brightness-73]{color: hsl(0, 0%, 73%)!important}
+svg[udark-guess="logo"] [ud-brightness-74]{color: hsl(0, 0%, 74%)!important}
+svg[udark-guess="logo"] [ud-brightness-75]{color: hsl(0, 0%, 75%)!important}
+svg[udark-guess="logo"] [ud-brightness-76]{color: hsl(0, 0%, 76%)!important}
+svg[udark-guess="logo"] [ud-brightness-77]{color: hsl(0, 0%, 77%)!important}
+svg[udark-guess="logo"] [ud-brightness-78]{color: hsl(0, 0%, 78%)!important}
+svg[udark-guess="logo"] [ud-brightness-79]{color: hsl(0, 0%, 79%)!important}
+svg[udark-guess="logo"] [ud-brightness-80]{color: hsl(0, 0%, 80%)!important}
+svg[udark-guess="logo"] [ud-brightness-81]{color: hsl(0, 0%, 81%)!important}
+svg[udark-guess="logo"] [ud-brightness-82]{color: hsl(0, 0%, 82%)!important}
+svg[udark-guess="logo"] [ud-brightness-83]{color: hsl(0, 0%, 83%)!important}
+svg[udark-guess="logo"] [ud-brightness-84]{color: hsl(0, 0%, 84%)!important}
+svg[udark-guess="logo"] [ud-brightness-85]{color: hsl(0, 0%, 85%)!important}
+svg[udark-guess="logo"] [ud-brightness-86]{color: hsl(0, 0%, 86%)!important}
+svg[udark-guess="logo"] [ud-brightness-87]{color: hsl(0, 0%, 87%)!important}
+svg[udark-guess="logo"] [ud-brightness-88]{color: hsl(0, 0%, 88%)!important}
+svg[udark-guess="logo"] [ud-brightness-89]{color: hsl(0, 0%, 89%)!important}
+svg[udark-guess="logo"] [ud-brightness-90]{color: hsl(0, 0%, 90%)!important}
+svg[udark-guess="logo"] [ud-brightness-91]{color: hsl(0, 0%, 91%)!important}
+svg[udark-guess="logo"] [ud-brightness-92]{color: hsl(0, 0%, 92%)!important}
+svg[udark-guess="logo"] [ud-brightness-93]{color: hsl(0, 0%, 93%)!important}
+svg[udark-guess="logo"] [ud-brightness-94]{color: hsl(0, 0%, 94%)!important}
+svg[udark-guess="logo"] [ud-brightness-95]{color: hsl(0, 0%, 95%)!important}
+svg[udark-guess="logo"] [ud-brightness-96]{color: hsl(0, 0%, 96%)!important}
+svg[udark-guess="logo"] [ud-brightness-97]{color: hsl(0, 0%, 97%)!important}
+svg[udark-guess="logo"] [ud-brightness-98]{color: hsl(0, 0%, 98%)!important}
+svg[udark-guess="logo"] [ud-brightness-99]{color: hsl(0, 0%, 99%)!important}
+
