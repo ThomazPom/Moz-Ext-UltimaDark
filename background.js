@@ -344,7 +344,7 @@ window.dark_object = {
             if(!is_text&&["path"].includes(fillElem.tagName)){
               let draw_path=fillElem.getAttribute("d");
               // Lot of stop path in in path, it's probably a text
-              is_text = draw_path && ([...draw_path.matchAll(/Z/ig)].length>=3||draw_path.length>200)          
+              is_text = draw_path && ([...draw_path.matchAll(/Z/ig)].length>=2||draw_path.length>170)          
                 
               
             }
@@ -421,17 +421,17 @@ window.dark_object = {
           //    fillElem.setAttribute("fill", "black");
           // })
           
-          let all_svg_elems=svg.querySelectorAll("*");
-          all_svg_elems.forEach((fillElem,index) => {
-            if(fillElem.hasAttribute("fill")){
-              return;
-            }
-            let is_text=uDark.get_fill_for_svg_elem(fillElem, false,{notableInfos:{}},class_name="udark-gradient",transform=false)
-            if(!is_text){
-               fillElem.setAttribute("ud-brightness-"+Math.floor((uDark.min_bright_bg+(index/all_svg_elems.length))*100), true);
-            }
+          // let all_svg_elems=svg.querySelectorAll(":not(udark-edit)");
+          // all_svg_elems.forEach((fillElem,index) => {
+          //   if(fillElem.hasAttribute("fill")){
+          //     return;
+          //   }
+          //   let is_text=uDark.get_fill_for_svg_elem(fillElem, false,{notableInfos:{}},class_name="udark-gradient",transform=false)
+          //   if(!is_text){
+          //      fillElem.setAttribute("ud-brightness-"+Math.floor((uDark.min_bright_bg+(index/all_svg_elems.length))*100), true);
+          //   }
             
-          });
+          // });
           
 
 
@@ -1777,7 +1777,7 @@ window.dark_object = {
         })
         
       // This is the one youtube uses
-      uDark.valuePrototypeEditor(Element, "innerHTML", uDark.frontEditHTML, (elem, value) => value && /style|fill/.test(value)  || elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement); // toString : sombe object can redefine tostring to generate thzir inner
+      uDark.valuePrototypeEditor([Element,ShadowRoot], "innerHTML", uDark.frontEditHTML, (elem, value) => value && /style|fill/.test(value)  || elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement); // toString : sombe object can redefine tostring to generate thzir inner
       //geo.fr uses this one
       uDark.valuePrototypeEditor(Element, "outerHTML", uDark.frontEditHTML, (elem, value) => value &&  /style|fill/.test(value)  || elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement); // toString : sombe object can redefine tostring to generate thzir inner
 
@@ -1861,7 +1861,19 @@ window.dark_object = {
       }
 
       // UserStyles.org and gitlab append text nodes to style elements, this is why we set the textContent of these items
-
+      // uDark.functionPrototypeEditor(Element,Element.prototype.attachShadow, (elem, args) => {
+      //   args[0].mode = "open";
+        
+      //   console.log("Attach shadow",elem,args);
+      //   return args;
+      // },x=>true,x=>{
+      //   console.log("Attached shadow",x);
+      //   let aCSS=new CSSStyleSheet();
+      //   aCSS.o_ud_replaceSync(uDark.inject_css_override);
+      //   x.adoptedStyleSheets=[aCSS];
+      //   return x;
+        
+      // })
       uDark.functionPrototypeEditor(Node, [
         Node.prototype.appendChild,
         Node.prototype.insertBefore
