@@ -26,8 +26,30 @@ window.dark_object = {
         };
       }
 
-      const CSS_COLOR_NAMES = ["AliceBlue", "AntiqueWhite", "Aqua", "Aquamarine", "Azure", "Beige", "Bisque", "Black", "BlanchedAlmond", "Blue", "BlueViolet", "Brown", "BurlyWood", "CadetBlue", "Chartreuse", "Chocolate", "Coral", "CornflowerBlue", "Cornsilk", "Crimson", "Cyan", "DarkBlue", "DarkCyan", "DarkGoldenRod", "DarkGray", "DarkGrey", "DarkGreen", "DarkKhaki", "DarkMagenta", "DarkOliveGreen", "DarkOrange", "DarkOrchid", "DarkRed", "DarkSalmon", "DarkSeaGreen", "DarkSlateBlue", "DarkSlateGray", "DarkSlateGrey", "DarkTurquoise", "DarkViolet", "DeepPink", "DeepSkyBlue", "DimGray", "DimGrey", "DodgerBlue", "FireBrick", "FloralWhite", "ForestGreen", "Fuchsia", "Gainsboro", "GhostWhite", "Gold", "GoldenRod", "Gray", "Grey", "Green", "GreenYellow", "HoneyDew", "HotPink", "IndianRed", "Indigo", "Ivory", "Khaki", "Lavender", "LavenderBlush", "LawnGreen", "LemonChiffon", "LightBlue", "LightCoral", "LightCyan", "LightGoldenRodYellow", "LightGray", "LightGrey", "LightGreen", "LightPink", "LightSalmon", "LightSeaGreen", "LightSkyBlue", "LightSlateGray", "LightSlateGrey", "LightSteelBlue", "LightYellow", "Lime", "LimeGreen", "Linen", "Magenta", "Maroon", "MediumAquaMarine", "MediumBlue", "MediumOrchid", "MediumPurple", "MediumSeaGreen", "MediumSlateBlue", "MediumSpringGreen", "MediumTurquoise", "MediumVioletRed", "MidnightBlue", "MintCream", "MistyRose", "Moccasin", "NavajoWhite", "Navy", "OldLace", "Olive", "OliveDrab", "Orange", "OrangeRed", "Orchid", "PaleGoldenRod", "PaleGreen", "PaleTurquoise", "PaleVioletRed", "PapayaWhip", "PeachPuff", "Peru", "Pink", "Plum", "PowderBlue", "Purple", "RebeccaPurple", "Red", "RosyBrown", "RoyalBlue", "SaddleBrown", "Salmon", "SandyBrown", "SeaGreen", "SeaShell", "Sienna", "Silver", "SkyBlue", "SlateBlue", "SlateGray", "SlateGrey", "Snow", "SpringGreen", "SteelBlue", "Tan", "Teal", "Thistle", "Tomato", "Turquoise", "Violet", "Wheat", "White", "WhiteSmoke", "Yellow", "YellowGreen"]
+      String.prototype.protect = function(regexSearch,protectWith) {
+        // sore values into an array:
+        var values = this.match(regexSearch);
+        let str=this;
+        if(values)
+        {
+          str=str.replace(regexSearch,protectWith);
+        }
+        return {str,values,protectWith};
+      };
 
+      String.prototype.unprotect = function(protection) {
+        let str=this;
+        if(protection.values)
+        {
+          protection.values.forEach((value,index)=>{
+            str=str.replace(protection.protectWith,value);
+          })
+        }
+        return str;
+      };
+
+
+      const CSS_COLOR_NAMES = ["AliceBlue", "AntiqueWhite", "Aqua", "Aquamarine", "Azure", "Beige", "Bisque", "Black", "BlanchedAlmond", "Blue", "BlueViolet", "Brown", "BurlyWood", "CadetBlue", "Chartreuse", "Chocolate", "Coral", "CornflowerBlue", "Cornsilk", "Crimson", "Cyan", "DarkBlue", "DarkCyan", "DarkGoldenRod", "DarkGray", "DarkGrey", "DarkGreen", "DarkKhaki", "DarkMagenta", "DarkOliveGreen", "DarkOrange", "DarkOrchid", "DarkRed", "DarkSalmon", "DarkSeaGreen", "DarkSlateBlue", "DarkSlateGray", "DarkSlateGrey", "DarkTurquoise", "DarkViolet", "DeepPink", "DeepSkyBlue", "DimGray", "DimGrey", "DodgerBlue", "FireBrick", "FloralWhite", "ForestGreen", "Fuchsia", "Gainsboro", "GhostWhite", "Gold", "GoldenRod", "Gray", "Grey", "Green", "GreenYellow", "HoneyDew", "HotPink", "IndianRed", "Indigo", "Ivory", "Khaki", "Lavender", "LavenderBlush", "LawnGreen", "LemonChiffon", "LightBlue", "LightCoral", "LightCyan", "LightGoldenRodYellow", "LightGray", "LightGrey", "LightGreen", "LightPink", "LightSalmon", "LightSeaGreen", "LightSkyBlue", "LightSlateGray", "LightSlateGrey", "LightSteelBlue", "LightYellow", "Lime", "LimeGreen", "Linen", "Magenta", "Maroon", "MediumAquaMarine", "MediumBlue", "MediumOrchid", "MediumPurple", "MediumSeaGreen", "MediumSlateBlue", "MediumSpringGreen", "MediumTurquoise", "MediumVioletRed", "MidnightBlue", "MintCream", "MistyRose", "Moccasin", "NavajoWhite", "Navy", "OldLace", "Olive", "OliveDrab", "Orange", "OrangeRed", "Orchid", "PaleGoldenRod", "PaleGreen", "PaleTurquoise", "PaleVioletRed", "PapayaWhip", "PeachPuff", "Peru", "Pink", "Plum", "PowderBlue", "Purple", "RebeccaPurple", "Red", "RosyBrown", "RoyalBlue", "SaddleBrown", "Salmon", "SandyBrown", "SeaGreen", "SeaShell", "Sienna", "Silver", "SkyBlue", "SlateBlue", "SlateGray", "SlateGrey", "Snow", "SpringGreen", "SteelBlue", "Tan", "Teal", "Thistle", "Tomato", "Turquoise", "Violet", "Wheat", "White", "WhiteSmoke", "Yellow", "YellowGreen"]
       window.uDark = {
         rgb_a_colorsRegex: /rgba?\([%0-9., \/a-z_+*-]+\)/gmi, // rgba vals with variables names and calcs involved NOTE: #rgba(255 255 255 / 0.1) is valid color rgba(255,255,255,30%) is valid color too
         hsl_a_colorsRegex: /hsla?\(([%0-9., \/=a-z_+*-]|deg|turn|tetha)+\)/gmi, // hsla vals  with variables names and calcs involved  #rgba(255 255 255 / 0.1)
@@ -449,7 +471,12 @@ window.dark_object = {
         },
         edit_styles_elements: function(parentElement, details,add_class="ud-edited-background", options={}) {
           parentElement.querySelectorAll(`style:not(.${add_class})`).forEach(astyle => {
+            // if(Math.random()<0.2){
+            //   console.log(astyle);
+            //   return;
             
+            // }
+
             astyle.innerHTML = uDark.edit_str(astyle.innerHTML, false, false, details, false, options);
             // astyle.innerHTML='*{fill:red!important;}'
             // According to https://stackoverflow.com/questions/55895361/how-do-i-change-the-innerhtml-of-a-global-style-element-with-cssrule ,
@@ -530,15 +557,46 @@ window.dark_object = {
 
           return result_edited;
         },
+        protect_css_shorthands: function(str){
+          if(uDark.is_background)
+          { 
+            str=str.replaceAll(uDark.shortHandRegex,"--ud-ptd-$1:")
+          }
+          return str;
+        },
+        unprotected_css_shorthands: function(str){
+          if(uDark.is_background)
+          {
+            str=str.replaceAll("--ud-ptd-","")
+          }
+          return str;
+        },
+
         edit_str: function(str, cssStyleSheet, verifyIntegrity = false, details, idk_mode = false, options = {}) {
-        
+      
           let rejected_str = false;
+          str=uDark.protect_css_shorthands(str);
+          
+          //  // restore comments
+          
+          //   let protected_comments=str.protect(/\/\*[^*]*\*+(?:[^/*][^*]*\*+)*\/$/gm,".ud_protected_comment{display:none}");
+          
+          // if(str.includes("/*!sc*/"))
+          //   {
+          //     console.log(str,str.unprotect(protected_comments));
+          //     return str.unprotect(protected_comments);
+          //   }
+            
+          // str=protected_comments.str;
+          
+
 
           if (!cssStyleSheet) {
             cssStyleSheet = new CSSStyleSheet()
             let valueReplace = str + (verifyIntegrity ? "\n.integrity_rule{}" : "");
             cssStyleSheet.o_ud_replaceSync ? cssStyleSheet.o_ud_replaceSync(valueReplace) : cssStyleSheet.replaceSync(valueReplace);
           } else if (!cssStyleSheet.rules.length) {
+            str=uDark.unprotected_css_shorthands(str)//.unprotect(protected_comments);
             return str; // Empty styles from domparser can't be edited as they are not "constructed"
           }
           // if(details.url.startsWith("https://cdn.shopify.com/shopifycloud/identity/assets/merchant-public-cf6741ee596089164fd8db5c96280d2d9907d049ec84ff13182021c569a7"))
@@ -569,6 +627,8 @@ window.dark_object = {
             // Exists the rare case where css only do imports, no rules with {} and integrity cant be verified because it does not close the import with a ";"
             let returnAsIs = (!cssStyleSheet.cssRules.length && !str.includes("{")); // More reliable than checking if it starts with an a @ at it may starts with a comment 
             if (returnAsIs) {
+              
+              str=uDark.unprotected_css_shorthands(str)//.unprotect(protected_comments);
               return str; //don't even try to edit it .
               // Fortunately it is not a common case, easy to detect with zero cssRules, and it mostly are short strings testables with includes
             };
@@ -624,7 +684,7 @@ window.dark_object = {
             uDark.edit_css(cssStyleSheet, idk_mode, details, options);
 
             let rules = [...cssStyleSheet.cssRules].map(r => r.cssText);
-
+            
             uDark.edit_str_restore_imports_all_way(str, rules);
             
               // if(details.url.includes("asset")&&details.url.includes("fade")&&!details.url.includes("component")){
@@ -637,12 +697,14 @@ window.dark_object = {
             str = rules.join("\n");
           }
 
+          str=uDark.unprotected_css_shorthands(str)//.unprotect(protected_comments);
           if (rejected_str) {
             str = {
               str: str,
               rejected: rejected_str,
             }
           }
+          
           return str;
         },
         rgba_val: function(r, g, b, a) {
@@ -1151,7 +1213,7 @@ window.dark_object = {
         hexadecimalColorsRegex: /#[0-9a-f]{3,4}(?:[0-9a-f]{2})?(?:[0-9a-f]{2})?/gmi, // hexadecimal colors
         foreground_color_css_properties: ["color"], // css properties that are foreground colors
         // Gradients can be set in background-image
-        background_color_css_properties_regex: /color|fill|box-shadow|^background(?:-image|-color)?$/, // Background images can contain colors // css properties that are background colors
+        background_color_css_properties_regex: /color|fill|box-shadow|^background(?:-image|-color)?$|^--ud-ptd-background/, // Background images can contain colors // css properties that are background colors
         edit_prefix_fg_vars: function(idk_mode, value, actions) {
           if (!value.includes("var(") && !idk_mode) {
             return value; // No variables to edit;
@@ -1169,7 +1231,9 @@ window.dark_object = {
           return uDark.edit_all_cssRule_colors_cb(false, {style:false}, "none", "none",color,transformation,render, {},false,actions,false)
         },
         edit_all_cssRule_colors_cb: (idk_mode, cssRule, key, key_idk, value, transformation, render, options, key_prefix, actions, topLevelRule) => {
-          let new_value = value;
+          let url_protected=value.protect(uDark.regex_search_for_url,"url_protected");
+          // url_protected=value.protect(/DISABLED/,"url_protected");
+          let new_value = url_protected.str;
           let cssStyle = cssRule.style;
           cssRule[key] = "done"; // Used right above to avoid reprocessing, already deleted once by mistake, this is why this comment exists now :)
           
@@ -1222,6 +1286,9 @@ window.dark_object = {
           new_value = uDark.restore_idk_vars(idk_mode, new_value); // Restore alone vars: color: var(--color_8)
           new_value = uDark.edit_with_regex(false /*The namedColorsRegex is not affected*/ , key, new_value, uDark.namedColorsRegex, transformation, render); // edit_named_colors
           new_value = uDark.edit_with_regex(false /*The hexadecimalColorsRegex is not affected*/ , key, new_value, uDark.hexadecimalColorsRegex, transformation, render); // edit_hex_colors // The browser auto converts hex to rgb, but some times not like in  var(--123,#00ff00) as it cant resolve the var
+          
+          new_value = new_value.unprotect(url_protected);
+          
           if(!cssStyle){return {value,new_value}}
           if (value != new_value || key_prefix) {
             // Edit the value only if necessary:  setting bacground image removes bacground property for intance
@@ -1244,10 +1311,10 @@ window.dark_object = {
             let key_idk = ((idk_mode === true) ? "--ud-idk_" : "") + key;
             let value = cssRule.style.getPropertyValue(key_idk) || "";
 
-            if (!value) { // Value is not set when using shorthand and var(--background-color) is used
+            if (false && !value) { // Value is not set when using shorthand and var(--background-color) is used
               /* This is testable with
                   aCSS=new CSSStyleSheet();
-                  aCSS.replaceSync("z{border:var(--bd-color);background:var(--bg-color);}");
+                  aCSS.replaceSync("z{background-image: url("https://gstatic.olympics.com/s1/f_auto/static/srm/paris-2024/topic-assets/paris-2024/sticky-header/blue/d01.svg");}");
                   Object.values(aCSS.cssRules[0].style)
                   cssRule=aCSS.cssRules[0];
                   for(x of cssRule.style){console.log(x)}
@@ -1297,8 +1364,10 @@ window.dark_object = {
               if (x.startsWith("--ud-fg--")) {
                 continue
               }
-              variables_items.push(x);
-              continue; // Eliminate Variables, i don't think its usefull to test them againt regexes
+              if(!x.startsWith("--ud-ptd-")){ // Now using protection strategy for shorthands
+                  variables_items.push(x);
+                  continue; // Eliminate Variables, i don't think its usefull to test them againt regexes
+              }
             }
             if (uDark.css_properties_wording_action_dict[x]) {
               wording_action.push(x);
@@ -1356,6 +1425,7 @@ window.dark_object = {
           options.cssStyleSheet = cssStyleSheet;
           options.unresolvableStylesheet = unresolvableStylesheet;
 
+          
           uDark.edit_cssRules(cssStyleSheet.cssRules, idk_mode, details, options);
 
           // console.log("BEFORE",unresolvableStylesheet.cssRules)
@@ -2125,7 +2195,9 @@ window.dark_object = {
 
     },
     install: function() {
-
+      let SHORTHANDS= ["all","animation","animation-range","background","border","border-block","border-block-end","border-block-start","border-bottom","border-color","border-image","border-inline","border-inline-end","border-inline-start","border-left","border-radius","border-right","border-style","border-top","border-width","column-rule","columns","contain-intrinsic-size","container","flex","flex-flow","font","font-synthesis","font-variant","gap","grid","grid-area","grid-column","grid-row","grid-template","inset","inset-block","inset-inline","list-style","margin","margin-block","margin-inline","mask","mask-border","offset","outline","overflow","overscroll-behavior","padding","padding-block","padding-inline","place-content","place-items","place-self","position-try","scroll-margin","scroll-margin-block","scroll-margin-inline","scroll-padding","scroll-padding-block","scroll-padding-inline","scroll-timeline","text-decoration","text-emphasis","text-wrap","transition"]
+    
+      uDark.shortHandRegex=new RegExp(`(?<![_a-z0-9-])(${SHORTHANDS.join("|")})([\s\t]*:)`, "gmi");
       function connected(connectedPort) {
 
         console.info("Connected", connectedPort.sender.url, connectedPort.sender.contextId);
@@ -2241,7 +2313,8 @@ window.dark_object = {
           is_background: true,
           rgb_a_colorsRegex: /rgba?\([%0-9., \/]+\)/gmi, // rgba vals without variables and calc()involved #! rgba(255 255 255 / 0.1) is valid color and rgba(255,255,255,30%) too
           hsl_a_colorsRegex: /hsla?\(([%0-9., \/=]|deg|turn|tetha)+\)/gmi, // hsla vals without variables and calc() involved
-          // loggingWorkersActiveLogging:true,
+          loggingWorkersActiveLogging:false,
+        
           LoggingWorker: class LoggingWorker extends Worker {
             constructor(...args) {
               super(...args);
@@ -2405,7 +2478,8 @@ window.dark_object = {
               str, "text/html");
             let documentElement = aDocument.documentElement;
             let svgElements=[];
-            
+          
+              
             documentElement.querySelectorAll("svg").forEach(svg => {
               let temp_replace = document.createElement("svg_secured");
               svgElements.push([svg,temp_replace]);
@@ -2413,16 +2487,20 @@ window.dark_object = {
               uDark.frontEditSVG(svg, aDocument,details);
               // Edit styles of svg elements before editing documentElement styles
             });
-            
             uDark.edit_styles_attributes(aDocument, details);
+            if(true)
+              {
+
             uDark.edit_styles_elements(aDocument, details,"ud-edited-background");
             
+          }
             //EXPERIMENTAL
             aDocument.querySelectorAll("meta").forEach(m => {
               if (m.httpEquiv.toLowerCase().trim() == "content-type" && m.content.includes("charset")) {
                 m.content = "text/html; charset=utf-8"
               }
             })
+            
             aDocument.querySelectorAll("link[rel*='icon'][href]").forEach(link => {
               link.setAttribute("href", link.getAttribute('href') + "#ud_favicon");
             });
@@ -2797,13 +2875,21 @@ window.dark_object = {
   misc: {
     editBeforeRequestImage: async function(details) {
       if (details.url.startsWith("https://data-image/?base64IMG=")) {
-        
+        console.log(details);
+        // console.log("PASSING",(globalThis["passing"+details.url+details.requestId]=(globalThis["passing"+details.url+details.requestId]||0)+1),details);
         const dataUrl = details.url.slice(30);
+        // console.log("PASSING",(globalThis["passing"+details.url+details.requestId]=(globalThis["passing"+details.url+details.requestId]||0)+1),details);
+        
         const arrayBuffer = await (await fetch(dataUrl)).arrayBuffer();
         const reader = new FileReader() // Faster but ad what cost later ? 
-        const imageWorker = new uDark.LoggingWorker("imageWorker.js");
+
+
+        const imageWorker = new uDark.LoggingWorker("imageWorker.js"); 
+    
         imageWorker.addEventListener("message", event => {
           if (event.data.editionComplete) {
+            // console.log("PASSING",(globalThis["passing"+details.url+details.requestId]=(globalThis["passing"+details.url+details.requestId]||0)+1),details);
+       
             reader.readAsDataURL(new Blob(event.data.buffers));
           }
         })
@@ -2813,9 +2899,15 @@ window.dark_object = {
           filterStopped: 1,
           details: details
         }, [arrayBuffer]) // Explicityly transfer the ArrayBuffer to the worker
-        let to_return = await new Promise(resolve => reader.onload = (e) => resolve({
-          redirectUrl: reader.result
-        }));
+
+
+        let to_return = new Promise(resolve => reader.onload = (e) => resolve({ redirectUrl: reader.result }));
+        
+        to_return.then(x => imageWorker.terminate()); // Very needed : non terminated workers will avoid new workers to reveive messages
+
+        
+        // console.log("PASSING",(globalThis["passing"+details.url+details.requestId]=(globalThis["passing"+details.url+details.requestId]||0)+1),details);
+       
         return to_return;
       }
     },
@@ -2841,15 +2933,13 @@ window.dark_object = {
       if (imageURLObject.pathname.startsWith("/favicon.ico") || imageURLObject.hash.endsWith("#ud_favicon")) {
         return {};
       }
-      if (details.isSVGImage) {
 
-        // return {};
-      }
       let filter = globalThis.browser.webRequest.filterResponseData(details.requestId); // After this instruction, browser espect us to write data to the filter and close it
-
+      let imageWorker;
       let secureTimeout = setTimeout(() => {
         try {
           filter.disconnect();
+          imageWorker && imageWorker.terminate();
         }
         catch(e){}
       }, 30000) // Take care of very big images
@@ -2885,7 +2975,7 @@ window.dark_object = {
           });
         }
       } else {
-        let imageWorker = new uDark.LoggingWorker("imageWorker.js");
+        imageWorker = new uDark.LoggingWorker("imageWorker.js");
         let datacount=0;
         imageWorker.addEventListener("message", event => {
           if (event.data.editionComplete) {
@@ -2897,6 +2987,7 @@ window.dark_object = {
               }
             }
             filter.disconnect();
+            imageWorker.terminate();
             clearInterval(secureTimeout);
           }
         })
@@ -3046,7 +3137,6 @@ window.dark_object = {
     },
 
     editBeforeRequestStyleSheet: function(details) {
-
       let options = {};
       options.isCorsRequest = dark_object.misc.isCorsRequest(details);
       // let stylesheetURL=(new URL(details.url));
@@ -3234,6 +3324,11 @@ window.dark_object = {
     //   return details;
     // },
     editBeforeData: function(details) {
+      
+      // random condition return  {} and log details.url & details to see what is happening
+
+     
+
       if (details.tabId == -1 && uDark.connected_options_ports_count || uDark.connected_cs_ports["port-from-popup-" + details.tabId]) { // ^-1 Happens sometimes, like on https://www.youtube.com/ at the time i write this, stackoverflow talks about worker threads
 
         // Here we are covering the needs of the option page: Be able to frame any page
@@ -3272,6 +3367,11 @@ window.dark_object = {
 
       }
 
+      // if( details.url=="https://www.patreon.com/ArgusVRC" )
+      //   {
+      //     console.log("Data",details.url,details)
+      //     return {}
+      //   }
       var n = details.responseHeaders.length;
       details.headersLow = {}
       while (n--) {
