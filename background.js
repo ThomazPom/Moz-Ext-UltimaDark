@@ -1255,18 +1255,18 @@ window.dark_object = {
             return;
           } else if (idk_mode) {
             {
-              console.log("Here i am in idk mode",{
-                cssRule,
-                key,
-                key_idk,
-                value,
-                transformation,
-                render,
-                key_prefix,
-                actions,
-                topLevelRule,
-                new_value
-              })
+              // console.log("Here i am in idk mode",{
+              //   cssRule,
+              //   key,
+              //   key_idk,
+              //   value,
+              //   transformation,
+              //   render,
+              //   key_prefix,
+              //   actions,
+              //   topLevelRule,
+              //   new_value
+              // })
               cssRule.debbugging=true;
               if (!uDark.keepIdkProperties) {
                 cssStyle.removeProperty(key_idk);
@@ -1300,14 +1300,14 @@ window.dark_object = {
           
           new_value = uDark.str_unprotect(new_value,url_protected);
           
-          if(cssRule.debbugging)
-          {
-            console.log("Here i am in idk mode debug",{
-              cssRule,
-              key,
-              key_idk,
-              value,new_value})
-          }
+          // if(cssRule.debbugging)
+          // {
+          //   console.log("Here i am in idk mode debug",{
+          //     cssRule,
+          //     key,
+          //     key_idk,
+          //     value,new_value})
+          // }
 
           if(!cssStyle){return {value,new_value}}
           if (value != new_value || key_prefix) {
