@@ -26,28 +26,6 @@ window.dark_object = {
         };
       }
 
-      String.prototype.protect = function(regexSearch,protectWith) {
-        // sore values into an array:
-        var values = this.match(regexSearch);
-        let str=this;
-        if(values)
-        {
-          str=str.replace(regexSearch,protectWith);
-        }
-        return {str,values,protectWith};
-      };
-
-      String.prototype.unprotect = function(protection) {
-        let str=this;
-        if(protection.values)
-        {
-          protection.values.forEach((value,index)=>{
-            str=str.replace(protection.protectWith,value);
-          })
-        }
-        return str;
-      };
-
 
       const CSS_COLOR_NAMES = ["AliceBlue", "AntiqueWhite", "Aqua", "Aquamarine", "Azure", "Beige", "Bisque", "Black", "BlanchedAlmond", "Blue", "BlueViolet", "Brown", "BurlyWood", "CadetBlue", "Chartreuse", "Chocolate", "Coral", "CornflowerBlue", "Cornsilk", "Crimson", "Cyan", "DarkBlue", "DarkCyan", "DarkGoldenRod", "DarkGray", "DarkGrey", "DarkGreen", "DarkKhaki", "DarkMagenta", "DarkOliveGreen", "DarkOrange", "DarkOrchid", "DarkRed", "DarkSalmon", "DarkSeaGreen", "DarkSlateBlue", "DarkSlateGray", "DarkSlateGrey", "DarkTurquoise", "DarkViolet", "DeepPink", "DeepSkyBlue", "DimGray", "DimGrey", "DodgerBlue", "FireBrick", "FloralWhite", "ForestGreen", "Fuchsia", "Gainsboro", "GhostWhite", "Gold", "GoldenRod", "Gray", "Grey", "Green", "GreenYellow", "HoneyDew", "HotPink", "IndianRed", "Indigo", "Ivory", "Khaki", "Lavender", "LavenderBlush", "LawnGreen", "LemonChiffon", "LightBlue", "LightCoral", "LightCyan", "LightGoldenRodYellow", "LightGray", "LightGrey", "LightGreen", "LightPink", "LightSalmon", "LightSeaGreen", "LightSkyBlue", "LightSlateGray", "LightSlateGrey", "LightSteelBlue", "LightYellow", "Lime", "LimeGreen", "Linen", "Magenta", "Maroon", "MediumAquaMarine", "MediumBlue", "MediumOrchid", "MediumPurple", "MediumSeaGreen", "MediumSlateBlue", "MediumSpringGreen", "MediumTurquoise", "MediumVioletRed", "MidnightBlue", "MintCream", "MistyRose", "Moccasin", "NavajoWhite", "Navy", "OldLace", "Olive", "OliveDrab", "Orange", "OrangeRed", "Orchid", "PaleGoldenRod", "PaleGreen", "PaleTurquoise", "PaleVioletRed", "PapayaWhip", "PeachPuff", "Peru", "Pink", "Plum", "PowderBlue", "Purple", "RebeccaPurple", "Red", "RosyBrown", "RoyalBlue", "SaddleBrown", "Salmon", "SandyBrown", "SeaGreen", "SeaShell", "Sienna", "Silver", "SkyBlue", "SlateBlue", "SlateGray", "SlateGrey", "Snow", "SpringGreen", "SteelBlue", "Tan", "Teal", "Thistle", "Tomato", "Turquoise", "Violet", "Wheat", "White", "WhiteSmoke", "Yellow", "YellowGreen"]
       window.uDark = {
@@ -70,6 +48,26 @@ window.dark_object = {
         min_bright_bg: 0.1, // background with value over min_bright_bg_trigger will be darkened from this value up to max_bright_bg
         max_bright_bg: 0.4, // background with value over min_bright_bg_trigger will be darkened from min_bright_bg up to this value
         
+        str_protect : function(str,regexSearch,protectWith) {
+          // sore values into an array:
+          var values = str.match(regexSearch);
+          if(values)
+          {
+            str=str.replace(regexSearch,protectWith);
+          }
+          return {str,values,protectWith};
+        },
+
+        str_unprotect : function(str,protection) {
+          if(protection.values)
+          {
+            protection.values.forEach((value,index)=>{
+              str=str.replace(protection.protectWith,value);
+            })
+          }
+          return str;
+        },
+
         sRGBtoLin: (colorChannel) => {
           // Send this function a decimal sRGB gamma encoded color value
           // between 0.0 and 1.0, and it returns a linearized value.
@@ -163,7 +161,7 @@ window.dark_object = {
           // Do not parse url preventing adding context to it or interpreting it as a relative url or correcting its content by any way
           let imageTrueSrc = src_override || image.getAttribute("src")
 
-          if(uDark.userSettings.disable_image_edition){
+          if(uDark.userSettings.disable_image_edition || !imageTrueSrc){
             return imageTrueSrc;
           }
 
@@ -535,7 +533,7 @@ window.dark_object = {
             link.setAttribute("href", link.getAttribute('href') + "#ud_favicon");
           });
           documentElement.querySelectorAll("img[src]").forEach(image => { // We catch images later, not here
-
+            
             image.setAttribute("src", uDark.image_element_prepare_href(image, documentElement));
 
             // uDark.registerBackgroundItem(false,{selectorText:`img[src='${image.src}']`}, details)
@@ -1213,7 +1211,7 @@ window.dark_object = {
         hexadecimalColorsRegex: /#[0-9a-f]{3,4}(?:[0-9a-f]{2})?(?:[0-9a-f]{2})?/gmi, // hexadecimal colors
         foreground_color_css_properties: ["color"], // css properties that are foreground colors
         // Gradients can be set in background-image
-        background_color_css_properties_regex: /color|fill|box-shadow|^background(?:-image|-color)?$|^--ud-ptd-background/, // Background images can contain colors // css properties that are background colors
+        background_color_css_properties_regex: /color|fill|box-shadow|border|^background(?:-image|-color)?$|^--ud-ptd-background/, // Background images can contain colors // css properties that are background colors
         edit_prefix_fg_vars: function(idk_mode, value, actions) {
           if (!value.includes("var(") && !idk_mode) {
             return value; // No variables to edit;
@@ -1231,11 +1229,11 @@ window.dark_object = {
           return uDark.edit_all_cssRule_colors_cb(false, {style:false}, "none", "none",color,transformation,render, {},false,actions,false)
         },
         edit_all_cssRule_colors_cb: (idk_mode, cssRule, key, key_idk, value, transformation, render, options, key_prefix, actions, topLevelRule) => {
-          let url_protected=value.protect(uDark.regex_search_for_url,"url_protected");
+          let url_protected= uDark.str_protect(value,uDark.regex_search_for_url,"url_protected");
           // url_protected=value.protect(/DISABLED/,"url_protected");
           let new_value = url_protected.str;
           let cssStyle = cssRule.style;
-          cssRule[key] = "done"; // Used right above to avoid reprocessing, already deleted once by mistake, this is why this comment exists now :)
+          cssRule[key] = "done"; // Used right above to avoid reprocessing, already deleted once by mistake, this is why this comment exists now :), might not serve anymore since shorthands are now protected
           
 
           if (cssStyle && uDark.is_background && uDark.unResolvableVarsRegex.test(new_value) && new_value.includes("var(")) { // To complicated to write a rgex for this, so we will use a simple test
@@ -1252,11 +1250,24 @@ window.dark_object = {
             uDark.on_idk_missing == "fill_black" && cssStyle.p_ud_setProperty(key, transformation(0, 0, 0, 1, render), priority);
 
             uDark.on_idk_missing == "fill_minimum" && cssStyle.p_ud_setProperty(key, transformation(...uDark.hslToRgb(0, 0, uDark.max_bright_bg * uDark.idk_minimum_editor), 1, render), priority);
-            uDark.on_idk_missing == "fill_red" && cssStyle.p_ud_setProperty(key, transformation(129, 0, 0, 1, render), priority);
+            uDark.on_idk_missing == "fill_red" && cssStyle.p_ud_setProperty(key, transformation(255, 0, 0, 1, render), priority);
             uDark.on_idk_missing == "fill_green" && cssStyle.p_ud_setProperty(key, transformation(0, 129, 0, 1, render), priority);
             return;
           } else if (idk_mode) {
             {
+              console.log("Here i am in idk mode",{
+                cssRule,
+                key,
+                key_idk,
+                value,
+                transformation,
+                render,
+                key_prefix,
+                actions,
+                topLevelRule,
+                new_value
+              })
+              cssRule.debbugging=true;
               if (!uDark.keepIdkProperties) {
                 cssStyle.removeProperty(key_idk);
               }
@@ -1287,11 +1298,21 @@ window.dark_object = {
           new_value = uDark.edit_with_regex(false /*The namedColorsRegex is not affected*/ , key, new_value, uDark.namedColorsRegex, transformation, render); // edit_named_colors
           new_value = uDark.edit_with_regex(false /*The hexadecimalColorsRegex is not affected*/ , key, new_value, uDark.hexadecimalColorsRegex, transformation, render); // edit_hex_colors // The browser auto converts hex to rgb, but some times not like in  var(--123,#00ff00) as it cant resolve the var
           
-          new_value = new_value.unprotect(url_protected);
+          new_value = uDark.str_unprotect(new_value,url_protected);
           
+          if(cssRule.debbugging)
+          {
+            console.log("Here i am in idk mode debug",{
+              cssRule,
+              key,
+              key_idk,
+              value,new_value})
+          }
+
           if(!cssStyle){return {value,new_value}}
           if (value != new_value || key_prefix) {
             // Edit the value only if necessary:  setting bacground image removes bacground property for intance
+            
             cssStyle.p_ud_setProperty(key_prefix + key, new_value, cssStyle.getPropertyPriority(key_idk)); // Once we had  an infinite loop here when uDark was loaded twice and redefining setProperty.
           }
           // console.log("cssKey Color",cssRule,key,value,priority,cssRule.cssText);
@@ -2505,7 +2526,7 @@ window.dark_object = {
               link.setAttribute("href", link.getAttribute('href') + "#ud_favicon");
             });
             aDocument.querySelectorAll("img[src]").forEach(image => { // We catch images later, not here
-
+              console.log(image);
               image.setAttribute("src", uDark.image_element_prepare_href(image, aDocument));
               // uDark.registerBackgroundItem(false,{selectorText:`img[src='${image.src}']`}, details)
             })
