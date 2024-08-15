@@ -848,7 +848,7 @@ window.dark_object = {
           }
 
         },
-        is_color_var: function(possiblecolor, as_float = true, fill = false, cssRule, spanp = false) {
+        is_color_var: function(possiblecolor, as_float = true, fill = false, cssRule, spanp = false,use_cache=true) {
           // Must restore spanp feature and use it in frontend capture with flood-color css attribute
           // to catch correctly assignments like style.color=rgba(var(--flood-color),0.5) instead of returning [0,0,0,0]
 
@@ -858,7 +858,7 @@ window.dark_object = {
           }
 
           let cache_key = `${possiblecolor}${as_float}${fill}`
-          if (!uDark.userSettings.disable_cache && !spanp && uDark.general_cache[cache_key]) {
+          if (!uDark.userSettings.disable_cache && !spanp && use_cache && uDark.general_cache[cache_key]) {
             return uDark.general_cache[cache_key];
           }
           possiblecolor = possiblecolor.trim().toLowerCase();
@@ -907,7 +907,7 @@ window.dark_object = {
               }
             }
 
-            if (!uDark.userSettings.disable_cache) {
+            if (!uDark.userSettings.disable_cache && use_cache) {
               uDark.general_cache[cache_key] = result;
             }
           }
@@ -1237,22 +1237,36 @@ window.dark_object = {
           
 
           if (cssStyle && uDark.is_background && uDark.unResolvableVarsRegex.test(new_value) && new_value.includes("var(")) { // To complicated to write a rgex for this, so we will use a simple test
-            let priority = cssStyle.getPropertyPriority(key_idk);
-            if (!topLevelRule.unresolvableRule) {
-              options.unresolvableStylesheet.insertRule(topLevelRule.cssText, options.unresolvableStylesheet.cssRules.length);
-              topLevelRule.unresolvableRule = true;
+           
+
+
+              // In fact, background can guess the color given the cssRule, but must not use cache to avoid leaking variables accross different websites.
+              let is_color_var_result=  uDark.is_color_var(new_value, false,  false, cssRule,  false,false); // maybe the background can resolve the color given the cssRule ?
+              if(is_color_var_result)
+              {
+                new_value=is_color_var_result;
+              }
+              else
+              {
+                
+              let priority = cssStyle.getPropertyPriority(key_idk);
+              
+              if (!topLevelRule.unresolvableRule) {
+                options.unresolvableStylesheet.insertRule(topLevelRule.cssText, options.unresolvableStylesheet.cssRules.length);
+                topLevelRule.unresolvableRule = true;
+              }
+
+              // console.log(uDark.is_background,key,new_value,"has unresolvable vars, skipping");
+              options.hasUnresolvedVars = options.hasUnresolvedVars || true;
+              cssStyle.p_ud_setProperty("--ud-idk_" + key, new_value, priority);
+              uDark.on_idk_missing == "remove" && cssStyle.removeProperty(key)
+              uDark.on_idk_missing == "fill_black" && cssStyle.p_ud_setProperty(key, transformation(0, 0, 0, 1, render), priority);
+
+              uDark.on_idk_missing == "fill_minimum" && cssStyle.p_ud_setProperty(key, transformation(...uDark.hslToRgb(0, 0, uDark.max_bright_bg * uDark.idk_minimum_editor), 1, render), priority);
+              uDark.on_idk_missing == "fill_red" && cssStyle.p_ud_setProperty(key, transformation(255, 0, 0, 1, render), priority);
+              uDark.on_idk_missing == "fill_green" && cssStyle.p_ud_setProperty(key, transformation(0, 129, 0, 1, render), priority);
+              return;
             }
-
-            // console.log(uDark.is_background,key,new_value,"has unresolvable vars, skipping");
-            options.hasUnresolvedVars = options.hasUnresolvedVars || true;
-            cssStyle.p_ud_setProperty("--ud-idk_" + key, new_value, priority);
-            uDark.on_idk_missing == "remove" && cssStyle.removeProperty(key)
-            uDark.on_idk_missing == "fill_black" && cssStyle.p_ud_setProperty(key, transformation(0, 0, 0, 1, render), priority);
-
-            uDark.on_idk_missing == "fill_minimum" && cssStyle.p_ud_setProperty(key, transformation(...uDark.hslToRgb(0, 0, uDark.max_bright_bg * uDark.idk_minimum_editor), 1, render), priority);
-            uDark.on_idk_missing == "fill_red" && cssStyle.p_ud_setProperty(key, transformation(255, 0, 0, 1, render), priority);
-            uDark.on_idk_missing == "fill_green" && cssStyle.p_ud_setProperty(key, transformation(0, 129, 0, 1, render), priority);
-            return;
           } else if (idk_mode) {
             {
               // console.log("Here i am in idk mode",{
@@ -2526,7 +2540,6 @@ window.dark_object = {
               link.setAttribute("href", link.getAttribute('href') + "#ud_favicon");
             });
             aDocument.querySelectorAll("img[src]").forEach(image => { // We catch images later, not here
-              console.log(image);
               image.setAttribute("src", uDark.image_element_prepare_href(image, aDocument));
               // uDark.registerBackgroundItem(false,{selectorText:`img[src='${image.src}']`}, details)
             })
