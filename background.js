@@ -2651,7 +2651,7 @@ window.dark_object = {
           // Asking front trough a message to get the css can be costly so we can only do it when it's absolutely necessary: when the cors does not allow us to get the css directly;
           // In the other hand  doing it for all CSS allows to cache only finalised css, so both options are good
           disable_remote_idk_css_edit: false,
-          on_idk_missing: "fill_minimum", // "fill_black" or "fill_minimum" or "restore" or "fill_color"
+          on_idk_missing: "fill_red", // "fill_black" or "fill_minimum" or "restore" or "fill_color"
           idk_minimum_editor: 0.2,
           connected_cs_ports: {},
           connected_options_ports_count: 0,
