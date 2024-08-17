@@ -777,8 +777,7 @@ window.dark_object = {
 
         eget_color: function(anycolor, editColorF = false, cssRule = false, no_color = false,fill=false) {
 
-          anycolor = anycolor.trim();
-          if (!anycolor) {
+          if (!anycolor||!(anycolor=anycolor.trim())) { // Trying to trim sometime undefiend values was as source of problem in lot of sites
             return anycolor;
           }
           if (!cssRule) { // Cant have matched these values if we are  in a cssRule edit
@@ -1281,9 +1280,12 @@ window.dark_object = {
               //   topLevelRule,
               //   new_value
               // })
-              cssRule.debbugging=true;
-              if (!uDark.keepIdkProperties) {
+              if (!uDark.keepIdkProperties 
+                //||  key_idk=="--ud-idk_--bg-overlay-color"
+              ) {
+                // console.log(1,"Removing idk property", key_idk, "from", cssRule.cssText);
                 cssStyle.removeProperty(key_idk);
+                // console.log(2,"Removing idk property", key_idk, "from", cssRule.cssText);
               }
               //new_value.match(/(var|calc)\((\((\((\((\((\((\((\((.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)/g) 
               // 9 nested vars or parentheis: keep hsl or RGBA bounds if a parethesis is open we expect it to be closed.
@@ -1346,25 +1348,6 @@ window.dark_object = {
             let key_idk = ((idk_mode === true) ? "--ud-idk_" : "") + key;
             let value = cssRule.style.getPropertyValue(key_idk) || "";
 
-            if (false && !value) { // Value is not set when using shorthand and var(--background-color) is used
-              /* This is testable with
-                  aCSS=new CSSStyleSheet();
-                  aCSS.replaceSync("z{background-image: url("https://gstatic.olympics.com/s1/f_auto/static/srm/paris-2024/topic-assets/paris-2024/sticky-header/blue/d01.svg");}");
-                  Object.values(aCSS.cssRules[0].style)
-                  cssRule=aCSS.cssRules[0];
-                  for(x of cssRule.style){console.log(x)}
-              */
-              if (key.endsWith("-color")) { // For now only background-color and border-[side]-color can bother us
-                key = key.slice(0, -6);
-                if (cssRule[key]) return;
-                value = cssRule.style.getPropertyValue(key);
-              }
-              if (!value && key.startsWith("border-")) { // And now border-[side]
-                key = "border";
-                if (cssRule[key]) return;
-                value = cssRule.style.getPropertyValue(key); // background-color is not always set if using background shorthand and var(--background-color) is used
-              }
-            }
             if(actions.replaces)
             {
               for(let replace of actions.replaces)
@@ -1385,7 +1368,7 @@ window.dark_object = {
             background_items = [],
             wording_action = [];
 
-          for (let x of cssRule.style) {
+          for (let x of cssRule.style) {  
             if (idk_mode === true) { // Partial idk mode does not have --ud-idk_ prefix, they are added by cloning the cssRule
 
               if (x.startsWith("--ud-idk_")) {
@@ -1438,20 +1421,22 @@ window.dark_object = {
             // ] // Problem occured on https://www.google.com/search?client=firefox-b-d&q=cor%C3%A9e+du+sud
           })
 
-          foreground_items.length && uDark.edit_all_cssRule_colors(idk_mode, cssRule, topLevelRule, foreground_items, options.lighten, options.render, options, "", {
+           foreground_items.length && uDark.edit_all_cssRule_colors(idk_mode, cssRule, topLevelRule, foreground_items, options.lighten, options.render, options, "", {
             prefix_fg_vars: true
           })
-          variables_items.length && [uDark.edit_all_cssRule_colors(idk_mode, cssRule, topLevelRule, variables_items, options.lighten, options.render, options,
+          variables_items.length && uDark.edit_all_cssRule_colors(idk_mode, cssRule, topLevelRule, variables_items, options.lighten, options.render, options,
             idk_mode ? "" : "--ud-fg" // Avoid double prefixing :  we are here in front end, and this has been done in background
             , {
               prefix_fg_vars: true
-            }), uDark.edit_all_cssRule_colors(idk_mode, cssRule, topLevelRule, variables_items, options.darken, options.render, options)]
+            })
+          variables_items.length && uDark.edit_all_cssRule_colors(idk_mode, cssRule, topLevelRule, variables_items, options.darken, options.render, options);
 
           if (details && options.hasUnresolvedVars) {
 
             details.unresolvableChunks = details.unresolvableChunks || [];
             details.unresolvableChunks[details.datacount] = true;
           }
+          
         },
         edit_css: function(cssStyleSheet, idk_mode, details, options = {}) {
 
@@ -1695,9 +1680,9 @@ window.dark_object = {
 
   content_script: {
     install() {
-
       console.info("UltimaDark", "Content script install", window);
-
+      
+     
       window.uDark = {
         ...uDark,
         ...{
@@ -1707,10 +1692,14 @@ window.dark_object = {
       }
 
       if (uDark.direct_window_export) {
-        let injectscripts = [window.dark_object.all_levels.install, window.dark_object.content_script.override_website].map(code => {
-          return "(" + code.toString() + ")()";
-        })
-        window.wrappedJSObject.eval(injectscripts.join(";"));
+        
+        [
+          window.dark_object.all_levels.install,
+          window.dark_object.content_script.override_website
+
+        ].map(code => {
+          window.wrappedJSObject.eval( "(" + code.toString() + ")()");
+        });
 
       }
 
@@ -1722,7 +1711,11 @@ window.dark_object = {
           // };
           // window.wrappedJSObject.eval("(" + loadSettings.toString().replace('{res}',JSON.stringify(uDark.userSettings).replaceAll(/(['\\])/g,"\\$1")) + ")()");
           window.wrappedJSObject.uDark.userSettings = cloneInto(res, window); // Using eval here has no gain, on browserbench.org it has equal performance
+          window.wrappedJSObject.userSettingsReadyAction();
         }
+        
+
+
       });
       // NOTE: DROPS SIGNIFICANTLY THE PERFORMANCE, prefer use eval
       if (uDark.exportUlimaDarkToForeground) { // Under test but not usefull anymore
@@ -1824,10 +1817,30 @@ window.dark_object = {
       let start = new Date() / 1;
       uDark.website_context = true;
       console.log("UltimaDark", "Content script override website");
+
+      window.userSettingsReadyAction=function(){
+        console.log("UltimaDark", "User settings ready actions");
+        if(!uDark.userSettings.keep_service_workers)
+          {
+            
+            window.navigator.serviceWorker.getRegistrations().then(rs=>rs.map(x=>x.unregister()))
+            delete Navigator.prototype.serviceWorker;
+            
+          }
+      }
       // console.log(globalThis.exportFunction)
       { // Measure the impact of exportFunction on performance by disabling its behavior
 
         // globalThis.exportFunction=f=>f;
+      }
+      {
+        // setInterval(z=>{
+        
+        //   navigator.serviceWorker.getRegistrations().then(z=>console.log("UltimaDark", "See service workers registered:")).then((registrations) => {
+        //     console.log(registrations)
+        //  }).then(() => {  console.log("UltimaDark", "^ Service workers registered");});
+        //   },1000)
+         
       }
       if (uDark.direct_window_export) {
         document.wrappedJSObject = document;
@@ -1872,6 +1885,7 @@ window.dark_object = {
         return args
       }, (elem, args) => args[0].startsWith("--"))
 
+      
       uDark.functionPrototypeEditor(CSSStyleSheet,
         [
           CSSStyleSheet.prototype.replace,
@@ -1893,7 +1907,10 @@ window.dark_object = {
       }, (elem, args) => args[1].includes("style"))
 
       uDark.functionPrototypeEditor(Element, Element.prototype.setAttribute, (elem, args) => {
-        args[1] = uDark.edit_str(args[1]);
+        let res= uDark.edit_str(args[1]
+          +""// I just learn again strings are passed by reference in JS the hard way
+        ); 
+         args[1]=res;
         return args;
       }, (elem, args) => args[0] == "style")
 
@@ -2114,6 +2131,7 @@ window.dark_object = {
         globalThis.browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.editBeforeRequestImage);
         globalThis.browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editOnHeadersImage);
         globalThis.browser.webRequest.onCompleted.removeListener(dark_object.misc.onCompletedStylesheet);
+        // globalThis.browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.editBeforeServiceWorker);
         /*Experimental*/
         // browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editHeadersOnHeadersReceived);
         /*end of Experimental*/
@@ -2134,7 +2152,19 @@ window.dark_object = {
               types: ["stylesheet"]
             },
             ["blocking"]);
-
+            
+            // globalThis.browser.webRequest.onBeforeRequest.addListener(dark_object.misc.editBeforeServiceWorker, {
+            //   // urls: uDark.userSettings.properWhiteList, // We can't assume the css is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
+            //   // urls: ["*://*/*?udarkServiceWorkerIntercept=1"],
+            //   // urls: ["<all_urls>"],
+            //   types: "beacon,csp_report,font,image,imageset,main_frame,media,object,object_subrequest,ping,script,speculative,stylesheet,sub_frame,web_manifest,websocket,xbl,xml_dtd,xmlhttprequest,xslt,other".split(","),
+              
+            //   urls: ["*://*/sw.js*",
+            //     // "<all_urls>"
+            //   ],
+            //   // types: ["stylesheet"]
+            // },
+            // ["blocking"]);
           /*Experimental*/
           // browser.webRequest.onHeadersReceived.addListener(dark_object.misc.editHeadersOnHeadersReceived, {
           //     // urls: uDark.userSettings.properWhiteList, // We can't assume the css is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
@@ -2523,12 +2553,8 @@ window.dark_object = {
               // Edit styles of svg elements before editing documentElement styles
             });
             uDark.edit_styles_attributes(aDocument, details);
-            if(true)
-              {
-
             uDark.edit_styles_elements(aDocument, details,"ud-edited-background");
-            
-          }
+
             //EXPERIMENTAL
             aDocument.querySelectorAll("meta").forEach(m => {
               if (m.httpEquiv.toLowerCase().trim() == "content-type" && m.content.includes("charset")) {
@@ -2573,7 +2599,8 @@ window.dark_object = {
             if (details.datacount == 1) {
 
               var udStyle = document.createElement("style")
-              udStyle.innerHTML = uDark.inject_css_suggested;
+              // See https://jsben.ch/RUZer for udStyle.innerHTML vs udStyle.prepend etc
+              udStyle.textContent = uDark.inject_css_suggested; 
               udStyle.id = "ud-style"
               aDocument.head.prepend(udStyle);
 
@@ -2651,7 +2678,7 @@ window.dark_object = {
           // Asking front trough a message to get the css can be costly so we can only do it when it's absolutely necessary: when the cors does not allow us to get the css directly;
           // In the other hand  doing it for all CSS allows to cache only finalised css, so both options are good
           disable_remote_idk_css_edit: false,
-          on_idk_missing: "fill_red", // "fill_black" or "fill_minimum" or "restore" or "fill_color"
+          on_idk_missing: "fill_minimum", // "fill_black" or "fill_minimum" or "restore" or "fill_color"
           idk_minimum_editor: 0.2,
           connected_cs_ports: {},
           connected_options_ports_count: 0,
@@ -2907,9 +2934,46 @@ window.dark_object = {
     }
   },
   misc: {
+    // editBeforeServiceWorker: async function(details) {
+    //   const filter = chrome.webRequest.filterResponseData(details.requestId);
+
+    //   const decoder = new TextDecoder("utf-8");
+    //   const encoder = new TextEncoder();
+    //   details.datacount=0;
+    //   // Stream the data as it is received and modify it
+    //   filter.ondata = event => {
+    //     details.datacount++;
+    //     // Decode the incoming data chunk
+    //     let decodedChunk = decoder.decode(event.data, { stream: true });
+
+    //     if(details.datacount==1){
+    //       let code=function(){
+    //             setInterval(() => {
+    //               console.log("Hello Service Worker!")
+              
+    //             }, 100);
+
+    //       };
+    //       console.log("Service worker intercepted",details.url,details);
+    //       filter.write(encoder.encode(code.toString().slice(10)+"\n"));
+    //     }
+    //     // Encode the modified chunk back to binary format and write it to the response stream
+    //     filter.write(encoder.encode(decodedChunk));
+    //   };
+
+    //   // When the response is fully received, close the stream
+    //   filter.onstop = () => {
+    //     filter.disconnect();
+    //   };
+
+    //   return {}; // Necessary to indicate a response modification
+    
+    // },
+
+
     editBeforeRequestImage: async function(details) {
       if (details.url.startsWith("https://data-image/?base64IMG=")) {
-        console.log(details);
+        // console.log(details);
         // console.log("PASSING",(globalThis["passing"+details.url+details.requestId]=(globalThis["passing"+details.url+details.requestId]||0)+1),details);
         const dataUrl = details.url.slice(30);
         // console.log("PASSING",(globalThis["passing"+details.url+details.requestId]=(globalThis["passing"+details.url+details.requestId]||0)+1),details);
@@ -3176,7 +3240,7 @@ window.dark_object = {
       // let stylesheetURL=(new URL(details.url));
 
 
-      console.log("Loading CSS", details.url, details.requestId, details.fromCache)
+      // console.log("Loading CSS", details.url, details.requestId, details.fromCache)
       
 
 
