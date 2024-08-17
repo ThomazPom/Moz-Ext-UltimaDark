@@ -1820,11 +1820,11 @@ window.dark_object = {
 
       window.userSettingsReadyAction=function(){
         console.log("UltimaDark", "User settings ready actions");
-        if(!uDark.userSettings.keep_service_workers)
+        if(!uDark.userSettings.keep_service_workers && window.navigator.serviceWorker)
           {
-            
-            window.navigator.serviceWorker.getRegistrations().then(rs=>rs.map(x=>x.unregister()))
-            delete Navigator.prototype.serviceWorker;
+          
+              window.navigator.serviceWorker.getRegistrations().then(rs=>rs.map(x=>x.unregister()))
+              delete Navigator.prototype.serviceWorker;  
             
           }
       }
