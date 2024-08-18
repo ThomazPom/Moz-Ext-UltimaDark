@@ -687,8 +687,11 @@ var uDark={
             return editionStatus;
 
           }
-          
+          if(uDark.experimentalAttemptImageStat)
+          {
+            
             editionStatus.is_photo = await uDark.is_photo_stat(editionStatus, imageBitmap,details);
+          }
             if(editionStatus.is_photo){editionStatus.editionConfidenceBackground=-1000}
           // blob.arrayBuffer().then((buffer) => {
             {
