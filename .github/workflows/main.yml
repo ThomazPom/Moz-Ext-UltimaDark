@@ -10,6 +10,9 @@ jobs:
   release:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: write  # Ensure the token has write access to contents
+
     env:
       FILES_TO_PACKAGE: |
         popup.js
