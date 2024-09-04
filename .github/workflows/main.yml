@@ -47,20 +47,12 @@ jobs:
         run: |
           VERSION=$(jq -r '.version' < manifest.json)
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
-
-      # Delete tag if it already exists
-      - name: Delete existing tag if exists
-        id: delete_tag
-        run: |
-          if git rev-parse "v${{ env.VERSION }}" >/dev/null 2>&1; then
-            git tag -d "v${{ env.VERSION }}"
-            git push --delete origin "v${{ env.VERSION }}"
-          fi
-
       # Create a new tag for the release (will wait for the previous step)
       - name: Create new tag
-        if: ${{ steps.delete_tag.outcome == 'success' || steps.delete_tag.outcome == 'skipped' }}
+      
         run: |
+          git tag -d "v${{ env.VERSION }}"
+          git push --delete origin "v${{ env.VERSION }}"
           git tag "v${{ env.VERSION }}"
           git push origin "v${{ env.VERSION }}"
 
