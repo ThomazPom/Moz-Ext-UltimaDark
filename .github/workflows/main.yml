@@ -33,11 +33,11 @@ jobs:
     steps:
       # Checkout the repository
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@latest
 
       # Install the latest Node.js version
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@latest
         with:
           node-version: 'lts/*'  # Automatically fetches the latest LTS version
 
@@ -70,7 +70,7 @@ jobs:
       # Create a release on GitHub
       - name: Create GitHub Release
         id: create_release
-        uses: actions/create-release@v1
+        uses: actions/create-release@latest
         with:
           tag_name: "v${{ env.VERSION }}"
           release_name: "Release v${{ env.VERSION }}"
@@ -81,7 +81,7 @@ jobs:
 
       # Upload zip file to the release
       - name: Upload zip asset
-        uses: actions/upload-release-asset@v1
+        uses: actions/upload-release-asset@latest
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: release/project-v${{ env.VERSION }}.zip
@@ -92,7 +92,7 @@ jobs:
 
       # Upload xpi file to the release
       - name: Upload xpi asset
-        uses: actions/upload-release-asset@v1
+        uses: actions/upload-release-asset@latest
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: release/project-v
