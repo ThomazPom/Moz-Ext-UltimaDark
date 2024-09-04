@@ -35,6 +35,7 @@ window.dark_object = {
         enable_idk_mode: true,
         general_cache: {},
         userSettings: {},
+        imageWorkerJsFile:"imageWorker.js",
         regex_search_for_url: /url\("(.+?)(?<!\\)("\))/g,
         background_match:/background|sprite|(?<![a-z])(bg|box|panel|fond|fundo|bck)(?![a-z])/i,
         logo_match: /nav|avatar|logo|icon|alert|notif|cart|menu|tooltip|dropdown|control/i,
@@ -878,8 +879,15 @@ window.dark_object = {
             // Impossible color : browser said so
             return false;
           }
-          if (style.floodColor == possiblecolor) {
-            // Browser said it is a color but doubt it is a valid one, we need a further check
+          if (possiblecolor.replace(/\)+$/,"") == style.floodColor.replace(/\)+$/,"")) {
+            // Browser has a tendancy of repairing colors: var(--flood-color => var(--flood-color)
+            // rgb => rgba(0,0,0,1) // rgba => rgba(0,0,0,1)
+            // rgb(55,55,55,calc(1*1 => rgba(55,55,55,1)
+            // rgb(55,55,55,var(--test, var(--test => rgb(55,55,55,var(--test, var(--test))
+            // IDK how much else it can repair colors, but it is a good thing to know
+            // Best solution i ffound i to remove the rightiests parenthesis and compare them
+            // It does not affects spaces, it only appends parenthesis at the end of the string as far as I know
+            // Browser said it is a color but doubt it is a valid one, we need a further check.
             document.head.appendChild(option);
             if ("o_ud_set_backgroundColor" in style) // Only working way to do it so far
             {
@@ -2378,7 +2386,7 @@ window.dark_object = {
           is_background: true,
           rgb_a_colorsRegex: /rgba?\([%0-9., \/]+\)/gmi, // rgba vals without variables and calc()involved #! rgba(255 255 255 / 0.1) is valid color and rgba(255,255,255,30%) too
           hsl_a_colorsRegex: /hsla?\(([%0-9., \/=]|deg|turn|tetha)+\)/gmi, // hsla vals without variables and calc() involved
-          loggingWorkersActiveLogging:false,
+          loggingWorkersActiveLogging:true,
         
           LoggingWorker: class LoggingWorker extends Worker {
             constructor(...args) {
@@ -2982,7 +2990,7 @@ window.dark_object = {
         const reader = new FileReader() // Faster but ad what cost later ? 
 
 
-        const imageWorker = new uDark.LoggingWorker("imageWorker.js"); 
+        const imageWorker = new uDark.LoggingWorker(uDark.imageWorkerJsFile); 
     
         imageWorker.addEventListener("message", event => {
           if (event.data.editionComplete) {
@@ -3073,7 +3081,7 @@ window.dark_object = {
           });
         }
       } else {
-        imageWorker = new uDark.LoggingWorker("imageWorker.js");
+        imageWorker = new uDark.LoggingWorker(uDark.imageWorkerJsFile);
         let datacount=0;
         imageWorker.addEventListener("message", event => {
           if (event.data.editionComplete) {
