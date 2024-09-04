@@ -1,7 +1,6 @@
 name: Release
 
 on:
-  
   push:
     tags:
       - 'v*'  # Triggers when a version tag is pushed
@@ -47,14 +46,16 @@ jobs:
       - name: Create zip of selected files
         run: |
           mkdir -p release
-          zip -r "release/project-v${{ env.VERSION }}.zip" ${{ env.FILES_TO_PACKAGE }}
+          FILES=$(echo "${{ env.FILES_TO_PACKAGE }}" | tr '\n' ' ')
+          zip -r "release/project-v${{ env.VERSION }}.zip" $FILES
 
       # Create an xpi file (using the same list of files)
       - name: Create xpi file
         run: |
           mkdir -p release
           cd release
-          zip -r "project-v${{ env.VERSION }}.xpi" ../${{ env.FILES_TO_PACKAGE }}
+          FILES=$(echo "${{ env.FILES_TO_PACKAGE }}" | tr '\n' ' ')
+          zip -r "project-v${{ env.VERSION }}.xpi" ../$FILES
 
       # Create a release on GitHub
       - name: Create GitHub Release
