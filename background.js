@@ -1689,7 +1689,7 @@ window.dark_object = {
   content_script: {
     install() {
       console.info("UltimaDark", "Content script install", window);
-      
+  
      
       window.uDark = {
         ...uDark,
@@ -1816,12 +1816,14 @@ window.dark_object = {
     },
 
     website_load: function() {
+      
       if (uDark.enable_idk_mode) { // Use of an observer was consuming too much ressources
 
         uDark.do_idk_mode_timed();
       }
     },
     override_website: function() {
+     
       let start = new Date() / 1;
       uDark.website_context = true;
       console.log("UltimaDark", "Content script override website");
@@ -1877,14 +1879,15 @@ window.dark_object = {
       console.info("UltimaDark", "Websites overrides install", window);
     
       uDark.functionPrototypeEditor(CSSStyleDeclaration, CSSStyleDeclaration.prototype.setProperty, (elem, args) => {
-        let parts=uDark.edit_str(args[1]+":"+args[2]);
+        console.log("UltimaDark:", elem, args,args[0],args[1],args[2]);
+        let parts=uDark.edit_str(args[0]+":"+args[1]);
         let partsIndex=parts.indexOf("; --ud-fg--");
         let part1=parts.slice(0,partsIndex);
         let part2=parts.slice(partsIndex+2); //+2: Remove the ; and the space
-        let subParts1_1=part1.split(0,part1.indexOf(":"));
-        let subParts1_2=part1.split(part1.indexOf(":"));
+        let subParts1_1=part1.slice(0,part1.indexOf(":"));
+        let subParts1_2=part1.slice(part1.indexOf(":")+2); // +2 to remove the : and the space
         let subParts2_1=part2.split(0,part2.indexOf(":"));
-        let subParts2_2=part2.split(part2.indexOf(":"));
+        let subParts2_2=part2.slice(part2.indexOf(":")+2,-1); // +2 to remove the : and the space, -1 to remove the ;
 
         args[0]=subParts1_1
         args[1]=subParts1_2
@@ -1893,7 +1896,6 @@ window.dark_object = {
         return args
       }, (elem, args) => args[0].startsWith("--"))
 
-      
       uDark.functionPrototypeEditor(CSSStyleSheet,
         [
           CSSStyleSheet.prototype.replace,
@@ -2386,7 +2388,7 @@ window.dark_object = {
           is_background: true,
           rgb_a_colorsRegex: /rgba?\([%0-9., \/]+\)/gmi, // rgba vals without variables and calc()involved #! rgba(255 255 255 / 0.1) is valid color and rgba(255,255,255,30%) too
           hsl_a_colorsRegex: /hsla?\(([%0-9., \/=]|deg|turn|tetha)+\)/gmi, // hsla vals without variables and calc() involved
-          loggingWorkersActiveLogging:true,
+          loggingWorkersActiveLogging:false, // Conider moving this to imageWorker to avoid messages passing for nothing
         
           LoggingWorker: class LoggingWorker extends Worker {
             constructor(...args) {
@@ -3528,6 +3530,6 @@ if (globalThis.browser.webRequest) {
   if (!uDark.direct_window_export) {
     dark_object.content_script.override_website();
   }
-  dark_object.content_script.website_load();
+   dark_object.content_script.website_load();
 
 }
