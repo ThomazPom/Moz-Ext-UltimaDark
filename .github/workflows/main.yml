@@ -1,9 +1,11 @@
 name: Release
 
 on:
+  
   push:
     tags:
       - 'v*'  # Triggers when a version tag is pushed
+  workflow_dispatch:  # Allows manual triggering of the workflow
 
 jobs:
   release:
