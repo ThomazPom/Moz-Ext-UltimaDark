@@ -20,10 +20,10 @@ jobs:
         options_styles.css
         MurmurHash3.js
         manifest.json
-        inject_css_overrides_no_edit.css
-        inject_css_overrides.css
-        inject_css_suggesteed.css
-        inject_css_suggesteed_no_edit.css
+        inject_css_override_no_edit.css
+        inject_css_override.css
+        inject_css_suggested.css
+        inject_css_suggested_no_edit.css
         imageWorker.js
         content_script.js
         bg.jpg
