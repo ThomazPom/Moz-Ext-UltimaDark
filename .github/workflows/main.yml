@@ -96,6 +96,6 @@ jobs:
         
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: release/project-v
+          asset_path: release/project-v${{ env.VERSION }}.xpi
           asset_name: project-v${{ env.VERSION }}.xpi
           asset_content_type: application/x-xpinstall
