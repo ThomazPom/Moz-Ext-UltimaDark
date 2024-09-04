@@ -99,3 +99,5 @@ jobs:
           asset_path: release/project-v${{ env.VERSION }}.xpi
           asset_name: project-v${{ env.VERSION }}.xpi
           asset_content_type: application/x-xpinstall
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
