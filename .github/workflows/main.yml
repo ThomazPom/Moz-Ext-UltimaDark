@@ -1,5 +1,3 @@
-name: Release
-
 on:
   push:
     tags:
@@ -48,16 +46,19 @@ jobs:
           VERSION=$(jq -r '.version' < manifest.json)
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
 
-      # Check if the tag already exists
-      - name: Check if tag exists
-        id: check_tag
+      # Delete tag if it already exists
+      - name: Delete existing tag if exists
         run: |
           if git rev-parse "v${{ env.VERSION }}" >/dev/null 2>&1; then
-            echo "Tag v${{ env.VERSION }} already exists."
-            echo "TAG_EXISTS=true" >> $GITHUB_ENV
-          else
-            echo "TAG_EXISTS=false" >> $GITHUB_ENV
+            git tag -d "v${{ env.VERSION }}"
+            git push --delete origin "v${{ env.VERSION }}"
           fi
+
+      # Create a new tag for the release
+      - name: Create new tag
+        run: |
+          git tag "v${{ env.VERSION }}"
+          git push origin "v${{ env.VERSION }}"
 
       # Create a zip of selected files (from the FILES_TO_PACKAGE environment variable)
       - name: Create zip of selected files
@@ -71,10 +72,9 @@ jobs:
         run: |
           cp release/project-v${{ env.VERSION }}.zip release/project-v${{ env.VERSION }}.xpi
 
-      # Conditionally create a GitHub release only if the tag doesn't already exist
+      # Create a release on GitHub
       - name: Create GitHub Release
         id: create_release
-        if: env.TAG_EXISTS == 'false'
         uses: actions/create-release@v1
         with:
           tag_name: "v${{ env.VERSION }}"
@@ -87,7 +87,6 @@ jobs:
       # Upload zip file to the release
       - name: Upload zip asset
         uses: actions/upload-release-asset@v1
-        if: steps.create_release.outputs.upload_url != ''
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: release/project-v${{ env.VERSION }}.zip
@@ -99,7 +98,6 @@ jobs:
       # Upload xpi file to the release
       - name: Upload xpi asset
         uses: actions/upload-release-asset@v1
-        if: steps.create_release.outputs.upload_url != ''
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: release/project-v${{ env.VERSION }}.xpi
