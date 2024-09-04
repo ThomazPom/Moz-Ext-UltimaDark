@@ -20,12 +20,15 @@ jobs:
         options_styles.css
         MurmurHash3.js
         manifest.json
-        inject_css_*.css
+        inject_css_overrides_no_edit.css
+        inject_css_overrides.css
+        inject_css_suggesteed.css
+        inject_css_suggesteed_no_edit.css
         imageWorker.js
         content_script.js
         bg.jpg
         background.js
-        icons/*
+        icons/
 
     steps:
       # Checkout the repository
@@ -52,13 +55,10 @@ jobs:
           FILES=$(echo "${{ env.FILES_TO_PACKAGE }}" | tr '\n' ' ')
           zip -r "release/project-v${{ env.VERSION }}.zip" $FILES
 
-      # Create an xpi file (using the same list of files)
+      # Copy the zip file to XPI file
       - name: Create xpi file
         run: |
-          mkdir -p release
-          cd release
-          FILES=$(echo "${{ env.FILES_TO_PACKAGE }}" | tr '\n' ' ')
-          zip -r "project-v${{ env.VERSION }}.xpi" ../$FILES
+          cp release/project-v${{ env.VERSION }}.zip release/project-v${{ env.VERSION }}.xpi
 
       # Create a release on GitHub
       - name: Create GitHub Release
