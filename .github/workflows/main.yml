@@ -51,7 +51,6 @@ jobs:
       - name: Create new tag
       
         run: |
-          git tag -d "v${{ env.VERSION }}"
           git push --delete origin "v${{ env.VERSION }}"
           git tag "v${{ env.VERSION }}"
           git push origin "v${{ env.VERSION }}"
