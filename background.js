@@ -1886,7 +1886,7 @@ window.dark_object = {
         let part2=parts.slice(partsIndex+2); //+2: Remove the ; and the space
         let subParts1_1=part1.slice(0,part1.indexOf(":"));
         let subParts1_2=part1.slice(part1.indexOf(":")+2); // +2 to remove the : and the space
-        let subParts2_1=part2.split(0,part2.indexOf(":"));
+        let subParts2_1=part2.slice(0,part2.indexOf(":"));
         let subParts2_2=part2.slice(part2.indexOf(":")+2,-1); // +2 to remove the : and the space, -1 to remove the ;
 
         args[0]=subParts1_1
