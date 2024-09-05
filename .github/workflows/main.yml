@@ -14,6 +14,7 @@ jobs:
       contents: write  # Ensure the token has write access to the repository contents
 
     env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       FILES_TO_PACKAGE: |
         popup.js
         popup.html
