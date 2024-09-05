@@ -6,7 +6,7 @@ $path = "./"
 $DateTime = (Get-Date -Format "yyyyMMddHHmmss")
 $destination = Join-Path $path "./UltimaDark.zip"
 # exclusion rules. Can use wild cards (*)
-$exclude = @("*.ps1","other-tools-and-tests","gre-resources","*.zip","icons")
+$exclude = @("*.ps1","other-tools-and-tests","gre-resources","*.zip","icons",".git" ,".github")
 # get files to compress using exclusion filer
 $files = Get-ChildItem -Path $path -Exclude $exclude
 # compress
