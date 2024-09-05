@@ -489,6 +489,11 @@ window.dark_object = {
           });
         },
         frontEditHTML: (elem, value, details, options = {}) => {
+          if(elem instanceof HTMLScriptElement)
+          {
+            // Oops, we matched a script element the site atempted to edit because  it probably does something with 'style' or 'fill', we should not edit it.
+            return value;
+          }
           if (elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement) {
             return uDark.edit_str(value, false, false, undefined, false, options)
           }
@@ -994,21 +999,24 @@ window.dark_object = {
           a = typeof a == "number" ? a : 1
 
           let [h, s, l] = uDark.rgbToHsl(r, g, b);
+            // This whole function could be combined in one line
           if (l > uDark.min_bright_bg_trigger) {
 
-            // https://www.desmos.com/calculator/oqqi9nzonh
+
             let B = uDark.min_bright_bg;
             let A = uDark.max_bright_bg
-            // let scaleToA = uDark.userSettings.noScaleToA && l<A;
-            if (l > 0.5) {
-              l = 1 - l; // Invert the lightness for bightest colors
-            }
-            //  l = Math.sin(Math.PI*l)*(A-B)+B;
-
-            // if(!scaleToA)
-            // {
-            l = Math.min(2 * l, -2 * l + 2) * (A - B) + B;
+            
+            
+            // https://www.desmos.com/calculator/2prydrxwbf
+            l=Math.min(2*A*l,A+2*(B-A)*(l-0.5));
+            // Old way to do it, but it is not as faste as the new one
+            
+            // https://www.desmos.com/calculator/oqqi9nzonh
+            // if (l > 0.5) {
+            //   l = 1 - l; // Invert the lightness for bightest colors
             // }
+            // l = Math.min(2 * l, -2 * l + 2) * (A - B) + B;
+            
           }
           [r, g, b] = uDark.hslToRgb(h, s, l);
           return render(...[r, g, b], a);
@@ -1524,7 +1532,7 @@ window.dark_object = {
 
   user_content: {
     install: function() {
-      console.info("UltimaDark", "User content script install", document.location.href);
+      console.info("UltimaDark", "User content script install", window);
       window.uDark = {
         ...window.uDark,
         ...{
@@ -1685,8 +1693,10 @@ window.dark_object = {
     }
 
   },
-
+  
   content_script: {
+    
+   
     install() {
       console.info("UltimaDark", "Content script install", window);
   
@@ -1698,7 +1708,6 @@ window.dark_object = {
           website_context: true
         }
       }
-
       if (uDark.direct_window_export) {
         
         [
@@ -1706,11 +1715,11 @@ window.dark_object = {
           window.dark_object.content_script.override_website
 
         ].map(code => {
+
           window.wrappedJSObject.eval( "(" + code.toString() + ")()");
         });
 
       }
-
       globalThis.browser.storage.local.get(null, function(res) {
         window.uDark.userSettings = res;
         if (uDark.direct_window_export) {
@@ -1824,18 +1833,27 @@ window.dark_object = {
     },
     override_website: function() {
      
+      try {
+        typeof localStorage;
+        uDark.localStorageAvailable = true;
+      } catch (e) {
+        // console.log("UltimaDark", "Local storage is not available", e,document.location.href);
+      }
+
       let start = new Date() / 1;
       uDark.website_context = true;
-      console.log("UltimaDark", "Content script override website");
+      console.log("UltimaDark", "Content script override website", window);
+      
 
       window.userSettingsReadyAction=function(){
-        console.log("UltimaDark", "User settings ready actions");
         if(!uDark.userSettings.keep_service_workers && window.navigator.serviceWorker)
           {
-          
-              window.navigator.serviceWorker.getRegistrations().then(rs=>rs.map(x=>x.unregister()))
-              delete Navigator.prototype.serviceWorker;  
-            
+              if(uDark.localStorageAvailable )
+              {
+                // Insecure operations have in common a non available localStorage
+                window.navigator.serviceWorker.getRegistrations().then(rs=>rs.map(x=>x.unregister()))
+              }
+              delete Navigator.prototype.serviceWorker; 
           }
       }
       // console.log(globalThis.exportFunction)
@@ -1904,10 +1922,9 @@ window.dark_object = {
           args[0] = uDark.edit_str(args[0]);
           return args;
         })
-        
       // This is the one youtube uses
       uDark.valuePrototypeEditor([Element,ShadowRoot], "innerHTML", uDark.frontEditHTML, (elem, value) => value && /style|fill/.test(value)  || elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement); // toString : sombe object can redefine tostring to generate thzir inner
-      //geo.fr uses this one
+      // //geo.fr uses this one
       uDark.valuePrototypeEditor(Element, "outerHTML", uDark.frontEditHTML, (elem, value) => value &&  /style|fill/.test(value)  || elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement); // toString : sombe object can redefine tostring to generate thzir inner
 
       // This is the one google uses
@@ -2114,7 +2131,7 @@ window.dark_object = {
 
       console.info("UltimaDark", "Websites overrides ready", window, "elapsed:", (new Date() / 1) - start);
 
-    }
+    },
   },
   background: {
     defaultRegexes: {
@@ -2532,6 +2549,7 @@ window.dark_object = {
 
           },
           parse_and_edit_html3: function(str, details) {
+            
             details.requestScripts = details.requestScripts || []
             if (uDark.debugFirstLoad) {
               str = str.replace(/(<script ?.*?>)((.|\n)*?)(<\/script>)/g, (match, g1, g2, g3, g4) => {
@@ -2544,16 +2562,21 @@ window.dark_object = {
               });
 
             }
-            str = str.replace(/<(\/)?noscript/g, "<$1ud_secure_a_noscript");
-            
+            let strO = str;
+
+            // I searched a lot how to handle noscripts. At first i was only renaming them to ud_noscript. but if you put them into head and then put a non head elem inside it, it generates
+            // a non head elem inside the head, breaking the page. So i decided to replace them with a script tag, which is purely ignored by the domParser, and then i replace them back
+            // Fortunately i could use a comment to mark the noscript tag location, so i could replace them back
+            str = str.replaceAll(/<(\/)?noscript/g, "<!--ud-noscript--><$1script");
             // var documentElement = document.createElement("html")
             // documentElement.innerHTML=str.replace(/<\/?html.*?>/g,"")
+
             var parser = new DOMParser();
             let aDocument = parser.parseFromString(
               str, "text/html");
             let documentElement = aDocument.documentElement;
             let svgElements=[];
-          
+           
               
             documentElement.querySelectorAll("svg").forEach(svg => {
               let temp_replace = document.createElement("svg_secured");
@@ -2629,7 +2652,7 @@ window.dark_object = {
          
             var outer_edited = "<!doctype html>" + documentElement.outerHTML
             outer_edited = outer_edited.replace(/[\s\t]integrity=/g, " data-no-integ=")
-            outer_edited = outer_edited.replaceAll("ud_secure_a_noscript", "noscript")
+            outer_edited = outer_edited.replaceAll(/<!--ud-noscript--><(\/)?script/g, "<$1noscript")
 
             return outer_edited;
           }
@@ -3192,7 +3215,6 @@ window.dark_object = {
               canvas.toBlob((editedBlobWithImageHeaders) => {
                 // console
                 // filter.write(theImageDataUint32TMP.buffer);
-                console.log(editedBlobWithImageHeaders);
                 editedBlobWithImageHeaders.arrayBuffer().then((buffer) => {
                   filter.write(buffer);
                   console.log("Image", "Image written in filter", new Date() / 1 - start_date / 1);
@@ -3525,7 +3547,8 @@ dark_object.both.install()
 
 if (globalThis.browser.webRequest) {
   dark_object.background.install();
-} else {
+}
+ else {
   dark_object.content_script.install();
   if (!uDark.direct_window_export) {
     dark_object.content_script.override_website();
