@@ -86,14 +86,14 @@ jobs:
       # Upload zip file to the release
                     
       - name: Upload zip asset
-        uses: Shopify/upload-to-release@v1
+        uses: Shopify/upload-to-release@latest
         with:
           name: UltimaDark-v${{ env.VERSION }}.zip
           path: release/UltimaDark-v${{ env.VERSION }}.zip
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Upload xpi asset
-        uses: Shopify/upload-to-release@v1
+        uses: Shopify/upload-to-release@latest
         with:
           name: UltimaDark-v${{ env.VERSION }}.xpi
           path: release/UltimaDark-v${{ env.VERSION }}.xpi
