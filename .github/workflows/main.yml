@@ -84,23 +84,16 @@ jobs:
             Release v${{ env.VERSION }}
           draft: false
           prerelease: false
-        
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
       
       # Upload zip file to the release
-                    
-      - name: Upload zip asset
-        uses: Shopify/upload-to-release@v2.0.0
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v2
         with:
-          name: UltimaDark-v${{ env.VERSION }}.zip
-          path: release/UltimaDark-v${{ env.VERSION }}.zip
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Upload xpi asset
-        uses: Shopify/upload-to-release@v2.0.0
-        with:
-          name: UltimaDark-v${{ env.VERSION }}.xpi
-          path: release/UltimaDark-v${{ env.VERSION }}.xpi
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: release/UltimaDark-v${{ env.VERSION }}.*
+          tag: v${{ env.VERSION }}
+          overwrite: true
+          file_glob: true
