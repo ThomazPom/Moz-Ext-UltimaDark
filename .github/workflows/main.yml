@@ -14,7 +14,6 @@ jobs:
       contents: write  # Ensure the token has write access to the repository contents
 
     env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       FILES_TO_PACKAGE: |
         popup.js
         popup.html
@@ -86,10 +85,16 @@ jobs:
       
       # Upload zip file to the release
                     
-
-      - name: Release Upload Assets
-        uses: actions/checkout@v4
+      - name: Upload zip asset
+        uses: Shopify/upload-to-release@v1
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: release/UltimaDark-v${{ env.VERSION }}.*
-          asset_content_type: application/zip
+          name: UltimaDark-v${{ env.VERSION }}.zip
+          path: release/UltimaDark-v${{ env.VERSION }}.zip
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Upload xpi asset
+        uses: Shopify/upload-to-release@v1
+        with:
+          name: UltimaDark-v${{ env.VERSION }}.xpi
+          path: release/UltimaDark-v${{ env.VERSION }}.xpi
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
