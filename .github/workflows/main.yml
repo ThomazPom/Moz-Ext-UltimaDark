@@ -76,10 +76,11 @@ jobs:
       # Create a release on GitHub
       - name: Create GitHub Release
         id: create_release
-        uses: comnoco/create-release-action@latest
+        uses: comnoco/create-release-action@v2.0.5
         with:
           tag_name: v${{ env.VERSION }}
           release_name: v${{ env.VERSION }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           body: |
             Release v${{ env.VERSION }}
           draft: false
