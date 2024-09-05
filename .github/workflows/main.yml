@@ -80,11 +80,14 @@ jobs:
         with:
           tag_name: v${{ env.VERSION }}
           release_name: v${{ env.VERSION }}
-          token: ${{ secrets.GITHUB_TOKEN }}
           body: |
             Release v${{ env.VERSION }}
           draft: false
           prerelease: false
+        
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
       
       # Upload zip file to the release
                     
