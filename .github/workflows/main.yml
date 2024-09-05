@@ -37,7 +37,7 @@ jobs:
 
       # Install the latest Node.js version
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@latest
         with:
           node-version: 'lts/*'  # Automatically fetches the latest LTS version
 
@@ -76,12 +76,15 @@ jobs:
       # Create a release on GitHub
       - name: Create GitHub Release
         id: create_release
-        uses: actions/create-release@latest
+        uses: comnoco/create-release-action@v2.0.5
         with:
-          tag_name: "v${{ env.VERSION }}"
-          release_name: "Release v${{ env.VERSION }}"
+          tag_name: v${{ env.VERSION }}
+          release_name: v${{ env.VERSION }}
+          body: |
+            Release v${{ env.VERSION }}
           draft: false
           prerelease: false
+          token: ${{ secrets.GITHUB_TOKEN }}
       
       # Upload zip file to the release
                     
