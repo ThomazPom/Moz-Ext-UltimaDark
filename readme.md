@@ -1,7 +1,8 @@
 # UltimaDark
 This repository stores the source code for the UltimaDark Firefox extension
 The extension uses agressive techniques to get a dark mode everywhere on internet
-This is still highly experimental so it can also ruin your internet experience
+
+### This is still highly experimental so it can also ruin your internet experience
 
 UltimaDark stands out from other extensions in its category by altering colors even before the renderer (Gecko) processes them, which considerably improves performance. The UltimaDark code intercepts the page content at an early stage, right after it is fetched from the remote website. This preemptive editing prevents Gecko from displaying the default bright colors of the website before applying the dark theme, eliminating the jarring white flash during page loading.
 
@@ -11,20 +12,35 @@ Once a color is detected, it undergoes the appropriate transformation, either da
 
 The adjustment of website colors, rather than implementing a dark theme, aims to preserve the authenticity of the website's intended design.
 
-Let's focus specifically on the darkening transformation, as there are still refinements to be made in the brightening function.
+## Background Color Lightness Transformation Function
 
-**²** The darkening transformation begins by determining the lightness of the color. If it falls below a certain brightness threshold (B), it remains untouched, respecting the website's intended design.
+`Ultimadark` modifies the lightness of background colors, but it preserves the darkest 20% of background lightness values to respect the design intent of websites that already use dark themes. This ensures that the dark appearance of these sites remains unaltered.
 
-For lightness values above B, the edit ensures it never exceeds a maximum lightness (A). The lightness scale ranges from 0 to 1, where 0 is black and 1 is fully white—unsuitable for a background.
+For background lightness values above this threshold, a piecewise linear transformation is applied. The function operates as follows:
 
+1. **Threshold (T):** Background lightness values below the 20% threshold remain untouched to maintain their intended design.
+   
+2. **Mid-point Maximum Lightness (A):** From the threshold (T) up to a lightness of 0.5, the function increases the lightness linearly. At 0.5, the saturation peaks, ensuring that the website design remains faithful but balanced with a new maximum lightness (A). This is the point where the saturation of colors is maximized, maintaining visual richness.
 
-- Lightness values from 0 to B are preserved as-is.
-- Lightness values from B to 0.5 are scaled from B to A.
-  -  It might be a good option to shortcut this rule for lightness from B to A ( Do not edit site colors which are already under maximum  lightness A, thus keeping exactly these intended colors as is)
-- Lightness values from 0.5 to 1 are reversed and then scaled from A to B. 
-  - This implies lightness values of 1 (white) are then equals to B (not reversed to black !), ensuring good contrast with colors at point ².
+3. **Decreasing Lightness After 0.5:** Beyond the 0.5 lightness value, the function starts decreasing lightness gradually down to a minimum contrast value (B). The lightness never reaches zero. This is important because many web designs place white elements (lightness = 1) on black backgrounds. By preserving some contrast between these elements, the design remains legible and visually cohesive.
 
-You can review the transformation function here: [Desmos Background Transformation Function](https://www.desmos.com/calculator/oafbbrdz1g) and here [Desmos Foreground Transformation Function](https://www.desmos.com/calculator/v6eiisqdzc).
+4. **Potential Fidelity at the Threshold (T):** While still under consideration, one idea is to ensure that the transformation starts at the exact original lightness when lightness equals the threshold (T). This would allow for a smoother transition from the original design, maintaining fidelity to the initial background's lightness, and avoiding abrupt visual shifts. However, this idea is still in development and has not been implemented, as it needs more advanced calculus. 
+
+This approach maintains the balance between adapting websites for better readability and preserving the original design aesthetics, particularly on dark-themed websites.
+
+You can review the transformation function here: [Desmos Background Transformation Function](https://www.desmos.com/calculator/2prydrxwbf)
+
+## Text Lightening Transformation Function
+
+`Ultimadark`  includes a text lightening transformation designed to progressively enhance readability while maintaining the original design aesthetics of a website. The function adjusts the lightness of text in a smooth and gradual manner, ensuring readability improvements without sharp or sudden changes that could disrupt the design’s balance.
+
+1. **Maximum Lightness (B) at Lightness 0:** Starting with text that has a lightness of 0 (pure black), the function increases the lightness up to a predefined maximum value (B). Although (B) is not yet user-configurable, future versions of the function will allow users to set their preferred maximum lightness, providing greater flexibility in adjusting the readability of dark text.
+
+2. **Saturation and Color Fidelity (A) and Break Point at 0.5:** As text moves from darker shades toward mid-tones, the function progressively lightens the text while carefully preserving saturation and color fidelity. The function reaches a break point at a lightness of 0.5, where saturation is at its peak.
+
+3. **Maintaining Bright Text within B:** For text that is already close to white (lightness values above 0.5), the function ensures that the lightness remains accurate, in the respect of the user upper limit of the maximum lightness value (B), ensuring that even bright text remains visually balanced and readable. This progressive adjustment keeps text within the desired contrast range while maintaining harmony with the overall design. The configurability of (B) is planned, allowing users more control over the upper limits in future versions.
+
+ and here [Desmos Foreground Transformation Function](https://www.desmos.com/calculator/37yi1rirw9).
 
 UltimaDark also has the capability to edit pixels in images ("Image Edition" toggle), although this feature is currently experimental and not fully functional. An example of the broken functionality can be seen on the Apple support page: [Broken Example](https://support.apple.com/fr-fr/HT205189). On the other hand, the feature works better on the Sushi Spirit website: [Not-So-Bad Example](https://www.sushispirit.com/).
 
