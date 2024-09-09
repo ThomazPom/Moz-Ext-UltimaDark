@@ -51,7 +51,7 @@ jobs:
       - name: Create new tag
       
         run: |
-          existing_tag=$(git ls-remote --tags origin | grep -n "v${{ env.VERSION }}" )
+          existing_tag=$(git ls-remote --tags origin | grep -n "v${{ env.VERSION }}" || true )
           if [ -z "$existing_tag" ]; then
             echo "Tag v${{ env.VERSION }} does not exist"
           else
