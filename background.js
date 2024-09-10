@@ -2586,7 +2586,11 @@ window.dark_object = {
               // We could select them, and DocumentFragment them, for edge cases of people disabling JS.
               // <template> did not work as expected, so i've fallen back to <script> which works fine
 
-              str = str.replaceAll(/<(\/)?noscript/g, "<!--ud-noscript--><$1script");
+              // str= str.replaceAll("noscript","template");
+              // str = str.replaceAll(/<(\/)?noscript/g, "<!--ud-noscript--><$1script");
+              // str = str.replaceAll(/<(\/)?noscript/g, "<!--ud-noscript--><$1template");
+              str = str.replaceAll(/<(\/)?noscript/g, "<$1template secnoscript");
+              
               // var documentElement = document.createElement("html")
               // documentElement.innerHTML=str.replace(/<\/?html.*?>/g,"")
               
@@ -2594,6 +2598,7 @@ window.dark_object = {
               let aDocument = parser.parseFromString(
                 str, "text/html");
                 let documentElement = aDocument.documentElement;
+                
                 let svgElements = [];
                 console.log(details.type,details.url);
                 // if(details.type=="main_frame"){
@@ -2602,7 +2607,7 @@ window.dark_object = {
                 //   var outer_edited = "<!doctype html>" + documentElement.outerHTML
                 //   outer_edited = outer_edited.replace(/[\s\t]integrity=/g, " data-no-integ=")
                 //   outer_edited = outer_edited.replaceAll(/<!--ud-noscript--><(\/)?script/g, "<$1noscript")
-                  
+                //   console.log(outer_edited)
                 //   return outer_edited;
                 // }
                 
@@ -2676,9 +2681,22 @@ window.dark_object = {
                   temp_replace.replaceWith(svg);
                 })
                 
+                
+                // outer_edited = outer_edited.replaceAll(/<!--ud-noscript--><(\/)?(script|template)/g, "<$1noscript")
+                documentElement.querySelectorAll("template[secnoscript]").forEach(template => {
+                  template.outerHTML = "<noscript"+template.outerHTML.slice(9,-9)+"noscript>";
+                })
+
+
                 var outer_edited = "<!doctype html>" + documentElement.outerHTML
-                outer_edited = outer_edited.replace(/[\s\t]integrity=/g, " data-no-integ=")
-                outer_edited = outer_edited.replaceAll(/<!--ud-noscript--><(\/)?script/g, "<$1noscript")
+                
+
+                documentElement.querySelectorAll("[integrity]").forEach(integrityElem => {
+                  integrityElem.setAttribute("data-no-integ", integrityElem.getAttribute("integrity"));
+                  integrityElem.removeAttribute("integrity");
+                });
+                // outer_edited = outer_edited.replace(/[\s\t]integrity=/g, " data-no-integ=")
+                
                 
                 return outer_edited;
               }
@@ -3528,8 +3546,8 @@ window.dark_object = {
        else {
         dark_object.content_script.install();
         if (!uDark.direct_window_export) {
-          dark_object.content_script.override_website();
+          // dark_object.content_script.override_website();
         }
-        dark_object.content_script.website_load();
+        // dark_object.content_script.website_load();
         
       }
