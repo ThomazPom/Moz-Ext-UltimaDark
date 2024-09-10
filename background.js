@@ -2600,7 +2600,6 @@ window.dark_object = {
                 let documentElement = aDocument.documentElement;
                 
                 let svgElements = [];
-                console.log(details.type,details.url);
                 // if(details.type=="main_frame"){
                 //   console.log(strO);
                   
