@@ -495,7 +495,11 @@ window.dark_object = {
             //   return;
             
             // }
-            
+            // if(astyle.innerHTML.includes("/*!sc*/"))
+            // {
+            //   console.log("SCSS detected",astyle);
+            //   return;
+            // }
             astyle.innerHTML = uDark.edit_str(astyle.innerHTML, false, false, details, false, options);
             // astyle.innerHTML='*{fill:red!important;}'
             // According to https://stackoverflow.com/questions/55895361/how-do-i-change-the-innerhtml-of-a-global-style-element-with-cssrule ,
@@ -610,6 +614,14 @@ window.dark_object = {
         edit_str: function(strO, cssStyleSheet, verifyIntegrity = false, details, idk_mode = false, options = {}) {
           
           let str=strO;
+
+          
+          if(strO.includes("/*!sc*/"))
+            { // TODO: Fix thins in abetter way; this is a temporary and specific fix; 
+              console.log("SCSS detected",uDark.edit_str);
+              uDark.edit_str.last_debugged={strO,cssStyleSheet,verifyIntegrity,details,idk_mode,options};
+              return strO; 
+            }
           // Protection of imports
           // Unfortunately, this could lead to a reparation of a broken css if the chunking splits the @import in two parts
           // We might someday encounter this very improbable case, and have to check if the last rule is an unclosed @rule, while having some rules before it and reject the CSS chunk
@@ -648,7 +660,6 @@ window.dark_object = {
               uDark.edit_css(cssStyleSheet, false, details, options);
               str = cssStyleSheet.cssRules[0].cssText.slice(4, -2);
           } else {
-            
             /* This does not exist anymore, as we are repairing import locations in the CSS with the import protection, integrity will be verifiable.
             // Exists the rare case where css only do imports, no rules with {} and integrity cant be verified because it does not close the import with a ";"
             let returnAsIs = (!cssStyleSheet.cssRules.length && !strO.includes("{")); // More reliable than checking if it starts with an a @ at it may starts with a comment 
@@ -664,8 +675,6 @@ window.dark_object = {
             if (verifyIntegrity) {
               let last_rule = cssStyleSheet.cssRules[cssStyleSheet.cssRules.length - 1];
               let is_rejected = !last_rule || last_rule.selectorText != ".integrity_rule";
-              
-              // console.log(cssStyleSheet,last_rule,is_rejected)
               if (is_rejected) {
                 
                 //
@@ -714,7 +723,6 @@ window.dark_object = {
             
             let rules = [...cssStyleSheet.cssRules].map(r => r.cssText);
             
-            // !uDark.exactAtRuleProtect &&  uDark.edit_str_restore_imports_all_way(strO, rules);
             
             str = rules.join("\n");
 
@@ -1387,7 +1395,6 @@ window.dark_object = {
             variables_items = [],
             background_items = [],
             wording_action = [];
-            
             for (let x of cssRule.style) {
               if (idk_mode === true) { 
                 // Partial idk mode (idk_mode='partial_idk') does not have --ud-idk_ prefix, they are added by cloning the cssRule
@@ -1536,7 +1543,6 @@ window.dark_object = {
       String.prototype.unprotect=function(protectWith){return uDark.str_unprotect(this,protectWith)};
       String.prototype.protect_numbered=function(regexSearch, protectWith,condition=true){return uDark.str_protect_numbered(this,regexSearch,protectWith,condition)};
       String.prototype.unprotect_numbered=function(protectWith,condition=true){return uDark.str_unprotect_numbered(this,protectWith,condition)};
-      
       String.prototype.protect_simple=function(regexSearch, protectWith,condition=true){return uDark.str_protect_simple(this,regexSearch,protectWith,condition)};
       String.prototype.unprotect_simple=function(protectedWith,condition=true){return uDark.str_unprotect_simple(this,protectedWith,condition)};
       
@@ -2589,17 +2595,15 @@ window.dark_object = {
                 str, "text/html");
                 let documentElement = aDocument.documentElement;
                 let svgElements = [];
-                // console.log(details.type,details.url);
+                console.log(details.type,details.url);
                 // if(details.type=="main_frame"){
                 //   console.log(strO);
-                // var outer_edited = "<!doctype html>" + documentElement.outerHTML
-                // outer_edited = outer_edited.replace(/[\s\t]integrity=/g, " data-no-integ=")
-                // outer_edited = outer_edited.replaceAll(/<!--ud-noscript--><(\/)?script/g, "<$1noscript")
-                
-                // console.log(outer_edited);
-                // console.log("\n".repeat(50));
-                // return strO;
-                // return outer_edited;
+                  
+                //   var outer_edited = "<!doctype html>" + documentElement.outerHTML
+                //   outer_edited = outer_edited.replace(/[\s\t]integrity=/g, " data-no-integ=")
+                //   outer_edited = outer_edited.replaceAll(/<!--ud-noscript--><(\/)?script/g, "<$1noscript")
+                  
+                //   return outer_edited;
                 // }
                 
                 documentElement.querySelectorAll("svg").forEach(svg => {
@@ -2899,7 +2903,7 @@ window.dark_object = {
                     resolve(content_script_port);
                   }
                   if (max_tries == 0) {
-                    reject("Max tries reached");
+                    reject(`Max tries reached waiting for content_script_port to connect ${details.url}`);
                   }
                   if (content_script_port == "ARRIVING_SOON") {
                     setTimeout(() => {
@@ -3358,7 +3362,7 @@ window.dark_object = {
               return;
               
             }
-            let chunk_hash = fMurmurHash3Hash(options.chunk);
+            let chunk_hash = fMurmurHash3Hash(options.chunk.toString()); // String objects are not hashable, they returns "0" as hash
             if (chunk_hash in uDark.idk_cache) {
               // console.log("Skipping chunk as it is already in cache", details.url)
               options.chunk = uDark.idk_cache[chunk_hash];
@@ -3520,7 +3524,8 @@ window.dark_object = {
       
       if (globalThis.browser.webRequest) {
         dark_object.background.install();
-      } else {
+      }
+       else {
         dark_object.content_script.install();
         if (!uDark.direct_window_export) {
           dark_object.content_script.override_website();
