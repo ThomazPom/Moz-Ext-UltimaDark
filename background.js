@@ -512,80 +512,200 @@ window.dark_object = {
             astyle.classList.add(add_class)
           });
         },
-        frontEditHTML: (elem, value, details, options = {}) => {
-          
+        frontEditHTML: function(elem, value, details, options = {}) {
+          // 1. Ignore <script> elements to prevent unintended modifications to JavaScript
           if (elem instanceof HTMLScriptElement) {
-            // Oops, we matched a script element the site atempted to edit because  it probably does something with 'style' or 'fill', we should not edit it.
             return value;
           }
+      
+          // 2. Special handling for <style> and <svg> style elements (returns edited value directly)
           if (elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement) {
             return uDark.edit_str(value, false, false, undefined, false, options);
           }
-          
-
-          let hasBody = value.includes("body");
-          if (!hasBody) {
-            // Looks like an overkill but it is not. 
-            // Angular websites counts their comments to work and the first comment of non encapsulated html will be removed
+      
+          if (!value.includes("body")) {
+            // 3. Ensure the HTML is encapsulated within a <body> tag, especially for non-encapsulated HTML
             value = "<body>" + value + "</body>";
           }
-          var parser = new DOMParser();
-          var parsedElement = parser.parseFromString(value, "text/html");
-          let documentElement = parsedElement.documentElement;
-          
-          let svgElements = [];
+      
+          // 4. Replace <noscript> tags with <template> to bypass restrictions
+          // The issue isn't with <noscript> itself, but with any disallowed tag inside the <head>, including those within <noscript>. Many sites make this mistake.
+          // The allowed tags in the <head> are: <base>, <link>, <meta>, <style>, <title>, <script>, <noscript>, and <template>.
+          // The <noscript> tag has restricted child elements when placed in the <head>; it only allows <link>, <style>, and <meta>.
+          // The <template> tag, on the other hand, has no such restrictions and can contain any type of child elements, even in the <head>.
+          // The <script> tag is also somewhat unrestricted as it allows raw text content.
+          value = value.replaceAll(/<(\/)?noscript/g, "<$1template secnoscript");
+      
+          // 5. Parse the HTML string into a DOM document
+          const documentElement = uDark.createDocumentFromHtml(value).documentElement;
+      
+          // 6. Update color-scheme meta tags for dark mode handling
+          uDark.processMetaTags(documentElement);
+      
+          // 7. Restore or set the color-scheme meta tag for dark mode handling
           // <meta name="color-scheme" content="dark light"> Telling broswer order preference for colors 
           // Makes input type checkboxes and radio buttons to be darkened
-          
-          documentElement.querySelectorAll("meta[name='color-scheme']").forEach(udMetaDark => {
-            
-            udMetaDark.id = "ud-meta-dark"
+          documentElement.querySelectorAll("meta[name='color-scheme']").forEach(udMetaDark => { 
+            udMetaDark.id = "ud-meta-dark";
             udMetaDark.name = "color-scheme";
             udMetaDark.content = "dark";
-          })
-          
-          documentElement.querySelectorAll("svg").forEach(svg => {
-            let temp_replace = document.createElement("svg_secured");
-            svgElements.push([svg, temp_replace]);
-            svg.replaceWith(temp_replace);
-            uDark.frontEditSVG(svg, documentElement, details, options);
-            // Edit styles of svg elements before editing documentElement styles, and by the same time protect the svg from being edited by the main function if image edition is disabled
           });
-          
-          uDark.edit_styles_attributes(documentElement, details, options);
-          uDark.edit_styles_elements(documentElement, details, "ud-edited-foreground");
-          
+      
+          // 8. Temporarily replace all SVG elements to avoid accidental style modifications
+          const svgElements = uDark.processSvgElements(documentElement, details);
+      
+          // 9. Edit styles and attributes inline for foreground elements
+          uDark.edit_styles_attributes(documentElement, details); 
+          uDark.edit_styles_elements(documentElement, details, "ud-edited-background"); 
+      
+          // 10. Modify inline styles found in the document
+          uDark.processInlineStyles(documentElement);
+      
+          // 11. Add a custom identifier to favicon links to manage cache
+          uDark.processLinks(documentElement);
+      
+          // 12. Process image sources and prepare them for custom modifications
+          uDark.processImages(documentElement);
+      
+          // 13. Recursively process iframes using the "srcdoc" attribute by applying the same editing logic
+          uDark.processIframes(documentElement, details, 'frontEditHTML');
+      
+          // 14. Handle elements with color attributes (color, bgcolor) and ensure proper color handling
+          uDark.processColoredItems(documentElement);
+      
+          // 15. Restore the original SVG elements that were temporarily replaced
+          uDark.restoreSvgElements(svgElements);
+      
+          // 16. Restore <noscript> elements that were converted to <template>
+          uDark.restoreTemplateElements(documentElement);
+      
+          // 17. Remove the integrity attribute from elements and replace it with a custom attribute
+          uDark.restoreIntegrityAttributes(documentElement);
+      
+          // 18. After all the edits, return the final HTML output
+          let resultEdited = value.includes("body") ? documentElement.outerHTML : documentElement.body.innerHTML;
+      
+          return resultEdited;
+        },
+      
+        
+      
+        createDocumentFromHtml: function(html) {
+          // Use DOMParser to convert the HTML string into a DOM document
+          const parser = new DOMParser();
+          return parser.parseFromString(html, "text/html");
+        },
+      
+        processSvgElements: function(documentElement, details) {
+          let svgElements = [];
+          // Temporarily replace all SVG elements to avoid accidental style modifications
+          documentElement.querySelectorAll("svg").forEach(svg => {
+            const tempReplace = document.createElement("svg_secured");
+            svgElements.push([svg, tempReplace]);
+            svg.replaceWith(tempReplace);
+            // Edit SVG styles separately, before main style editing
+            uDark.frontEditSVG(svg, documentElement, details);
+          });
+          return svgElements;
+        },
+      
+        processMetaTags: function(documentElement) {
+          // Ensure that content-type meta tags are properly set to avoid charset issues
+          documentElement.querySelectorAll("meta[http-equiv]").forEach(m => {
+            if (m.httpEquiv && m.httpEquiv.toLowerCase().trim() === "content-type" && m.content.includes("charset")) {
+              m.content = "text/html; charset=utf-8";
+            }
+          });
+        },
+      
+        processInlineStyles: function(documentElement) {
+          // Modify inline styles by adjusting the style attribute of elements
           documentElement.querySelectorAll("[style]").forEach(astyle => {
-            // console.log(details,astyle,astyle.innerHTML,astyle.innerHTML.includes(`button,[type="reset"],[type="button"],button:hover,[type="button"],[type="submit"],button:active:hover,[type="button"],[type="submi`))
             astyle.setAttribute("style", uDark.edit_str(astyle.getAttribute("style")));
           });
-          
-          documentElement.querySelectorAll("link[rel*='icon'][href]").forEach(link => {
-            link.setAttribute("href", link.getAttribute('href') + "#ud_favicon");
-          });
-          documentElement.querySelectorAll("img[src]").forEach(image => { // We catch images later, not here
-            
-            image.setAttribute("src", uDark.image_element_prepare_href(image, documentElement));
-            
-            // uDark.registerBackgroundItem(false,{selectorText:`img[src='${image.src}']`}, details)
-          })
-          
-          // SVGs [styles and <style> elements] are edited with other options , we need now to restore them
-          svgElements.forEach(([svg, temp_replace]) => {
-            temp_replace.replaceWith(svg);
-          })
-          
-          let result_edited = undefined;
-          
-          if (hasBody) {
-            result_edited = documentElement.outerHTML;
-          } else {
-            result_edited = parsedElement.body.innerHTML;
-          }
-          result_edited = result_edited.replace(/[\s\t]integrity=/g, " data-no-integ=")
-          
-          return result_edited;
         },
+      
+        processLinks: function(documentElement) {
+          // Append a custom identifier to favicon links to manage cache more effectively
+          documentElement.querySelectorAll("link[rel*='icon'][href]").forEach(link => {
+            link.setAttribute("href", link.getAttribute("href") + "#ud_favicon");
+          });
+        },
+      
+        processImages: function(documentElement) {
+          // Process image sources to prepare them for custom modifications
+          documentElement.querySelectorAll("img[src]").forEach(image => {
+            image.setAttribute("src", uDark.image_element_prepare_href(image, documentElement));
+          });
+        },
+      
+        processIframes: function(documentElement, details, functionName) {
+          // Recursively process iframes that use the "srcdoc" attribute by applying the same HTML processing function
+          documentElement.querySelectorAll("iframe[srcdoc]").forEach(iframe => {
+            iframe.setAttribute("srcdoc", uDark[functionName](iframe.srcdoc, details));
+          });
+        },
+      
+        processColoredItems: function(documentElement) {
+          // Process elements with color or bgcolor attributes and ensure proper color handling
+          documentElement.querySelectorAll("[color],[bgcolor]").forEach(coloredItem => {
+            for (let [key, afunction] of Object.entries(uDark.attributes_function_map)) {
+              if (typeof afunction === "string") {
+                afunction = uDark.attributes_function_map[afunction];
+              }
+              let attributeValue = coloredItem.getAttribute(key);
+              if (attributeValue && attributeValue.startsWith("#") && attributeValue.length === 6) {
+                attributeValue += "0"; // Ensure colors are properly formatted
+              }
+              const possibleColor = uDark.is_color(attributeValue, true, true);
+              if (possibleColor) {
+                let callResult = afunction(...possibleColor, uDark.rgba_val, coloredItem);
+                if (callResult) {
+                  coloredItem.setAttribute(key, callResult);
+                }
+              }
+            }
+          });
+        },
+      
+        injectStylesIfNeeded: function(documentElement, details) {
+          // Inject custom CSS and the dark color scheme meta tag if this is the first data load
+          if (details.dataCount === 1) {
+            const udStyle = document.createElement("style");
+            udStyle.textContent = uDark.inject_css_suggested;
+            udStyle.id = "ud-style";
+            documentElement.head.prepend(udStyle);
+      
+            const udMetaDark = documentElement.querySelector("meta[name='color-scheme']") || document.createElement("meta");
+            udMetaDark.id = "ud-meta-dark";
+            udMetaDark.name = "color-scheme";
+            udMetaDark.content = "dark";
+            documentElement.head.prepend(udMetaDark);
+          }
+        },
+      
+        restoreSvgElements: function(svgElements) {
+          // Restore the original SVG elements that were temporarily replaced
+          svgElements.forEach(([svg, tempReplace]) => {
+            tempReplace.replaceWith(svg);
+          });
+        },
+      
+        restoreTemplateElements: function(aDocument) {
+          // Restore <noscript> elements that were converted to <template>
+          aDocument.querySelectorAll("template[secnoscript]").forEach(template => {
+            template.outerHTML = "<noscript" + template.outerHTML.slice(9, -9) + "noscript>";
+          });
+        },
+      
+        restoreIntegrityAttributes: function(aDocument) {
+          // Remove the integrity attribute from elements and store it as a custom attribute
+          aDocument.querySelectorAll("[integrity]").forEach(integrityElem => {
+            integrityElem.setAttribute("data-no-integ", integrityElem.getAttribute("integrity"));
+            integrityElem.removeAttribute("integrity");
+          });
+        },
+      
         str_protect_simple: function(str,regex,protectWith,condition=true)
         {
           if(condition)
@@ -2170,7 +2290,7 @@ window.dark_object = {
           uDark.fixedRandom = Math.random();
           
           globalThis.browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editBeforeData);
-          globalThis.browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.editBeforeRequestStyleSheet);
+          globalThis.browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editBeforeRequestStyleSheet);
           globalThis.browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.editBeforeRequestImage);
           globalThis.browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editOnHeadersImage);
           globalThis.browser.webRequest.onCompleted.removeListener(dark_object.misc.onCompletedStylesheet);
@@ -2190,12 +2310,12 @@ window.dark_object = {
             },
             ["blocking", "responseHeaders"]);
             
-            globalThis.browser.webRequest.onBeforeRequest.addListener(dark_object.misc.editBeforeRequestStyleSheet, {
+            globalThis.browser.webRequest.onHeadersReceived.addListener(dark_object.misc.editBeforeRequestStyleSheet, {
               // urls: uDark.userSettings.properWhiteList, // We can't assume the css is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
               urls: ["<all_urls>"],
               types: ["stylesheet"]
             },
-            ["blocking"]);
+            ["blocking","responseHeaders"]);
             
             // globalThis.browser.webRequest.onBeforeRequest.addListener(dark_object.misc.editBeforeServiceWorker, {
             //   // urls: uDark.userSettings.properWhiteList, // We can't assume the css is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
@@ -2441,7 +2561,7 @@ window.dark_object = {
                 x.value = x.value.replace(/script-src/, "script-src *")
                 x.value = x.value.replace(/default-src/, "default-src *")
                 x.value = x.value.replace(/style-src/, "style-src *")
-                return false;
+                return false; // TODO: Review if false is the right value here
               }),
               "content-type": (x => {
                 x.value = x.value.replace(/charset=[0-9A-Z-]+/i, "charset=utf-8")
@@ -2565,143 +2685,126 @@ window.dark_object = {
               
             },
             parseAndEditHtml3: function(str, details) {
-              
-              details.requestScripts = details.requestScripts || []
-              if (uDark.debugFirstLoad) {
-                str = str.replace(/(<script ?.*?>)((.|\n)*?)(<\/script>)/g, (match, g1, g2, g3, g4) => {
-                  var securedScript = {
-                    "id": ["--ud-SecuredScript-", details.requestScripts.length, "_-"].join(""),
-                    "content": match
-                  }
-                  details.requestScripts.push(securedScript);
-                  return securedScript.id;
-                });
-                
+              if (!str || !str.trim().length) {
+                return str;
               }
-              let strO = str;
-              
-              // The issue isn't with <noscript> itself, but with any disallowed tag inside the <head>, including those within <noscript>. Many sites make this mistake.
+              // 1 : Available slot
+          
+              // 2. The issue isn't with <noscript> itself, but with any disallowed tag inside the <head>, including those within <noscript>. Many sites make this mistake.
               // The allowed tags in the <head> are: <base>, <link>, <meta>, <style>, <title>, <script>, <noscript>, and <template>.
               // The <noscript> tag has restricted child elements when placed in the <head>; it only allows <link>, <style>, and <meta>.
               // The <template> tag, on the other hand, has no such restrictions and can contain any type of child elements, even in the <head>.
               // The <script> tag is also somewhat unrestricted as it allows raw text content.
-              // None of them see their content parsed as HTML, so we can use them to bypass the restriction
-              // We could select them, and DocumentFragment them, for edge cases of people disabling JS.
-              // <template> did not work as expected, so i've fallen back to <script> which works fine
-
-              // str= str.replaceAll("noscript","template");
-              // str = str.replaceAll(/<(\/)?noscript/g, "<!--ud-noscript--><$1script");
-              // str = str.replaceAll(/<(\/)?noscript/g, "<!--ud-noscript--><$1template");
               str = str.replaceAll(/<(\/)?noscript/g, "<$1template secnoscript");
-              
-              // var documentElement = document.createElement("html")
-              // documentElement.innerHTML=str.replace(/<\/?html.*?>/g,"")
-              
-              var parser = new DOMParser();
-              let aDocument = parser.parseFromString(
-                str, "text/html");
-                let documentElement = aDocument.documentElement;
-                
-                let svgElements = [];
-                // if(details.type=="main_frame"){
-                //   console.log(strO);
-                  
-                //   var outer_edited = "<!doctype html>" + documentElement.outerHTML
-                //   outer_edited = outer_edited.replace(/[\s\t]integrity=/g, " data-no-integ=")
-                //   outer_edited = outer_edited.replaceAll(/<!--ud-noscript--><(\/)?script/g, "<$1noscript")
-                //   console.log(outer_edited)
-                //   return outer_edited;
-                // }
-                
-                documentElement.querySelectorAll("svg").forEach(svg => {
-                  let temp_replace = document.createElement("svg_secured");
-                  svgElements.push([svg, temp_replace]);
-                  svg.replaceWith(temp_replace);
-                  uDark.frontEditSVG(svg, aDocument, details);
-                  // Edit styles of svg elements before editing documentElement styles
-                });
-                uDark.edit_styles_attributes(aDocument, details);
-                uDark.edit_styles_elements(aDocument, details, "ud-edited-background");
-                
-                //EXPERIMENTAL
-                aDocument.querySelectorAll("meta").forEach(m => {
-                  if (m.httpEquiv.toLowerCase().trim() == "content-type" && m.content.includes("charset")) {
-                    m.content = "text/html; charset=utf-8"
-                  }
-                })
-                
-                aDocument.querySelectorAll("link[rel*='icon'][href]").forEach(link => {
-                  link.setAttribute("href", link.getAttribute('href') + "#ud_favicon");
-                });
-                aDocument.querySelectorAll("img[src]").forEach(image => { // We catch images later, not here
-                  image.setAttribute("src", uDark.image_element_prepare_href(image, aDocument));
-                  // uDark.registerBackgroundItem(false,{selectorText:`img[src='${image.src}']`}, details)
-                })
-                // I think killing cache this way may be more efficient than cleaning the cache
-                // cache key is unique for each browser session
-                // aDocument.querySelectorAll("link[rel='stylesheet'][href]")//This was causing problems i dont knwo why : double loading of css on openAi, and not so usefull since UD flushes cache on options change
-                //   .forEach(x => {
-                  //     let hasHref = x.getAttribute("href").trim(); 
-                //     console.log("link", hasHref)
-                //     hasHref && x.setAttribute("href", hasHref + "ud_ck=1" + uDark.fixedRandom);
-                //   });
-                // /
-                
-                aDocument.querySelectorAll("[color],[bgcolor]").forEach(coloreditem => {
-                  for (let [key, afunction] of Object.entries(uDark.attributes_function_map)) {
-                    if (typeof afunction == "string") {
-                      afunction = uDark.attributes_function_map[afunction]
-                    }
-                    let attributeValue = coloreditem.getAttribute(key);
-                    if (attributeValue && attributeValue.startsWith("#") && attributeValue.length == 6) {
-                      attributeValue += "0" // Color definition for html4 was different
-                    }
-                    var possiblecolor = uDark.is_color(attributeValue, true, true)
-                    if (possiblecolor) {
-                      let call_result = afunction(...possiblecolor, uDark.rgba_val, coloreditem);
-                      call_result && coloreditem.setAttribute(key, call_result)
-                    }
-                  }
-                })
-                if (details.dataCount == 1) {
-                  
-                  var udStyle = document.createElement("style")
-                  // See https://jsben.ch/RUZer for udStyle.innerHTML vs udStyle.prepend etc
-                  udStyle.textContent = uDark.inject_css_suggested;
-                  udStyle.id = "ud-style"
-                  aDocument.head.prepend(udStyle);
-                  
-                  var udMetaDark = aDocument.querySelector("meta[name='color-scheme']") || document.createElement("meta")
-                  udMetaDark.id = "ud-meta-dark"
-                  udMetaDark.name = "color-scheme";
-                  udMetaDark.content = "dark";
-                  aDocument.head.prepend(udMetaDark);
-                  
-                }
-                // SVGs [styles and <style> elements] are edited with other options , we need now to restore them
-                svgElements.forEach(([svg, temp_replace]) => {
-                  temp_replace.replaceWith(svg);
-                })
-                
-                
-                // outer_edited = outer_edited.replaceAll(/<!--ud-noscript--><(\/)?(script|template)/g, "<$1noscript")
-                documentElement.querySelectorAll("template[secnoscript]").forEach(template => {
-                  template.outerHTML = "<noscript"+template.outerHTML.slice(9,-9)+"noscript>";
-                })
-
-
-                var outer_edited = "<!doctype html>" + documentElement.outerHTML
-                
-
-                documentElement.querySelectorAll("[integrity]").forEach(integrityElem => {
-                  integrityElem.setAttribute("data-no-integ", integrityElem.getAttribute("integrity"));
-                  integrityElem.removeAttribute("integrity");
-                });
-                // outer_edited = outer_edited.replace(/[\s\t]integrity=/g, " data-no-integ=")
-                
-                
-                return outer_edited;
+          
+              // 3. Parse the HTML string into a DOM document
+              const aDocument = uDark.createDocumentFromHtml(str);
+          
+              // 4. Temporarily replace all SVG elements to avoid accidental style modifications
+              const svgElements = uDark.processSvgElements(aDocument, details);
+          
+              // 5. Edit styles and attributes inline for background elements
+              uDark.edit_styles_attributes(aDocument, details); 
+              uDark.edit_styles_elements(aDocument, details, "ud-edited-background"); 
+          
+              // 6. Update meta tags to ensure proper charset is set (avoid issues with content-type)
+              uDark.processMetaTags(aDocument);
+          
+              // 7. Modify inline styles found in the document
+              uDark.processInlineStyles(aDocument);
+          
+              // 8. Add a custom identifier to favicon links to manage cache
+              uDark.processLinks(aDocument);
+          
+              // 9. Process image sources and prepare them for custom modifications
+              uDark.processImages(aDocument);
+          
+              // 10. Recursively process iframes using the "srcdoc" attribute by applying the same editing logic
+              uDark.processIframes(aDocument, details, 'parseAndEditHtml3');
+          
+              // 11. Handle elements with color attributes (color, bgcolor) and ensure proper color handling
+              uDark.processColoredItems(aDocument);
+          
+              // 12. Inject custom CSS and dark color scheme if required (only for the first data load)
+              uDark.injectStylesIfNeeded(aDocument, details);
+          
+              // 13. Restore the original SVG elements that were temporarily replaced
+              uDark.restoreSvgElements(svgElements);
+          
+              // 14. Restore <noscript> elements that were converted to <template>
+              uDark.restoreTemplateElements(aDocument);
+          
+              // 15. Remove the integrity attribute from elements and replace it with a custom attribute
+              uDark.restoreIntegrityAttributes(aDocument);
+          
+              // 16. Return the final edited HTML
+              const outerEdited = aDocument.documentElement.outerHTML;
+              return "<!doctype html>" + outerEdited;
+            },
+          
+            frontEditHTML: function(elem, value, details, options = {}) {
+              if (elem instanceof HTMLScriptElement) {
+                // Ignore <script> elements to prevent unintended modifications to JavaScript
+                return value;
               }
+          
+              if (!value.includes("body")) {
+                // 1. Ensure the HTML is encapsulated within a <body> tag, especially for non-encapsulated HTML
+                value = "<body>" + value + "</body>";
+              }
+          
+              // 2. Replace <noscript> tags with <template> to bypass restrictions
+              value = value.replaceAll(/<(\/)?noscript/g, "<$1template secnoscript");
+          
+              // 3. Parse the HTML string into a DOM document
+              const documentElement = uDark.createDocumentFromHtml(value).documentElement;
+          
+              // 4. Update color-scheme meta tags for dark mode handling
+              uDark.processMetaTags(documentElement);
+          
+              // 5. Restore or set the color-scheme meta tag for dark mode handling
+              documentElement.querySelectorAll("meta[name='color-scheme']").forEach(udMetaDark => { 
+                udMetaDark.id = "ud-meta-dark";
+                udMetaDark.name = "color-scheme";
+                udMetaDark.content = "dark";
+              });
+          
+              // 6. Temporarily replace all SVG elements to avoid accidental style modifications
+              const svgElements = uDark.processSvgElements(documentElement, details);
+          
+              // 7. Edit styles and attributes inline for foreground elements
+              uDark.edit_styles_attributes(documentElement, details); 
+              uDark.edit_styles_elements(documentElement, details, "ud-edited-background"); 
+          
+              // 8. Modify inline styles found in the document
+              uDark.processInlineStyles(documentElement);
+          
+              // 9. Add a custom identifier to favicon links to manage cache
+              uDark.processLinks(documentElement);
+          
+              // 10. Process image sources and prepare them for custom modifications
+              uDark.processImages(documentElement);
+          
+              // 11. Recursively process iframes using the "srcdoc" attribute by applying the same editing logic
+              uDark.processIframes(documentElement, details, 'frontEditHTML');
+          
+              // 12. Handle elements with color attributes (color, bgcolor) and ensure proper color handling
+              uDark.processColoredItems(documentElement);
+          
+              // 13. Restore the original SVG elements that were temporarily replaced
+              uDark.restoreSvgElements(svgElements);
+          
+              // 14. Restore <noscript> elements that were converted to <template>
+              uDark.restoreTemplateElements(documentElement);
+          
+              // 15. Remove the integrity attribute from elements and replace it with a custom attribute
+              uDark.restoreIntegrityAttributes(documentElement);
+          
+              // 16. After all the edits, return the final HTML output
+              let resultEdited = value.includes("body") ? documentElement.outerHTML : documentElement.body.innerHTML;
+          
+              return resultEdited;
+            },
             }
           }
           
@@ -3286,7 +3389,13 @@ window.dark_object = {
           
           let filter = globalThis.browser.webRequest.filterResponseData(details.requestId); // After this instruction, browser espect us to write data to the filter and close it
           
-          let decoder = new TextDecoder()
+          let n = details.responseHeaders.length;
+          details.headersLow = {}
+          while (n--) {
+            details.headersLow[details.responseHeaders[n].name.toLowerCase()] = details.responseHeaders[n].value;
+          }
+          details.charset = ((details.headersLow["content-type"] || "").match(/charset=([0-9A-Z-]+)/i) || ["", "utf-8"])[1]
+          let decoder = new TextDecoder(details.charset)
           let encoder = new TextEncoder();
           details.dataCount = 0;
           details.rejectedValues = "";
@@ -3528,6 +3637,7 @@ window.dark_object = {
               }
               filter.onstop = event => {
                 details.dataCount = 1;
+                
                 details.writeEnd = uDark.parseAndEditHtml3(details.writeEnd, details)
                 filter.write(encoder.encode(details.writeEnd));
                 filter.disconnect(); // Low perf if not disconnected !
