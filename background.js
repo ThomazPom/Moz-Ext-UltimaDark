@@ -513,14 +513,16 @@ window.dark_object = {
           });
         },
         frontEditHTML: (elem, value, details, options = {}) => {
+          
           if (elem instanceof HTMLScriptElement) {
             // Oops, we matched a script element the site atempted to edit because  it probably does something with 'style' or 'fill', we should not edit it.
             return value;
           }
           if (elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement) {
-            return uDark.edit_str(value, false, false, undefined, false, options)
+            return uDark.edit_str(value, false, false, undefined, false, options);
           }
           
+
           let hasBody = value.includes("body");
           if (!hasBody) {
             // Looks like an overkill but it is not. 
@@ -1539,12 +1541,12 @@ window.dark_object = {
         // "position":{ stickConcatToPropery: {sValue:"fixed",rKey:"filter", stick:"contrast(110%)"}}, // Not good for wayback machine time selector
       };
       
-      String.prototype.protect=function(regexSearch, protectWith){return uDark.str_protect(this,regexSearch,protectWith)};
-      String.prototype.unprotect=function(protectWith){return uDark.str_unprotect(this,protectWith)};
-      String.prototype.protect_numbered=function(regexSearch, protectWith,condition=true){return uDark.str_protect_numbered(this,regexSearch,protectWith,condition)};
-      String.prototype.unprotect_numbered=function(protectWith,condition=true){return uDark.str_unprotect_numbered(this,protectWith,condition)};
-      String.prototype.protect_simple=function(regexSearch, protectWith,condition=true){return uDark.str_protect_simple(this,regexSearch,protectWith,condition)};
-      String.prototype.unprotect_simple=function(protectedWith,condition=true){return uDark.str_unprotect_simple(this,protectedWith,condition)};
+      String.prototype.protect=function(regexSearch, protectWith){return uDark.str_protect(String(this).valueOf(),regexSearch,protectWith)};
+      String.prototype.unprotect=function(protectWith){return uDark.str_unprotect(String(this),protectWith)};
+      String.prototype.protect_numbered=function(regexSearch, protectWith,condition=true){return uDark.str_protect_numbered(String(this),regexSearch,protectWith,condition)};
+      String.prototype.unprotect_numbered=function(protectWith,condition=true){return uDark.str_unprotect_numbered(String(this),protectWith,condition)};
+      String.prototype.protect_simple=function(regexSearch, protectWith,condition=true){return uDark.str_protect_simple(String(this),regexSearch,protectWith,condition)};
+      String.prototype.unprotect_simple=function(protectedWith,condition=true){return uDark.str_unprotect_simple(String(this),protectedWith,condition)};
       
     },
   },
@@ -1936,8 +1938,9 @@ window.dark_object = {
         // This is the one youtube uses
         uDark.valuePrototypeEditor([Element, ShadowRoot], "innerHTML", uDark.frontEditHTML, (elem, value) => value && /style|fill/.test(value) || elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement); // toString : sombe object can redefine tostring to generate thzir inner
         // //geo.fr uses this one
-        uDark.valuePrototypeEditor(Element, "outerHTML", uDark.frontEditHTML, (elem, value) => value && /style|fill/.test(value) || elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement); // toString : sombe object can redefine tostring to generate thzir inner
         
+        uDark.valuePrototypeEditor(Element, "outerHTML", uDark.frontEditHTML, (elem, value) => value && /style|fill/.test(value) || elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement); // toString : sombe object can redefine tostring to generate thzir inner
+
         // This is the one google uses
         uDark.functionPrototypeEditor(Element, Element.prototype.insertAdjacentHTML, (elem, args) => {
           args[1] = uDark.frontEditHTML("ANY_ELEMENT", args[1]); // frontEditHTML have a diffferent behavior with STYLE elements
@@ -3379,7 +3382,7 @@ window.dark_object = {
               return;
               
             }
-            let chunk_hash = fMurmurHash3Hash(options.chunk.toString()); // String objects are not hashable, they returns "0" as hash
+            let chunk_hash = fMurmurHash3Hash(options.chunk); // String objects are not hashable, they returns "0" as hash
             if (chunk_hash in uDark.idk_cache) {
               // console.log("Skipping chunk as it is already in cache", details.url)
               options.chunk = uDark.idk_cache[chunk_hash];
