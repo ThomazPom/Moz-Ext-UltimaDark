@@ -677,7 +677,7 @@ window.dark_object = {
             // udStyle.textContent = uDark.inject_css_suggested;
             // udStyle.id = "ud-style";
             // documentElement.head.prepend(udStyle);
-            console.log(documentElement.head,documentElement.documentElement.outerHTML)
+            // console.log(documentElement.head,documentElement.documentElement.outerHTML)
             const udMetaDark = documentElement.querySelector("meta[name='color-scheme']") || document.createElement("meta");
             udMetaDark.id = "ud-meta-dark";
             udMetaDark.name = "color-scheme";
