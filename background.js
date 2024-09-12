@@ -3658,10 +3658,10 @@ window.dark_object = {
         dark_object.background.install();
       }
        else {
-        // dark_object.content_script.install();
-        // if (!uDark.direct_window_export) {
-        //   dark_object.content_script.override_website();
-        // }
-        // dark_object.content_script.website_load();
+        dark_object.content_script.install();
+        if (!uDark.direct_window_export) {
+          dark_object.content_script.override_website();
+        }
+        dark_object.content_script.website_load();
         
       }
