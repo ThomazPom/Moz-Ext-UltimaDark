@@ -346,7 +346,7 @@ window.dark_object = {
               if (uDark.disable_svg_data_url_edition) {
                 return str;
               }
-              let commaIndex = str.indexOf(","); // String.splt is broken: It limits the number of elems in returned array instaed of lititting the nujmber of splits
+              let commaIndex = str.indexOf(","); // String.splt is broken: It limits the number of elems in returned array instead of limiting the number of splits
               let [imageHeader, imageData] = [str.substring(0, commaIndex), str.substring(commaIndex + 1)]
               
               try {
@@ -671,11 +671,13 @@ window.dark_object = {
         injectStylesIfNeeded: function(documentElement, details) {
           // Inject custom CSS and the dark color scheme meta tag if this is the first data load
           if (details.dataCount === 1) {
-            const udStyle = document.createElement("style");
-            udStyle.textContent = uDark.inject_css_suggested;
-            udStyle.id = "ud-style";
-            documentElement.head.prepend(udStyle);
-      
+
+            // Stopped using inject_css_suggested, as it was causing issues with some websites, like react ones that stats with a minimal body
+            // const udStyle = document.createElement("style");
+            // udStyle.textContent = uDark.inject_css_suggested;
+            // udStyle.id = "ud-style";
+            // documentElement.head.prepend(udStyle);
+            console.log(documentElement.head,documentElement.documentElement.outerHTML)
             const udMetaDark = documentElement.querySelector("meta[name='color-scheme']") || document.createElement("meta");
             udMetaDark.id = "ud-meta-dark";
             udMetaDark.name = "color-scheme";
@@ -2699,35 +2701,34 @@ window.dark_object = {
           
               // 3. Parse the HTML string into a DOM document
               const aDocument = uDark.createDocumentFromHtml(str);
-          
               // 4. Temporarily replace all SVG elements to avoid accidental style modifications
               const svgElements = uDark.processSvgElements(aDocument, details);
-          
+              
               // 5. Edit styles and attributes inline for background elements
               uDark.edit_styles_attributes(aDocument, details); 
               uDark.edit_styles_elements(aDocument, details, "ud-edited-background"); 
-          
+              
               // 6. Update meta tags to ensure proper charset is set (avoid issues with content-type)
               uDark.processMetaTags(aDocument);
-          
+              
               // 7. Modify inline styles found in the document
               uDark.processInlineStyles(aDocument);
-          
+              
               // 8. Add a custom identifier to favicon links to manage cache
               uDark.processLinks(aDocument);
-          
+              
               // 9. Process image sources and prepare them for custom modifications
               uDark.processImages(aDocument);
-          
+              
               // 10. Recursively process iframes using the "srcdoc" attribute by applying the same editing logic
               uDark.processIframes(aDocument, details, 'parseAndEditHtml3');
-          
+              
               // 11. Handle elements with color attributes (color, bgcolor) and ensure proper color handling
               uDark.processColoredItems(aDocument);
-          
+              
               // 12. Inject custom CSS and dark color scheme if required (only for the first data load)
               uDark.injectStylesIfNeeded(aDocument, details);
-          
+              
               // 13. Restore the original SVG elements that were temporarily replaced
               uDark.restoreSvgElements(svgElements);
           
@@ -2750,6 +2751,7 @@ window.dark_object = {
           
               if (!value.includes("body")) {
                 // 1. Ensure the HTML is encapsulated within a <body> tag, especially for non-encapsulated HTML
+                // Angular websites counts their comments to work and the first comment of non encapsulated html will be removed
                 value = "<body>" + value + "</body>";
               }
           
@@ -3656,10 +3658,10 @@ window.dark_object = {
         dark_object.background.install();
       }
        else {
-        dark_object.content_script.install();
-        if (!uDark.direct_window_export) {
-          dark_object.content_script.override_website();
-        }
-        dark_object.content_script.website_load();
+        // dark_object.content_script.install();
+        // if (!uDark.direct_window_export) {
+        //   dark_object.content_script.override_website();
+        // }
+        // dark_object.content_script.website_load();
         
       }
