@@ -176,14 +176,8 @@ window.dark_object = {
         search_clickable_parent(documentElement, selectorText) {
           return documentElement.querySelector(`a ${selectorText},button ${selectorText}`);
         },
-        image_element_prepare_href: function(image, documentElement, src_override) // Adds notable infos to the image element href, used by the image edition feature
+        image_element_prepare_href: function(image, documentElement, src_override,options={}) // Adds notable infos to the image element href, used by the image edition feature
         {
-          uDark.disable_lazy_loading = true;
-          if (!uDark.disable_lazy_loading) { // Too much problems
-            image.loading = "lazy";
-
-          }
-
           // Do not parse url preventing adding context to it or interpreting it as a relative url or correcting its content by any way
           let imageTrueSrc = src_override || image.getAttribute("src")
 
@@ -194,11 +188,11 @@ window.dark_object = {
           if (!image.hasAttribute("data-ud-selector")) {
             image.setAttribute("data-ud-selector", Math.random());
           }
-          let selectorText = `img[data-ud-selector='${image.getAttribute("data-ud-selector")}']`;
+          let selectorText = image.tagName+`[data-ud-selector='${image.getAttribute("data-ud-selector")}']`;
           let notableInfos = {};
           for (const attributeName of image.getAttributeNames()) {
             let infoValue = image.getAttribute(attributeName);
-            if (infoValue.length > 0 && !(/[.\/]/i).test(infoValue) && !(["src", "data-ud-selector"]).includes(attributeName)) {
+            if (infoValue.length > 0 && !(/[.\/]/i).test(infoValue) && !(["src","data", "data-ud-selector"]).includes(attributeName)) {
               notableInfos[attributeName] = infoValue;
             }
           }
@@ -215,10 +209,7 @@ window.dark_object = {
           if (imageTrueSrc.includes("#")) {
             usedChar = "_uDark"
           }
-          imageTrueSrc = uDark.send_data_image_to_parser(imageTrueSrc, false, {
-            image,
-            notableInfos
-          })
+          imageTrueSrc = uDark.send_data_image_to_parser(imageTrueSrc, false, {...options, notableInfos, image});
 
           return imageTrueSrc + usedChar + new URLSearchParams(notableInfos).toString();
         },
@@ -278,6 +269,11 @@ window.dark_object = {
           // if (conditon) {
           //   console.log("Adding condtition to", leType, leType.name, laFonction, conditon, conditon.toString())
           // }
+          if(!Object.getOwnPropertyDescriptor(leType.prototype, laFonction.name))
+          {
+            console.log("No getter for '", leType,laFonction)
+            return;
+          }
           let originalFunctionKey = "o_ud_" + laFonction.name
           var originalFunction = globalThis.exportFunction(Object.getOwnPropertyDescriptor(leType.prototype, laFonction.name).value, window);
           Object.defineProperty(leType.prototype, originalFunctionKey, {
@@ -331,42 +327,57 @@ window.dark_object = {
         send_data_image_to_parser: function(str, details, options) {
           // uDark..disable_data_image_edition=true;
           if (str.trim().toLowerCase().startsWith('data:') && !uDark.userSettings.disable_image_edition && !uDark.disable_data_image_edition) {
-            let isSvgDataUrl = str.startsWith("data:image/svg+xml");
+            let {b64,dataHeader,data,failure} = options.cut || uDark.decodeBase64DataURIifIsDataURI(str);
+            imageData = data;
             options.changed = true;
-            if (isSvgDataUrl) // Synchronous edit for data SVGs images, we have some nice context and functions to work with
+            if (!failure && dataHeader.includes('svg')) // Synchronous edit for data SVGs images, we have some nice context and functions to work with
             { // This avoids loosing svg data including the size of the image, and the tags in the image
               uDark.disable_svg_data_url_edition = false;
-
               options.svgImage = true;
               options.svgDataImage = true;
               if (uDark.disable_svg_data_url_edition) {
                 return str;
               }
-              let commaIndex = str.indexOf(","); // String.splt is broken: It limits the number of elems in returned array instead of limiting the number of splits
-              let [imageHeader, imageData] = [str.substring(0, commaIndex), str.substring(commaIndex + 1)]
-
-              try {
-
-                imageData = imageHeader.toLowerCase().includes("base64") ?
-                  atob(imageData) :
-                  decodeURIComponent(imageData)
-              } catch (e) {
-                console.warn("Error decoding data image", str, e)
-                return str;
-
-              }
               options.get_document=true;
+
+              if(!b64){imageData=decodeURIComponent(imageData);}
+              console.log("IMAGEDATA",imageData);
               imageData = uDark.frontEditHTML(false, imageData, details, options).body.innerHTML;
+              
+              let encoded=undefined;
               // uDark.disable_reencode_data_svg_to_base64=true;
               if (uDark.disable_reencode_data_svg_to_base64) {
-                str = "data:image/svg+xml," + encodeURIComponent(imageData)
-              } else {
-                try {
-                  str = "data:image/svg+xml;base64," + btoa(imageData) + " ";
-                } catch (e) { // String mich include invalid characters for base64 encoding, fallback to url encoding
-                  str = "data:image/svg+xml," + encodeURIComponent(imageData)
+                if(b64){
+                  dataHeader=dataHeader.replace("base64","")
+                };
+                encoded = dataHeader + encodeURIComponent(imageData)
+              } else if(uDark.respect_site_svgs_dataurls){
+                if(!b64){
+                  imageData=encodeURIComponent(imageData);
                 }
+                let encoded = uDark.rencodeToURI(imageData, dataHeader, b64);
+                if(encoded.message){
+                  console.warn(encoded)
+                  encoded=encodeURIComponent(imageData);
+                }
+                str=encoded;
               }
+              else{
+                if(!b64){
+                  encoded=uDark.rencodeToURI(imageData, dataHeader.split(",").join(";base64,"), true);
+                }
+                else{
+                  encoded=uDark.rencodeToURI(imageData, dataHeader, true);
+                }
+                if(encoded.message){
+                  console.warn(encoded)
+                  encoded=encodeURIComponent(imageData);
+                  encoded=rencodeToURI(encoded, dataHeader.replace("base64",""), false);
+                }
+                
+
+              }
+              str=encoded;
             } else {
               str = "https://data-image?base64IMG=" + str; // Sending other images to the parser via the worker,
               if (options.image) {
@@ -414,7 +425,6 @@ window.dark_object = {
             lighten: uDark.revert_rgba_rgb_raw,
             darken: uDark.rgba_rgb_raw,
           }
-          svg.style.colorScheme="dark";
           svg.setAttribute("udark-fill", true);
           svg.setAttribute("udark-id", Math.random());
           let svgUdarkId = svg.getAttribute("udark-id");
@@ -538,17 +548,18 @@ window.dark_object = {
           const aHtmlDocument = uDark.createDocumentFromHtml(value);
           const documentElement = aHtmlDocument.documentElement;
 
-          // 6. Update color-scheme meta tags for dark mode handling
+          // 6. Process meta tags to ensure proper charset handling
           uDark.processMetaTags(documentElement);
+          
 
-          // 7. Restore or set the color-scheme meta tag for dark mode handling
+          // 7. Restore or set the color-scheme meta tag for dark mode handling this is not usefull since we do all with css color-scheme attribute wich is prevalent
           // <meta name="color-scheme" content="dark light"> Telling broswer order preference for colors 
           // Makes input type checkboxes and radio buttons to be darkened
-          documentElement.querySelectorAll("meta[name='color-scheme']").forEach(udMetaDark => {
-            udMetaDark.id = "ud-meta-dark";
-            udMetaDark.name = "color-scheme";
-            udMetaDark.content = "dark";
-          });
+          // documentElement.querySelectorAll("meta[name='color-scheme']").forEach(udMetaDark => {
+          //   udMetaDark.id = "ud-meta-dark";
+          //   udMetaDark.name = "color-scheme";
+          //   udMetaDark.content = "dark";
+          // });
 
           // 8. Temporarily replace all SVG elements to avoid accidental style modifications
           const svgElements = uDark.processSvgElements(documentElement, details);
@@ -567,7 +578,7 @@ window.dark_object = {
           uDark.processImages(documentElement);
 
           // 13. Recursively process iframes using the "srcdoc" attribute by applying the same editing logic
-          uDark.processIframes(documentElement, details, 'frontEditHTML');
+          uDark.processIframes(documentElement, details, options);
 
           // 14. Handle elements with color attributes (color, bgcolor) and ensure proper color handling
           uDark.processColoredItems(documentElement);
@@ -628,29 +639,74 @@ window.dark_object = {
 
         processLinks: function(documentElement) {
           // Append a custom identifier to favicon links to manage cache more effectively
-          documentElement.querySelectorAll("link[rel*='icon'][href]").forEach(link => {
+          documentElement.querySelectorAll("link[rel*='icon' i][href]").forEach(link => {
             link.setAttribute("href", link.getAttribute("href") + "#ud_favicon");
           });
         },
-
+        decodeBase64DataURIifIsDataURI: function(maybeBase64DataURI) {
+          maybeBase64DataURI=maybeBase64DataURI.trim();
+          if(!maybeBase64DataURI.startsWith("data:")){
+            return {b64:false,dataHeader:false,data:maybeBase64DataURI};
+          }
+          let commaIndex = maybeBase64DataURI.indexOf(","); // String.splt is broken: It limits the number of elems in returned array instead of limiting the number of splits
+          let [dataHeader, data] = [maybeBase64DataURI.substring(0, commaIndex+1).toLowerCase().trim(), maybeBase64DataURI.substring(commaIndex + 1)]
+          if(!dataHeader.includes("base64")){
+            return {b64:false,dataHeader,data}
+          }
+          try{
+            return {b64:true,dataHeader,data:atob(data)}
+          }
+          catch{
+            console.warn("Error decoding base64 data URI",maybeBase64DataURI)
+            return {b64:true,dataHeader:false,data:false,failure:true}
+          }
+        },
+        rencodeToURI(data,dataHeader,base64=false){
+          if(!dataHeader)
+          {
+            return data;
+          }
+          if(base64){
+            try{
+              return dataHeader+ btoa(data);
+            }
+            catch{
+              return new Error("Error encoding base64 data URI",data)
+            }
+          }
+          return dataHeader+data;
+        },
         processImages: function(documentElement) {
           // Process image sources to prepare them for custom modifications
           documentElement.querySelectorAll("img[src]").forEach(image => {
+
             image.setAttribute("src", uDark.image_element_prepare_href(image, documentElement));
           });
           
-          documentElement.querySelectorAll("object[data^='data:image']").forEach(object => {
-            object.setAttribute("data", uDark.image_element_prepare_href(object, documentElement,object.data));
-          });
         },
-
-        processIframes: function(documentElement, details, functionName) {
+        frontEditHTMLPossibleDataURL: function(elem,value,details,options,documentElement) {
+          let {b64,dataHeader,data,failure}=uDark.decodeBase64DataURIifIsDataURI(value);
+          if(!failure && dataHeader){
+            if(dataHeader.includes("image")){
+              return uDark.image_element_prepare_href(elem,documentElement||document,value,{...options,cut:{b64,dataHeader,data}});
+            }
+            else if(dataHeader.includes("html")){
+              data=uDark.frontEditHTML(elem, data, details, options)
+              return uDark.rencodeToURI(data,dataHeader,b64);
+            }
+          }
+          return value;
+        },
+        processIframes: function(documentElement, details, options) {
           // Recursively process iframes that use the "srcdoc" attribute by applying the same HTML processing function
           documentElement.querySelectorAll("iframe[srcdoc]").forEach(iframe => {
-            iframe.setAttribute("srcdoc", uDark[functionName](iframe.srcdoc, details));
+            iframe.setAttribute("srcdoc", uDark.frontEditHTML(false, iframe.srcdoc, details));
           });
-          documentElement.querySelectorAll("object[data^='data:text/html']").forEach(object => {
-            iframe.setAttribute("data", uDark[functionName](object.data, details));
+
+          
+          documentElement.querySelectorAll("object[data],embed[src],iframe[src]").forEach(object => {
+            console.log(object)
+            object.setAttribute(object.src?"src":"data", uDark.frontEditHTMLPossibleDataURL(object, object.src||object.data, details,options,documentElement));
           });
         },
 
@@ -1635,7 +1691,7 @@ window.dark_object = {
         },
         "scrollbar-color": {
           remove: 1
-        }, // Not sure about this one, it's detected as a background color, and gets edited.
+        },
         "color-scheme": {
           replace: ["light", "dark"]
         },
@@ -1997,7 +2053,7 @@ window.dark_object = {
       }
 
       let start = new Date() / 1;
-      uDark.website_context = true;
+      
       console.log("UltimaDark", "Content script override website", window);
 
       window.userSettingsReadyAction = function() {
@@ -2074,12 +2130,19 @@ window.dark_object = {
           args[0] = uDark.edit_str(args[0]);
           return args;
         })
+
       // This is the one youtube uses
       uDark.valuePrototypeEditor([Element, ShadowRoot], "innerHTML", uDark.frontEditHTML, (elem, value) => value && /style|fill/.test(value) || elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement); // toString : sombe object can redefine tostring to generate thzir inner
       // //geo.fr uses this one
-
+      
+      { // Wrap JS editing iframe and this kind of objects SRC's
+        uDark.valuePrototypeEditor([HTMLIFrameElement, HTMLEmbedElement], "src", uDark.frontEditHTMLPossibleDataURL, ); 
+        uDark.valuePrototypeEditor([HTMLObjectElement], "data", uDark.frontEditHTMLPossibleDataURL, ); 
+        uDark.valuePrototypeEditor([HTMLIFrameElement], "srcdoc", uDark.frontEditHTML, ); 
+      }
+     
       uDark.valuePrototypeEditor(Element, "outerHTML", uDark.frontEditHTML, (elem, value) => value && /style|fill/.test(value) || elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement); // toString : sombe object can redefine tostring to generate thzir inner
-
+  
       // This is the one google uses
       uDark.functionPrototypeEditor(Element, Element.prototype.insertAdjacentHTML, (elem, args) => {
         args[1] = uDark.frontEditHTML("ANY_ELEMENT", args[1]); // frontEditHTML have a diffferent behavior with STYLE elements
@@ -2317,9 +2380,10 @@ window.dark_object = {
         /*Experimental*/
         // browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editHeadersOnHeadersReceived);
         /*end of Experimental*/
-        if (uDark.regiteredCS) {
-          uDark.regiteredCS.unregister();
-          uDark.regiteredCS = null
+        if (uDark.regiteredCS && uDark.regiteredCS.length) {
+          while (uDark.regiteredCS.length) {
+            uDark.regiteredCS.shift().unregister();
+          }
         }
         if (!res.disable_webext && uDark.userSettings.properWhiteList.length) {
 
@@ -2405,8 +2469,26 @@ window.dark_object = {
           //   // urls: uDark.userSettings.properWhiteList, // We can't assume the css is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
           //   urls: ["<all_urls>"],
           // })
+          let registerCS=(contentScriptRegister)=>{
+            let defaultCS = {
+              matches: uDark.userSettings.properWhiteList,
+              runAt: "document_start",
+              matchAboutBlank: true,
+              matchOriginAsFallback:true,
+              allFrames: true
+            };
+            if(uDark.userSettings.properBlackList.length){
+              defaultCS.excludeMatches = uDark.userSettings.properBlackList;
+            }
+            let contentScript = {
+              ...defaultCS,
+              ...contentScriptRegister
+            }
 
-          var contentScript = {
+            globalThis.browser.contentScripts.register(contentScript).then(x=>uDark.regiteredCS.push(x));
+
+          }
+          let contentScript = {
             matches: uDark.userSettings.properWhiteList,
             excludeMatches: uDark.userSettings.properBlackList,
 
@@ -2426,14 +2508,18 @@ window.dark_object = {
             }], // Forced overrides
             runAt: "document_start",
             matchAboutBlank: true,
+            matchOriginAsFallback:true,
             allFrames: true
           }
           if (!uDark.userSettings.properBlackList.length) {
             delete contentScript.excludeMatches;
           }
-          globalThis.browser.contentScripts.register(contentScript).then(x => {
-            uDark.regiteredCS = x
-          });
+          globalThis.browser.contentScripts.register(contentScript).then(x=>uDark.regiteredCS.push(x));
+          // delete contentScript.js;
+          // delete contentScript.allFrames;
+          // contentScript.css = [{code: uDark.inject_css_override_top_only}]
+          globalThis.browser.contentScripts.register(contentScript).then(x=>uDark.regiteredCS.push(x));
+          
         } else
           console.info("UD Did not load : ", "White list", uDark.userSettings.properWhiteList, "Enabled", !res.disable_webext)
       });
@@ -2557,6 +2643,8 @@ window.dark_object = {
       window.uDark = {
         ...uDark,
         ...{
+          
+          regiteredCS: [],
           is_background: true,
           rgb_a_colorsRegex: /rgba?\([%0-9., \/]+\)/gmi, // rgba vals without variables and calc()involved #! rgba(255 255 255 / 0.1) is valid color and rgba(255,255,255,30%) too
           hsl_a_colorsRegex: /hsla?\(([%0-9., \/=]|deg|turn|tetha)+\)/gmi, // hsla vals without variables and calc() involved
@@ -2738,13 +2826,13 @@ window.dark_object = {
             uDark.processImages(aDocument);
 
             // 10. Recursively process iframes using the "srcdoc" attribute by applying the same editing logic
-            uDark.processIframes(aDocument, details, 'parseAndEditHtml3');
+            uDark.processIframes(aDocument, details, {});
 
             // 11. Handle elements with color attributes (color, bgcolor) and ensure proper color handling
             uDark.processColoredItems(aDocument);
 
             // 12. Inject custom CSS and dark color scheme if required (only for the first data load)
-            uDark.injectStylesIfNeeded(aDocument, details);
+            uDark.injectStylesIfNeeded(aDocument, details); // Only benefit of this ; avoids page being white on uDark refresh
 
             // 13. Restore the original SVG elements that were temporarily replaced
             uDark.restoreSvgElements(svgElements);
@@ -2788,6 +2876,12 @@ window.dark_object = {
         getInjectCSS("/inject_css_override.css", {
           append: {
             inject_css_override: uDark
+          },
+          edit_css: true
+        }),
+        getInjectCSS("/inject_css_override_top_only.css", {
+          append: {
+            inject_css_override_top_only: uDark
           },
           edit_css: true
         }),
@@ -2863,7 +2957,7 @@ window.dark_object = {
                   l2: boundingRect.left + window.scrollX + imagedItem.offsetWidth,
                 }
               });
-            let bgColorItem = [...document.querySelectorAll("[style*=background],[class]")]
+            let bgColorItem = [...document.querySelectorAll("[style*=background i],[class]")]
               .filter(coloredItem => coloredItem.offsetWidth > 50 || coloredItem.offsetHeight > 50)
               .filter(x => getComputedStyle(x).backgroundColor != "rgba(0, 0, 0, 0)" && !getComputedStyle(x).backgroundImage.includes("url("))
               .map(imagedItem => {
@@ -3423,6 +3517,7 @@ window.dark_object = {
       // must not return this closes filter//
     },
     isCorsRequest: (details) => {
+      if(!details.documentUrl){return false;}
       let aUrl = new URL(details.url);
       let bUrl = new URL(details.documentUrl);
       details.origin = aUrl.origin;

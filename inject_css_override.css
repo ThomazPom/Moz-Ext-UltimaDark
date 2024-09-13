@@ -4,11 +4,10 @@
   --secondary-color: black;
 }
 
-html:not(:has(#ud-meta-dark)) { 
-  /* Just in case darkening meta tag  is not working like in srcdocs*/ 
-   /* This is not needed: Meta tag is either always present or iframe gets the color shheme light via inject_css_override_no_edit.css 
-  background-color:var(--main-bgcolor); */
-  
-  
-  color: var(--secondary-color); 
+iframe {
+  border-color: rgb(51, 51, 51); /* The default iframe border is quite light */
+}
+
+[ud-html4-support]{
+  color: var(--ud-html4-color,white)!important;
 }

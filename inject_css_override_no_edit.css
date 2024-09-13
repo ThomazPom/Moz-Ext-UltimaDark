@@ -4,17 +4,29 @@
     ;}
 
     
-iframe {
+iframe,embed,object,video {
     /*Iframe get light background in dark color schemes and vice versa*/
-    color-scheme: light!important; /*Fortunately all css can be overriden unconditoonally in this file*/
+    /* color-scheme: light!important;  */
+    /*This is not needed anymore since we discovered how to have the color-scheme directly inside the frame */
+    /*
+            matchAboutBlank: true,
+            matchOriginAsFallback:true,
+            allFrames: true
+            */
+    /*Fortunately all css can be overriden unconditoonally in this file*/
   }
 
-[ud-html4-support]{
-    color: var(--ud-html4-color,white)!important;
+
+
+  
+:root{
+    color-scheme: dark!important; /*Force dark color scheme: 
+    This is sensible to other elements being color-schemed in css, be we have a replace in background css editing for these cases.*/
 }
 
-svg text,
-svg tspan,
+
+svg text:not([fill]),
+svg tspan:not([fill]),
 svg[udark-guess="logo"] [class]:not([fill]),
 svg[udark-guess="logo"] [style]:not([fill])
 ,svg[udark-guess="logo"] :not([fill]):not([style]):not([class])
@@ -22,7 +34,7 @@ svg[udark-guess="logo"] [style]:not([fill])
     fill: var(--ud-fg--fill-color,currentColor)!important;
     /*When we see fill we will propose an alternate value which will be used on detected logos.
      If no fill value was set, use the inherited color attribute, which is defined in currentColor ( And edited ) and if there is none, it will fallback to body color which is white
-     Theorically, it's perfect. How long before proven wrong?
+     Theorically, it's perfect. How long before proven wrong? 6 months : I've found text with fill with overriden color to white . Let's see if we can use a not([fill]) on text and tspan.
      The only Con is the currentColor is edited by a different ligtening algorithm. But it's close enough.
      Note: fill and color in website stylesheets are edited by the same algorithm : revert_rgba which is different from revert_rgba_raw used for the svg stylesheets
      */
