@@ -1,0 +1,10 @@
+
+:root {
+  /*
+    I was needed to place this in a specific CSS file wich in injected in the top of the document only: 
+    This code allow user to set its custom colors to the base document.
+    It was needed to be placed in a specific CSS file wich in injected in the top of the document only because otherwise it would force objects, iframes, and other elements to have a black background, therefore they loose all theire transparency or inheritence from the body.
+    */
+    background-color:var(--main-bgcolor);
+    color: var(--secondary-color); 
+ }
