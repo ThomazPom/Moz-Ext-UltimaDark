@@ -8,6 +8,7 @@
     "48": "icons/48.png",
     "96": "icons/2x.png"
   },
+  
   "browser_specific_settings": {
     "gecko": {
       "strict_min_version": "79.0"
