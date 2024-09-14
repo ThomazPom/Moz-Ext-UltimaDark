@@ -269,9 +269,10 @@ window.dark_object = {
           // if (conditon) {
           //   console.log("Adding condtition to", leType, leType.name, laFonction, conditon, conditon.toString())
           // }
+          leType.prototype.count=(leType.prototype.count||0)+1;
           if(!Object.getOwnPropertyDescriptor(leType.prototype, laFonction.name))
           {
-            console.log("No getter for '", leType,laFonction)
+            console.log("No getter for '", leType,laFonction,new Error(),leType.prototype.count,document.location.href)
             return;
           }
           let originalFunctionKey = "o_ud_" + laFonction.name
@@ -341,7 +342,6 @@ window.dark_object = {
               options.get_document=true;
 
               if(!b64){imageData=decodeURIComponent(imageData);}
-              console.log("IMAGEDATA",imageData);
               imageData = uDark.frontEditHTML(false, imageData, details, options).body.innerHTML;
               
               let encoded=undefined;
@@ -685,6 +685,7 @@ window.dark_object = {
           
         },
         frontEditHTMLPossibleDataURL: function(elem,value,details,options,documentElement) {
+          
           let {b64,dataHeader,data,failure}=uDark.decodeBase64DataURIifIsDataURI(value);
           if(!failure && dataHeader){
             if(dataHeader.includes("image")){
@@ -705,7 +706,6 @@ window.dark_object = {
 
           
           documentElement.querySelectorAll("object[data],embed[src],iframe[src]").forEach(object => {
-            console.log(object)
             object.setAttribute(object.src?"src":"data", uDark.frontEditHTMLPossibleDataURL(object, object.src||object.data, details,options,documentElement));
           });
         },
@@ -2020,7 +2020,6 @@ window.dark_object = {
           }, 10000); // If the chunk is not written after 10 seconds, we stop waiting for it.
         }
       };
-
       function registerBackgroundItem(selectorText) {
         // NOTE: TODO: Disable registerBackgroundItem for now, but re-enable it later
         //window.uDark.registerBackgroundItem(false, selectorText, false); // go directly to the edit, the validation is already done
@@ -2044,7 +2043,7 @@ window.dark_object = {
       }
     },
     override_website: function() {
-
+      
       try {
         typeof localStorage;
         uDark.localStorageAvailable = true;
@@ -2065,6 +2064,7 @@ window.dark_object = {
           delete Navigator.prototype.serviceWorker;
         }
       }
+      
       // console.log(globalThis.exportFunction)
       { // Measure the impact of exportFunction on performance by disabling its behavior
 
@@ -2104,6 +2104,10 @@ window.dark_object = {
       }
       console.info("UltimaDark", "Websites overrides install", window);
 
+      uDark.functionPrototypeEditor(HTMLObjectElement,HTMLObjectElement.prototype.checkValidity, (elem, args) => {
+        console.log("UltimaDark:", elem, args);
+        return args;
+      })
       uDark.functionPrototypeEditor(CSSStyleDeclaration, CSSStyleDeclaration.prototype.setProperty, (elem, args) => {
         console.log("UltimaDark:", elem, args, args[0], args[1], args[2]);
         let parts = uDark.edit_str(args[0] + ":" + args[1]);
@@ -2121,7 +2125,7 @@ window.dark_object = {
         elem.p_ud_setProperty(subParts2_1, subParts2_2, args[2]);
         return args
       }, (elem, args) => args[0].startsWith("--"))
-
+      
       uDark.functionPrototypeEditor(CSSStyleSheet,
         [
           CSSStyleSheet.prototype.replace,
@@ -2489,45 +2493,36 @@ window.dark_object = {
 
           }
           let contentScript = {
-            matches: uDark.userSettings.properWhiteList,
-            excludeMatches: uDark.userSettings.properBlackList,
-
-            // js : [{code: uDark.injectscripts_str}],
-            js: [{
-                file: "content_script.js"
-              },
-              {
-                file: "background.js"
-              },
-              {
-                file: "MurmurHash3.js"
-              }
+            js: [
+              // {  file: "content_script.js"    },
+              {         file: "background.js"},
+              // {       file: "MurmurHash3.js"           }
             ], // Forced overrides
-            css: [{
-              code: uDark.inject_css_override
-            }], // Forced overrides
-            runAt: "document_start",
-            matchAboutBlank: true,
-            matchOriginAsFallback:true,
-            allFrames: true
-          }
-          if (!uDark.userSettings.properBlackList.length) {
-            delete contentScript.excludeMatches;
-          }
-          globalThis.browser.contentScripts.register(contentScript).then(x=>uDark.regiteredCS.push(x));
-          // delete contentScript.js;
-          // delete contentScript.allFrames;
-          // contentScript.css = [{code: uDark.inject_css_override_top_only}]
-          globalThis.browser.contentScripts.register(contentScript).then(x=>uDark.regiteredCS.push(x));
+            css: [{     code: uDark.inject_css_override     }], // Forced overrides
+          };
+          registerCS(contentScript);
+          registerCS({css: [{code: uDark.inject_css_override_top_only}],allFrames:false }); // Register a default content script, to be able to edit the page before the other one is loaded
           
         } else
-          console.info("UD Did not load : ", "White list", uDark.userSettings.properWhiteList, "Enabled", !res.disable_webext)
+          console.info("UD Did not load : ", "White list", uDark.userSettings.properWhiteList, "UltimaDark enable state :", !res.disable_webext)
       });
       globalThis.browser.webRequest.handlerBehaviorChanged().then(x => console.info(`In-memory cache flushed`), error => console.error(`Error: ${error}`));
       globalThis.browser.browsingData.removeCache({}).then(x => console.info(`Browser cache flushed`), error => console.error(`Error: ${error}`));
 
     },
     install: function() {
+      fetch("manifest.json").then(x=>x.json()).then(x=>{
+        uDark.production=x.browser_specific_settings.gecko.id;
+
+        if(uDark.production){
+          console.log("UltimaDark", "Production mode", uDark.production);
+          console.log, console.warn,console.table,console.info = function() {};
+
+        }
+
+      })
+
+
       let SHORTHANDS = ["all", "animation", "animation-range", "background", "border", "border-block", "border-block-end", "border-block-start", "border-bottom", "border-color", "border-image", "border-inline", "border-inline-end", "border-inline-start", "border-left", "border-radius", "border-right", "border-style", "border-top", "border-width", "column-rule", "columns", "contain-intrinsic-size", "container", "flex", "flex-flow", "font", "font-synthesis", "font-variant", "gap", "grid", "grid-area", "grid-column", "grid-row", "grid-template", "inset", "inset-block", "inset-inline", "list-style", "margin", "margin-block", "margin-inline", "mask", "mask-border", "offset", "outline", "overflow", "overscroll-behavior", "padding", "padding-block", "padding-inline", "place-content", "place-items", "place-self", "position-try", "scroll-margin", "scroll-margin-block", "scroll-margin-inline", "scroll-padding", "scroll-padding-block", "scroll-padding-inline", "scroll-timeline", "text-decoration", "text-emphasis", "text-wrap", "transition"]
 
       uDark.shortHandRegex = new RegExp(`(?<![_a-z0-9-])(${SHORTHANDS.join("|")})([\s\t]*:)`, "gmi"); // The \t is probably not needed, as \s includes it

@@ -26,7 +26,6 @@ jobs:
         inject_css_suggested.css
         inject_css_suggested_no_edit.css
         imageWorker.js
-        content_script.js
         bg.jpg
         background.js
         icons/
