@@ -32,6 +32,7 @@ window.dark_object = {
         enable_idk_mode: true,
         general_cache: {},
         userSettings: {},
+        imageSrcInfoMarker:"_uDark",
         imageWorkerJsFile: "imageWorker.js",
         regex_search_for_url: /url\("(.+?)(?<!\\)("\))/g,
         background_match: /background|sprite|(?<![a-z])(bg|box|panel|fond|fundo|bck)(?![a-z])/i,
@@ -196,7 +197,7 @@ window.dark_object = {
               notableInfos[attributeName] = infoValue;
             }
           }
-          if (imageTrueSrc.includes("_uDark")) {
+          if (imageTrueSrc.includes(uDark.imageSrcInfoMarker)) {
             return imageTrueSrc;
           }
           if (uDark.search_clickable_parent(documentElement, selectorText)) {
@@ -205,21 +206,21 @@ window.dark_object = {
           if (uDark.search_container_logo(image, notableInfos)) {
             notableInfos.logo_match = true;
           }
-          let usedChar = "#_uDark"
-          if (imageTrueSrc.includes("#")) {
-            usedChar = "_uDark"
+          let usedChar = uDark.imageSrcInfoMarker;
+          if (!imageTrueSrc.includes("#")) {
+            usedChar = "#"+usedChar;
           }
           imageTrueSrc = uDark.send_data_image_to_parser(imageTrueSrc, false, {...options, notableInfos, image});
 
           return imageTrueSrc + usedChar + new URLSearchParams(notableInfos).toString();
         },
-        valuePrototypeEditor: function(leType, atName, watcher = x => x, conditon = x => x, aftermath = false) {
+        valuePrototypeEditor: function(leType, atName, setter = x => x, conditon = false, aftermath = false,getter=false) {
           //   console.log(leType,atName)
           // if (conditon) {
           //   console.log("VAdding condtition to", leType, leType.name, conditon, conditon.toString())
           // }
           if (leType.concat) {
-            return leType.forEach(aType => uDark.valuePrototypeEditor(aType, atName, watcher, conditon, aftermath))
+            return leType.forEach(aType => uDark.valuePrototypeEditor(aType, atName, setter, conditon, aftermath, getter))
           }
 
           if (leType.wrappedJSObject) { // Cross compatibilty with content script
@@ -233,21 +234,37 @@ window.dark_object = {
           Object.defineProperty(leType.prototype, "o_ud_set_" + atName, {
             set: originalSet.set
           });
-          // uDark.general_cache["o_ud_set_"+atName]=originalSet
-          Object.defineProperty(leType.prototype, atName, {
-            set: globalThis.exportFunction(function(value) { // getters must be exported like regular functions
-              // console.log("Setting", this, atName, value)
-              var new_value = conditon && conditon(this, value) ? watcher(this, value) : value;
+          let override_get_set = {};
+          if(setter){
+            override_get_set.set = globalThis.exportFunction(function(value) { // getters must be exported like regular functions
+              var new_value = (!conditon || conditon(this, value)===true) ? setter(this, value) : value;
               let call_result = originalSet.set.call(this, new_value || value);
               aftermath && aftermath(this, value, new_value);
               return call_result;
-            }, window)
-          });
+            }, window);
+          }
+          if(getter){
+            let originalGet = Object.getOwnPropertyDescriptor(leType.prototype, atName);
+            if (!originalGet) {
+              console.log("No getter for '", atName, "'", leType, leType.name, leType.prototype)
+            }
+            Object.defineProperty(leType.prototype, "o_ud_get_" + atName, {
+              get: originalGet.get
+            });
+            override_get_set.get = globalThis.exportFunction(function() { // getters must be exported like regular functions
+              // console.log("Getting", this, atName)
+              let call_result = originalGet.get.call(this);
+              return getter(this, call_result);
+            }, window);
+          }
+
+          // uDark.general_cache["o_ud_set_"+atName]=originalSet
+          Object.defineProperty(leType.prototype, atName, override_get_set);
         },
-        functionWrapper: function(leType, laFonction, fName, watcher = x => x, conditon = x => x, result_editor = x => x) {
+        functionWrapper: function(leType, laFonction, fName, watcher = x => x, conditon = true, result_editor = x => x) {
           let originalFunction = leType.prototype["o_ud_wrap_" + fName] = laFonction;
           leType.prototype[fName] = function(...args) {
-            if (conditon && conditon(this, arguments)) {
+            if (conditon===true || conditon(this, arguments) === true) {
               let watcher_result = watcher(this, arguments);
               let result = originalFunction.apply(...watcher_result)
               return result_editor(result, this, watcher_result);
@@ -256,7 +273,7 @@ window.dark_object = {
             }
           }
         },
-        functionPrototypeEditor: function(leType, laFonction, watcher = x => x, conditon = x => x, result_editor = x => x) {
+        functionPrototypeEditor: function(leType, laFonction, watcher = x => x, conditon = x => x, result_editor = x => x,getter) {
           //  console.log(leType,leType.name,leType.prototype,laFonction,laFonction.name)
           if (laFonction.concat) {
             return laFonction.forEach(aFonction => {
@@ -284,7 +301,7 @@ window.dark_object = {
           Object.defineProperty(leType.prototype, laFonction.name, {
             value: {
               [laFonction.name]: globalThis.exportFunction(function() {
-                if (conditon && conditon(this, arguments)) {
+                if (conditon===true || conditon(this, arguments)) {
                   // console.log("Setting",leType,laFonction,this,arguments[0],watcher(this, arguments)[0])
                   let watcher_result = watcher(this, arguments);
                   // console.log("watcher_result", this,originalFunction,watcher_result,originalFunctionKey,leType.prototype[originalFunctionKey],this[originalFunctionKey],this.getP);
@@ -1305,7 +1322,7 @@ window.dark_object = {
             options.notableInfos = notableInfos;
             link = uDark.send_data_image_to_parser(link, false, options);
             if (!options.svgImage) {
-              let usedChar = (link.includes("#") ? "" : "#") + "_uDark"
+              let usedChar = (link.includes("#") ? "" : "#") + uDark.imageSrcInfoMarker
               link += usedChar + new URLSearchParams(notableInfos).toString();
             }
             return 'url("' + link + '")';
@@ -2064,7 +2081,6 @@ window.dark_object = {
           delete Navigator.prototype.serviceWorker;
         }
       }
-      
       // console.log(globalThis.exportFunction)
       { // Measure the impact of exportFunction on performance by disabling its behavior
 
@@ -2109,7 +2125,6 @@ window.dark_object = {
         return args;
       })
       uDark.functionPrototypeEditor(CSSStyleDeclaration, CSSStyleDeclaration.prototype.setProperty, (elem, args) => {
-        console.log("UltimaDark:", elem, args, args[0], args[1], args[2]);
         let parts = uDark.edit_str(args[0] + ":" + args[1]);
         let partsIndex = parts.indexOf("; --ud-fg--");
         let part1 = parts.slice(0, partsIndex);
@@ -2140,9 +2155,9 @@ window.dark_object = {
       // //geo.fr uses this one
       
       { // Wrap JS editing iframe and this kind of objects SRC's
-        uDark.valuePrototypeEditor([HTMLIFrameElement, HTMLEmbedElement], "src", uDark.frontEditHTMLPossibleDataURL, ); 
-        uDark.valuePrototypeEditor([HTMLObjectElement], "data", uDark.frontEditHTMLPossibleDataURL, ); 
-        uDark.valuePrototypeEditor([HTMLIFrameElement], "srcdoc", uDark.frontEditHTML, ); 
+        uDark.valuePrototypeEditor([HTMLIFrameElement, HTMLEmbedElement], "src", uDark.frontEditHTMLPossibleDataURL ); 
+        uDark.valuePrototypeEditor([HTMLObjectElement], "data", uDark.frontEditHTMLPossibleDataURL ); 
+        uDark.valuePrototypeEditor([HTMLIFrameElement], "srcdoc", uDark.frontEditHTML ); 
       }
      
       uDark.valuePrototypeEditor(Element, "outerHTML", uDark.frontEditHTML, (elem, value) => value && /style|fill/.test(value) || elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement); // toString : sombe object can redefine tostring to generate thzir inner
@@ -2159,11 +2174,21 @@ window.dark_object = {
         );
         args[1] = res;
         return args;
-      }, (elem, args) => args[0] == "style")
+      }, (elem, args) => args[0].toLowerCase() == "style")
 
       uDark.valuePrototypeEditor(HTMLImageElement, "src", (image, value) => {
-        return uDark.image_element_prepare_href(image, document, value);
-      });
+        let res = uDark.image_element_prepare_href(image, document, value);
+        return res;
+      },
+      false, // Condition: Inconditional
+      //Aftermath: none
+      false,
+      (image, value) => { // Edited getter, to trick websites that are checking src integrity after setting it
+        return value.split(new RegExp("#?"+uDark.imageSrcInfoMarker))[0];
+      }
+      
+      );
+      
       uDark.valuePrototypeEditor(SVGImageElement, "href", (image, value) => {
         return uDark.image_element_prepare_href(image, document, value);
       });
@@ -2174,7 +2199,7 @@ window.dark_object = {
         }
         return value;
       }, (elem, value) => {
-        elem.rel == elem.rel.trim()
+        elem.rel == elem.rel.trim().toLowerCase();
         return (elem.rel == "stylesheet" || elem.rel.endsWith("icon"))
 
       }, (elem, value, new_value) => {
@@ -2341,7 +2366,6 @@ window.dark_object = {
       // W3C uses this one
       uDark.valuePrototypeEditor(CSS2Properties, "backgroundColor", (elem, value) => uDark.eget_color(value, uDark.rgba))
 
-      // valuePrototypeEditor: function(leType, atName, watcher = x => x, conditon = x => x, aftermath = false) {
       uDark.valuePrototypeEditor(CSS2Properties, "background-color", (elem, value) => uDark.eget_color(value, uDark.rgba))
       uDark.valuePrototypeEditor(CSS2Properties, "color", (elem, value) => uDark.eget_color(value, uDark.revert_rgba))
       uDark.valuePrototypeEditor([HTMLElement, SVGElement], "style", (elem, value) => uDark.edit_str(value)) // Care with "style and eget, this cause recursions"

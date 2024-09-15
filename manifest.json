@@ -1,14 +1,14 @@
 {
   "manifest_version": 2,
   "name": "UltimaDark",
-  "version": "1.5.57",
+  "version": "1.5.58",
   "description": "The extension uses agressive techniques to get a dark mode everywhere on internet\nThis is still highly experimental so it can also ruin your internet experience",
   "homepage_url": "https://github.com/ThomazPom/Moz-Ext-UltimaDark",
   "icons": {
     "48": "icons/48.png",
     "96": "icons/2x.png"
   },
-  
+
   "browser_specific_settings": {
     "gecko": {
       "strict_min_version": "79.0"
