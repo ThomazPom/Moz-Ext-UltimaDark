@@ -201,10 +201,9 @@ window.dark_object = {
           }
           let selectorText = image.tagName+`[data-ud-selector='${image.getAttribute("data-ud-selector")}']`;
           let notableInfos = {};
-          for (const attributeName of image.getAttributeNames()) {
-            let infoValue = image.getAttribute(attributeName);
-            if (infoValue.length > 0 && !(/[.\/]/i).test(infoValue) && !(["src","data", "data-ud-selector"]).includes(attributeName)) {
-              notableInfos[attributeName] = infoValue;
+          for (const attribute of image.attributes) {
+            if (attribute.value.length > 0 && !(/[.\/]/i).test(attribute.value) && !(["src","data", "data-ud-selector"]).includes(attribute.name)) {
+              notableInfos[attribute.name] = attribute.value;
             }
           }
           if (imageTrueSrc.includes(uDark.imageSrcInfoMarker)) {
@@ -799,8 +798,15 @@ window.dark_object = {
         
         restoreTemplateElements: function(aDocument) {
           // Restore <noscript> elements that were converted to <template>
+
+          // Using replaceWith() instead of innerHTML to avoid issues with nested elements wich were HTMLencoded
           aDocument.querySelectorAll("template[secnoscript]").forEach(template => {
-            template.outerHTML = "<noscript" + template.outerHTML.slice(9, -9) + "noscript>";
+            let noScript=document.createElement("noscript");
+            for(let node of template.attributes){
+              noScript.setAttribute(node.name,node.value)
+            }
+            noScript.append(template.content);
+            template.replaceWith(noScript);
           });
         },
         
@@ -2842,7 +2848,8 @@ background: {
             // // end of missing chunks strategy
             
           },
-          parseAndEditHtml3: function(str, details) {
+          parseAndEditHtml3: function(strO, details) {
+            let str = strO;
             if (!str || !str.trim().length) {
               return str;
             }
@@ -2859,7 +2866,7 @@ background: {
             const aDocument = uDark.createDocumentFromHtml(str);
             // 4. Temporarily replace all SVG elements to avoid accidental style modifications
             const svgElements = uDark.processSvgElements(aDocument, details);
-            
+   
             // 5. Edit styles and attributes inline for background elements
             uDark.edit_styles_attributes(aDocument, details);
             uDark.edit_styles_elements(aDocument, details, "ud-edited-background");
@@ -2896,6 +2903,8 @@ background: {
             
             // 16. Return the final edited HTML
             const outerEdited = aDocument.documentElement.outerHTML;
+
+
             return "<!doctype html>" + outerEdited;
           },
         }
