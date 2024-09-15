@@ -3257,7 +3257,7 @@ window.dark_object = {
           HTMLDecoderOption.innerHTML = svgURLObject.hash;
           svgURLObject.hash = HTMLDecoderOption.textContent;
         }
-        let complementIndex = svgURLObject.hash.indexOf("_uDark")
+        let complementIndex = svgURLObject.hash.indexOf(uDark.imageSrcInfoMarker);
         let notableInfos = new URLSearchParams(complementIndex == -1 ? "" : svgURLObject.hash.slice(complementIndex + 6))
         notableInfos = Object.fromEntries(notableInfos.entries());
         notableInfos.remoteSVG = true;
