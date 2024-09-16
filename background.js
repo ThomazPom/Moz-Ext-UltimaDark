@@ -558,9 +558,9 @@ window.dark_object = {
             astyle.classList.add(add_class)
           });
         },
-        frontEditHTML: function(elem, value, details, options = {}) {
+        frontEditHTML: function(elem, strO, details, options = {}) {
           // 1. Ignore <script> elements to prevent unintended modifications to JavaScript
-          
+          let value = strO;
           if (elem instanceof HTMLScriptElement) {
             return value;
           }
@@ -587,10 +587,16 @@ window.dark_object = {
           const aHtmlDocument = uDark.createDocumentFromHtml(value);
           const documentElement = aHtmlDocument.documentElement;
           
+          // 16. Restore <noscript> elements that were converted to <template>
+          uDark.restoreTemplateElements(documentElement);
+
+          // 17. Remove the integrity attribute from elements and replace it with a custom attribute
+          uDark.restoreIntegrityAttributes(documentElement);
+
           // 6. Process meta tags to ensure proper charset handling
           uDark.processMetaTags(documentElement);
           
-          
+
           // 7. Restore or set the color-scheme meta tag for dark mode handling this is not usefull since we do all with css color-scheme attribute wich is prevalent
           // <meta name="color-scheme" content="dark light"> Telling broswer order preference for colors 
           // Makes input type checkboxes and radio buttons to be darkened
@@ -625,11 +631,7 @@ window.dark_object = {
           // 15. Restore the original SVG elements that were temporarily replaced
           uDark.restoreSvgElements(svgElements);
           
-          // 16. Restore <noscript> elements that were converted to <template>
-          uDark.restoreTemplateElements(documentElement);
           
-          // 17. Remove the integrity attribute from elements and replace it with a custom attribute
-          uDark.restoreIntegrityAttributes(documentElement);
           // 18. After all the edits, return the final HTML output
           
           if(options.get_document){
@@ -2436,12 +2438,12 @@ background: {
       uDark.idk_cache = {};
       uDark.resolvedIDKVars_action_timeout = 400; // edit_str from 2024 january was ok with 210 for both editing and messaging, 250 Should be enough for now
       uDark.fixedRandom = Math.random();
-      
+
       globalThis.browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editBeforeData);
       globalThis.browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editBeforeRequestStyleSheet);
       globalThis.browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.editBeforeRequestImage);
       globalThis.browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editOnHeadersImage);
-      globalThis.browser.webRequest.onCompleted.removeListener(dark_object.misc.onCompletedStylesheet);
+      // globalThis.browser.webRequest.onCompleted.removeListener(dark_object.misc.onCompletedStylesheet);
       // globalThis.browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.editBeforeServiceWorker);
       /*Experimental*/
       // browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editHeadersOnHeadersReceived);
@@ -2503,11 +2505,11 @@ background: {
           
         }
         
-        globalThis.browser.webRequest.onCompleted.addListener(dark_object.misc.onCompletedStylesheet, {
-          // urls: uDark.userSettings.properWhiteList, // We can't assume the css is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
-          urls: ["<all_urls>"],
-          types: ["stylesheet"]
-        });
+        // globalThis.browser.webRequest.onCompleted.addListener(dark_object.misc.onCompletedStylesheet, {
+        //   // urls: uDark.userSettings.properWhiteList, // We can't assume the css is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
+        //   urls: ["<all_urls>"],
+        //   types: ["stylesheet"]
+        // });
         
         // browser.webRequest.onHeadersReceived.addListener(details => {
           //   return;
@@ -2540,9 +2542,11 @@ background: {
             matches: uDark.userSettings.properWhiteList,
             runAt: "document_start",
             matchAboutBlank: true,
-            matchOriginAsFallback:true,
             allFrames: true
           };
+          if(uDark.browserInfo.Mozilla_Firefox>=128){
+            defaultCS.matchOriginAsFallback=true
+          }
           if(uDark.userSettings.properBlackList.length){
             defaultCS.excludeMatches = uDark.userSettings.properBlackList;
           }
@@ -2609,7 +2613,7 @@ background: {
               
               p.used_cache_keys.forEach(x => {
                 if (!owned_cache_keys.has(x)) {
-                  // console.log("Deleting", x)
+                  console.log("Deleting", x, "as it is not used by any other port")
                   delete uDark.idk_cache[x]
                 } else(console.log("Not deleting", x, "because it is still used by another port"))
               })
@@ -2911,6 +2915,11 @@ background: {
       }
       
       Promise.all([
+        browser.runtime.getBrowserInfo().then(x=>{
+          uDark.browserInfo=x;
+          uDark.browserInfo.version=parseInt(x.version.split(".")[0]);
+          uDark.browserInfo[[uDark.browserInfo.vendor,uDark.browserInfo.name].join("_")]=uDark.browserInfo.version;
+        }),
         // getInjectCSS(["/gre-resources/forms.css", // No  usefull since meta tag and forces links colors to be set at rgba
         // "/gre-resources/ua.css",
         // "/gre-resources/html.css"], actions = {
@@ -3311,7 +3320,8 @@ background: {
               notableInfos,
               svgImage: true,
               remoteSVG: true,
-              remoteSVGURL: svgURLObject.href
+              remoteSVGURL: svgURLObject.href,
+              no_body: true,
             });
             filter.write(encoder.encode(svgStringEdited));
             filter.disconnect();
@@ -3534,7 +3544,7 @@ background: {
             options.chunk = options.chunk.str;
           }
           
-          dark_object.misc.chunk_manage_idk(details, options);
+          dark_object.misc.chunk_manage_idk(details, options,filter);
           filter.write(encoder.encode(options.chunk));
           // console.log("Accepted integrity_rule",details.url,transformResult)
         }
@@ -3544,7 +3554,7 @@ background: {
         if (details.rejectedValues.length) {
           
           options.chunk = uDark.edit_str(details.rejectedValues, false, false, details, false, options);
-          dark_object.misc.chunk_manage_idk(details, options.chunk);
+          dark_object.misc.chunk_manage_idk(details, options.chunk,filter);
           filter.write(encoder.encode(options.chunk)); // Write the last chunk if any, trying to get the last rules to be applied, there is proaby invalid content at the end of the CSS;
         }
         
@@ -3586,7 +3596,7 @@ background: {
       details.doc_hostname = bUrl.hostname;
       return (aUrl.origin != bUrl.origin)
     },
-    chunk_manage_idk: function(details, options) {
+    chunk_manage_idk: function(details, options,filter) {
       
       if (!uDark.disable_remote_idk_css_edit && details.unresolvableChunks) {
         if (!options.unresolvableStylesheet.cssRules.length) {
@@ -3600,13 +3610,20 @@ background: {
           return;
           
         }
-        let chunk_hash = fMurmurHash3Hash(options.chunk); // String objects are not hashable, they returns "0" as hash
+        let chunk_hash = fMurmurHash3Hash(options.chunk); 
+        let content_script_port_promise = uDark.get_the_remote_port(details); // Sometimes here the port havent connected yet. In fact content_script_ports are slow to connect.
+
+        content_script_port_promise.then((content_script_port) => {
+          content_script_port.used_cache_keys.add(chunk_hash);
+          console.log("Claiming hash key:", chunk_hash,details.requestId, "for", details.url);
+        });
+        
         if (chunk_hash in uDark.idk_cache) {
           // console.log("Skipping chunk as it is already in cache", details.url)
           options.chunk = uDark.idk_cache[chunk_hash];
           return;
         }
-        let content_script_port_promise = uDark.get_the_remote_port(details); // Sometimes here the port havent connected yet. In fact content_script_ports are slow to connect.
+
         let rules = [...options.unresolvableStylesheet.cssRules].map(r => r.cssText);
         let chunk_variables = rules.join("\n");
         
@@ -3615,8 +3632,17 @@ background: {
         
         if (!details.rejectCache) {
           details.rejectCache = true;
-          // console.log("Setting: Rejecting cache for",details.url,details.doc_hostname); // Works only with doc_hostname, not hostname
+          console.log("Setting: Rejecting cache for",details.url,details.doc_hostname,details.type,details.requestId,Date.now()/1); // Works only with doc_hostname, not hostname
           uDark.idk_cache["remove_cache_" + details.requestId] = details.doc_hostname; // Works only with doc_hostname, not hostname; this is counter intuitive
+          
+          filter.addEventListener("stop", event => {
+            setTimeout(() => {
+              dark_object.misc.onCompletedStylesheet(details);
+            },300); // Must wait the request is finished, otherwise it will not be uncached. 100 was too short. 
+            // I moved here the call and the timeout, to avoid triggering the code and the timeout on all requests, even those that are not eligible for uDark
+            // Plus it had no perceptible gain to use onCompletedStylesheet as a webFilter since it managed many times to exec later than the present code...
+          
+          })
         }
         
         // /* Missing chucks strategy */
@@ -3630,7 +3656,6 @@ background: {
         
         content_script_port_promise.then((content_script_port) => {
           
-          content_script_port.used_cache_keys.add(chunk_hash);
           // console.log("Sending chunk to content script",content_script_port.sender.contextId,details.requestId,details.dataCount,details.url,chunk_hash)
           content_script_port.postMessage({
             havingIDKVars: {
@@ -3648,20 +3673,22 @@ background: {
     onCompletedStylesheet: function(details) {
       
       // Remove cache for the css resource if it was rejected by chunk_manage_idk, the next time we see it we'll have to replace its chunks
-      let possibleCacheKey = "remove_cache_" + details.requestId;
-      if (possibleCacheKey in uDark.idk_cache) {
-        setTimeout(w => {
-          // console.log("Removing cache for", details.url);
-          globalThis.browser.browsingData.removeCache({
-            since: (Date.now() - details.timeStamp),
-            hostnames: [uDark.idk_cache[possibleCacheKey]]
-          })
-          .then(x => {
-            console.info(`Browser last`, Date.now() - details.timeStamp, `ms cache of`, uDark.idk_cache[possibleCacheKey], ` flushed for request`, details.requestId)
-            delete uDark.idk_cache[possibleCacheKey];
-          }, error => console.error(`Error: ${error}`));
-        }, 100) // Must wait the request is finished, otherwise it will not be uncached
-      }
+          let possibleCacheKey = "remove_cache_" + details.requestId;
+            if (possibleCacheKey in uDark.idk_cache) {
+            
+            // console.log("Removing cache for", details.url);
+            globalThis.browser.browsingData.removeCache({
+              since: (Date.now() - details.timeStamp),
+              hostnames: [uDark.idk_cache[possibleCacheKey]]
+            })
+            .then(x => {
+              console.info(`Browser last`, Date.now() - details.timeStamp, `ms cache of`, uDark.idk_cache[possibleCacheKey], ` flushed for request`, details.requestId)
+              delete uDark.idk_cache[possibleCacheKey];
+            }, error => console.error(`Error: ${error}`));
+          }
+          else{
+            console.log("No cache to remove for",possibleCacheKey,Date.now()/1)
+          }
       
     },
     
