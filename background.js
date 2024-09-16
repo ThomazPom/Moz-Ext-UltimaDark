@@ -2545,7 +2545,7 @@ background: {
             allFrames: true
           };
           if(uDark.browserInfo.Mozilla_Firefox>=128){
-            defaultCS.matchOriginAsFallback=true
+            defaultCS.matchOriginAsFallback=true // This crucial feature is only available since FF 128
           }
           if(uDark.userSettings.properBlackList.length){
             defaultCS.excludeMatches = uDark.userSettings.properBlackList;
