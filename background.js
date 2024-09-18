@@ -2352,6 +2352,8 @@ background: {
       uDark.resolvedIDKVars_action_timeout = 400; // edit_str from 2024 january was ok with 210 for both editing and messaging, 250 Should be enough for now
       uDark.fixedRandom = Math.random();
 
+      globalThis.browser.webRequest.onSendHeaders.removeListener(dark_object.misc.setEligibleRequestBeforeData);
+      globalThis.browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editBeforeData);
       globalThis.browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editBeforeData);
       globalThis.browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editBeforeRequestStyleSheet);
       globalThis.browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.editBeforeRequestImage);
@@ -2368,6 +2370,11 @@ background: {
       }
       if (!res.disable_webext && uDark.userSettings.properWhiteList.length) {
         
+        globalThis.browser.webRequest.onSendHeaders.addListener(dark_object.misc.setEligibleRequestBeforeData, {
+          urls: uDark.userSettings.properWhiteList,
+          types: ["main_frame", "sub_frame"]
+        }, );
+
         globalThis.browser.webRequest.onHeadersReceived.addListener(dark_object.misc.editBeforeData, {
           urls: uDark.userSettings.properWhiteList,
           types: ["main_frame", "sub_frame"]
@@ -2494,8 +2501,6 @@ background: {
         
         let portKey = `port-from-cs-${connectedPort.sender.tab.id}-${connectedPort.sender.frameId}`
 
-        console.log(portKey, connectedPort, uDark.connected_cs_ports[portKey])
-        
         uDark.connected_cs_ports[portKey] = connectedPort;
         connectedPort.onDisconnect.addListener(p => {
           console.log("Disconnected", p.sender.url, p.sender.contextId);
@@ -3195,7 +3200,6 @@ background: {
     editBeforeRequestStyleSheet: function(details) {
       let options = {};
       options.isCorsRequest = dark_object.misc.isCorsRequest(details);
-      // let stylesheetURL=(new URL(details.url));
       
       // console.log("Loading CSS", details.url, details.requestId, details.fromCache)
       
@@ -3206,7 +3210,7 @@ background: {
         console.log("If i'm lacking of knowledge, here is what i know about this request", details.tabId, details.frameId);
         return {}
       }
-      // console.log("Will darken", details.urlF, details.requestId, details.fromCache)
+      console.log("Will darken", details.url, details.requestId, details.fromCache)
       
       let filter = globalThis.browser.webRequest.filterResponseData(details.requestId); // After this instruction, browser espect us to write data to the filter and close it
       
@@ -3284,9 +3288,10 @@ background: {
 
     chunk_manage_idk_direct(details,options,filter)
     {
+
       if (!uDark.disable_remote_idk_css_edit && details.unresolvableChunks) {
         if (!options.unresolvableStylesheet.cssRules.length) {
-          // console.log("No unresolvable rules found for",details.url,"chunk",details.dataCount)
+          console.log("No unresolvable rules found for",details.url,"chunk",details.dataCount)
           return;
         }
         
@@ -3330,7 +3335,7 @@ background: {
         let rules = [...options.unresolvableStylesheet.cssRules].map(r => r.cssText);
         let chunk_variables = rules.join("\n");
         chunk_variables = chunk_variables.unprotect_simple("--ud-ptd-");
-        globalThis.browser.tabs.executeScript(details.tabId, {
+        globalThis.browser.tabs.executeScript(details.tabId, { // This is not the content_script context.
           file:"/resolveIDKVars.js",
           frameId:details.frameId,
           runAt:"document_start",
@@ -3409,9 +3414,48 @@ background: {
     
     //   return details;
     // },
+
+    setEligibleRequestBeforeData(details){
+      details.unEligibleRequest=(details.documentUrl || details.url).match(uDark.userSettings.exclude_regex);
+      details.eligibleRequest=!details.unEligibleRequest;
+      // Here we have to check the url or the documentUrl to know if this webpage is excluded
+      // It already has passed the whitelist check, this is why we only check the blacklist
+      // However this code executes before the content script is connected, so we can't check if it will connect or not
+      // Even if we could do this, like sending some bytes and waiting for he content script to connect,
+      // and it would be not so musch costly in terms of time, some pages as YouTube as the time i write this, somehow manages
+      // to send in this very first request tabID -1 and frameID 0, which is not a valid combination, and the content script will never be found
+      // stackoverflow says it might be related to worker threads. It's probably true with serviceWorkers
+      
+      console.log("Will check",details.url,"made by",details.documentUrl)
+      console.log("Is eligible for uDark",details.eligibleRequest)
+      if (!details.eligibleRequest) {
+          
+          // console.log("Excluding", details.url,"made by",details.documentUrl)
+          delete uDark.connected_cs_ports["port-from-cs-" + details.tabId + "-" + details.frameId];
+          // As bellow is marking as arriving soon
+          // It is possible to have a page that starts loading, we mark it as arriving soon
+          // loading stops, for whatever reason, and the content script does not connect and therefore does not disconnects and get not deleted.
+          // In this case, the port will not be erased, and all resources will darkened, even if the page is not eligible for uDark
+          // It is testable by disablising the content script, assignation and line above; loading a darkened page, in a tab, to set the arriving soon flag, 
+          // then loading an uneligible page in the same tab, and see if it not dakening.
+          // A simple delete when the page is not eligible is enough and very low cost.
+          // In the end we need to be in this if to avoid darkening the page, we wont be lazy and delete the port.
+          return {};
+          
+        }
+        if (details.tabId != -1) {
+          // Lets be the MVP here, sometimes the content script is not connected yet, and the CSS will arrive in few milliseconds.
+          // This page is eligible for uDark
+          // console.log("I'm telling the world that",details.url,"is eligible for uDark", "on", details.tabId,details.frameId)
+          console.log("ERASING",details.url,"made by",details.documentUrl,uDark.connected_cs_ports["port-from-cs-" + details.tabId + "-" + details.frameId])
+          uDark.connected_cs_ports["port-from-cs-" + details.tabId + "-" + details.frameId] = "ARRIVING_SOON";
+          
+        }
+
+    },
+
     editBeforeData: function(details) {
       
-      // random condition return  {} and log details.url & details to see what is happening
       
       if (details.tabId == -1 && uDark.connected_options_ports_count || uDark.connected_cs_ports["port-from-popup-" + details.tabId]) { // -1 Happens sometimes, like on https://www.youtube.com/ at the time i write this, stackoverflow talks about worker threads
         
@@ -3452,12 +3496,6 @@ background: {
           uDark.connected_cs_ports["port-from-cs-" + details.tabId + "-" + details.frameId] = "ARRIVING_SOON";
           
         }
-        
-        // if( details.url=="https://www.patreon.com/ArgusVRC" )
-        //   {
-        //     console.log("Data",details.url,details)
-        //     return {}
-        //   }
         var n = details.responseHeaders.length;
         details.headersLow = {}
         while (n--) {
@@ -3465,7 +3503,6 @@ background: {
         }
         if (!(details.headersLow["content-type"] || "text/html").includes("text/html")) return {}
         details.charset = ((details.headersLow["content-type"] || "").match(/charset=([0-9A-Z-]+)/i) || ["", "utf-8"])[1]
-        // console.log(details.charset)
         
         details.responseHeaders = details.responseHeaders.filter(x => {
           var a_filter = uDark.headersDo[x.name.toLowerCase()];
@@ -3483,7 +3520,6 @@ background: {
             details.writeEnd += decoder.decode(event.data, {
               stream: true
             });
-            // must not return this closes filter//
           }
           filter.onstop = event => {
             details.dataCount = 1;

@@ -28,6 +28,7 @@ jobs:
         imageWorker.js
         bg.jpg
         background.js
+        resolveIDKVars.js
         icons/
 
     steps:
