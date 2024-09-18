@@ -3467,6 +3467,8 @@ const dark_object = {
           // Lets be the MVP here, sometimes the content script is not connected yet, and the CSS will arrive in few milliseconds.
           // This page is eligible for uDark
           // console.log("I'm telling the world that",details.url,"is eligible for uDark", "on", details.tabId,details.frameId)
+          // This code must absolutely eb executed before the parsing of headers of the page since the page can have  link header wich will be considered as a <link> tag
+          // See https://developer.mozilla.org/fr/docs/Web/HTTP/Headers/Link for details
           uDark.setPort(details,{arrivingSoon:true},0);
           
         }
