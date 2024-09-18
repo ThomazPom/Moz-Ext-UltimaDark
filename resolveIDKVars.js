@@ -7,12 +7,11 @@ function resolveIDKVars_direct(data)
     option.style.floodColor = readable_variable_check_value;
     let floodColor = getComputedStyle(option).floodColor;
     option.remove();
-    console.log(readable_variable_check_value);
     if (floodColor != expectedValueForResolvableColor) {
         return {};
     } 
     
-    console.log("Received data", data); 
+    // console.log("Received data", data); 
     // The variables we are looking for might be in data.chunk we have to ensure they are "readable" to make them available to props_and_var_only_color_idk.
     // This is the whole point of waiting for the chunk to be written before reading the variables out of it.
     let ikd_chunk_resolved = uDark.edit_str(data.chunk, false, false, false, true);
