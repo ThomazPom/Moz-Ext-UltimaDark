@@ -2,8 +2,14 @@ const dark_object = {
   
   all_levels: {
     install: function() {
-      { // Any level protected proptotypes
+      { // Any level protected proptotypes for safe intenal use without ternaries or worries.
         CSS2Properties.prototype.p_ud_setProperty = CSS2Properties.prototype.setProperty;
+        CSSStyleSheet.prototype.p_ud_replaceSync = CSSStyleSheet.prototype.replaceSync;
+        CSSStyleSheet.prototype.p_ud_insertRule = CSSStyleSheet.prototype.insertRule;
+        Element.prototype.p_ud_innerHTML = Object.getOwnPropertyDescriptor(Element.prototype, "innerHTML");
+        ShadowRoot.prototype.p_ud_innerHTML = Object.getOwnPropertyDescriptor(ShadowRoot.prototype, "innerHTML");
+        HTMLStyleElement.prototype.p_ud_innerHTML = Object.getOwnPropertyDescriptor(ShadowRoot.prototype, "innerHTML");
+        CSS2Properties.prototype.p_ud_backgroundColor = Object.getOwnPropertyDescriptor(CSS2Properties.prototype, "backgroundColor");
       } {
         // Very special functions
         String.prototype.hashCode = function(under = 100, over = 0) {
@@ -38,6 +44,7 @@ const dark_object = {
         imageSrcInfoMarker:"_uDark",
         imageWorkerJsFile: "imageWorker.js",
         regex_search_for_url: /url\("(.+?)(?<!\\)("\))/g,
+        regex_search_for_url_raw: /url\(('.+?(?<!\\)'|(".+?(?<!\\)")|[^\)]*)\)/gsi,
         background_match: /background|sprite|(?<![a-z])(bg|box|panel|fond|fundo|bck)(?![a-z])/i,
         logo_match: /nav|avatar|logo|icon|alert|notif|cart|menu|tooltip|dropdown|control/i,
         chunk_stylesheets_idk_only_cors: false,
@@ -226,8 +233,9 @@ const dark_object = {
           
           return imageTrueSrc + usedChar + new URLSearchParams(notableInfos).toString();
         },
-        valuePrototypeEditor: function(leType, atName, setter = x => x, conditon = false, aftermath = false,getter=false) {
-          //   console.log(leType,atName)
+        valuePrototypeEditor: function(leType, atName, setter = false, conditon = false, aftermath = false,getter=false) {
+           
+          console.log("Editing property :",leType,atName)
           // if (conditon) {
           //   console.log("VAdding condtition to", leType, leType.name, conditon, conditon.toString())
           // }
@@ -239,41 +247,34 @@ const dark_object = {
             leType = leType.wrappedJSObject;
           }
           
-          var originalSet = Object.getOwnPropertyDescriptor(leType.prototype, atName);
-          if (!originalSet) {
-            console.log("No setter for '", atName, "'", leType, leType.name, leType.prototype)
+          var originalProperty = Object.getOwnPropertyDescriptor(leType.prototype, atName);
+          if (!originalProperty) {
+            console.error("No existing property for '", atName, "'", leType, leType.name, leType.prototype)
+            return;
           }
-          Object.defineProperty(leType.prototype, "o_ud_set_" + atName, {
-            set: originalSet.set
-          });
+   
+          Object.defineProperty(leType.prototype, "o_ud_" + atName, originalProperty);
           let override_get_set = {};
           if(setter){
             override_get_set.set = globalThis.exportFunction(function(value) { // getters must be exported like regular functions
               var new_value = (!conditon || conditon(this, value)===true) ? setter(this, value) : value;
-              let call_result = originalSet.set.call(this, new_value || value);
+              let call_result = originalProperty.set.call(this, new_value || value);
               aftermath && aftermath(this, value, new_value);
               return call_result;
             }, window);
           }
           if(getter){
-            let originalGet = Object.getOwnPropertyDescriptor(leType.prototype, atName);
-            if (!originalGet) {
-              console.log("No getter for '", atName, "'", leType, leType.name, leType.prototype)
-            }
-            Object.defineProperty(leType.prototype, "o_ud_get_" + atName, {
-              get: originalGet.get
-            });
             override_get_set.get = globalThis.exportFunction(function() { // getters must be exported like regular functions
               // console.log("Getting", this, atName)
-              let call_result = originalGet.get.call(this);
+              let call_result = originalProperty.get.call(this);
               return getter(this, call_result);
             }, window);
           }
-          
-          // uDark.general_cache["o_ud_set_"+atName]=originalSet
+          // uDark.general_cache["o_ud_"+atName]=originalSet
           Object.defineProperty(leType.prototype, atName, override_get_set);
         },
         functionWrapper: function(leType, laFonction, fName, watcher = x => x, conditon = true, result_editor = x => x) {
+          console.log("Wrapping function :",leType,laFonction,fName)
           let originalFunction = leType.prototype["o_ud_wrap_" + fName] = laFonction;
           leType.prototype[fName] = function(...args) {
             if (conditon===true || conditon(this, arguments) === true) {
@@ -295,6 +296,7 @@ const dark_object = {
           if (leType.wrappedJSObject) { // Cross compatibilty with content script
             leType = leType.wrappedJSObject;
           }
+          console.log("Editing function :",leType,laFonction)
           // if (conditon) {
           //   console.log("Adding condtition to", leType, leType.name, laFonction, conditon, conditon.toString())
           // }
@@ -539,7 +541,7 @@ const dark_object = {
         },
         edit_styles_elements: function(parentElement, details, add_class = "ud-edited-background", options = {}) {
           parentElement.querySelectorAll(`style:not(.${add_class})`).forEach(astyle => {
-            astyle.innerHTML = uDark.edit_str(astyle.innerHTML, false, false, details, false, options);
+            astyle.p_ud_innerHTML = uDark.edit_str(astyle.innerHTML, false, false, details, false, options);
             // astyle.innerHTML='*{fill:red!important;}'
             // According to https://stackoverflow.com/questions/55895361/how-do-i-change-the-innerhtml-of-a-global-style-element-with-cssrule ,
             // it is not possible to edit a style element innerHTML with its cssStyleSheet alone
@@ -857,11 +859,11 @@ const dark_object = {
           
           str = import_protection.str;
           str = str.protect_simple(uDark.shortHandRegex, "--ud-ptd-$1:", uDark.is_background);
-          // console.log("Import protection applied", str);
+          console.log("Import protection applied", str);
           if (!cssStyleSheet) {
             cssStyleSheet = new CSSStyleSheet()
             let valueReplace = str + (verifyIntegrity ? "\n.integrity_rule{}" : "");
-            cssStyleSheet.o_ud_replaceSync ? cssStyleSheet.o_ud_replaceSync(valueReplace) : cssStyleSheet.replaceSync(valueReplace);
+            cssStyleSheet.p_ud_replaceSync(valueReplace);
           } else if (!cssStyleSheet.rules.length) {
             return strO; // Empty styles from domparser can't be edited as they are not "constructed"
           }
@@ -882,7 +884,7 @@ const dark_object = {
               return strO;
             }
             str = `z{${str}}`;
-            cssStyleSheet.o_ud_replaceSync ? cssStyleSheet.o_ud_replaceSync(str) : cssStyleSheet.replaceSync(str);
+            cssStyleSheet.p_ud_replaceSync(str);
             uDark.edit_css(cssStyleSheet, idk_mode, details, options);
             str = cssStyleSheet.cssRules[0].cssText.slice(4, -2);
           } else {
@@ -928,7 +930,7 @@ const dark_object = {
                     
                     // Do we have a valid CSS now ? lets add an integrity rule to check it
                     let valueReplace = str + "\n.integrity_rule{}";
-                    cssStyleSheet.replaceSync(valueReplace); // Asumig only background script will edit CSS with integrity verification, using replaceSync is ok
+                    cssStyleSheet.p_ud_replaceSync(valueReplace); // Asumig only background script will edit CSS with integrity verification, using replaceSync is ok
                     let last_rule = cssStyleSheet.cssRules[cssStyleSheet.cssRules.length - 1];
                     if (last_rule && last_rule.selectorText == ".integrity_rule") // We found our rule again, no need to iterate more, this means we have a valid CSS in str
                     {
@@ -1153,12 +1155,9 @@ const dark_object = {
             // It does not affects spaces, it only appends parenthesis at the end of the string as far as I know
             // Browser said it is a color but doubt it is a valid one, we need a further check.
             document.head.appendChild(option);
-            if ("o_ud_set_backgroundColor" in style) // Only working way to do it so far
-            {
-              style.o_ud_set_backgroundColor = possiblecolor;
-            } else {
-              style.backgroundColor = possiblecolor;
-            }
+            
+            style.p_ud_backgroundColor=possiblecolor;
+
             let computedStyle = getComputedStyle(option); // On invalid colors, background will be none here
             result = computedStyle.floodColor || possiblecolor; // Sometimes on frontend, computedStyle is empty, idk why. Looks like a bug in browser 
             
@@ -1317,7 +1316,6 @@ const dark_object = {
             if (uDark.userSettings.disable_image_edition) {
               return;
             }
-            
             vars = vars || {};
             vars.property = vars.property || "background-image";
             let value = cssStyle.getPropertyValue(vars.property);
@@ -1330,8 +1328,22 @@ const dark_object = {
               ...options,
               changed: false
             }; // Do not edit the options object, it is shared between all calls
-            
-            value = value.replace(uDark.regex_search_for_url, (match, g1) => {
+            let used_regex= vars.regex||uDark.regex_search_for_url
+
+            value = value.replace(used_regex, (match, g1) => {
+
+              if(vars.use_other_property){
+                let transientCSSStylesheet=new CSSStyleSheet();
+                transientCSSStylesheet.p_ud_replaceSync(`z{${vars.use_other_property}:${match}}`);
+                let transientCSSRule=transientCSSStylesheet.cssRules[0];
+                let newMatch=transientCSSRule.style.getPropertyValue(vars.use_other_property);
+                if(newMatch.startsWith("url(")){
+                  g1=newMatch.slice(5,-2);
+                }
+                console.log("Used alternate property",match,newMatch,g1,transientCSSRule.cssText,cssStyle.cssText)
+              }
+
+
               //changed = true;
               let link = g1.trim();
               
@@ -1357,9 +1369,9 @@ const dark_object = {
           },
           
           css_properties_wording_action: function(cssStyle, keys, details, cssRule, topLevelRule, options) {
+            // cssRule.style, wording_action, details, cssRule, topLevelRule, options
             keys.forEach(key => {
               let action = uDark.css_properties_wording_action_dict[key];
-              
               if (action) {
                 
                 if (action.replace) {
@@ -1449,15 +1461,17 @@ const dark_object = {
             return value.replaceAll(regex, (match) => {
               let restored = uDark.restore_idk_vars(idk_mode, match);
               let maybe_array = uDark.eget_color(restored, false, cssRule, uDark.on_idk_missing_twice, true)
-              // console.log("The maybe array:",maybe_array)
+              console.log("The maybe array:",maybe_array)
               if (maybe_array.push) {
                 return transformation(...maybe_array, render);
               }
-              // console.log("Fully failed to get '",key,"' from",maybe_array,cssRule,match);
+              console.log("Fully failed to get '",key,"' from",maybe_array,cssRule,match);
               let unprotected_key = key.unprotect_simple("--ud-ptd-");
               if (uDark.idk_twice_actions[unprotected_key]) {
                 maybe_array = uDark.idk_twice_actions[unprotected_key](cssRule, restored);
               }
+              
+              console.log("IDK twice result '",unprotected_key,"' from",maybe_array,cssRule,match);
               return maybe_array;
             });
           },
@@ -1508,7 +1522,7 @@ const dark_object = {
                 let priority = cssStyle.getPropertyPriority(key_idk);
                 
                 if (!topLevelRule.unresolvableRule) {
-                  options.unresolvableStylesheet.insertRule(topLevelRule.cssText, options.unresolvableStylesheet.cssRules.length);
+                  options.unresolvableStylesheet.p_ud_insertRule(topLevelRule.cssText, options.unresolvableStylesheet.cssRules.length);
                   topLevelRule.unresolvableRule = true;
                 }
                 
@@ -1734,7 +1748,8 @@ const dark_object = {
         "background-image": {
           callBacks: [uDark.edit_css_urls]
         },
-        "background": {
+        "--ud-ptd-background": {
+          variables:{ property: "--ud-ptd-background",regex:uDark.regex_search_for_url_raw,use_other_property:"background-image"},
           callBacks: [uDark.edit_css_urls]
         },
         
@@ -1801,7 +1816,7 @@ const dark_object = {
         var bodycolor = getComputedStyle(document.body)["backgroundColor"]
         if (bodycolor != "rgba(0, 0, 0, 0)") { //TODO: I'm not sure if this is still usefull, its almost one of the first thing i did
           // Answer : not, as this install script is not even executed anymore
-          document.head.parentNode.style.o_ud_set_backgroundColor = getComputedStyle(document.body)["backgroundColor"]
+          document.head.parentNode.style.o_ud_backgroundColor = getComputedStyle(document.body)["backgroundColor"]
         }
         // setInterval(function()
         // {
@@ -1989,6 +2004,51 @@ const dark_object = {
       let myPort = globalThis.browser.runtime.connect({
         name: "port-from-cs"
       });
+
+
+      uDark.resolveIDKVars_direct=data=>
+      {
+          let expectedValueForResolvableColor = "rgba(255, 254, 253, 0.55)";
+          let readable_variable_check_value = `rgba(255,254,253,var(--chunk_is_readable_${data.details.requestId}_${data.details.dataCount}))`;
+          let option = new Option(); // Option must be in the loop because once the color is set to an unkonwn variable it stays at empty string
+          document.head.appendChild(option);
+          option.style.floodColor = readable_variable_check_value;
+          let floodColor = getComputedStyle(option).floodColor;
+          option.remove();
+          if (floodColor != expectedValueForResolvableColor) {
+              return {};
+          } 
+          
+          // console.log("Received data", data); 
+          // The variables we are looking for might be in data.chunk we have to ensure they are "readable" to make them available to props_and_var_only_color_idk.
+          // This is the whole point of waiting for the chunk to be written before reading the variables out of it.
+          let ikd_chunk_resolved = uDark.edit_str(data.chunk, false, false, false, true);
+          let props_and_var_only_color_idk = uDark.edit_str(data.chunk_variables, false, false, false, "partial_idk");
+          // console.log("Resolved data", ikd_chunk_resolved, props_and_var_only_color_idk);
+          data.resolved = true;
+          data.chunk = ikd_chunk_resolved;
+          data.chunk_variables = props_and_var_only_color_idk
+          return data
+      }
+
+
+      uDark.resolveIDKVars=(data,delay=50,timeout=5000,attempt=0 )=>
+      {
+          return new Promise((resolve, reject) => {
+              let resolvedData = uDark.resolveIDKVars_direct(data);
+              if (resolvedData.resolved || attempt*delay >= timeout) {
+                  resolvedData.cumuledWaitTime = attempt*delay;
+                  data.attempts = attempt;
+                  resolve(resolvedData);
+              } else {
+                  setTimeout(() => {
+                      uDark.resolveIDKVars(data, delay, timeout, attempt + 1).then(resolve).catch(reject);
+                  }, delay);
+              }
+              
+          })
+      }
+      console.log("Resolve IDK Vars is ready",);
       
       function registerBackgroundItem(selectorText) {
         // NOTE: TODO: Disable registerBackgroundItem for now, but re-enable it later
@@ -2198,7 +2258,7 @@ const dark_object = {
       // },x=>true,x=>{
         //   console.log("Attached shadow",x);
       //   let aCSS=new CSSStyleSheet();
-      //   aCSS.o_ud_replaceSync(uDark.inject_css_override);
+      //   aCSS.p_ud_replaceSync(uDark.inject_css_override);
       //   x.adoptedStyleSheets=[aCSS];
       //   return x;
       
@@ -2315,6 +2375,14 @@ const dark_object = {
     },
   },
   background: {
+    csExec: function(tabId,code) {
+      return globalThis.browser.tabs.executeScript(tabId, {
+        code: "("+code.toString()+")()"
+      }).then(returns=>returns[0]);
+      
+      
+      
+    },
     defaultRegexes: {
       white_list: ["<all_urls>", "*://*/*", "https://*.w3schools.com/*"].join('\n'),
       black_list: ["*://example.com/*"].join('\n')
@@ -2835,6 +2903,7 @@ const dark_object = {
     },
     both: {
       install: function() {
+      
         
       let SHORTHANDS = ["all", "animation", "animation-range", "background", "border", "border-block", "border-block-end", "border-block-start", "border-bottom", "border-color", "border-image", "border-inline", "border-inline-end", "border-inline-start", "border-left", "border-radius", "border-right", "border-style", "border-top", "border-width", "column-rule", "columns", "contain-intrinsic-size", "container", "flex", "flex-flow", "font", "font-synthesis", "font-variant", "gap", "grid", "grid-area", "grid-column", "grid-row", "grid-template", "inset", "inset-block", "inset-inline", "list-style", "margin", "margin-block", "margin-inline", "mask", "mask-border", "offset", "outline", "overflow", "overscroll-behavior", "padding", "padding-block", "padding-inline", "place-content", "place-items", "place-self", "position-try", "scroll-margin", "scroll-margin-block", "scroll-margin-inline", "scroll-padding", "scroll-padding-block", "scroll-padding-inline", "scroll-timeline", "text-decoration", "text-emphasis", "text-wrap", "transition"]
      
@@ -3332,28 +3401,12 @@ const dark_object = {
         }
       },
       resolveIDKViaExec:function(details,chunk,chunk_variables,callback,delay=50,timeout=10000){
-        
-        globalThis.browser.tabs.executeScript(details.tabId, { // This is the content_script context, perfect.
-          file:"/resolveIDKVars.js",
-          frameId:details.frameId,
-          runAt:"document_start",
-          matchAboutBlank:true,
-          
-        })
-        .then(result0 =>  globalThis.browser.tabs.executeScript(details.tabId, {
-          code: `resolveIDKVars(${JSON.stringify({details,chunk,chunk_variables})},${delay},${timeout})`,
+        globalThis.browser.tabs.executeScript(details.tabId, {
+          code: `uDark.resolveIDKVars(${JSON.stringify({details,chunk,chunk_variables})},${delay},${timeout})`,
           frameId:details.frameId,
           runAt:"document_start",
           matchAboutBlank:true
-        })
-      ).then(promise=>promise).then(callback) 
-
-      
-      
-      
-      
-      
-      
+        }).then(promise=>promise).then(callback);
     },
     chunk_manage_idk_direct(details,options,filter)
     {
