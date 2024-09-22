@@ -3365,39 +3365,56 @@ const dark_object = {
           var str = decoder.decode(event.data, {
             stream: true
           }); //str,cssStyleSheet,verifyIntegrity=false,details
-          let options = {};
-          options.chunk = uDark.edit_str(details.rejectedValues + str, false, true, details, false, options);
+          let options = {chunk_hash:fMurmurHash3Hash(str)};
+          if (options.chunk_hash in uDark.idk_cache) {
+            // console.log("Skipping chunk as it is already in cache", details.url,details.requestId,details.dataCount)
+            filter.write(encoder.encode(uDark.idk_cache[options.chunk_hash]));
+            delete uDark.idk_cache[options.chunk_hash] // Now it has been used and will be put in cache as is, we can clean it.
+           
+          }
+          else{
+            options.chunk = uDark.edit_str(details.rejectedValues + str, false, true, details, false, options);
+            if (options.chunk.message) {
+              // console.log(details,transformResult.message)
+              details.rejectedValues += str;
+              // console.info(transformResult.message,details.url,details.rejectedValues.length);
+            } else {
+              
+              details.rejectedValues = "";
+              // console.log(details,"Accepted integrity rule")
+              if (options.chunk.rejected) {
+                // console.log("Accepted a partial integrity_rule ♥",details.url)
+                details.rejectedValues = options.chunk.rejected;
+                options.chunk = options.chunk.str;
+              }
+              dark_object.misc.chunk_manage_idk_direct(details, options,filter);
+              filter.write(encoder.encode(options.chunk));
+              // console.log("Accepted integrity_rule",details.url,transformResult)
+            }
+          }
+
+
           // if(str.includes('import'))
           // {
           // console.log(str)
           // }
-          if (options.chunk.message) {
-            // console.log(details,transformResult.message)
-            details.rejectedValues += str;
-            
-            // console.info(transformResult.message,details.url,details.rejectedValues.length);
-          } else {
-            
-            details.rejectedValues = "";
-            // console.log(details,"Accepted integrity rule")
-            if (options.chunk.rejected) {
-              // console.log("Accepted a partial integrity_rule ♥",details.url)
-              details.rejectedValues = options.chunk.rejected;
-              options.chunk = options.chunk.str;
-            }
-            
-            dark_object.misc.chunk_manage_idk_direct(details, options,filter);
-            filter.write(encoder.encode(options.chunk));
-            // console.log("Accepted integrity_rule",details.url,transformResult)
-          }
+          
         }
         filter.onstop = event => {
           
           if (details.rejectedValues.length) {
-            
-            options.chunk = uDark.edit_str(details.rejectedValues, false, false, details, false, options);
-            dark_object.misc.chunk_manage_idk_direct(details, options.chunk,filter);
-            filter.write(encoder.encode(options.chunk)); // Write the last chunk if any, trying to get the last rules to be applied, there is proaby invalid content at the end of the CSS;
+            let options = {chunk_hash:fMurmurHash3Hash(details.rejectedValues)};
+            if (options.chunk_hash in uDark.idk_cache) {
+              // console.log("Skipping chunk as it is already in cache", details.url,details.requestId,details.dataCount)
+              filter.write(encoder.encode(uDark.idk_cache[options.chunk_hash]));
+              delete uDark.idk_cache[options.chunk_hash] // Now it has been used and will be put in cache as is, we can clean it.
+             
+            }
+            else{
+              options.chunk = uDark.edit_str(details.rejectedValues, false, false, details, false, options);
+              dark_object.misc.chunk_manage_idk_direct(details, options,filter);
+              filter.write(encoder.encode(options.chunk)); // Write the last chunk if any, trying to get the last rules to be applied, there is proaby invalid content at the end of the CSS;
+            }
           }
           
           filter.disconnect(); // Low perf if not disconnected !
@@ -3460,20 +3477,16 @@ const dark_object = {
         }
 
 
-        let chunk_hash = fMurmurHash3Hash(options.chunk); 
         
-        if (chunk_hash in uDark.idk_cache) {
-          // console.log("Skipping chunk as it is already in cache", details.url,details.requestId,details.dataCount)
-          options.chunk = uDark.idk_cache[chunk_hash];
-          // setTimeout(() => { // Using a timeout here to delay the cleaning becasue of the firefox bug that reloads all CSS when debugger is active, it seems to create a loop; so we keep it 5 s more. ( Will be supressed later)
-            
-            delete uDark.idk_cache[chunk_hash] // Now it has been used and will be put in cache as is, we can clean it.
-          // },50000)
-          return;
-        }
-        else{
-          console.log("Chunk not in cache",chunk_hash);
-        }
+        // if (chunk_hash in uDark.idk_cache) {
+        //   // console.log("Skipping chunk as it is already in cache", details.url,details.requestId,details.dataCount)
+        //   options.chunk = uDark.idk_cache[chunk_hash];
+        //     delete uDark.idk_cache[chunk_hash] // Now it has been used and will be put in cache as is, we can clean it.
+        //   return;
+        // }
+        // else{
+        //   console.log("Chunk not in cache",chunk_hash);
+        // }
         
         
         
@@ -3485,8 +3498,8 @@ const dark_object = {
         dark_object.misc.resolveIDKViaExec(details,options.chunk,chunk_variables,(result)=>{
           let data = result[0];
           if(data.resolved){
-            uDark.idk_cache[chunk_hash] = data.chunk;
-            console.log("Resolving variables took",Date.now()/1-resolve_start_time,"ms including",data.attempts,"attempts of ",data.cumuledWaitTime,"ms");
+            uDark.idk_cache[options.chunk_hash] = data.chunk;
+            console.log("Resolving variables took",Date.now()/1-resolve_start_time,"ms including",data.attempts,"attempts ",data.cumuledWaitTime,"ms (cumuled wait time)");
             globalThis.browser.tabs.insertCSS(details.tabId, {
               code: data.chunk_variables,
               frameId:details.frameId,
