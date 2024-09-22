@@ -58,7 +58,7 @@ const dark_object = {
         hsl_a_colorsRegex: /hsla?\(([%0-9., \/=a-z_+*-]|deg|turn|tetha)+\)/gmi, // hsla vals  with variables names and calcs involved  #rgba(255 255 255 / 0.1)
         direct_window_export: true,
         enable_idk_mode: true,
-        general_cache: {},
+        general_cache: new Map(),
         userSettings: {},
         imageSrcInfoMarker:"_uDark",
         imageWorkerJsFile: "imageWorker.js",
@@ -1091,8 +1091,8 @@ const dark_object = {
         },
         is_color: function(possiblecolor, as_float = true, fill = false, cssRule, spanp = false) {
           let cache_key = `${possiblecolor}${as_float}${fill}`
-          if (!uDark.userSettings.disable_cache && !spanp && uDark.general_cache[cache_key]) { // See https://jsben.ch/aXxCT for cache effect on performance
-            return uDark.general_cache[cache_key];
+          if (!uDark.userSettings.disable_cache && !spanp && uDark.general_cache.has(cache_key)) { // See https://jsben.ch/aXxCT for cache effect on performance
+            return uDark.general_cache.get(cache_key);
           }
           if (!possiblecolor || possiblecolor === "none") { // none is not a color, and it not usefull to create a style element for it
             return false
@@ -1123,7 +1123,7 @@ const dark_object = {
             }
             
             if (!uDark.userSettings.disable_cache) {
-              uDark.general_cache[cache_key] = result;
+              uDark.general_cache.set(cache_key, result);
             }
             return result;
             
@@ -1140,8 +1140,8 @@ const dark_object = {
           }
           
           let cache_key = `${possiblecolor}${as_float}${fill}`
-          if (!uDark.userSettings.disable_cache && !spanp && use_cache && uDark.general_cache[cache_key]) {
-            return uDark.general_cache[cache_key];
+          if (!uDark.userSettings.disable_cache && !spanp && use_cache && uDark.general_cache.has(cache_key)) { // See https://jsben.ch/aXxCT for cache effect on performance
+            return uDark.general_cache.get(cache_key);
           }
           possiblecolor = possiblecolor.trim().toLowerCase();
           let option = new Option();
@@ -1194,7 +1194,7 @@ const dark_object = {
             }
             
             if (!uDark.userSettings.disable_cache && use_cache) {
-              uDark.general_cache[cache_key] = result;
+              uDark.general_cache.set(cache_key, result);
             }
           }
           return result;
@@ -2439,7 +2439,7 @@ const dark_object = {
         uDark.userSettings.exclude_regex = (res.black_list || dark_object.background.defaultRegexes.black_list).split("\n").map(x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // Sanitize regex
         .replace(/(^<all_urls>|\\\*)/g, "(.*?)") // Allow wildcards
         .replace(/^(.*)$/g, "^$1$")).join("|") // User multi match)
-        uDark.idk_cache = {};
+        uDark.idk_cache = new Map();
         uDark.resolvedIDKVars_action_timeout = 400; // edit_str from 2024 january was ok with 210 for both editing and messaging, 250 Should be enough for now
         uDark.fixedRandom = Math.random();
         
@@ -3332,11 +3332,11 @@ const dark_object = {
         }
       },
       handleCSSChunk(data, isFinalChunk, details, filter) {
-        let str = data ? details.decoder.decode(data, { stream: true }) : details.rejectedValues;
+        let str = details.rejectedValues;
+        if(data){ str += details.decoder.decode(data); }
 
         let start1 = performance.now();
-        let chunk_hash=fMurmurHash3Hash(str); // FmurMurHash3 is a fast hash function that is used to hash the chunk, and it's 45x faster than editing the chunk first, on a standard chunk
-        
+      
         // Yes, we will hash every chunk, not solely the ones that would need an IDK edit, as it's faster to hash than to edit
         let end1 = performance.now();
         let time1 = end1 - start1;
@@ -3347,16 +3347,14 @@ const dark_object = {
         uDark.avg_ms1 = uDark.totalTime1 / uDark.totalChunks1;
         
         
-        let options = { chunk_hash };
-    
-        if (chunk_hash in uDark.idk_cache) {
-            // Cache hit
-            options.chunk = uDark.idk_cache[chunk_hash];
-            delete uDark.idk_cache[chunk_hash];  // Clean the cache
+        let options = { chunk:uDark.idk_cache.get(str),str_key_cache:str };
+
+        if (options.chunk) {
+          uDark.idk_cache.delete(str);
         } else {
             // Edit string and handle rejected values
             let start=performance.now();
-            options.chunk = uDark.edit_str(details.rejectedValues + str, false, !isFinalChunk, details, false, options);
+            options.chunk = uDark.edit_str( str, false, !isFinalChunk, details, false, options);
             let end=performance.now();
             let time=end-start;
             uDark.totalTime=uDark.totalTime||0;
@@ -3420,67 +3418,6 @@ const dark_object = {
 
           filter.disconnect();  // Ensure disconnection after completion
         };
-        // filter.ondata = event => {
-        //   details.dataCount++
-        //   var str = decoder.decode(event.data, {
-        //     stream: true
-        //   }); //str,cssStyleSheet,verifyIntegrity=false,details
-        //   let options = {chunk_hash:fMurmurHash3Hash(str)};
-        //   if (options.chunk_hash in uDark.idk_cache) {
-        //     // console.log("Skipping chunk as it is already in cache", details.url,details.requestId,details.dataCount)
-        //     filter.write(encoder.encode(uDark.idk_cache[options.chunk_hash]));
-        //     delete uDark.idk_cache[options.chunk_hash] // Now it has been used and will be put in cache as is, we can clean it.
-           
-        //   }
-        //   else{
-        //     options.chunk = uDark.edit_str(details.rejectedValues + str, false, true, details, false, options);
-        //     if (options.chunk.message) {
-        //       // console.log(details,transformResult.message)
-        //       details.rejectedValues += str;
-        //       // console.info(transformResult.message,details.url,details.rejectedValues.length);
-        //     } else {
-              
-        //       details.rejectedValues = "";
-        //       // console.log(details,"Accepted integrity rule")
-        //       if (options.chunk.rejected) {
-        //         // console.log("Accepted a partial integrity_rule ♥",details.url)
-        //         details.rejectedValues = options.chunk.rejected;
-        //         options.chunk = options.chunk.str;
-        //       }
-        //       dark_object.misc.chunk_manage_idk_direct(details, options,filter);
-        //       filter.write(encoder.encode(options.chunk));
-        //       // console.log("Accepted integrity_rule",details.url,transformResult)
-        //     }
-        //   }
-
-
-        //   // if(str.includes('import'))
-        //   // {
-        //   // console.log(str)
-        //   // }
-          
-        // }
-        // filter.onstop = event => {
-          
-        //   if (details.rejectedValues.length) {
-        //     let options = {chunk_hash:fMurmurHash3Hash(details.rejectedValues)};
-        //     if (options.chunk_hash in uDark.idk_cache) {
-        //       // console.log("Skipping chunk as it is already in cache", details.url,details.requestId,details.dataCount)
-        //       filter.write(encoder.encode(uDark.idk_cache[options.chunk_hash]));
-        //       delete uDark.idk_cache[options.chunk_hash] // Now it has been used and will be put in cache as is, we can clean it.
-             
-        //     }
-        //     else{
-        //       options.chunk = uDark.edit_str(details.rejectedValues, false, false, details, false, options);
-        //       dark_object.misc.chunk_manage_idk_direct(details, options,filter);
-        //       filter.write(encoder.encode(options.chunk)); // Write the last chunk if any, trying to get the last rules to be applied, there is proaby invalid content at the end of the CSS;
-        //     }
-        //   }
-          
-        //   filter.disconnect(); // Low perf if not disconnected !
-          
-        // }
-        
         // return {redirectUrl:details.url};
         // return {responseHeaders:[{name:"Vary",value:"*"},{name:"Location",value:details.url}]};
         return {};
@@ -3535,21 +3472,6 @@ const dark_object = {
           // console.log("Skipping chunk as it is not a CORS one", details.url)
           return;
         }
-
-
-        
-        // if (chunk_hash in uDark.idk_cache) {
-        //   // console.log("Skipping chunk as it is already in cache", details.url,details.requestId,details.dataCount)
-        //   options.chunk = uDark.idk_cache[chunk_hash];
-        //     delete uDark.idk_cache[chunk_hash] // Now it has been used and will be put in cache as is, we can clean it.
-        //   return;
-        // }
-        // else{
-        //   console.log("Chunk not in cache",chunk_hash);
-        // }
-        
-        
-        
         let rules = [...options.unresolvableStylesheet.cssRules].map(r => r.cssText);
         let chunk_variables = rules.join("\n");
         chunk_variables = chunk_variables.unprotect_simple("--ud-ptd-");
@@ -3558,7 +3480,7 @@ const dark_object = {
         dark_object.misc.resolveIDKViaExec(details,options.chunk,chunk_variables,(result)=>{
           let data = result[0];
           if(data.resolved){
-            uDark.idk_cache[options.chunk_hash] = data.chunk;
+            uDark.idk_cache.set(options.str_key_cache, data.chunk);
             console.log("Resolving variables took",Date.now()/1-resolve_start_time,"ms including",data.attempts,"attempts of",data.cumuledWaitTime,"ms (cumuled intermediate wait time)");
             globalThis.browser.tabs.insertCSS(details.tabId, {
               code: data.chunk_variables,
