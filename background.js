@@ -44,7 +44,7 @@ const dark_object = {
         imageSrcInfoMarker:"_uDark",
         imageWorkerJsFile: "imageWorker.js",
         regex_search_for_url: /url\("(.+?)(?<!\\)("\))/g,
-        regex_search_for_url_raw: /url\(('.+?(?<!\\)'|(".+?(?<!\\)")|[^\)]*)\)/gsi,
+        regex_search_for_url_raw: /url\(('.+?(?<!\\)'|(".+?(?<!\\)")|[^\)'"]*)\)/gsi,
         background_match: /background|sprite|(?<![a-z])(bg|box|panel|fond|fundo|bck)(?![a-z])/i,
         logo_match: /nav|avatar|logo|icon|alert|notif|cart|menu|tooltip|dropdown|control/i,
         chunk_stylesheets_idk_only_cors: false,
@@ -859,7 +859,6 @@ const dark_object = {
           
           str = import_protection.str;
           str = str.protect_simple(uDark.shortHandRegex, "--ud-ptd-$1:", uDark.is_background);
-          console.log("Import protection applied", str);
           if (!cssStyleSheet) {
             cssStyleSheet = new CSSStyleSheet()
             let valueReplace = str + (verifyIntegrity ? "\n.integrity_rule{}" : "");
@@ -1340,7 +1339,6 @@ const dark_object = {
                 if(newMatch.startsWith("url(")){
                   g1=newMatch.slice(5,-2);
                 }
-                console.log("Used alternate property",match,newMatch,g1,transientCSSRule.cssText,cssStyle.cssText)
               }
 
 
@@ -1410,13 +1408,14 @@ const dark_object = {
           },
           ceilBrigthness: function(str) {
             // 9 nested vars or parentheis: if a parethesis is open we expect it to be closed.
+            let ceilBrightnessValue = 160;
             return str.replaceAll(/((?:rgb|hsl)a?\()(\((\((\((\((\((\((\((.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)|.)*?\)/g, (match, g1) => {
               let intermediate = match.slice(g1.length, -1);
               let inside = intermediate.split(/[,](?![^(]*\))/);
               if (inside.length >= 3) {
                 if (g1.startsWith("rgb")) {
                   for (let i = 0; i < 3; i++) {
-                    inside[i] = `min(${inside[i]},180)`
+                    inside[i] = `min(${inside[i]},${ceilBrightnessValue})`
                   }
                 } else if (g1.startsWith("hsl")) {
                   inside[2] = `min(${inside[2]},0.5)`
@@ -1434,6 +1433,7 @@ const dark_object = {
               // cssRule.style.p_ud_setProperty("background-blend-mode", "darken", "important");
               // return idk_value + " linear-gradient(rgba(168, 168, 168, 1),rgba(168, 168, 168, 1))"; 
             },
+            
             "background-image": (cssRule, idk_value) => {
               return uDark.ceilBrigthness(idk_value);
             },
@@ -1461,17 +1461,17 @@ const dark_object = {
             return value.replaceAll(regex, (match) => {
               let restored = uDark.restore_idk_vars(idk_mode, match);
               let maybe_array = uDark.eget_color(restored, false, cssRule, uDark.on_idk_missing_twice, true)
-              console.log("The maybe array:",maybe_array)
+              // console.log("The maybe array:",maybe_array)
               if (maybe_array.push) {
                 return transformation(...maybe_array, render);
               }
-              console.log("Fully failed to get '",key,"' from",maybe_array,cssRule,match);
+              // console.log("Fully failed to get '",key,"' from",maybe_array,cssRule,match);
               let unprotected_key = key.unprotect_simple("--ud-ptd-");
               if (uDark.idk_twice_actions[unprotected_key]) {
                 maybe_array = uDark.idk_twice_actions[unprotected_key](cssRule, restored);
               }
               
-              console.log("IDK twice result '",unprotected_key,"' from",maybe_array,cssRule,match);
+              // console.log("IDK twice result '",unprotected_key,"' from",maybe_array,cssRule,match);
               return maybe_array;
             });
           },
@@ -1746,6 +1746,9 @@ const dark_object = {
           }
         },
         "background-image": {
+          callBacks: [uDark.edit_css_urls]
+        },
+        "background": {
           callBacks: [uDark.edit_css_urls]
         },
         "--ud-ptd-background": {
