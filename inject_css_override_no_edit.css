@@ -22,6 +22,8 @@ iframe,embed,object,video {
 :root{
     color-scheme: dark!important; /*Force dark color scheme: 
     This is sensible to other elements being color-schemed in css, be we have a replace in background css editing for these cases.*/
+    --ud-failed-idktwice-ceilbrightness:160 /* When udark failed, idk mode failed we are in idktwice mode, and in this mode exists a function ceilBrightness
+    This functions aims at a last resort to make the color at least not too bright. This variable is the maximum value for the brightness of the color in this case.    */
 }
 
 

@@ -2,14 +2,33 @@ const dark_object = {
   
   all_levels: {
     install: function() {
-      { // Any level protected proptotypes for safe intenal use without ternaries or worries.
-        CSS2Properties.prototype.p_ud_setProperty = CSS2Properties.prototype.setProperty;
+      {
+
+        
+        let createInternalProperty = function(leType, atName,condition=true) {
+          // We can search in the code for unsafe looping use of the property, and replace it by the internal property with the regex [.](?<!(o|p)_ud_)innerHTML[\s+]*?[+]?= in VSCode
+          if(condition){
+       
+          console.log("Creating internal property for",leType,atName)
+         
+          var originalProperty = Object.getOwnPropertyDescriptor(leType.prototype, atName);
+          if (!originalProperty) {
+            console.error("No existing property for '", atName, "'", leType, leType.name, leType.prototype,condition)
+            return;
+          }
+   
+          Object.defineProperty(leType.prototype, "p_ud_" + atName, originalProperty);
+         }
+        };
+         // Any level protected proptotypes for safe intenal use without ternaries or worries.
+        globalThis.CSS2Properties.prototype.p_ud_setProperty = globalThis.CSS2Properties.prototype.setProperty;
         CSSStyleSheet.prototype.p_ud_replaceSync = CSSStyleSheet.prototype.replaceSync;
         CSSStyleSheet.prototype.p_ud_insertRule = CSSStyleSheet.prototype.insertRule;
-        Element.prototype.p_ud_innerHTML = Object.getOwnPropertyDescriptor(Element.prototype, "innerHTML");
-        ShadowRoot.prototype.p_ud_innerHTML = Object.getOwnPropertyDescriptor(ShadowRoot.prototype, "innerHTML");
-        HTMLStyleElement.prototype.p_ud_innerHTML = Object.getOwnPropertyDescriptor(ShadowRoot.prototype, "innerHTML");
-        CSS2Properties.prototype.p_ud_backgroundColor = Object.getOwnPropertyDescriptor(CSS2Properties.prototype, "backgroundColor");
+
+        createInternalProperty(Element, "innerHTML");
+        createInternalProperty(ShadowRoot, "innerHTML");
+        createInternalProperty(globalThis.CSS2Properties, "backgroundColor");
+        createInternalProperty(Navigator, "serviceWorker", navigator.serviceWorker!=undefined);
       } {
         // Very special functions
         String.prototype.hashCode = function(under = 100, over = 0) {
@@ -541,6 +560,7 @@ const dark_object = {
         },
         edit_styles_elements: function(parentElement, details, add_class = "ud-edited-background", options = {}) {
           parentElement.querySelectorAll(`style:not(.${add_class})`).forEach(astyle => {
+            console.log(astyle)
             astyle.p_ud_innerHTML = uDark.edit_str(astyle.innerHTML, false, false, details, false, options);
             // astyle.innerHTML='*{fill:red!important;}'
             // According to https://stackoverflow.com/questions/55895361/how-do-i-change-the-innerhtml-of-a-global-style-element-with-cssrule ,
@@ -772,11 +792,7 @@ const dark_object = {
           if (details.dataCount === 1) {
             
             // Stopped using inject_css_suggested, as it was causing issues with some websites, like react ones that stats with a minimal body
-            // const udStyle = document.createElement("style");
-            // udStyle.textContent = uDark.inject_css_suggested;
-            // udStyle.id = "ud-style";
-            // documentElement.head.prepend(udStyle);
-            // console.log(documentElement.head,documentElement.documentElement.outerHTML)
+            
             const udMetaDark = documentElement.querySelector("meta[name='color-scheme']") || document.createElement("meta");
             udMetaDark.id = "ud-meta-dark";
             udMetaDark.name = "color-scheme";
@@ -837,6 +853,8 @@ const dark_object = {
         matchAllCssCommentsRegex: /\/\*[^*]*\*+([^/*][^*]*\*+)*\/|\/\*[^*]*\*+([^/*][^*]*\*+)*|\/\*[^*]*(\*+[^/*][^*]*)*/g,
         edit_str: function(strO, cssStyleSheet, verifyIntegrity = false, details, idk_mode = false, options = {}) {
           
+
+
           let str = strO;
           
           if (strO.includes("/*!sc*/")) { // TODO: Fix thins in abetter way; this is a temporary and specific fix; 
@@ -1415,7 +1433,7 @@ const dark_object = {
               if (inside.length >= 3) {
                 if (g1.startsWith("rgb")) {
                   for (let i = 0; i < 3; i++) {
-                    inside[i] = `min(${inside[i]},${ceilBrightnessValue})`
+                    inside[i] = `min(${inside[i]},var(--ud-failed-idktwice-ceilbrightness))`
                   }
                 } else if (g1.startsWith("hsl")) {
                   inside[2] = `min(${inside[2]},0.5)`
@@ -1465,13 +1483,13 @@ const dark_object = {
               if (maybe_array.push) {
                 return transformation(...maybe_array, render);
               }
-              // console.log("Fully failed to get '",key,"' from",maybe_array,cssRule,match);
+              console.log("Fully failed to get '",key,"' from",maybe_array,cssRule,match);
               let unprotected_key = key.unprotect_simple("--ud-ptd-");
               if (uDark.idk_twice_actions[unprotected_key]) {
                 maybe_array = uDark.idk_twice_actions[unprotected_key](cssRule, restored);
               }
               
-              // console.log("IDK twice result '",unprotected_key,"' from",maybe_array,cssRule,match);
+              console.log("IDK twice result '",unprotected_key,"' from",maybe_array,cssRule,match);
               return maybe_array;
             });
           },
@@ -1899,7 +1917,7 @@ const dark_object = {
         })
         
         // Youtube uses this one
-        uDark.functionPrototypeEditor(CSSStyleDeclaration, CSSStyleDeclaration.prototype.p_ud_setProperty, (elem, args) => {
+        uDark.functionPrototypeEditor(CSSStyleDeclaration, CSSStyleDeclaration.prototype.setProperty, (elem, args) => {
           console.log("CSSStyleDeclaration setProperty", elem, args);
           return args
         })
@@ -2135,7 +2153,7 @@ const dark_object = {
         args[0] = subParts1_1
         args[1] = subParts1_2
         
-        elem.p_ud_setProperty(subParts2_1, subParts2_2, args[2]);
+        elem.o_ud_setProperty(subParts2_1, subParts2_2, args[2]);
         return args
       }, (elem, args) => args[0].startsWith("--"))
       
@@ -2270,7 +2288,7 @@ const dark_object = {
         Node.prototype.appendChild,
         Node.prototype.insertBefore
       ], (elem, args) => {
-        (args[0].textContent = uDark.edit_str(args[0].textContent));
+        (args[0].o_ud_textContent = uDark.edit_str(args[0].textContent));
         return args
       }, (elem, value) => elem instanceof HTMLStyleElement)
       
@@ -2434,9 +2452,15 @@ const dark_object = {
         globalThis.browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editOnHeadersImage);
         // globalThis.browser.webRequest.onCompleted.removeListener(dark_object.misc.clearCacheForRequest);
         // globalThis.browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.editBeforeServiceWorker);
+        /* Debugging purposes */
+        globalThis.browser.webRequest.onSendHeaders.removeListener(dark_object.misc.editBeforeRequestStyleSheetRequest);
+        /* End of debbuging */
+
         /*Experimental*/
         // browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editHeadersOnHeadersReceived);
-        /*end of Experimental*/
+        
+        /* End of Experimental*/
+     
         if (uDark.regiteredCS && uDark.regiteredCS.length) {
           while (uDark.regiteredCS.length) {
             uDark.regiteredCS.shift().unregister();
@@ -2462,6 +2486,30 @@ const dark_object = {
           },
           ["blocking", "responseHeaders"]);
           
+          /* Debugging purposes */
+          
+          if(!uDark.production)
+          {
+            globalThis.browser.webRequest.onSendHeaders.addListener(dark_object.misc.editBeforeRequestStyleSheetRequest, {
+              // urls: uDark.userSettings.properWhiteList, // We can't assume the css is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
+              urls: ["<all_urls>"],
+              types: ["stylesheet"]
+            },
+            ["requestHeaders"]);
+          }
+          
+          /* End of debbuging */
+
+
+          /*Experimental*/
+          globalThis.browser.webRequest.onSendHeaders.addListener(dark_object.misc.editBeforeRequestStyleSheetRequest, {
+            // urls: uDark.userSettings.properWhiteList, // We can't assume the css is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
+            urls: ["<all_urls>"],
+            types: ["stylesheet"]
+          },
+          ["requestHeaders"]);
+          /*end of Experimental*/
+
           // globalThis.browser.webRequest.onBeforeRequest.addListener(dark_object.misc.editBeforeServiceWorker, {
           //   // urls: uDark.userSettings.properWhiteList, // We can't assume the css is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
           //   // urls: ["*://*/*?udarkServiceWorkerIntercept=1"],
@@ -2474,7 +2522,6 @@ const dark_object = {
           //   // types: ["stylesheet"]
           // },
           // ["blocking"]);
-          /*Experimental*/
           // browser.webRequest.onHeadersReceived.addListener(dark_object.misc.editHeadersOnHeadersReceived, {
           //     // urls: uDark.userSettings.properWhiteList, // We can't assume the css is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
           //     urls: ["<all_urls>"],
@@ -2644,7 +2691,7 @@ const dark_object = {
                     value = uDark.hsla_val(0, 0, uDark.max_bright_bg * uDark.idk_minimum_editor, 1)
                   }
                   let priority = rule.style.getPropertyPriority(key);
-                  rule.style.p_ud_setProperty(key, value, priority);
+                  rule.style.setProperty(key, value, priority);
                   
                 }
                 
@@ -2715,30 +2762,6 @@ const dark_object = {
             svgDataURL: function(svg) {
               var svgAsXML = (new XMLSerializer).serializeToString(svg);
               return "data:image/svg+xml," + encodeURIComponent(svgAsXML);
-            },
-            get_image_base64: function(details) {
-              
-              return new Promise((resolve, reject) => {
-                
-                var canvas = document.createElement('canvas');
-                var myImage = new Image;
-                var normalresolve = x => {
-                  
-                  canvas.width = myImage.width;
-                  canvas.height = myImage.height;
-                  var context = canvas.getContext('2d');
-                  context.drawImage(myImage, 0, 0);
-                  resolve({
-                    redirectUrl: canvas.toDataURL()
-                  });
-                }
-                myImage.src = details.url;
-                myImage.onload = normalresolve;
-                myImage.onerror = x => {
-                  resolve({})
-                }
-                setTimeout(x => resolve({}), 1000);
-              });
             },
             magic_a_background(canvasContext, width, height) {
               let theImageData = canvasContext.getImageData(0, 0, width, height),
@@ -3214,7 +3237,7 @@ const dark_object = {
           let svgURLObject = new URL(details.url);
           { // Sometimes the website reencodes as html chars the data
             let HTMLDecoderOption = new Option();
-            HTMLDecoderOption.innerHTML = svgURLObject.hash;
+            HTMLDecoderOption.p_ud_innerHTML = svgURLObject.hash;
             svgURLObject.hash = HTMLDecoderOption.textContent;
           }
           let complementIndex = svgURLObject.hash.indexOf(uDark.imageSrcInfoMarker);
@@ -3298,7 +3321,17 @@ const dark_object = {
         return resultEdit;
         
       },
-      
+      editBeforeRequestStyleSheetRequest:function(details){
+        // DevTools does not bother to send the Origin header, for CORS requests, so we can't know if it's a devtools request
+        // We could go further by registering a ServiceWorker that adds a X-Real-Site-Request header via its fetch event.
+        let isCorsRequest=dark_object.misc.isCorsRequest(details);
+        let is_devToolsRequest =isCorsRequest && details.requestHeaders.find(x=>x.name.toLowerCase().trim()=="origin")==undefined;
+        if(is_devToolsRequest )
+        {
+          
+          console.log("Loading CSS from DEVTOOLS:",details.url,details) 
+        }
+      },
       editBeforeRequestStyleSheet: function(details) {
         let options = {};
         options.isCorsRequest = dark_object.misc.isCorsRequest(details);
@@ -3312,7 +3345,6 @@ const dark_object = {
           // console.log("If i'm lacking of knowledge, here is what i know about this request", details.tabId, details.frameId);
           return {}
         }
-        // console.log("Will darken", details.url, details.requestId, details.fromCache)
         
         let filter = globalThis.browser.webRequest.filterResponseData(details.requestId); // After this instruction, browser espect us to write data to the filter and close it
         
@@ -3321,6 +3353,8 @@ const dark_object = {
         while (n--) {
           details.headersLow[details.responseHeaders[n].name.toLowerCase()] = details.responseHeaders[n].value;
         }
+        console.log("Will darken", details.url, details.requestId, details.fromCache,details)
+
         details.charset = ((details.headersLow["content-type"] || "").match(/charset=([0-9A-Z-]+)/i) || ["", "utf-8"])[1]
         let decoder = new TextDecoder(details.charset)
         let encoder = new TextEncoder();
@@ -3421,17 +3455,20 @@ const dark_object = {
         }
         
         if (options.isCorsRequest && uDark.chunk_stylesheets_idk_only_cors) {
-          
           // console.log("Skipping chunk as it is not a CORS one", details.url)
           return;
-          
         }
+
+
         let chunk_hash = fMurmurHash3Hash(options.chunk); 
         
         if (chunk_hash in uDark.idk_cache) {
           // console.log("Skipping chunk as it is already in cache", details.url,details.requestId,details.dataCount)
           options.chunk = uDark.idk_cache[chunk_hash];
-          delete uDark.idk_cache[chunk_hash] // Now it has been used and will be put in cache as is, we can clean it.
+          // setTimeout(() => { // Using a timeout here to delay the cleaning becasue of the firefox bug that reloads all CSS when debugger is active, it seems to create a loop; so we keep it 5 s more. ( Will be supressed later)
+            
+            delete uDark.idk_cache[chunk_hash] // Now it has been used and will be put in cache as is, we can clean it.
+          // },50000)
           return;
         }
         else{
