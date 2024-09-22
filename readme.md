@@ -75,6 +75,7 @@ Bug reports help developers to find out about issues they may not have experienc
 - Search for the site name on the issue tracker to make sure it has not already been reported 
 - Disable other extensions that may be interfering with the layout of the site eg. content blockers before testing
 - Take screenshots of the behavior and specify what Browser, Release Channel, and Version you are on along with providing a link to the offending site 
+- Please do not post bug reports only affecting Android as it is unsupported and has been enabled in AMO for experimental testing purposes only (see wiki and closed issues for details) 
 
 # Backporting 
 
