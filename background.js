@@ -1366,7 +1366,7 @@ const dark_object = {
               
               let notableInfos = {
                 "uDark_cssClass": encodeURI(cssRule.selectorText),
-                "uDark_backgroundRepeat": cssStyle.backgroundRepeat,
+                "uDark_backgroundRepeat": cssStyle.getPropertyValue,
               };
               options.notableInfos = notableInfos;
               link = uDark.send_data_image_to_parser(link, false, options);
@@ -1768,7 +1768,7 @@ const dark_object = {
         "background": {
           callBacks: [uDark.edit_css_urls]
         },
-        "--ud-ptd-background": {
+        "--ud-ptd-background": { // There is something to fix with this one, it is not working as expected on https://www.dynu.com/
           variables:{ property: "--ud-ptd-background",regex:uDark.regex_search_for_url_raw,use_other_property:"background-image"},
           callBacks: [uDark.edit_css_urls]
         },
