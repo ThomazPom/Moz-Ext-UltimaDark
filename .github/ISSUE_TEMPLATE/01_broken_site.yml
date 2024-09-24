@@ -48,13 +48,13 @@ body:
       label: Provide console logs 
       options:
         - label: Go to about:debugging#/runtime/this-firefox
-          required: true
+          required: false
         - label: Click "Inspect" on UltimaDark
-          required: True
+          required: false
         - label: Clear the log and refresh the page that is broken
-          required: true
+          required: false
         - label: Copy the WHOLE output and insert it below
-          required: true
+          required: false
   - type: textarea
     id: log
     attributes:
@@ -78,7 +78,7 @@ body:
         <more lines>
       render: shell
     validations:
-      required: true
+      required: false
   - type: markdown
     attributes:
       value: |
