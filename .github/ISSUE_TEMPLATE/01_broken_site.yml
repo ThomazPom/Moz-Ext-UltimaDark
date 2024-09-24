@@ -17,7 +17,6 @@ body:
         Carefully read and work through this check list before submitting:
       options:
         - label: I am on a compatible (Desktop) browser that is up-to-date or explicitly listed as being compatible in the [README](https://github.com/ThomazPom/Moz-Ext-UltimaDark/blob/master/readme.md)
-          description: I am on a compatible (Desktop) browser that is up-to-date or explicitly listed as being compatible in the [README](https://github.com/ThomazPom/Moz-Ext-UltimaDark/blob/master/readme.md)
           required: true
         - label: I'm reporting that UltimaDark is broken in a novel way that deserves it's own issue meaning it should not be added to [#6](https://github.com/ThomazPom/Moz-Ext-UltimaDark/issues/6) [#7](https://github.com/ThomazPom/Moz-Ext-UltimaDark/issues/7) [#8](https://github.com/ThomazPom/Moz-Ext-UltimaDark/issues/8) or [#94](https://github.com/ThomazPom/Moz-Ext-UltimaDark/issues/94)  
           required: true
