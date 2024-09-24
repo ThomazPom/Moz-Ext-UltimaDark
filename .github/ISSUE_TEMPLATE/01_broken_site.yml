@@ -24,7 +24,7 @@ body:
           required: true
         - label: I verified that I am on the latest version
           required: true
-        - label: I verified that ImageEdition, Caching, Service Worker Compatibility and the extension itself are all enabled and that I loaded the site cleanly by closing the tab and opening the URL in a new tab or I flushed it completely with [Tab Suspender}(https://github.com/Hau-Hau/firefox-tab-suspender)
+        - label: I verified that ImageEdition, Caching, Service Worker Compatibility and the extension itself are all enabled and that I loaded the site cleanly by closing the tab and opening the URL in a new tab or I flushed it completely with [Tab Suspender](https://github.com/Hau-Hau/firefox-tab-suspender)
           required: true
         - label: I tried disabling caching and refreshing the page several times and it is still broken. 
           required: true
