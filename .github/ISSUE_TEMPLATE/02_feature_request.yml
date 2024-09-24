@@ -1,0 +1,12 @@
+name: Feature Request
+description: Request new features or enhancements to existing features here
+labels: enhancement
+body: 
+  - type: checkboxes
+    attributes:
+      label: DO NOT CREATE UNIQUE ISSUES FOR FEATURE REQUESTS
+      description: Submit feature reqeusts to [#19](https://github.com/ThomazPom/Moz-Ext-UltimaDark/issues/19)
+      options:
+        - label: I understand that I should not be creating individual issues for feature requests or submitting this template after reading it
+          required: true
+  
