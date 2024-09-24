@@ -382,7 +382,8 @@ const dark_object = {
           if (str.trim().toLowerCase().startsWith('data:') && !uDark.userSettings.disable_image_edition && !uDark.disable_data_image_edition) {
             let {b64,dataHeader,data,failure} = options.cut || uDark.decodeBase64DataURIifIsDataURI(str);
             let imageData = data;
-            options.changed = true;
+            options.changed = true; // We have changed the image, notify calle, like edit_css_url action
+            options.is_data_image=true;
             
             if (!failure && dataHeader.includes('svg')) // Synchronous edit for data SVGs images, we have some nice context and functions to work with
             { // This avoids loosing svg data including the size of the image, and the tags in the image
@@ -695,7 +696,7 @@ const dark_object = {
           if(!maybeBase64DataURI.startsWith("data:")){
             return {b64:false,dataHeader:false,data:maybeBase64DataURI};
           }
-          let commaIndex = maybeBase64DataURI.indexOf(","); // String.splt is broken: It limits the number of elems in returned array instead of limiting the number of splits
+          let commaIndex = maybeBase64DataURI.indexOf(","); // String.split is broken: It limits the number of elems in returned array instead of limiting the number of splits
           let [dataHeader, data] = [maybeBase64DataURI.substring(0, commaIndex+1).toLowerCase().trim(), maybeBase64DataURI.substring(commaIndex + 1)]
           if(!dataHeader.includes("base64")){
             return {b64:false,dataHeader,data}
@@ -843,7 +844,7 @@ const dark_object = {
         */
         exactAtRuleProtect: true,
         matchAllCssCommentsRegex: /\/\*[^*]*\*+([^/*][^*]*\*+)*\/|\/\*[^*]*\*+([^/*][^*]*\*+)*|\/\*[^*]*(\*+[^/*][^*]*)*/g,
-
+        
         edit_str_nochunk:function(strO)
         {
           if(strO.join){
@@ -851,7 +852,7 @@ const dark_object = {
           }
           return uDark.edit_str(strO, false, false, undefined, false, {nochunk:true});
         },
-
+        
         edit_str: function(strO, cssStyleSheet, verifyIntegrity = false, details, idk_mode = false, options = {}) {
           
           
@@ -908,6 +909,7 @@ const dark_object = {
             uDark.edit_css(cssStyleSheet, idk_mode, details, options);
             str = cssStyleSheet.cssRules[0].cssText.slice(4, -2);
           } else {
+            
             /* This does not exist anymore, as we are repairing import locations in the CSS with the import protection, integrity will allways be verifiable.
             // Exists the rare case where css only do imports, no rules with {} and integrity cant be verified because it does not close the import with a ";"
             let returnAsIs = (!cssStyleSheet.cssRules.length && !strO.includes("{")); // More reliable than checking if it starts with an a @ at it may starts with a comment 
@@ -921,6 +923,7 @@ const dark_object = {
             */
             
             if (verifyIntegrity) {
+              
               let last_rule = cssStyleSheet.cssRules[cssStyleSheet.cssRules.length - 1];
               let is_rejected = !last_rule || last_rule.selectorText != ".integrity_rule"; // It must ne an exact match to avoid reparations of broken CSS in the middle of a css identifier
               if (is_rejected) {
@@ -966,6 +969,7 @@ const dark_object = {
                 }
               }
             }
+            
             
             uDark.edit_css(cssStyleSheet, idk_mode, details, options);
             
@@ -1259,7 +1263,7 @@ const dark_object = {
               
               // // https://www.desmos.com/calculator/2prydrxwbf
               // l=Math.min(2*A*l,A+2*(B-A)*(l-0.5));
-              // Same; Use a ternary operator to avoid calc twice the vakue of l line in min for comparison
+              // Same; Use a ternary operator to avoid calc twice the value of l line in min for comparison
               l = (l < 0.5) ? (2 * A * l) : (A + 2 * (B - A) * (l - 0.5));
               
               // Old way to do it, but accuracy is not as good as the above one
@@ -1331,32 +1335,60 @@ const dark_object = {
               }
             })
           },
-          
+          addNocacheToStrLink(linkP1)
+          {
+              let linkP2="";
+              
+              let hashIndex=linkP1.indexOf("#");
+              if(hashIndex!=-1){
+                linkP2=linkP1.substring(hashIndex);
+                linkP1=linkP1.substring(0,hashIndex);
+              }
+              let paramsIndex=linkP1.indexOf("?");
+              if(paramsIndex!=-1){
+                linkP2=linkP1.substring(paramsIndex+1)+linkP2;
+                linkP1=linkP1.substring(0,paramsIndex+1);
+                return linkP1+"uDnCcK="+Math.random()+"&"+linkP2;
+              }
+              return linkP1+"?uDnCcK="+Math.random()+linkP2;
+              
+          },
           edit_css_urls: function(cssStyle, cssRule, details, topLevelRule, options, vars) {
             if (uDark.userSettings.disable_image_edition) {
               return;
             }
             vars = vars || {};
             vars.property = vars.property || "background-image";
-            let value = cssStyle.getPropertyValue(vars.property);
+            let oValue = cssStyle.getPropertyValue(vars.property);
+            let value = oValue;
+            
             // Its very neccessary to not edit property if they dont contain a url, as it changes a lot the CSS if there are shorthand properties involved : setting bacground image removes bacground property
             
             // Instead of registering the image as a background, we will encode the selector in the URL 
             // and register the image as a background image only when it is downloaded, in the filter script
-            
             options = {
               ...options,
               changed: false
             }; // Do not edit the options object, it is shared between all calls
             let used_regex= vars.regex||uDark.regex_search_for_url
             
+              
+            if( vars.use_other_property){
+              let transientCSSStylesheet=new CSSStyleSheet();
+              vars.transientCSSStylesheet=transientCSSStylesheet;
+              transientCSSStylesheet.p_ud_insertRule(["z{",cssStyle.cssText,"}"]);
+              transientCSSStylesheet.cssRules[0].style.p_ud_setProperty(vars.use_other_property, value);
+            }
+            let alSeenCSSImageUrls = details.transientCache.get("CSSImageUrls");
+            if(!alSeenCSSImageUrls){
+              alSeenCSSImageUrls=new Set();
+              details.transientCache.set("CSSImageUrls",alSeenCSSImageUrls);
+            }
             value = value.replace(used_regex, (match, g1) => {
               
               if(vars.use_other_property){
-                let transientCSSStylesheet=new CSSStyleSheet();
-                transientCSSStylesheet.p_ud_replaceSync(`z{${vars.use_other_property}:${match}}`);
-                let transientCSSRule=transientCSSStylesheet.cssRules[0];
-                let newMatch=transientCSSRule.style.getPropertyValue(vars.use_other_property);
+                vars.transientCSSStylesheet.cssRules[0].style.p_ud_setProperty(vars.use_other_property, match);
+                let newMatch=vars.transientCSSStylesheet.cssRules[0].style.getPropertyValue(vars.use_other_property);
                 if(newMatch.startsWith("url(")){
                   g1=newMatch.slice(5,-2);
                 }
@@ -1365,23 +1397,41 @@ const dark_object = {
               
               //changed = true;
               let link = g1.trim();
+
+
               
               options.changed = true;
               
               let notableInfos = {
                 "uDark_cssClass": encodeURI(cssRule.selectorText),
-                "uDark_backgroundRepeat": cssStyle.getPropertyValue,
+                "uDark_backgroundRepeat": cssStyle.getPropertyValue("background-repeat")||vars.originalBackgroundRepeat,
               };
               options.notableInfos = notableInfos;
               link = uDark.send_data_image_to_parser(link, false, options);
               if (!options.svgImage) {
+                let oLink=link;
+                if(!options.is_data_image && alSeenCSSImageUrls.has(link)){
+                   // On the same request (same details), the browser will not request the same image twice, and therefore use one it fetched without sending it to imageWorker.
+                  link=uDark.addNocacheToStrLink(link);
+                }
+                alSeenCSSImageUrls.add(oLink);
+                
                 let usedChar = (link.includes("#") ? "" : "#") + uDark.imageSrcInfoMarker
                 link += usedChar + new URLSearchParams(notableInfos).toString();
+
+                  
+
               }
+
+
+
               return 'url("' + link + '")';
             })
             
+            
             if (options.changed) {
+              
+              // console.log("edit_css_urls", value, cssRule, details, options, vars);
               cssStyle.p_ud_setProperty(vars.property, value);
             }
             
@@ -1709,7 +1759,13 @@ const dark_object = {
               
             },
             edit_css: function(cssStyleSheet, idk_mode, details, options = {}) {
-              
+              if(!details)
+              {
+                details={};
+              }
+              if(!details.transientCache){
+                details.transientCache=new Map();
+              }
               let unresolvableStylesheet = new CSSStyleSheet();
               
               options.cssStyleSheet = cssStyleSheet;
@@ -1776,7 +1832,7 @@ const dark_object = {
           callBacks: [uDark.edit_css_urls]
         },
         "--ud-ptd-background": { // There is something to fix with this one, it is not working as expected on https://www.dynu.com/
-          variables:{ property: "--ud-ptd-background",regex:uDark.regex_search_for_url_raw,use_other_property:"background-image"},
+          variables:{ property: "--ud-ptd-background",regex:uDark.regex_search_for_url_raw,use_other_property:"background-image",originalProperty:"background"},
           callBacks: [uDark.edit_css_urls]
         },
         
@@ -2370,7 +2426,7 @@ const dark_object = {
         });
       })
       // uDark.valuePrototypeEditor(CSSRule, "cssText", (elem, value) => uDark.edit_str(value)) // As far as I know, this is not affects to edit css text directly on CSSRule
-      uDark.valuePrototypeEditor(CSSStyleDeclaration, "cssText", (elem, value) => uDark.edit_str(value)) // However this one does ( on elements.style.cssText and on cssRules.style.cssText, it keeps the selector as is, but the css is edited: 'color: red')
+      uDark.valuePrototypeEditor(CSSStyleDeclaration, "cssText", (elem, value) => uDark.edit_str_nochunk(value)) // However this one does ( on elements.style.cssText and on cssRules.style.cssText, it keeps the selector as is, but the css is edited: 'color: red')
       
       { // Note the difference in wich arg is edited in following functions: we-cant-group-them !
         
@@ -2388,9 +2444,9 @@ const dark_object = {
       // });
       
       // W3C uses this one
-
-
-
+      
+      
+      
       uDark.valuePrototypeEditor(CSS2Properties, "backgroundColor", (elem, value) =>  uDark.edit_str_nochunk(["background-color:",value]).slice(18,-1)   )
       uDark.valuePrototypeEditor(CSS2Properties, "background-color", (elem, value) =>  uDark.edit_str_nochunk(["background-color:",value]).slice(18,-1)   )
       
@@ -2454,7 +2510,6 @@ const dark_object = {
         .replace(/(^<all_urls>|\\\*)/g, "(.*?)") // Allow wildcards
         .replace(/^(.*)$/g, "^$1$")).join("|") // User multi match)
         uDark.idk_cache = new Map();
-        uDark.resolvedIDKVars_action_timeout = 400; // edit_str from 2024 january was ok with 210 for both editing and messaging, 250 Should be enough for now
         uDark.fixedRandom = Math.random();
         
         globalThis.browser.webRequest.onSendHeaders.removeListener(dark_object.misc.setEligibleRequestBeforeData);
@@ -2638,9 +2693,19 @@ const dark_object = {
             
             console.log("Disconnected", disconnectedPort.sender.url, disconnectedPort.sender.contextId);
             if(portValue===disconnectedPort){ // If the port is the same, we can delete it, otherwise, we are on a late disconnection, the port is already replaced either by a new one or by one that will arrive soon
-              
               console.log("Deleting",portKey)
-              delete uDark.connected_cs_ports[portKey]
+              delete uDark.connected_cs_ports[portKey];
+              if(!uDark.idkCacheCrossTabs && uDark.idk_cache.has(disconnectedPort.sender.tab.id))
+                {
+                let tab_idk_cachekeys = uDark.idk_cache.get(disconnectedPort.sender.tab.id)
+                // This is an equilibrium : The main_frame load erases the port faster than the disconnection.
+                // If a non working case is found at some point, we would need to use the tab close event to delete the cache
+                console.log("Tab #",disconnectedPort.sender.tab.id,"had", tab_idk_cachekeys.size,"keys in cache","deleting them")
+                for(let key of tab_idk_cachekeys){
+                  uDark.idk_cache.delete(key)
+                }
+                uDark.idk_cache.delete(disconnectedPort.sender.tab.id)
+              }
             }
           });
           connectedPort.onMessage.addListener(uDark.handleMessageFromCS);
@@ -3339,19 +3404,20 @@ const dark_object = {
           console.log("Loading CSS from DEVTOOLS:",details.url,details) 
         }
       },
-      handleCSSChunk(data, isFinalChunk, details, filter) {
+      handleCSSChunk(data, verify, details, filter) {
         let str = details.rejectedValues;
-        if(data){ str += details.decoder.decode(data); }
+        if(data){ str += details.decoder.decode(data,{stream:true}); }
         
         
-        let options = { chunk:uDark.idk_cache.get(str),str_key_cache:str };
+        let options = { chunk:uDark.idk_cache.get(str) };
         
         if (options.chunk) {
           uDark.idk_cache.delete(str);
+          uDark.idk_cache.has(details.tabId) && uDark.idk_cache.get(details.tabId).delete(str);
         } else {
           // Edit string and handle rejected values
           let start=performance.now();
-          options.chunk = uDark.edit_str( str, false, !isFinalChunk, details, false, options);
+          options.chunk = uDark.edit_str( str, false, verify, details, false, options);
           let end=performance.now();
           let time=end-start;
           uDark.totalTime=uDark.totalTime||0;
@@ -3359,8 +3425,10 @@ const dark_object = {
           uDark.totalChunks=uDark.totalChunks||0;
           uDark.totalChunks++;
           uDark.avg_ms=uDark.totalTime/uDark.totalChunks;
+
+
           if (options.chunk.message) {
-            details.rejectedValues += str;  // Keep rejected values for later use
+            details.rejectedValues = str;  // Keep rejected values for later use
             return;
           } else {
             details.rejectedValues = "";
@@ -3368,8 +3436,9 @@ const dark_object = {
               details.rejectedValues = options.chunk.rejected;
               options.chunk = options.chunk.str;
             }
-            dark_object.misc.chunk_manage_idk_direct(details, options, filter);
           }
+          options.str_key_cache = str;
+          dark_object.misc.chunk_manage_idk_direct(details, options, filter);
         }
         filter.write(details.encoder.encode(options.chunk));
       },
@@ -3397,20 +3466,23 @@ const dark_object = {
         console.log("Will darken", details.url, details.requestId, details.fromCache,details)
         
         details.charset = ((details.headersLow["content-type"] || "").match(/charset=([0-9A-Z-]+)/i) || ["", "utf-8"])[1]
-        details.decoder=decoder = new TextDecoder(details.charset)
+        details.decoder = new TextDecoder(details.charset)
         details.encoder = new TextEncoder();
         details.dataCount = 0;
         details.rejectedValues = "";
-        // ondata event handler
+
+        
+
+        // // ondata event handler
         filter.ondata = event => {
           details.dataCount++;
-          dark_object.misc.handleCSSChunk(event.data, false, details, filter);
+          dark_object.misc.handleCSSChunk(event.data, true, details, filter);
         };
         
         // onstop event handler
         filter.onstop = event => {
           if (details.rejectedValues.length > 0) {
-            dark_object.misc.handleCSSChunk(null, true, details, filter);
+            dark_object.misc.handleCSSChunk(null, false, details, filter);
           }
           
           filter.disconnect();  // Ensure disconnection after completion
@@ -3471,13 +3543,22 @@ const dark_object = {
           }
           let rules = [...options.unresolvableStylesheet.cssRules].map(r => r.cssText);
           let chunk_variables = rules.join("\n");
-          chunk_variables = chunk_variables.unprotect_simple("--ud-ptd-");
+          // chunk_variables = chunk_variables.unprotect_simple("--ud-ptd-"); // They arrive as there were protected by edit_str, but the edit_str from the content script will unprotect them too
           
           let resolve_start_time=Date.now()/1;
           dark_object.misc.resolveIDKViaExec(details,options.chunk,chunk_variables,(result)=>{
             let data = result[0];
             if(data.resolved){
               uDark.idk_cache.set(options.str_key_cache, data.chunk);
+              // Allow for cleaning the cache on tab close:
+              if(!uDark.idkCacheCrossTabs)
+                {
+                if(!uDark.idk_cache.has(details.tabId)){
+                  uDark.idk_cache.set(details.tabId,new Set());
+                }
+                uDark.idk_cache.get(details.tabId).add(options.str_key_cache);
+              }
+              
               console.log("Resolving variables took",Date.now()/1-resolve_start_time,"ms including",data.attempts,"attempts of",data.cumuledWaitTime,"ms (cumuled intermediate wait time)");
               globalThis.browser.tabs.insertCSS(details.tabId, {
                 code: data.chunk_variables,
@@ -3592,7 +3673,7 @@ const dark_object = {
           let decoder = new TextDecoder(details.charset)
           let encoder = new TextEncoder();
           details.dataCount = 0;
-          details.writeEnd = "";
+          details.writeEnd = "";        
           
           filter.ondata = event => {
             details.dataCount++
