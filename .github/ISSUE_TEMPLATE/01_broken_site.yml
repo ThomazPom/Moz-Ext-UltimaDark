@@ -37,7 +37,7 @@ body:
   - type: textarea
     id: url
     attributes:
-      label: Site URL: 
+      label: Site URL
       placeholder: www.example.com
     validations:
       required: true
