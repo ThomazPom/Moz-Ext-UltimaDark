@@ -1,5 +1,5 @@
 name: Broken site Report 
-about: Report a site broken in a novel way with UltimaDark on a supported platform (Desktop) 
+description: Report a site broken in a novel way with UltimaDark on a supported platform (Desktop) 
 labels: [bug]
 body:
   - type: checkboxes
