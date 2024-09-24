@@ -1,0 +1,89 @@
+name: Broken site Report 
+about: Report a site broken in a novel way with UltimaDark on a supported platform (Desktop) 
+labels: [bug]
+body:
+  - type: checkboxes
+    attributes:
+      label: DO NOT REMOVE OR SKIP THE ISSUE TEMPLATE
+      description: Fill all fields 
+      options:
+        - label: I understand that I will be **blocked** if I *intentionally* remove or skip any mandatory\* field
+          required: true
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      description: |
+        Carefully read and work through this check list before submitting:
+      options:
+        - label: I am on a compatible (Desktop) browser that is up-to-date or explicitly listed as being compatible in the [README](https://github.com/ThomazPom/Moz-Ext-UltimaDark/blob/master/readme.md)
+          required: true
+        - label: I'm reporting that UltimaDark is broken **in a novel way that deserves it's own issue meaning it should not be added to #6 #7 #8 or #94** 
+          required: true
+        - label: This site is not listed in an existing issue or in #6 #7 #8 or #94
+          required: true
+        - label: I verified that I am on the latest version
+          required: true
+        - label: I verified that ImageEdition, Caching, Service Worker Compatibility and the extension itself are all enabled and that I loaded the site cleanly by closing the tab and opening the URL in a new tab or I flushed it completely with [Tab Suspender}(https://github.com/Hau-Hau/firefox-tab-suspender)
+          required: true
+        - label: I tried disabling caching and refreshing the page several times and it is still broken. 
+          required: true
+        - label: I confirmed that the target site is not on the excluded sites list or a Mozilla domain on Firefox's protected site listin about:config 
+          required: true
+        - label: I've searched [known issues](https://github.com/ThomazPom/Moz-Ext-UltimaDark/issues) for similar issues **including closed ones**. DO NOT post duplicates
+          required: true
+        - label: I've read the [README](https://github.com/ThomazPom/Moz-Ext-UltimaDark/blob/master/readme.md) and understand how and why to open an issue. 
+          required: true
+
+
+    id: description
+    attributes:
+      label: Provide a description of what about the site is broken and attach screenshots at the bottom
+      placeholder: Provide as much detail about the problem as you can and suggest solutions if you have one. 
+    validations:
+      required: true
+  - type: checkboxes
+    id: verbose
+    attributes:
+      label: Provide console logs 
+      options:
+        - label: Go to about:debugging#/runtime/this-firefox
+          required: true
+        - label: Click "Inspect" on UltimaDark
+          required: True
+        - label: Clear the log and refresh the page that is broken
+          required: true
+        - label: Copy the WHOLE output and insert it below
+          required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Complete Log
+      description: |
+        It should look something like this when there is an issue: 
+      placeholder: |
+        Loaded html example.com background.js:2620:15
+        Disconnected: example.com Checking
+        Set []
+        background.js:502:21
+        Unknown property ‘-moz-letter-spacing’. Declaration dropped. _generated_background_page.html:1:418
+        Unknown property ‘-moz-letter-spacing’. Declaration dropped. _generated_background_page.html:5:418
+        Unknown property ‘-moz-letter-spacing’. Declaration dropped. _generated_background_page.html:9:418
+        Unknown property ‘-moz-letter-spacing’. Declaration dropped. _generated_background_page.html:118:420
+        Unknown property ‘-moz-letter-spacing’. Declaration dropped. _generated_background_page.html:119:421
+        Unknown property ‘-moz-letter-spacing’. Declaration dropped. _generated_background_page.html:120:421
+        Unknown property ‘-moz-letter-spacing’. Declaration dropped. _generated_background_page.html:121:421
+        Unknown property ‘-moz-letter-spacing’. Declaration dropped. _generated_background_page.html:122:421
+        Unknown property ‘-moz-letter-spacing’. Declaration dropped. _generated_background_page.html:124:877
+        <more lines>
+      render: shell
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: |
+        > [!CAUTION]
+        > ### GitHub is experiencing a high volume of malicious spam comments.
+        > ### If you receive any replies asking you download a file, do NOT follow the download links!
+        >
+        > Note that this issue may be temporarily locked as an anti-spam measure after it is opened.
