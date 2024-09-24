@@ -34,7 +34,13 @@ body:
           required: true
         - label: I've read the [README](https://github.com/ThomazPom/Moz-Ext-UltimaDark/blob/master/readme.md) and understand how and why to open an issue. 
           required: true
-
+  - type: textarea
+    id: url
+    attributes:
+      label: Site URL: 
+      placeholder: www.example.com
+    validations:
+      required: true
   - type: textarea
     id: description
     attributes:
