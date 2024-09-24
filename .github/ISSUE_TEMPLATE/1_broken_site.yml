@@ -35,7 +35,7 @@ body:
         - label: I've read the [README](https://github.com/ThomazPom/Moz-Ext-UltimaDark/blob/master/readme.md) and understand how and why to open an issue. 
           required: true
 
-
+  - type: textarea
     id: description
     attributes:
       label: Provide a description of what about the site is broken and attach screenshots at the bottom
