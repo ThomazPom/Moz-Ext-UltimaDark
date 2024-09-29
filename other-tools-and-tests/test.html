@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tableau 255x255 avec Dégradé</title>
+  <style>
+    table {
+      border-collapse: collapse;
+      border: 1px solid black;
+    }
+
+    td {
+      border: 1px solid black;
+      width: 3px;
+      height: 3px;
+    }
+  </style>
+</head>
+<body>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // Créer un élément de tableau
+    var table = document.createElement('table');
+
+    // Boucle pour créer les lignes
+    for (var i = 0; i < 255; i++) {
+      var row = document.createElement('tr');
+
+      // Boucle pour créer les cellules dans chaque ligne
+      for (var j = 0; j < 255; j++) {
+        var cell = document.createElement('td');
+        
+        // Calculer une couleur du spectre complet en fonction de la position horizontale
+        var hue = (i + j) % 360;
+        cell.style.backgroundColor = 'hsl(' + hue + ', 100%, 50%)';
+
+        row.appendChild(cell);
+      }
+
+      // Ajouter la ligne au tableau
+      table.appendChild(row);
+    }
+
+    // Ajouter le tableau à la page
+    document.body.appendChild(table);
+  });
+</script>
+
+</body>
+</html>

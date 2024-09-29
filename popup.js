@@ -33,7 +33,7 @@ var updateexcludetext=function(){
     var urlobject=new URL(url) 
     
   var host_l2 = urlobject.hostname.split(".").slice(-precision_number.value).join(".")
-    document.querySelector("#donotdarken").innerHTML="Exclude "+ host_l2
+    document.querySelector("#donotdarken").textContent="Exclude "+ host_l2
     donotdarken.onclick=x=>{
       blacklist.value = [...blacklist.value.trim().split("\n"),
       "*://"+host_l2+"/*",

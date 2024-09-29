@@ -42,7 +42,7 @@ console.log("Image Service worker started")
 
 var uDark={
     background_match:/background|sprite|(?<![a-z])(bg|box|panel|fond|fundo|bck)(?![a-z])/i,
-    logo_match:  /nav|avatar|logo|icon|alert|notif|cart|menu|tooltip|dropdown|control/i,
+    logo_match: /nav|avatar|logo|icon|alert|notif|cart|menu|tooltip|dropdown|control/i,
     RGBToLightness: (r, g, b) => {
         return (Math.max(r, g, b) + Math.min(r, g, b)) / 2;
       },
