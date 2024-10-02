@@ -16,23 +16,23 @@ body:
       description: |
         Carefully read and work through this check list before submitting:
       options:
-        - label: I am on a compatible (Desktop) browser that is up-to-date or explicitly listed as being compatible in the [README](https://github.com/ThomazPom/Moz-Ext-UltimaDark/blob/master/readme.md)
+        - label: I am on a compatible (Desktop) browser that is up-to-date or explicitly listed as being compatible in the [README](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/blob/master/readme.md)
           required: true
-        - label: I'm reporting that UltimaDark is broken in a novel way that deserves it's own issue meaning it should not be added to [#6](https://github.com/ThomazPom/Moz-Ext-UltimaDark/issues/6) [#7](https://github.com/ThomazPom/Moz-Ext-UltimaDark/issues/7) [#8](https://github.com/ThomazPom/Moz-Ext-UltimaDark/issues/8) or [#94](https://github.com/ThomazPom/Moz-Ext-UltimaDark/issues/94)  
+        - label: I'm reporting that UltimaDark is broken in a novel way that deserves it's own issue meaning it should not be added to [#6](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/issues/6) [#7](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/issues/7) [#8](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/issues/8) or [#94](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/issues/94)  
           required: true
-        - label: This site is not listed in an existing issue or in [#6](https://github.com/ThomazPom/Moz-Ext-UltimaDark/issues/6) [#7](https://github.com/ThomazPom/Moz-Ext-UltimaDark/issues/7) [#8](https://github.com/ThomazPom/Moz-Ext-UltimaDark/issues/8) or [#94](https://github.com/ThomazPom/Moz-Ext-UltimaDark/issues/94)
+        - label: This site is not listed in an existing issue or in [#6](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/issues/6) [#7](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/issues/7) [#8](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/issues/8) or [#94](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/issues/94)
           required: true
         - label: I verified that I am on the latest version
           required: true
-        - label: I verified that ImageEdition, Caching, Service Worker Compatibility and the extension itself are all enabled and that I loaded the site cleanly by closing the tab and opening the URL in a new tab or I flushed it completely with [Tab Suspender](https://github.com/Hau-Hau/firefox-tab-suspender)
+        - label: I verified that ImageEdition, Caching, Service Worker Compatibility and the extension itself are all enabled and that I loaded the site cleanly by closing the tab and opening the URL in a new tab or I flushed it completely with [Tab Suspender](https://www.github.com/Hau-Hau/firefox-tab-suspender)
           required: true
         - label: I tried disabling caching and refreshing the page several times and it is still broken. 
           required: true
         - label: I confirmed that the target site is not on the excluded sites list or a Mozilla domain on Firefox's protected site listin about:config 
           required: true
-        - label: I've searched [known issues](https://github.com/ThomazPom/Moz-Ext-UltimaDark/issues) for similar issues **including closed ones**. DO NOT post duplicates
+        - label: I've searched [known issues](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/issues) for similar issues **including closed ones**. DO NOT post duplicates
           required: true
-        - label: I've read the [README](https://github.com/ThomazPom/Moz-Ext-UltimaDark/blob/master/readme.md) and understand how and why to open an issue. 
+        - label: I've read the [README](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/blob/master/readme.md) and understand how and why to open an issue. 
           required: true
   - type: textarea
     id: url
