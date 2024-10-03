@@ -2974,7 +2974,6 @@ const dark_object = {
               // 16. Return the final edited HTML
               const outerEdited = aDocument.documentElement.outerHTML;
               
-              console.log(outerEdited)
               return "<!doctype html>" + outerEdited;
             },
           }
