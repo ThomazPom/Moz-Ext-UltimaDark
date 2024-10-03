@@ -583,24 +583,24 @@ const dark_object = {
             value = "<body>" + value + "</body>";
           }
           
-          // 4. Replace <noscript> tags with <template> to bypass restrictions
-          // The issue isn't with <noscript> itself, but with any disallowed tag inside the <head>, including those within <noscript>. Many sites make this mistake.
-          // The allowed tags in the <head> are: <base>, <link>, <meta>, <style>, <title>, <script>, <noscript>, and <template>.
-          // The <noscript> tag has restricted child elements when placed in the <head>; it only allows <link>, <style>, and <meta>.
-          // The <template> tag, on the other hand, has no such restrictions and can contain any type of child elements, even in the <head>.
-          // The <script> tag is also somewhat unrestricted as it allows raw text content.
-          value = value.replaceAll(/<(\/)?noscript/g, "<$1template secnoscript");
+          // 2. The issue isn't with <noscript> itself, but with disallowed tags inside the <head>, including those nested within <noscript>. Many sites make this mistake.
+          // The tags allowed in the <head> are: <base>, <link>, <meta>, <style>, <title>, <script>, <noscript>, and <template>.
+          // When placed in the <head>, the <noscript> tag has strict limitations on what it can contain. It only allows <link>, <style>, and <meta> as child elements.
+          // In contrast, the <template> tag has no such restrictions. It can contain any type of elements, even when placed in the <head>.
+          // The <script> tag is also flexible, as it allows raw text content.
+          // The <style> tag is similarly unrestricted in terms of content, as it handles raw CSS text.
+          // I chose to use the <script> tag with `type="text/plain"` because, unlike <template>, it doesn't break the entire page if there's an unclosed tag inside it.
+          // If <template> contains an unclosed tag, the DOM parser won't find the closing </template> tag, causing the entire page to break.
+          // However, <noscript> and <script> tags are unaffected by this issue. That said, <noscript> can still be problematic in the <head> because its content may include disallowed elements.
           
+          value = value.replaceAll(/<noscript/g, "<script type='text/plain' secnoscript");
+          value = value.replaceAll(/<\/noscript/g, "</script");
+
           // 5. Parse the HTML string into a DOM document
           const aHtmlDocument = uDark.createDocumentFromHtml(value);
           const documentElement = aHtmlDocument.documentElement;
           
-          // 16. Restore <noscript> elements that were converted to <template>
-          uDark.restoreTemplateElements(documentElement);
-          
-          // 17. Remove the integrity attribute from elements and replace it with a custom attribute
-          uDark.restoreIntegrityAttributes(documentElement);
-          
+    
           // 6. Process meta tags to ensure proper charset handling
           uDark.processMetaTags(documentElement);
           
@@ -637,6 +637,13 @@ const dark_object = {
           // 15. Restore the original SVG elements that were temporarily replaced
           uDark.restoreSvgElements(svgElements);
           
+          // 16. Restore <noscript> elements that were converted to something else
+          // uDark.restoreTemplateElements(documentElement);
+          uDark.restoreNoscriptElements(documentElement);
+          
+          
+          // 17. Remove the integrity attribute from elements and replace it with a custom attribute
+          uDark.restoreIntegrityAttributes(documentElement);
           
           // 18. After all the edits, return the final HTML output
           
@@ -800,7 +807,20 @@ const dark_object = {
             tempReplace.replaceWith(svg);
           });
         },
-        
+        restoreNoscriptElements: function(aDocument) {
+          // Restore <noscript> elements that were converted to <script>
+          aDocument.querySelectorAll("script[secnoscript]").forEach(script => {
+            let noScript = document.createElement("noscript");
+            for (let node of script.attributes) {
+              noScript.setAttribute(node.name, node.value)
+            }
+            let template = aDocument.createElement('template');
+            template.innerHTML = script.innerHTML;
+            noScript.append(template.content); // We cant put innerHTML directly in a noscript element, it would be html encoded. The template element is used to avoid this, it parse elements for us.
+            script.replaceWith(noScript);
+
+          });
+        },
         restoreTemplateElements: function(aDocument) {
           // Restore <noscript> elements that were converted to <template>
           
@@ -2516,7 +2536,6 @@ const dark_object = {
         globalThis.browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editBeforeData);
         globalThis.browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editBeforeData);
         globalThis.browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editBeforeRequestStyleSheet_sync);
-        globalThis.browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editBeforeRequestStyleSheet);
         globalThis.browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.editBeforeRequestImage);
         globalThis.browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editOnHeadersImage);
         // globalThis.browser.webRequest.onCompleted.removeListener(dark_object.misc.clearCacheForRequest);
@@ -2900,13 +2919,19 @@ const dark_object = {
                 return str;
               }
               // 1 : Available slot
+
+              // 2. The issue isn't with <noscript> itself, but with disallowed tags inside the <head>, including those nested within <noscript>. Many sites make this mistake.
+              // The tags allowed in the <head> are: <base>, <link>, <meta>, <style>, <title>, <script>, <noscript>, and <template>.
+              // When placed in the <head>, the <noscript> tag has strict limitations on what it can contain. It only allows <link>, <style>, and <meta> as child elements.
+              // In contrast, the <template> tag has no such restrictions. It can contain any type of elements, even when placed in the <head>.
+              // The <script> tag is also flexible, as it allows raw text content.
+              // The <style> tag is similarly unrestricted in terms of content, as it handles raw CSS text.
+              // I chose to use the <script> tag with `type="text/plain"` because, unlike <template>, it doesn't break the entire page if there's an unclosed tag inside it.
+              // If <template> contains an unclosed tag, the DOM parser won't find the closing </template> tag, causing the entire page to break.
+              // However, <noscript> and <script> tags are unaffected by this issue. That said, <noscript> can still be problematic in the <head> because its content may include disallowed elements.
               
-              // 2. The issue isn't with <noscript> itself, but with any disallowed tag inside the <head>, including those within <noscript>. Many sites make this mistake.
-              // The allowed tags in the <head> are: <base>, <link>, <meta>, <style>, <title>, <script>, <noscript>, and <template>.
-              // The <noscript> tag has restricted child elements when placed in the <head>; it only allows <link>, <style>, and <meta>.
-              // The <template> tag, on the other hand, has no such restrictions and can contain any type of child elements, even in the <head>.
-              // The <script> tag is also somewhat unrestricted as it allows raw text content.
-              str = str.replaceAll(/<(\/)?noscript/g, "<$1template secnoscript");
+              str = str.replaceAll(/<noscript/g, "<script type='text/plain' secnoscript");
+              str = str.replaceAll(/<\/noscript/g, "</script");
               
               // 3. Parse the HTML string into a DOM document
               const aDocument = uDark.createDocumentFromHtml(str);
@@ -2939,8 +2964,9 @@ const dark_object = {
               // 13. Restore the original SVG elements that were temporarily replaced
               uDark.restoreSvgElements(svgElements);
               
-              // 14. Restore <noscript> elements that were converted to <template>
-              uDark.restoreTemplateElements(aDocument);
+              // 14. Restore <noscript> elements that were converted to something else
+              // uDark.restoreTemplateElements(aDocument);
+              uDark.restoreNoscriptElements(aDocument);
               
               // 15. Remove the integrity attribute from elements and replace it with a custom attribute
               uDark.restoreIntegrityAttributes(aDocument);
@@ -2948,7 +2974,7 @@ const dark_object = {
               // 16. Return the final edited HTML
               const outerEdited = aDocument.documentElement.outerHTML;
               
-              
+              console.log(outerEdited)
               return "<!doctype html>" + outerEdited;
             },
           }
@@ -3544,7 +3570,7 @@ const dark_object = {
     },
     chunk_manage_idk_direct(details,options,filter)
     {
-      console.log("Managing chunk",details.url,details.requestId,details.dataCount,options,filter)
+      // console.log("Managing chunk",details.url,details.requestId,details.dataCount,options,filter)
       if (!uDark.disable_remote_idk_css_edit && details.unresolvableChunks) {
         if (!options.unresolvableStylesheet.cssRules.length) {
           console.log("No unresolvable rules found for",details.url,"chunk",details.dataCount)
