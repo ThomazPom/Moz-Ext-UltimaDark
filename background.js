@@ -3592,20 +3592,28 @@ const dark_object = {
         let rules = [...options.unresolvableStylesheet.cssRules].map(r => r.cssText);
         let unResolvableRulesStr = rules.join("\n");
 
-        if(uDark.idk_cache.has(unResolvableRulesStr)){
-          options.chunk = uDark.idk_cache.get(unResolvableRulesStr);
-          uDark.idk_cache.delete(unResolvableRulesStr);
-          uDark.idk_cache.has(details.tabId) && uDark.idk_cache.get(details.tabId).delete(unResolvableRulesStr);
+        // Last chanche to have the unedited version of the chunk as a cache key
+        
+
+        if(uDark.idk_cache.has(options.chunk)){
+          console.log("Found cache for",details.url,"chunk",details.dataCount,options);
+          options.chunk = uDark.idk_cache.get(options.chunk);
+          uDark.idk_cache.delete(options.chunk);
+          uDark.idk_cache.has(details.tabId) && uDark.idk_cache.get(details.tabId).delete(options.chunk);
           return;
         }
-
-        // chunk_variables = chunk_variables.unprotect_simple("--ud-ptd-"); // They arrive as there were protected by edit_str, but the edit_str from the content script will unprotect them too
-      
+        else{
+          console.log("No cache found for",details.url,"chunk",details.dataCount,options);
+        }
+        let chunk_as_key = options.chunk;
+        let readable_variable_checker = `\n:root{--chunk_is_readable_${details.requestId}_${details.dataCount}:0.55;}`; 
+        options.chunk += readable_variable_checker; // We edit the chunk to add a variable that will be checked by the content script to know if the chunk is readable or not
+        
         let resolve_start_time=Date.now()/1;
         dark_object.misc.resolveIDKViaExec(details,options.chunk,unResolvableRulesStr,(result)=>{
           let data = result[0];
           if(data.resolved){
-            uDark.idk_cache.set(unResolvableRulesStr, data.chunk);
+            uDark.idk_cache.set(chunk_as_key, data.chunk);
             // Allow for cleaning the cache on tab close:
             if(!uDark.idkCacheCrossTabs)
               {
@@ -3613,7 +3621,7 @@ const dark_object = {
                 // console.log("Cache: Creating cache for tab",details.tabId);
                 uDark.idk_cache.set(details.tabId,new Set());
               }
-              uDark.idk_cache.get(details.tabId).add(unResolvableRulesStr);
+              uDark.idk_cache.get(details.tabId).add(chunk_as_key);
             }
             
             console.log("Cache:","Resolving variables took",Date.now()/1-resolve_start_time,"ms including",data.attempts,"attempts of",data.cumuledWaitTime,"ms (cumuled intermediate wait time)");
@@ -3631,9 +3639,7 @@ const dark_object = {
           
         }, 5)
         
-        let readable_variable_checker = `\n:root{--chunk_is_readable_${details.requestId}_${details.dataCount}:0.55;}`;
-        options.chunk += readable_variable_checker;
-        console.log("Cache","Resolving variables for",details.url,"chunk",details.dataCount,unResolvableRulesStr,unResolvableRulesStr.length);
+        console.log("Cache","Resolving variables for",details.url,"chunk",details.dataCount,options.chunk,options.chunk.length);
         dark_object.misc.smartClearCache(details,filter);
         
         
