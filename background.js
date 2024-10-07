@@ -639,7 +639,7 @@ const dark_object = {
           
           // 16. Restore <noscript> elements that were converted to something else
           // uDark.restoreTemplateElements(documentElement);
-          uDark.restoreNoscriptElements(documentElement);
+          uDark.restoreNoscriptElements(aHtmlDocument);
           
           
           // 17. Remove the integrity attribute from elements and replace it with a custom attribute
@@ -761,7 +761,11 @@ const dark_object = {
           
           
           documentElement.querySelectorAll("object[data],embed[src],iframe[src]").forEach(object => {
-            object.setAttribute(object.src?"src":"data", uDark.frontEditHTMLPossibleDataURL(object, object.src||object.data, details,options,documentElement));
+            // Use GetAttribute to get the original value, as the src attribute may be changed by the context
+            let src=object.getAttribute("src");
+            let usedData = src?src: object.getAttribute("data") ;
+
+            object.setAttribute(src?"src":"data", uDark.frontEditHTMLPossibleDataURL(object, usedData, details,options,documentElement));
           });
         },
         
@@ -814,6 +818,7 @@ const dark_object = {
             for (let node of script.attributes) {
               noScript.setAttribute(node.name, node.value)
             }
+            console.log(aDocument)
             let template = aDocument.createElement('template');
             template.innerHTML = script.innerHTML;
             noScript.append(template.content); // We cant put innerHTML directly in a noscript element, it would be html encoded. The template element is used to avoid this, it parse elements for us.
@@ -840,6 +845,7 @@ const dark_object = {
           aDocument.querySelectorAll("[integrity]").forEach(integrityElem => {
             integrityElem.setAttribute("data-no-integ", integrityElem.getAttribute("integrity"));
             integrityElem.removeAttribute("integrity");
+            integrityElem.setAttribute("onerror","uDark.linkIntegrityErrorEvent(this)"); // Fix for reloading the resource if it fails to load, happened on graphene.org 
           });
         },
         
@@ -2190,7 +2196,14 @@ const dark_object = {
           delete Navigator.prototype.serviceWorker;
         }
       }
+      uDark.linkIntegrityErrorEvent = function(elem,) {
+        // This fix is needed for some websites that use link integrity, i don't know why but sometime even removing the integrity earlier in the code does not work
+        console.log("UltimaDark", "Link integrity error", elem,  "lead to a reload of this script");
+        let href = elem.getAttribute("href");
+        href && elem.setAttribute("href",uDark.addNocacheToStrLink(href) );
+        elem.removeAttribute("onerror");
       
+      }
       if (uDark.direct_window_export) {
         document.wrappedJSObject = document;
         // Avoid infinite loops 
@@ -3446,12 +3459,9 @@ const dark_object = {
         if(data){ str += details.decoder.decode(data,{stream:true}); }
         
         
-        let options = { chunk:uDark.idk_cache.get(str) };
+        let options = {  };
         
-        if (options.chunk) {
-          uDark.idk_cache.delete(str);
-          uDark.idk_cache.has(details.tabId) && uDark.idk_cache.get(details.tabId).delete(str);
-        } else {
+          // console.log("No cache found for",str);
           // Edit string and handle rejected values
           let start=performance.now();
           options.chunk = uDark.edit_str( str, false, verify, details, false, options);
@@ -3474,9 +3484,8 @@ const dark_object = {
               options.chunk = options.chunk.str;
             }
           }
-          options.str_key_cache = str;
           dark_object.misc.chunk_manage_idk_direct(details, options, filter);
-        }
+        
         filter.write(details.encoder.encode(options.chunk));
       },
       
@@ -3581,24 +3590,33 @@ const dark_object = {
           return;
         }
         let rules = [...options.unresolvableStylesheet.cssRules].map(r => r.cssText);
-        let chunk_variables = rules.join("\n");
+        let unResolvableRulesStr = rules.join("\n");
+
+        if(uDark.idk_cache.has(unResolvableRulesStr)){
+          options.chunk = uDark.idk_cache.get(unResolvableRulesStr);
+          uDark.idk_cache.delete(unResolvableRulesStr);
+          uDark.idk_cache.has(details.tabId) && uDark.idk_cache.get(details.tabId).delete(unResolvableRulesStr);
+          return;
+        }
+
         // chunk_variables = chunk_variables.unprotect_simple("--ud-ptd-"); // They arrive as there were protected by edit_str, but the edit_str from the content script will unprotect them too
-        
+      
         let resolve_start_time=Date.now()/1;
-        dark_object.misc.resolveIDKViaExec(details,options.chunk,chunk_variables,(result)=>{
+        dark_object.misc.resolveIDKViaExec(details,options.chunk,unResolvableRulesStr,(result)=>{
           let data = result[0];
           if(data.resolved){
-            uDark.idk_cache.set(options.str_key_cache, data.chunk);
+            uDark.idk_cache.set(unResolvableRulesStr, data.chunk);
             // Allow for cleaning the cache on tab close:
             if(!uDark.idkCacheCrossTabs)
               {
               if(!uDark.idk_cache.has(details.tabId)){
+                // console.log("Cache: Creating cache for tab",details.tabId);
                 uDark.idk_cache.set(details.tabId,new Set());
               }
-              uDark.idk_cache.get(details.tabId).add(options.str_key_cache);
+              uDark.idk_cache.get(details.tabId).add(unResolvableRulesStr);
             }
             
-            console.log("Resolving variables took",Date.now()/1-resolve_start_time,"ms including",data.attempts,"attempts of",data.cumuledWaitTime,"ms (cumuled intermediate wait time)");
+            console.log("Cache:","Resolving variables took",Date.now()/1-resolve_start_time,"ms including",data.attempts,"attempts of",data.cumuledWaitTime,"ms (cumuled intermediate wait time)");
             globalThis.browser.tabs.insertCSS(details.tabId, {
               code: data.chunk_variables,
               frameId:details.frameId,
@@ -3615,11 +3633,14 @@ const dark_object = {
         
         let readable_variable_checker = `\n:root{--chunk_is_readable_${details.requestId}_${details.dataCount}:0.55;}`;
         options.chunk += readable_variable_checker;
-        
+        console.log("Cache","Resolving variables for",details.url,"chunk",details.dataCount,unResolvableRulesStr,unResolvableRulesStr.length);
         dark_object.misc.smartClearCache(details,filter);
         
         
         
+      }
+      else{
+        // console.log("Cache","No unresolvable rules found for",details.url,"chunk",details.dataCount)
       }
     },
     
