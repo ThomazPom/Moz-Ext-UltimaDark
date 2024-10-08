@@ -3571,12 +3571,8 @@ const dark_object = {
         // I don't feel to store the document filter that loaded them all, since it would be a lot of work for a very small gain
         // I could store the last filter to removeEventListeners, in the idk_cache object, but it would be a lot of work for a very small gain
         details.rejectCache = true;
-        console.log("Setting: Rejecting cache for",details.url,details.doc_hostname,details.type,details.requestId,Date.now()/1); // Works only with doc_hostname, not hostname
+        console.log("Setting: Rejecting cache for",details.url,details.doc_hostname,details.type,details.requestId,Date.now()/1); // Works only with doc_hostname, not hostname, but i 've seen cases where it was metter working with both or even with all domains
 
-        clearTimeout(details.clearCacheTimeout);
-        details.clearCacheHostnames = details.clearCacheHostnames || new Set();
-        details.clearCacheHostnames.add(details.doc_hostname);
-        details.clearCacheTimeout = setTimeout(() => {}, 0);
 
         filter.addEventListener("stop", event => {
           setTimeout(() => {
