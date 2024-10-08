@@ -2079,6 +2079,7 @@ const dark_object = {
         
       }
       globalThis.browser.storage.local.get(null, function(res) {
+        // dark_object.both.appCompat(res); // Edited earlier while local.set was used.
         window.uDark.userSettings = res;
         if (uDark.direct_window_export) {
           window.wrappedJSObject.uDark.userSettings = cloneInto(res, window); // Using eval here has no gain, on browserbench.org it has equal performance
@@ -2183,7 +2184,7 @@ const dark_object = {
         // console.log("UltimaDark", "Local storage is not available", e,document.location.href);
       }
       
-      let start = new Date() / 1;
+      let start = performance.now();
       
       console.log("UltimaDark", "Content script override website", window);
       
@@ -2493,7 +2494,7 @@ const dark_object = {
         return uDark.edit_str(value)
       }, (elem, value) => value && (elem instanceof HTMLStyleElement)) // No innerText for SVGStyleElement, it's an HTMLElement feature
       
-      console.info("UltimaDark", "Websites overrides ready", window, "elapsed:", (new Date() / 1) - start);
+      console.info("UltimaDark", "Websites overrides ready", window, "elapsed:", performance.now() - start);
       
     },
   },
@@ -2534,8 +2535,9 @@ const dark_object = {
       globalThis.browser.contentScripts.register(contentScript).then(x=>uDark.regiteredCS.push(x));
       
     },
-    setListener: function() {
+    setListener: function(initial) {
       globalThis.browser.storage.local.get(null, function(res) {
+        initial && dark_object.both.appCompat(res);
         uDark.userSettings = res;
         uDark.userSettings.properWhiteList = (res.white_list || dark_object.background.defaultRegexes.white_list).split("\n").filter(dark_object.background.filterContentScript)
         uDark.userSettings.properBlackList = (res.black_list || dark_object.background.defaultRegexes.black_list).split("\n").filter(dark_object.background.filterContentScript)
@@ -2765,6 +2767,8 @@ const dark_object = {
           connectedPort.onMessage.addListener(function(m) {
             
             if (m.updateSettings) {
+              
+              dark_object.both.appCompat(m.updateSettings);
               globalThis.browser.storage.local.set(m.updateSettings, dark_object.background.setListener);
             }
           });
@@ -3037,11 +3041,20 @@ const dark_object = {
               inject_css_override: uDark
             }
           })
-        ]).then(x => console.info("CSS processed")).then(dark_object.background.setListener)
+        ]).then(x => console.info("CSS processed")).then(r=>dark_object.background.setListener(true));
         
       }
     },
     both: {
+        
+      appCompat: function(res) {
+        
+        if(uDark.browserInfo.version<105&&uDark.browserInfo.name=="Firefox"){
+          res.disable_image_edition=true;
+          console.warn("UltimaDark", "Image edition is disabled on Firefox versions below 105, as it is not supported");
+          globalThis.browser.storage.local.set(res);
+        }
+      },
       install: function() {
         
         /*EXPERIMENTAL*/
@@ -3503,6 +3516,7 @@ const dark_object = {
         // console.log("If i'm lacking of knowledge, here is what i know about this request", details.tabId, details.frameId);
         return {}
       }
+     
       
       let filter = globalThis.browser.webRequest.filterResponseData(details.requestId); // After this instruction, browser espect us to write data to the filter and close it
       
@@ -3512,7 +3526,7 @@ const dark_object = {
         details.headersLow[details.responseHeaders[n].name.toLowerCase()] = details.responseHeaders[n].value;
       }
       console.log("Will darken", details.url, details.requestId, details.fromCache,details)
-      
+     
       details.charset = ((details.headersLow["content-type"] || "").match(/charset=([0-9A-Z-]+)/i) || ["", "utf-8"])[1]
       details.decoder = new TextDecoder(details.charset)
       details.encoder = new TextEncoder();
@@ -3558,9 +3572,15 @@ const dark_object = {
         // I could store the last filter to removeEventListeners, in the idk_cache object, but it would be a lot of work for a very small gain
         details.rejectCache = true;
         console.log("Setting: Rejecting cache for",details.url,details.doc_hostname,details.type,details.requestId,Date.now()/1); // Works only with doc_hostname, not hostname
+
+        clearTimeout(details.clearCacheTimeout);
+        details.clearCacheHostnames = details.clearCacheHostnames || new Set();
+        details.clearCacheHostnames.add(details.doc_hostname);
+        details.clearCacheTimeout = setTimeout(() => {}, 0);
+
         filter.addEventListener("stop", event => {
           setTimeout(() => {
-            dark_object.misc.clearCacheForRequest(details,[details.doc_hostname]);
+            dark_object.misc.clearCacheForRequest(details,[details.doc_hostname,details.hostname]);
           },1000); // Must wait the request is finished, otherwise it will not be uncached. 100,300 were too short. 
           // I moved here the call and the timeout, to avoid triggering the code and the timeout on all requests, even those that are not eligible for uDark
           // Plus it had no perceptible gain to use clearCacheForRequest as a webFilter since it managed many times to exec later than the present code...
@@ -3593,23 +3613,22 @@ const dark_object = {
         let unResolvableRulesStr = rules.join("\n");
 
         // Last chanche to have the unedited version of the chunk as a cache key
-        
+        let chunk_as_key = options.chunk+""; // We need to clone the string, otherwise it will be edited by the next line
 
-        if(uDark.idk_cache.has(options.chunk)){
-          console.log("Found cache for",details.url,"chunk",details.dataCount,options);
-          options.chunk = uDark.idk_cache.get(options.chunk);
-          uDark.idk_cache.delete(options.chunk);
-          uDark.idk_cache.has(details.tabId) && uDark.idk_cache.get(details.tabId).delete(options.chunk);
+        if(uDark.idk_cache.has(chunk_as_key)){
+          console.log("Found cache for",details.url,"chunk",details.dataCount,chunk_as_key,details);
+          options.chunk = uDark.idk_cache.get(chunk_as_key);
+          uDark.idk_cache.delete(chunk_as_key);
+          uDark.idk_cache.has(details.tabId) && uDark.idk_cache.get(details.tabId).delete(chunk_as_key);
           return;
         }
         else{
           console.log("No cache found for",details.url,"chunk",details.dataCount,options);
         }
-        let chunk_as_key = options.chunk;
         let readable_variable_checker = `\n:root{--chunk_is_readable_${details.requestId}_${details.dataCount}:0.55;}`; 
         options.chunk += readable_variable_checker; // We edit the chunk to add a variable that will be checked by the content script to know if the chunk is readable or not
         
-        let resolve_start_time=Date.now()/1;
+        let resolve_start_time=performance.now();
         dark_object.misc.resolveIDKViaExec(details,options.chunk,unResolvableRulesStr,(result)=>{
           let data = result[0];
           if(data.resolved){
@@ -3624,7 +3643,7 @@ const dark_object = {
               uDark.idk_cache.get(details.tabId).add(chunk_as_key);
             }
             
-            console.log("Cache:","Resolving variables took",Date.now()/1-resolve_start_time,"ms including",data.attempts,"attempts of",data.cumuledWaitTime,"ms (cumuled intermediate wait time)");
+            console.log("Cache:","Resolving variables took",performance.now()-resolve_start_time,"ms including",data.attempts,"attempts of",data.cumuledWaitTime,"ms (cumuled intermediate wait time)");
             globalThis.browser.tabs.insertCSS(details.tabId, {
               code: data.chunk_variables,
               frameId:details.frameId,
@@ -3653,12 +3672,14 @@ const dark_object = {
     
     clearCacheForRequest: function(details,hostnames) {
       // console.log("Removing cache for", details.url);
+      let since= Date.now() - details.timeStamp;
+      since += 0 // Be sure to cover the time between the request and the cache, there was a bug when using the exact timeStamp, probably "since" takes strictly what happened after the timeStamp. Offsetting by 100ms is a good way to avoid this bug 
       globalThis.browser.browsingData.removeCache({
-        since: (Date.now() - details.timeStamp),
-        hostnames: hostnames
+        since: since,
+        // hostnames: hostnames // This is not working well, and it was a bonus, it is sometimes not removing the cache, occuring white flashes, so we will remove all cache since., and then i get proper cache for the next request
       })
       .then(x => {
-        console.info(`Browser last`, Date.now() - details.timeStamp, `ms cache of`, hostnames.join(" & "), ` flushed for request`, details.requestId)
+        console.info(`Browser last`, since, `ms cache of`, hostnames, `flushed for request`, details.requestId)
         
       }, error => console.error(`Error: ${error}`));
       
