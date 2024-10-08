@@ -378,7 +378,7 @@ const dark_object = {
         },
         send_data_image_to_parser: function(str, details, options) {
           
-          // uDark..disable_data_image_edition=true;
+          // uDark.disable_data_image_edition=true;
           if (str.trim().toLowerCase().startsWith('data:') && !uDark.userSettings.disable_image_edition && !uDark.disable_data_image_edition) {
             let {b64,dataHeader,data,failure} = options.cut || uDark.decodeBase64DataURIifIsDataURI(str);
             let imageData = data;
@@ -443,7 +443,6 @@ const dark_object = {
               
               str=encoded;
             } else {
-              
               str = "https://data-image?base64IMG=" + str; // Sending other images to the parser via the worker,
               if (options.image) {
                 options.image.removeAttribute("crossorigin"); // data images are not CORS with this domain, so we remove the attribute to avoid CORS errors
@@ -595,12 +594,12 @@ const dark_object = {
           
           value = value.replaceAll(/<noscript/g, "<script type='text/plain' secnoscript");
           value = value.replaceAll(/<\/noscript/g, "</script");
-
+          
           // 5. Parse the HTML string into a DOM document
           const aHtmlDocument = uDark.createDocumentFromHtml(value);
           const documentElement = aHtmlDocument.documentElement;
           
-    
+          
           // 6. Process meta tags to ensure proper charset handling
           uDark.processMetaTags(documentElement);
           
@@ -764,7 +763,7 @@ const dark_object = {
             // Use GetAttribute to get the original value, as the src attribute may be changed by the context
             let src=object.getAttribute("src");
             let usedData = src?src: object.getAttribute("data") ;
-
+            
             object.setAttribute(src?"src":"data", uDark.frontEditHTMLPossibleDataURL(object, usedData, details,options,documentElement));
           });
         },
@@ -823,7 +822,7 @@ const dark_object = {
             template.innerHTML = script.innerHTML;
             noScript.append(template.content); // We cant put innerHTML directly in a noscript element, it would be html encoded. The template element is used to avoid this, it parse elements for us.
             script.replaceWith(noScript);
-
+            
           });
         },
         restoreTemplateElements: function(aDocument) {
@@ -2063,7 +2062,8 @@ const dark_object = {
         ...uDark,
         ...{
           is_content_script: true,
-          website_context: true
+          website_context: true,
+          userSettings : window.userSettings
         }
       }
       if (uDark.direct_window_export) {
@@ -2078,15 +2078,23 @@ const dark_object = {
         });
         
       }
-      globalThis.browser.storage.local.get(null, function(res) {
-        // dark_object.both.appCompat(res); // Edited earlier while local.set was used.
-        window.uDark.userSettings = res;
-        if (uDark.direct_window_export) {
-          window.wrappedJSObject.uDark.userSettings = cloneInto(res, window); // Using eval here has no gain, on browserbench.org it has equal performance
-          window.wrappedJSObject.userSettingsReadyAction();
-        }
-        
-      });
+      window.wrappedJSObject.uDark.userSettings = cloneInto({  // Preserve user privacy by not exporting sensible settings to the page
+        disable_cache: window.userSettings.disable_cache,
+        keep_service_workers:window.userSettings.keep_service_workers,
+        disable_image_edition: window.userSettings.disable_image_edition,
+      }, window);
+      window.wrappedJSObject.userSettingsReadyAction()
+      // Using eval here has no gain, on browserbench.org it has equal performance
+      // globalThis.browser.storage.local.get(null, function(res) {
+      //   // dark_object.both.appCompat(res); // Edited earlier while local.set was used.
+      //   window.uDark.userSettings = res;
+      //   if (uDark.direct_window_export) {
+      //     window.wrappedJSObject.uDark.userSettings = cloneInto(res, window); // Using eval here has no gain, on browserbench.org it has equal performance
+      //     
+      //   }
+      
+      
+      // });
       // NOTE: DROPS SIGNIFICANTLY THE PERFORMANCE, prefer use eval
       if (uDark.exportUlimaDarkToForeground) { // Under test but not usefull anymore
         
@@ -2189,6 +2197,7 @@ const dark_object = {
       console.log("UltimaDark", "Content script override website", window);
       
       window.userSettingsReadyAction = function() {
+        console.log(new Error(),JSON.stringify(uDark.userSettings));
         if (!uDark.userSettings.keep_service_workers && window.navigator.serviceWorker) {
           if (uDark.localStorageAvailable) {
             // Insecure operations have in common a non available localStorage
@@ -2203,7 +2212,7 @@ const dark_object = {
         let href = elem.getAttribute("href");
         href && elem.setAttribute("href",uDark.addNocacheToStrLink(href) );
         elem.removeAttribute("onerror");
-      
+        
       }
       if (uDark.direct_window_export) {
         document.wrappedJSObject = document;
@@ -2684,12 +2693,20 @@ const dark_object = {
           
           let contentScript = {
             js: [
-              // {  file: "content_script.js"    },
-              {         file: "background.js"},
+              // {  file: "content_script.js"    }
+              {
+                code: `window.userSettings = ${JSON.stringify(uDark.userSettings)};`
+              }
+              ,
+              {  
+                file: "background.js",
+              },
               // {       file: "MurmurHash3.js"           }
             ], // Forced overrides
             css: [{     code: uDark.inject_css_override     }], // Forced overrides
           };
+          
+          dark_object.background.registerCS({css: [{code: uDark.inject_css_override_top_only}],allFrames:false }); 
           dark_object.background.registerCS(contentScript);
           dark_object.background.registerCS({css: [{code: uDark.inject_css_override_top_only}],allFrames:false }); // Register a default content script, to be able to edit the page before the other one is loaded
           
@@ -2936,7 +2953,7 @@ const dark_object = {
                 return str;
               }
               // 1 : Available slot
-
+              
               // 2. The issue isn't with <noscript> itself, but with disallowed tags inside the <head>, including those nested within <noscript>. Many sites make this mistake.
               // The tags allowed in the <head> are: <base>, <link>, <meta>, <style>, <title>, <script>, <noscript>, and <template>.
               // When placed in the <head>, the <noscript> tag has strict limitations on what it can contain. It only allows <link>, <style>, and <meta> as child elements.
@@ -3046,7 +3063,7 @@ const dark_object = {
       }
     },
     both: {
-        
+      
       appCompat: function(res) {
         
         if(uDark.browserInfo.version<105&&uDark.browserInfo.name=="Firefox"){
@@ -3474,320 +3491,320 @@ const dark_object = {
         
         let options = {  };
         
-          // console.log("No cache found for",str);
-          // Edit string and handle rejected values
-          let start=performance.now();
-          options.chunk = uDark.edit_str( str, false, verify, details, false, options);
-          let end=performance.now();
-          let time=end-start;
-          uDark.totalTime=uDark.totalTime||0;
-          uDark.totalTime+=time;  
-          uDark.totalChunks=uDark.totalChunks||0;
-          uDark.totalChunks++;
-          uDark.avg_ms=uDark.totalTime/uDark.totalChunks;
-          
-          
-          if (options.chunk.message) {
-            details.rejectedValues = str;  // Keep rejected values for later use
-            return;
-          } else {
-            details.rejectedValues = "";
-            if (options.chunk.rejected) {
-              details.rejectedValues = options.chunk.rejected;
-              options.chunk = options.chunk.str;
-            }
+        // console.log("No cache found for",str);
+        // Edit string and handle rejected values
+        let start=performance.now();
+        options.chunk = uDark.edit_str( str, false, verify, details, false, options);
+        let end=performance.now();
+        let time=end-start;
+        uDark.totalTime=uDark.totalTime||0;
+        uDark.totalTime+=time;  
+        uDark.totalChunks=uDark.totalChunks||0;
+        uDark.totalChunks++;
+        uDark.avg_ms=uDark.totalTime/uDark.totalChunks;
+        
+        
+        if (options.chunk.message) {
+          details.rejectedValues = str;  // Keep rejected values for later use
+          return;
+        } else {
+          details.rejectedValues = "";
+          if (options.chunk.rejected) {
+            details.rejectedValues = options.chunk.rejected;
+            options.chunk = options.chunk.str;
           }
-          dark_object.misc.chunk_manage_idk_direct(details, options, filter);
+        }
+        dark_object.misc.chunk_manage_idk_direct(details, options, filter);
         
         filter.write(details.encoder.encode(options.chunk));
       },
       
-
-    editBeforeRequestStyleSheet_sync: function(details) {
-      let options = {};
-      options.isCorsRequest = dark_object.misc.isCorsRequest(details);
       
-      // console.log("Loading CSS", details.url, details.requestId, details.fromCache)
-      
-      // Util 2024 jan 02 we were checking details.documentUrl, or details.url to know if a stylesheet was loaded in a excluded page
-      // Since only CS ports that matches blaclist and whitelist are connected, we can simply check if this resource has a corresponding CS port
-      if (!uDark.getPort(details)) {
-        // console.log("CSS", "No port found for", details.url, "loaded by webpage:", details.originUrl, "Assuming it is not an eligible webpage, or even blocked by another extension");
-        // console.log("If i'm lacking of knowledge, here is what i know about this request", details.tabId, details.frameId);
-        return {}
-      }
-     
-      
-      let filter = globalThis.browser.webRequest.filterResponseData(details.requestId); // After this instruction, browser espect us to write data to the filter and close it
-      
-      let n = details.responseHeaders.length;
-      details.headersLow = {}
-      while (n--) {
-        details.headersLow[details.responseHeaders[n].name.toLowerCase()] = details.responseHeaders[n].value;
-      }
-      console.log("Will darken", details.url, details.requestId, details.fromCache,details)
-     
-      details.charset = ((details.headersLow["content-type"] || "").match(/charset=([0-9A-Z-]+)/i) || ["", "utf-8"])[1]
-      details.decoder = new TextDecoder(details.charset)
-      details.encoder = new TextEncoder();
-      details.dataCount = 0;
-      details.rejectedValues = "";
-      
-      
-      
-      // // ondata event handler
-      filter.ondata = event => {
-        details.dataCount++;
-        dark_object.misc.handleCSSChunk_sync(event.data, true, details, filter);
-      };
-      
-      // onstop event handler
-      filter.onstop = event => {
-        if (details.rejectedValues.length > 0) {
-           dark_object.misc.handleCSSChunk_sync(null, false, details, filter);
+      editBeforeRequestStyleSheet_sync: function(details) {
+        let options = {};
+        options.isCorsRequest = dark_object.misc.isCorsRequest(details);
+        
+        // console.log("Loading CSS", details.url, details.requestId, details.fromCache)
+        
+        // Util 2024 jan 02 we were checking details.documentUrl, or details.url to know if a stylesheet was loaded in a excluded page
+        // Since only CS ports that matches blaclist and whitelist are connected, we can simply check if this resource has a corresponding CS port
+        if (!uDark.getPort(details)) {
+          // console.log("CSS", "No port found for", details.url, "loaded by webpage:", details.originUrl, "Assuming it is not an eligible webpage, or even blocked by another extension");
+          // console.log("If i'm lacking of knowledge, here is what i know about this request", details.tabId, details.frameId);
+          return {}
         }
-        filter.disconnect();  // Ensure disconnection after completion
-      };
-      // return {redirectUrl:details.url};
-      // return {responseHeaders:[{name:"Vary",value:"*"},{name:"Location",value:details.url}]};
-      return {};
-      // must not return this closes filter//
-    },
-    
-    isCorsRequest: (details) => {
-      if(!details.documentUrl){return false;}
-      let aUrl = new URL(details.url);
-      let bUrl = new URL(details.documentUrl);
-      details.origin = aUrl.origin;
-      details.doc_origin = bUrl.origin;
-      details.hostname = aUrl.hostname;
-      details.doc_hostname = bUrl.hostname;
-      return (aUrl.origin != bUrl.origin)
-    },
-    smartClearCache(details,filter)
-    {
-      if (!details.rejectCache) {
-        // This can happen muliple times per page load, since all css requests have its own details object
-        // I don't feel to store the document filter that loaded them all, since it would be a lot of work for a very small gain
-        // I could store the last filter to removeEventListeners, in the idk_cache object, but it would be a lot of work for a very small gain
-        details.rejectCache = true;
-        console.log("Setting: Rejecting cache for",details.url,details.doc_hostname,details.type,details.requestId,Date.now()/1); // Works only with doc_hostname, not hostname, but i 've seen cases where it was metter working with both or even with all domains
-
-
-        filter.addEventListener("stop", event => {
-          setTimeout(() => {
-            dark_object.misc.clearCacheForRequest(details,[details.doc_hostname,details.hostname]);
-          },1000); // Must wait the request is finished, otherwise it will not be uncached. 100,300 were too short. 
-          // I moved here the call and the timeout, to avoid triggering the code and the timeout on all requests, even those that are not eligible for uDark
-          // Plus it had no perceptible gain to use clearCacheForRequest as a webFilter since it managed many times to exec later than the present code...
+        
+        
+        let filter = globalThis.browser.webRequest.filterResponseData(details.requestId); // After this instruction, browser espect us to write data to the filter and close it
+        
+        let n = details.responseHeaders.length;
+        details.headersLow = {}
+        while (n--) {
+          details.headersLow[details.responseHeaders[n].name.toLowerCase()] = details.responseHeaders[n].value;
+        }
+        console.log("Will darken", details.url, details.requestId, details.fromCache,details)
+        
+        details.charset = ((details.headersLow["content-type"] || "").match(/charset=([0-9A-Z-]+)/i) || ["", "utf-8"])[1]
+        details.decoder = new TextDecoder(details.charset)
+        details.encoder = new TextEncoder();
+        details.dataCount = 0;
+        details.rejectedValues = "";
+        
+        
+        
+        // // ondata event handler
+        filter.ondata = event => {
+          details.dataCount++;
+          dark_object.misc.handleCSSChunk_sync(event.data, true, details, filter);
+        };
+        
+        // onstop event handler
+        filter.onstop = event => {
+          if (details.rejectedValues.length > 0) {
+            dark_object.misc.handleCSSChunk_sync(null, false, details, filter);
+          }
+          filter.disconnect();  // Ensure disconnection after completion
+        };
+        // return {redirectUrl:details.url};
+        // return {responseHeaders:[{name:"Vary",value:"*"},{name:"Location",value:details.url}]};
+        return {};
+        // must not return this closes filter//
+      },
+      
+      isCorsRequest: (details) => {
+        if(!details.documentUrl){return false;}
+        let aUrl = new URL(details.url);
+        let bUrl = new URL(details.documentUrl);
+        details.origin = aUrl.origin;
+        details.doc_origin = bUrl.origin;
+        details.hostname = aUrl.hostname;
+        details.doc_hostname = bUrl.hostname;
+        return (aUrl.origin != bUrl.origin)
+      },
+      smartClearCache(details,filter)
+      {
+        if (!details.rejectCache) {
+          // This can happen muliple times per page load, since all css requests have its own details object
+          // I don't feel to store the document filter that loaded them all, since it would be a lot of work for a very small gain
+          // I could store the last filter to removeEventListeners, in the idk_cache object, but it would be a lot of work for a very small gain
+          details.rejectCache = true;
+          console.log("Setting: Rejecting cache for",details.url,details.doc_hostname,details.type,details.requestId,Date.now()/1); // Works only with doc_hostname, not hostname, but i 've seen cases where it was metter working with both or even with all domains
           
-        })
-      }
-    },
-    resolveIDKViaExec:function(details,chunk,chunk_variables,callback,delay=50,timeout=10000){
-      globalThis.browser.tabs.executeScript(details.tabId, {
-        code: `uDark.resolveIDKVars(${JSON.stringify({details,chunk,chunk_variables})},${delay},${timeout})`,
-        frameId:details.frameId,
-        runAt:"document_start",
-        matchAboutBlank:true
-      }).then(promise=>promise).then(callback);
-    },
-    chunk_manage_idk_direct(details,options,filter)
-    {
-      // console.log("Managing chunk",details.url,details.requestId,details.dataCount,options,filter)
-      if (!uDark.disable_remote_idk_css_edit && details.unresolvableChunks) {
-        if (!options.unresolvableStylesheet.cssRules.length) {
-          console.log("No unresolvable rules found for",details.url,"chunk",details.dataCount)
-          return;
-        }
-        
-        if (options.isCorsRequest && uDark.chunk_stylesheets_idk_only_cors) {
-          // console.log("Skipping chunk as it is not a CORS one", details.url)
-          return;
-        }
-        let rules = [...options.unresolvableStylesheet.cssRules].map(r => r.cssText);
-        let unResolvableRulesStr = rules.join("\n");
-
-        // Last chanche to have the unedited version of the chunk as a cache key
-        let chunk_as_key = options.chunk+""; // We need to clone the string, otherwise it will be edited by the next line
-
-        if(uDark.idk_cache.has(chunk_as_key)){
-          console.log("Found cache for",details.url,"chunk",details.dataCount,chunk_as_key,details);
-          options.chunk = uDark.idk_cache.get(chunk_as_key);
-          uDark.idk_cache.delete(chunk_as_key);
-          uDark.idk_cache.has(details.tabId) && uDark.idk_cache.get(details.tabId).delete(chunk_as_key);
-          return;
-        }
-        else{
-          console.log("No cache found for",details.url,"chunk",details.dataCount,options);
-        }
-        let readable_variable_checker = `\n:root{--chunk_is_readable_${details.requestId}_${details.dataCount}:0.55;}`; 
-        options.chunk += readable_variable_checker; // We edit the chunk to add a variable that will be checked by the content script to know if the chunk is readable or not
-        
-        let resolve_start_time=performance.now();
-        dark_object.misc.resolveIDKViaExec(details,options.chunk,unResolvableRulesStr,(result)=>{
-          let data = result[0];
-          if(data.resolved){
-            uDark.idk_cache.set(chunk_as_key, data.chunk);
-            // Allow for cleaning the cache on tab close:
-            if(!uDark.idkCacheCrossTabs)
-              {
-              if(!uDark.idk_cache.has(details.tabId)){
-                // console.log("Cache: Creating cache for tab",details.tabId);
-                uDark.idk_cache.set(details.tabId,new Set());
-              }
-              uDark.idk_cache.get(details.tabId).add(chunk_as_key);
-            }
+          
+          filter.addEventListener("stop", event => {
+            setTimeout(() => {
+              dark_object.misc.clearCacheForRequest(details,[details.doc_hostname,details.hostname]);
+            },1000); // Must wait the request is finished, otherwise it will not be uncached. 100,300 were too short. 
+            // I moved here the call and the timeout, to avoid triggering the code and the timeout on all requests, even those that are not eligible for uDark
+            // Plus it had no perceptible gain to use clearCacheForRequest as a webFilter since it managed many times to exec later than the present code...
             
-            console.log("Cache:","Resolving variables took",performance.now()-resolve_start_time,"ms including",data.attempts,"attempts of",data.cumuledWaitTime,"ms (cumuled intermediate wait time)");
-            globalThis.browser.tabs.insertCSS(details.tabId, {
-              code: data.chunk_variables,
-              frameId:details.frameId,
-              cssOrigin:"author", // "author" stylesheets behave as if they appear after all author rules specified by the web page. This behavior includes any author stylesheets added dynamically by the page's scripts, even if that addition happens after the insertCSS call completes.
-              matchAboutBlank:true,
-              runAt:"document_start"
-            })
+          })
+        }
+      },
+      resolveIDKViaExec:function(details,chunk,chunk_variables,callback,delay=50,timeout=10000){
+        globalThis.browser.tabs.executeScript(details.tabId, {
+          code: `uDark.resolveIDKVars(${JSON.stringify({details,chunk,chunk_variables})},${delay},${timeout})`,
+          frameId:details.frameId,
+          runAt:"document_start",
+          matchAboutBlank:true
+        }).then(promise=>promise).then(callback);
+      },
+      chunk_manage_idk_direct(details,options,filter)
+      {
+        // console.log("Managing chunk",details.url,details.requestId,details.dataCount,options,filter)
+        if (!uDark.disable_remote_idk_css_edit && details.unresolvableChunks) {
+          if (!options.unresolvableStylesheet.cssRules.length) {
+            console.log("No unresolvable rules found for",details.url,"chunk",details.dataCount)
+            return;
+          }
+          
+          if (options.isCorsRequest && uDark.chunk_stylesheets_idk_only_cors) {
+            // console.log("Skipping chunk as it is not a CORS one", details.url)
+            return;
+          }
+          let rules = [...options.unresolvableStylesheet.cssRules].map(r => r.cssText);
+          let unResolvableRulesStr = rules.join("\n");
+          
+          // Last chanche to have the unedited version of the chunk as a cache key
+          let chunk_as_key = options.chunk+""; // We need to clone the string, otherwise it will be edited by the next line
+          
+          if(uDark.idk_cache.has(chunk_as_key)){
+            console.log("Found cache for",details.url,"chunk",details.dataCount,chunk_as_key,details);
+            options.chunk = uDark.idk_cache.get(chunk_as_key);
+            uDark.idk_cache.delete(chunk_as_key);
+            uDark.idk_cache.has(details.tabId) && uDark.idk_cache.get(details.tabId).delete(chunk_as_key);
+            return;
           }
           else{
-            console.log("Resolving variables failed",details,data);
+            console.log("No cache found for",details.url,"chunk",details.dataCount,options);
           }
+          let readable_variable_checker = `\n:root{--chunk_is_readable_${details.requestId}_${details.dataCount}:0.55;}`; 
+          options.chunk += readable_variable_checker; // We edit the chunk to add a variable that will be checked by the content script to know if the chunk is readable or not
           
-        }, 5)
-        
-        console.log("Cache","Resolving variables for",details.url,"chunk",details.dataCount,options.chunk,options.chunk.length);
-        dark_object.misc.smartClearCache(details,filter);
-        
-        
-        
-      }
-      else{
-        // console.log("Cache","No unresolvable rules found for",details.url,"chunk",details.dataCount)
-      }
-    },
-    
-    
-    clearCacheForRequest: function(details,hostnames) {
-      // console.log("Removing cache for", details.url);
-      let since= Date.now() - details.timeStamp;
-      since += 0 // Be sure to cover the time between the request and the cache, there was a bug when using the exact timeStamp, probably "since" takes strictly what happened after the timeStamp. Offsetting by 100ms is a good way to avoid this bug 
-      globalThis.browser.browsingData.removeCache({
-        since: since,
-        // hostnames: hostnames // This is not working well, and it was a bonus, it is sometimes not removing the cache, occuring white flashes, so we will remove all cache since., and then i get proper cache for the next request
-      })
-      .then(x => {
-        console.info(`Browser last`, since, `ms cache of`, hostnames, `flushed for request`, details.requestId)
-        
-      }, error => console.error(`Error: ${error}`));
-      
-      
-    },
-    
-    // editHeadersOnHeadersReceived: function(details) {
-    //   console.log("Headers received", details.url)
-    
-    //   return details;
-    // },
-    
-    setEligibleRequestBeforeData(details){
-      details.unEligibleRequest=(details.documentUrl || details.url).match(uDark.userSettings.exclude_regex);
-      details.eligibleRequest=!details.unEligibleRequest;
-      // Here we have to check the url or the documentUrl to know if this webpage is excluded
-      // It already has passed the whitelist check, this is why we only check the blacklist
-      // However this code executes before the content script is connected, so we can't check if it will connect or not
-      // Even if we could do this, like sending some bytes and waiting for he content script to connect,
-      // and it would be not so musch costly in terms of time, some pages as YouTube as the time i write this, somehow manages
-      // to send in this very first request tabID -1 and frameID 0, which is not a valid combination, and the content script will never be found
-      // stackoverflow says it might be related to worker threads. It's probably true with serviceWorkers
-      
-      // console.log("Will check",details.url,"made by",details.documentUrl || details.url,0)
-      // console.log("Is eligible for uDark",details.eligibleRequest)
-      if (details.unEligibleRequest) {
-        
-        uDark.deletePort(details)
-        // As bellow is marking as arriving soon
-        // It is possible to have a page that starts loading, we mark it as arriving soon
-        // loading stops, for whatever reason, and the content script does not connect and therefore does not disconnects and get not deleted.
-        // In this case, the port will not be erased, and all resources will darkened, even if the page is not eligible for uDark
-        // It is testable by disablising the content script, assignation and line above; loading a darkened page, in a tab, to set the arriving soon flag, 
-        // then loading an uneligible page in the same tab, and see if it not dakening.
-        // A simple delete when the page is not eligible is enough and very low cost.
-        // In the end we need to be in this if to avoid darkening the page, we wont be lazy and delete the port.
-        return;
-        
-      }
-      if (details.tabId != -1) {
-        // Lets be the MVP here, sometimes the content script is not connected yet, and the CSS will arrive in few milliseconds.
-        // This page is eligible for uDark
-        // console.log("I'm telling the world that",details.url,"is eligible for uDark", "on", details.tabId,details.frameId)
-        // This code must absolutely eb executed before the parsing of headers of the page since the page can have  link header wich will be considered as a <link> tag
-        // See https://developer.mozilla.org/fr/docs/Web/HTTP/Headers/Link for details
-        uDark.setPort(details,{arrivingSoon:true},0);
-        
-      }
-      
-    },
-    editBeforeData: function(details) {
-      
-      
-      if (details.tabId == -1 && uDark.connected_options_ports_count || uDark.connected_cs_ports["port-from-popup-" + details.tabId]) { // -1 Happens sometimes, like on https://www.youtube.com/ at the time i write this, stackoverflow talks about worker threads
-        
-        // Here we are covering the needs of the option page: Be able to frame any page
-        let removeHeaders = ["content-security-policy", "x-frame-options", "content-security-policy-report-only"]
-        details.responseHeaders = details.responseHeaders.filter(x => !removeHeaders.includes(x.name.toLowerCase()))
-      }
-      if(!uDark.getPort(details)){ // If setEligibleRequestBeforeData removed the port, we don't want to darken the page
-        return {responseHeaders:details.responseHeaders};
-      }
-      
-      var n = details.responseHeaders.length;
-      details.headersLow = {}
-      while (n--) {
-        details.headersLow[details.responseHeaders[n].name.toLowerCase()] = details.responseHeaders[n].value;
-      }
-      if (!(details.headersLow["content-type"] || "text/html").includes("text/html")) return {}
-      details.charset = ((details.headersLow["content-type"] || "").match(/charset=([0-9A-Z-]+)/i) || ["", "utf-8"])[1]
-      
-      details.responseHeaders = details.responseHeaders.filter(x => {
-        var a_filter = uDark.headersDo[x.name.toLowerCase()];
-        return a_filter ? a_filter(x) : true;
-      })
-      if (!details.fromCache) { // We don't want to edit cached pages, as they are already edited and put in cache !
-        let filter = globalThis.browser.webRequest.filterResponseData(details.requestId);
-        let decoder = new TextDecoder(details.charset)
-        let encoder = new TextEncoder();
-        details.dataCount = 0;
-        details.writeEnd = "";        
-        
-        filter.ondata = event => {
-          details.dataCount++
-          details.writeEnd += decoder.decode(event.data, {
-            stream: true
-          });
-        }
-        filter.onstop = event => {
-          details.dataCount = 1;
+          let resolve_start_time=performance.now();
+          dark_object.misc.resolveIDKViaExec(details,options.chunk,unResolvableRulesStr,(result)=>{
+            let data = result[0];
+            if(data.resolved){
+              uDark.idk_cache.set(chunk_as_key, data.chunk);
+              // Allow for cleaning the cache on tab close:
+              if(!uDark.idkCacheCrossTabs)
+                {
+                if(!uDark.idk_cache.has(details.tabId)){
+                  // console.log("Cache: Creating cache for tab",details.tabId);
+                  uDark.idk_cache.set(details.tabId,new Set());
+                }
+                uDark.idk_cache.get(details.tabId).add(chunk_as_key);
+              }
+              
+              console.log("Cache:","Resolving variables took",performance.now()-resolve_start_time,"ms including",data.attempts,"attempts of",data.cumuledWaitTime,"ms (cumuled intermediate wait time)");
+              globalThis.browser.tabs.insertCSS(details.tabId, {
+                code: data.chunk_variables,
+                frameId:details.frameId,
+                cssOrigin:"author", // "author" stylesheets behave as if they appear after all author rules specified by the web page. This behavior includes any author stylesheets added dynamically by the page's scripts, even if that addition happens after the insertCSS call completes.
+                matchAboutBlank:true,
+                runAt:"document_start"
+              })
+            }
+            else{
+              console.log("Resolving variables failed",details,data);
+            }
+            
+          }, 5)
           
-          details.writeEnd = uDark.parseAndEditHtml3(details.writeEnd, details)
-          filter.write(encoder.encode(details.writeEnd));
-          filter.disconnect(); // Low perf if not disconnected !
+          console.log("Cache","Resolving variables for",details.url,"chunk",details.dataCount,options.chunk,options.chunk.length);
+          dark_object.misc.smartClearCache(details,filter);
+          
+          
+          
         }
-      }
-      return {
-        responseHeaders: details.responseHeaders
+        else{
+          // console.log("Cache","No unresolvable rules found for",details.url,"chunk",details.dataCount)
+        }
+      },
+      
+      
+      clearCacheForRequest: function(details,hostnames) {
+        // console.log("Removing cache for", details.url);
+        let since= Date.now() - details.timeStamp;
+        since += 0 // Be sure to cover the time between the request and the cache, there was a bug when using the exact timeStamp, probably "since" takes strictly what happened after the timeStamp. Offsetting by 100ms is a good way to avoid this bug 
+        globalThis.browser.browsingData.removeCache({
+          since: since,
+          // hostnames: hostnames // This is not working well, and it was a bonus, it is sometimes not removing the cache, occuring white flashes, so we will remove all cache since., and then i get proper cache for the next request
+        })
+        .then(x => {
+          console.info(`Browser last`, since, `ms cache of`, hostnames, `flushed for request`, details.requestId)
+          
+        }, error => console.error(`Error: ${error}`));
+        
+        
+      },
+      
+      // editHeadersOnHeadersReceived: function(details) {
+      //   console.log("Headers received", details.url)
+      
+      //   return details;
+      // },
+      
+      setEligibleRequestBeforeData(details){
+        details.unEligibleRequest=(details.documentUrl || details.url).match(uDark.userSettings.exclude_regex);
+        details.eligibleRequest=!details.unEligibleRequest;
+        // Here we have to check the url or the documentUrl to know if this webpage is excluded
+        // It already has passed the whitelist check, this is why we only check the blacklist
+        // However this code executes before the content script is connected, so we can't check if it will connect or not
+        // Even if we could do this, like sending some bytes and waiting for he content script to connect,
+        // and it would be not so musch costly in terms of time, some pages as YouTube as the time i write this, somehow manages
+        // to send in this very first request tabID -1 and frameID 0, which is not a valid combination, and the content script will never be found
+        // stackoverflow says it might be related to worker threads. It's probably true with serviceWorkers
+        
+        // console.log("Will check",details.url,"made by",details.documentUrl || details.url,0)
+        // console.log("Is eligible for uDark",details.eligibleRequest)
+        if (details.unEligibleRequest) {
+          
+          uDark.deletePort(details)
+          // As bellow is marking as arriving soon
+          // It is possible to have a page that starts loading, we mark it as arriving soon
+          // loading stops, for whatever reason, and the content script does not connect and therefore does not disconnects and get not deleted.
+          // In this case, the port will not be erased, and all resources will darkened, even if the page is not eligible for uDark
+          // It is testable by disablising the content script, assignation and line above; loading a darkened page, in a tab, to set the arriving soon flag, 
+          // then loading an uneligible page in the same tab, and see if it not dakening.
+          // A simple delete when the page is not eligible is enough and very low cost.
+          // In the end we need to be in this if to avoid darkening the page, we wont be lazy and delete the port.
+          return;
+          
+        }
+        if (details.tabId != -1) {
+          // Lets be the MVP here, sometimes the content script is not connected yet, and the CSS will arrive in few milliseconds.
+          // This page is eligible for uDark
+          // console.log("I'm telling the world that",details.url,"is eligible for uDark", "on", details.tabId,details.frameId)
+          // This code must absolutely eb executed before the parsing of headers of the page since the page can have  link header wich will be considered as a <link> tag
+          // See https://developer.mozilla.org/fr/docs/Web/HTTP/Headers/Link for details
+          uDark.setPort(details,{arrivingSoon:true},0);
+          
+        }
+        
+      },
+      editBeforeData: function(details) {
+        
+        
+        if (details.tabId == -1 && uDark.connected_options_ports_count || uDark.connected_cs_ports["port-from-popup-" + details.tabId]) { // -1 Happens sometimes, like on https://www.youtube.com/ at the time i write this, stackoverflow talks about worker threads
+          
+          // Here we are covering the needs of the option page: Be able to frame any page
+          let removeHeaders = ["content-security-policy", "x-frame-options", "content-security-policy-report-only"]
+          details.responseHeaders = details.responseHeaders.filter(x => !removeHeaders.includes(x.name.toLowerCase()))
+        }
+        if(!uDark.getPort(details)){ // If setEligibleRequestBeforeData removed the port, we don't want to darken the page
+          return {responseHeaders:details.responseHeaders};
+        }
+        
+        var n = details.responseHeaders.length;
+        details.headersLow = {}
+        while (n--) {
+          details.headersLow[details.responseHeaders[n].name.toLowerCase()] = details.responseHeaders[n].value;
+        }
+        if (!(details.headersLow["content-type"] || "text/html").includes("text/html")) return {}
+        details.charset = ((details.headersLow["content-type"] || "").match(/charset=([0-9A-Z-]+)/i) || ["", "utf-8"])[1]
+        
+        details.responseHeaders = details.responseHeaders.filter(x => {
+          var a_filter = uDark.headersDo[x.name.toLowerCase()];
+          return a_filter ? a_filter(x) : true;
+        })
+        if (!details.fromCache) { // We don't want to edit cached pages, as they are already edited and put in cache !
+          let filter = globalThis.browser.webRequest.filterResponseData(details.requestId);
+          let decoder = new TextDecoder(details.charset)
+          let encoder = new TextEncoder();
+          details.dataCount = 0;
+          details.writeEnd = "";        
+          
+          filter.ondata = event => {
+            details.dataCount++
+            details.writeEnd += decoder.decode(event.data, {
+              stream: true
+            });
+          }
+          filter.onstop = event => {
+            details.dataCount = 1;
+            
+            details.writeEnd = uDark.parseAndEditHtml3(details.writeEnd, details)
+            filter.write(encoder.encode(details.writeEnd));
+            filter.disconnect(); // Low perf if not disconnected !
+          }
+        }
+        return {
+          responseHeaders: details.responseHeaders
+        }
       }
     }
   }
-}
-dark_object.all_levels.install();
-dark_object.both.install()
-
-if (globalThis.browser.webRequest) {
-  dark_object.background.install();
-} else {
-  dark_object.content_script.install();
-  if (!uDark.direct_window_export) {
-    dark_object.content_script.override_website();
-  }
-  dark_object.content_script.website_load();
+  dark_object.all_levels.install();
+  dark_object.both.install()
   
-}
+  if (globalThis.browser.webRequest) {
+    dark_object.background.install();
+  } else {
+    dark_object.content_script.install();
+    if (!uDark.direct_window_export) {
+      dark_object.content_script.override_website();
+    }
+    dark_object.content_script.website_load();
+    
+  }
