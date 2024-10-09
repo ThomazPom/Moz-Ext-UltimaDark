@@ -681,6 +681,9 @@ const dark_object = {
               m.content = "text/html; charset=utf-8";
             }
           });
+          // documentElement.querySelectorAll("script").forEach(script => {
+          //   script.charset = "Shift_JIS";
+          // });
         },
         
         edit_styles_attributes: function(parentElement, details, options = {}) {
@@ -2565,6 +2568,8 @@ const dark_object = {
         // globalThis.browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.editBeforeServiceWorker);
         /* Debugging purposes */
         globalThis.browser.webRequest.onSendHeaders.removeListener(dark_object.misc.editBeforeRequestStyleSheetRequest);
+        
+        globalThis.browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.reEncodeScriptsToUTF8);
         /* End of debbuging */
         
         /*Experimental*/
@@ -2594,6 +2599,14 @@ const dark_object = {
             // urls: uDark.userSettings.properWhiteList, // We can't assume the css is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
             urls: ["<all_urls>"],
             types: ["stylesheet"]
+          },
+          ["blocking", "responseHeaders"]);
+
+          
+          globalThis.browser.webRequest.onHeadersReceived.addListener(dark_object.misc.reEncodeScriptsToUTF8, {
+            // urls: uDark.userSettings.properWhiteList, // We can't assume the css is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
+            urls: ["<all_urls>"],
+            types: ["script"]
           },
           ["blocking", "responseHeaders"]);
           
@@ -2732,13 +2745,15 @@ const dark_object = {
       function connected(connectedPort) {
         
         console.info("Connected", connectedPort.sender.url, connectedPort.sender.contextId,connectedPort.sender);
-        uDark.aa=1;
         if (connectedPort.name == "port-from-cs" && connectedPort.sender.tab) {
           // At first, we used exclude_regex here to not register some content scripts, but thent we used it earlier, in the content script registration
           
           let portKey = `port-from-cs-${connectedPort.sender.tab.id}-${connectedPort.sender.frameId}`
-          
+          let previousPort= uDark.connected_cs_ports[portKey]
           uDark.connected_cs_ports[portKey] = connectedPort;
+          if(previousPort){
+            connectedPort.charset=previousPort.charset;
+          }
           connectedPort.onDisconnect.addListener(disconnectedPort => {
             let portValue = uDark.connected_cs_ports[portKey]
             
@@ -2990,6 +3005,7 @@ const dark_object = {
               // 6. Update meta tags to ensure proper charset is set (avoid issues with content-type)
               uDark.processMetaTags(aDocument);
               
+              console.log(aDocument)
               
               // 8. Add a custom identifier to favicon links to manage cache
               uDark.processLinks(aDocument);
@@ -3529,7 +3545,23 @@ const dark_object = {
         
         filter.write(details.encoder.encode(options.chunk));
       },
-      
+      reEncodeScriptsToUTF8(details) {
+          let port = uDark.getPort(details);
+          if(!port){return;} // No port found for this request, it's not a uDark eligible webpage
+          let charset = uDark.getPort(details).charset;
+          if(charset.toLowerCase()!="utf-8"){
+            let filter = globalThis.browser.webRequest.filterResponseData(details.requestId); // After this instruction, browser espect us to write data to the filter and close it
+            let decoder = new TextDecoder(charset);
+            let encoder = new TextEncoder();
+            filter.ondata = event => {
+              filter.write(encoder.encode(decoder.decode(event.data)));
+            };
+            filter.onstop = event => {
+              filter.disconnect();
+            };
+        }
+      }
+      ,
       
       editBeforeRequestStyleSheet_sync: function(details) {
         let options = {};
@@ -3780,7 +3812,7 @@ const dark_object = {
           return a_filter ? a_filter(x) : true;
         })
         // details.fromCache; A webpage can be loaded from cache but in an unedited version, if the user navigated too quickly, the cache stays in an unedited version and might be served on new tab or previous page. It was hard to understand. There is not only cached / uncached state but uncached/undedited/cached states possible.
-        
+          uDark.getPort(details).charset = details.charset;
           // console.log("Editing", details.url, details.requestId, details.fromCache)
           let filter = globalThis.browser.webRequest.filterResponseData(details.requestId);
           let decoder = new TextDecoder(details.charset)
