@@ -3005,8 +3005,6 @@ const dark_object = {
               // 6. Update meta tags to ensure proper charset is set (avoid issues with content-type)
               uDark.processMetaTags(aDocument);
               
-              console.log(aDocument)
-              
               // 8. Add a custom identifier to favicon links to manage cache
               uDark.processLinks(aDocument);
               
