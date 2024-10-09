@@ -817,7 +817,6 @@ const dark_object = {
             for (let node of script.attributes) {
               noScript.setAttribute(node.name, node.value)
             }
-            console.log(aDocument)
             let template = aDocument.createElement('template');
             template.innerHTML = script.innerHTML;
             noScript.append(template.content); // We cant put innerHTML directly in a noscript element, it would be html encoded. The template element is used to avoid this, it parse elements for us.
@@ -2952,6 +2951,7 @@ const dark_object = {
               if (!str || !str.trim().length) {
                 return str;
               }
+
               // 1 : Available slot
               
               // 2. The issue isn't with <noscript> itself, but with disallowed tags inside the <head>, including those nested within <noscript>. Many sites make this mistake.
@@ -2969,6 +2969,17 @@ const dark_object = {
               
               // 3. Parse the HTML string into a DOM document
               const aDocument = uDark.createDocumentFromHtml(str);
+
+              
+                    
+              if(details.fromCache){
+                if(aDocument.getElementById("ud-meta-dark")) // Little experiment, to check if exist the case of double edition, if the code is never triggered, it's a good sign and we would be able to remove it
+                {  
+                  console.warn("DOUBLE EDITION WARNING: ",details.url,"was edited twice, this is not expected, please report this issue",details,aDocument) 
+                  return strO;
+                }
+              }
+              
               // 4. Temporarily replace all SVG elements to avoid accidental style modifications
               const svgElements = uDark.processSvgElements(aDocument, details);
               
@@ -3542,7 +3553,7 @@ const dark_object = {
         while (n--) {
           details.headersLow[details.responseHeaders[n].name.toLowerCase()] = details.responseHeaders[n].value;
         }
-        console.log("Will darken", details.url, details.requestId, details.fromCache,details)
+        // console.log("Will darken", details.url, details.requestId, details.fromCache,details)
         
         details.charset = ((details.headersLow["content-type"] || "").match(/charset=([0-9A-Z-]+)/i) || ["", "utf-8"])[1]
         details.decoder = new TextDecoder(details.charset)
@@ -3768,7 +3779,9 @@ const dark_object = {
           var a_filter = uDark.headersDo[x.name.toLowerCase()];
           return a_filter ? a_filter(x) : true;
         })
-        if (!details.fromCache) { // We don't want to edit cached pages, as they are already edited and put in cache !
+        // details.fromCache; A webpage can be loaded from cache but in an unedited version, if the user navigated too quickly, the cache stays in an unedited version and might be served on new tab or previous page. It was hard to understand. There is not only cached / uncached state but uncached/undedited/cached states possible.
+        
+          // console.log("Editing", details.url, details.requestId, details.fromCache)
           let filter = globalThis.browser.webRequest.filterResponseData(details.requestId);
           let decoder = new TextDecoder(details.charset)
           let encoder = new TextEncoder();
@@ -3788,7 +3801,7 @@ const dark_object = {
             filter.write(encoder.encode(details.writeEnd));
             filter.disconnect(); // Low perf if not disconnected !
           }
-        }
+        
         return {
           responseHeaders: details.responseHeaders
         }
