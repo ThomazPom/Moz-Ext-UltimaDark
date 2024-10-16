@@ -576,7 +576,7 @@ const dark_object = {
           
           // 2. Special handling for <style> and <svg> style elements (returns edited value directly)
           if (elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement) {
-            return uDark.edit_str(value, false, false, undefined, false, options);
+            return uDark.edit_str(str, false, false, undefined, false, options);
           }
           
           str = str.protect_simple(/(head|html|body)/gi, "ud-tag-ptd-$1");
