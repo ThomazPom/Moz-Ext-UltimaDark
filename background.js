@@ -3488,7 +3488,7 @@ const dark_object = {
           details.headersLow[details.responseHeaders[n].name.toLowerCase()] = details.responseHeaders[n].value;
         }
         
-        details.charset = ((details.headersLow["content-type"] || "").match(/charset=([0-9A-Z-]+)/i) || ["", "utf-8"])[1].toLowerCase();
+        details.charset = ((details.headersLow["content-type"] || "").match(/charset=([0-9A-Z-_]+)/i) || ["", "utf-8"])[1].toLowerCase()
         details.isSVGImage = (details.headersLow["content-type"] || "").includes("image/svg")
 
         // Determine if the image deserves to be edited
@@ -3666,7 +3666,7 @@ const dark_object = {
         }
         // console.log("Will darken", details.url, details.requestId, details.fromCache,details)
         
-        details.charset = ((details.headersLow["content-type"] || "").match(/charset=([0-9A-Z-]+)/i) || ["", "utf-8"])[1]
+        details.charset = ((details.headersLow["content-type"] || "").match(/charset=([0-9A-Z-_]+)/i) || ["", "utf-8"])[1].toLowerCase()
         details.decoder = new TextDecoder(details.charset)
         details.encoder = new TextEncoder();
         details.dataCount = 0;
