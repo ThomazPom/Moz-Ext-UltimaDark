@@ -76,6 +76,8 @@ const dark_object = {
         min_bright_bg_trigger: 0.2, // backgrounds with luminace under this value will remain as is
         min_bright_bg: 0.1, // background with value over min_bright_bg_trigger will be darkened from this value up to max_bright_bg
         max_bright_bg: 0.4, // background with value over min_bright_bg_trigger will be darkened from min_bright_bg up to this value
+       
+            
         
         str_protect: function(str, regexSearch, protectWith) {
           // sore values into an array:
@@ -405,7 +407,7 @@ const dark_object = {
                 imageData=decodeURIComponent(imageData);
               }
               
-              imageData = uDark.frontEditHTML(false, imageData, details, options).body.innerHTML;
+              imageData = uDark.frontEditHTML(false, imageData, details, options).innerHTML;
               
               let encoded=undefined;
               // uDark.disable_reencode_data_svg_to_base64=true;
@@ -567,6 +569,62 @@ const dark_object = {
         },
         frontEditHTML: function(elem, strO, details, options = {}) {
           // 1. Ignore <script> elements to prevent unintended modifications to JavaScript
+          let str = strO;
+          if (elem instanceof HTMLScriptElement) {
+            return strO;
+          }
+          
+          // 2. Special handling for <style> and <svg> style elements (returns edited value directly)
+          if (elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement) {
+            return uDark.edit_str(value, false, false, undefined, false, options);
+          }
+          
+          str = str.protect_simple(/(head|html|body)/gi, "ud-tag-ptd-$1");
+          
+          let aDocument = document.createElement("udark-root-doc");
+          aDocument.o_ud_innerHTML = str;
+          
+          // 4. Temporarily replace all SVG elements to avoid accidental style modifications
+          const svgElements = uDark.processSvgElements(aDocument, details);
+              
+          // 5. Edit styles and attributes inline for background elements
+          uDark.edit_styles_attributes(aDocument, details);
+          uDark.edit_styles_elements(aDocument, details, "ud-edited-background");
+          
+          // 8. Add a custom identifier to favicon links to manage cache
+          uDark.processLinks(aDocument);
+          
+          // 9. Process image sources and prepare them for custom modifications
+          uDark.processImages(aDocument);
+          
+          // 10. Recursively process iframes using the "srcdoc" attribute by applying the same editing logic
+          uDark.processIframes(aDocument, details, options);
+          
+          // 11. Handle elements with color attributes (color, bgcolor) and ensure proper color handling
+          uDark.processColoredItems(aDocument);
+          
+          // 13. Restore the original SVG elements that were temporarily replaced
+          uDark.restoreSvgElements(svgElements);
+          
+          
+          // 15. Remove the integrity attribute from elements and replace it with a custom attribute
+          uDark.restoreIntegrityAttributes(aDocument);
+              
+          
+          // 18. After all the edits, return the final HTML output
+          
+          if(options.get_document){
+            return aDocument;
+          }
+          
+          let resultEdited = aDocument.innerHTML.unprotect_simple("ud-tag-ptd-");
+          
+          return resultEdited;
+        },
+        
+
+        frontEditHTML_old: function(elem, strO, details, options = {}) {
+          // 1. Ignore <script> elements to prevent unintended modifications to JavaScript
           let value = strO;
           if (elem instanceof HTMLScriptElement) {
             return value;
@@ -601,7 +659,7 @@ const dark_object = {
           
           
           // 6. Process meta tags to ensure proper charset handling
-          uDark.processMetaTags(documentElement);
+          // uDark.processMetaTags(documentElement);
           
           
           // 7. Restore or set the color-scheme meta tag for dark mode handling this is not usefull since we do all with css color-scheme attribute wich is prevalent
@@ -646,10 +704,6 @@ const dark_object = {
           
           // 18. After all the edits, return the final HTML output
           
-          if(options.get_document){
-            return aHtmlDocument;
-          }
-          
           let resultEdited = value.includes("body") && !options.no_body ? documentElement.outerHTML : aHtmlDocument.body.innerHTML;
           
           return resultEdited;
@@ -681,9 +735,6 @@ const dark_object = {
               m.content = "text/html; charset=utf-8";
             }
           });
-          // documentElement.querySelectorAll("script").forEach(script => {
-          //   script.charset = "Shift_JIS";
-          // });
         },
         
         edit_styles_attributes: function(parentElement, details, options = {}) {
@@ -783,8 +834,11 @@ const dark_object = {
                 attributeValue += "0"; // Ensure colors are properly formatted
               }
               const possibleColor = uDark.is_color(attributeValue, true, true);
+              
               if (possibleColor) {
-                let callResult = afunction(...possibleColor, uDark.rgba_val, coloredItem);
+                let callResult = afunction(...possibleColor, uDark.hex_val /* this kind of html4 attributes does not fully supports rgba vals, prefer use hex vals  */, coloredItem);
+                
+              console.log("Processing", key, attributeValue, coloredItem,"'",possibleColor,"'",callResult)
                 if (callResult) {
                   coloredItem.setAttribute(key, callResult);
                 }
@@ -803,7 +857,8 @@ const dark_object = {
             udMetaDark.id = "ud-meta-dark";
             udMetaDark.name = "color-scheme";
             udMetaDark.content = "dark";
-            documentElement.head.prepend(udMetaDark);
+            headElem = documentElement.head || documentElement.querySelector("ud-tag-ptd-head") || documentElement;
+            headElem.prepend(udMetaDark);
           }
         },
         
@@ -1821,6 +1876,20 @@ const dark_object = {
         canvasHeight: 3,
         indexes: Array(3).fill(0),
       }
+
+      uDark.attributes_function_map = {
+        "color": (r, g, b, a, render, elem) => {
+          elem.style.p_ud_setProperty("--ud-html4-color", uDark.revert_rgba(r, g, b, a, render));
+          elem.setAttribute("ud-html4-support", true);
+          elem.removeAttribute("color");
+        },
+        "text": "color",
+        "bgcolor": uDark.rgba
+      }
+      
+      let wordsTriggerFrontEditHTML = ["style", "fill"].concat(Object.keys(uDark.attributes_function_map));
+      uDark.regexOrTriggerFrontEditHTML = new RegExp(wordsTriggerFrontEditHTML.join("|"), "i");
+      
       uDark.colorWork.canvas = document.createElement('canvas');
       uDark.colorWork.canvas.width = uDark.colorWork.canvasWidth;
       uDark.colorWork.canvas.height = uDark.colorWork.canvasHeight;
@@ -2059,7 +2128,7 @@ const dark_object = {
     
     install() {
       console.info("UltimaDark", "Content script install", window);
-      
+    
       window.uDark = {
         ...uDark,
         ...{
@@ -2068,9 +2137,12 @@ const dark_object = {
           userSettings : window.userSettings
         }
       }
+   
+      
       if (uDark.direct_window_export) {
         
         [
+          
           dark_object.all_levels.install,
           dark_object.content_script.override_website
           
@@ -2271,10 +2343,10 @@ const dark_object = {
           args[0] = uDark.edit_str(args[0]);
           return args;
         })
-        
         // This is the one youtube uses
-        uDark.valuePrototypeEditor([Element, ShadowRoot], "innerHTML", uDark.frontEditHTML, (elem, value) => value && /style|fill/.test(value) || elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement); // toString : sombe object can redefine tostring to generate thzir inner
-        // //geo.fr uses this one
+        uDark.valuePrototypeEditor([Element, ShadowRoot], "innerHTML", uDark.frontEditHTML); // toString : some objects can redefine tostring to generate their inner
+        // uDark.valuePrototypeEditor([Element, ShadowRoot], "innerHTML", uDark.frontEditHTML, (elem,value)=>
+       
         
         { // Wrap JS editing iframe and this kind of objects SRC's
           uDark.valuePrototypeEditor([HTMLIFrameElement, HTMLEmbedElement], "src", uDark.frontEditHTMLPossibleDataURL ); 
@@ -2282,13 +2354,13 @@ const dark_object = {
           uDark.valuePrototypeEditor([HTMLIFrameElement], "srcdoc", uDark.frontEditHTML ); 
         }
         
-        uDark.valuePrototypeEditor(Element, "outerHTML", uDark.frontEditHTML, (elem, value) => value && /style|fill/.test(value) || elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement); // toString : sombe object can redefine tostring to generate thzir inner
+        uDark.valuePrototypeEditor(Element, "outerHTML", uDark.frontEditHTML); // toString : sombe object can redefine tostring to generate thzir inner
         
         // This is the one google uses
         uDark.functionPrototypeEditor(Element, Element.prototype.insertAdjacentHTML, (elem, args) => {
           args[1] = uDark.frontEditHTML("ANY_ELEMENT", args[1]); // frontEditHTML have a diffferent behavior with STYLE elements
           return args;
-        }, (elem, args) => args[1].includes("style"))
+        })
         
         uDark.functionPrototypeEditor(Element, Element.prototype.setAttribute, (elem, args) => {
           let res = uDark.edit_str(args[1] +
@@ -2560,16 +2632,14 @@ const dark_object = {
         
         globalThis.browser.webRequest.onSendHeaders.removeListener(dark_object.misc.setEligibleRequestBeforeData);
         globalThis.browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editBeforeData);
-        globalThis.browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editBeforeData);
         globalThis.browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editBeforeRequestStyleSheet_sync);
         globalThis.browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.editBeforeRequestImage);
         globalThis.browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.editOnHeadersImage);
         // globalThis.browser.webRequest.onCompleted.removeListener(dark_object.misc.clearCacheForRequest);
         // globalThis.browser.webRequest.onBeforeRequest.removeListener(dark_object.misc.editBeforeServiceWorker);
         /* Debugging purposes */
-        globalThis.browser.webRequest.onSendHeaders.removeListener(dark_object.misc.editBeforeRequestStyleSheetRequest);
+        // globalThis.browser.webRequest.onSendHeaders.removeListener(dark_object.misc.editBeforeRequestStyleSheetRequest);
         
-        globalThis.browser.webRequest.onHeadersReceived.removeListener(dark_object.misc.reEncodeScriptsToUTF8);
         /* End of debbuging */
         
         /*Experimental*/
@@ -2603,35 +2673,30 @@ const dark_object = {
           ["blocking", "responseHeaders"]);
 
           
-          globalThis.browser.webRequest.onHeadersReceived.addListener(dark_object.misc.reEncodeScriptsToUTF8, {
-            // urls: uDark.userSettings.properWhiteList, // We can't assume the css is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
-            urls: ["<all_urls>"],
-            types: ["script"]
-          },
-          ["blocking", "responseHeaders"]);
-          
           /* Debugging purposes */
-          
+
+          // ["blocking", "responseHeaders"]);
+          // globalThis.browser.webRequest.onBeforeRequest.addListener(function(details){
+          //     console.log("XMLHTTPREQUEST:",details)
+          // },{
+          //   types:["xmlhttprequest"],
+          //   urls: ["<all_urls>"],
+          // },["requestBody"])
           if(!uDark.production)
             {
-            globalThis.browser.webRequest.onSendHeaders.addListener(dark_object.misc.editBeforeRequestStyleSheetRequest, {
-              // urls: uDark.userSettings.properWhiteList, // We can't assume the css is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
-              urls: ["<all_urls>"],
-              types: ["stylesheet"]
-            },
-            ["requestHeaders"]);
+            // globalThis.browser.webRequest.onSendHeaders.addListener(dark_object.misc.editBeforeRequestStyleSheetRequest, {
+            //   // urls: uDark.userSettings.properWhiteList, // We can't assume the css is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
+            //   urls: ["<all_urls>"],
+            //   types: ["stylesheet"]
+            // },
+            // ["requestHeaders"]);
           }
           
           /* End of debbuging */
           
           
           /*Experimental*/
-          globalThis.browser.webRequest.onSendHeaders.addListener(dark_object.misc.editBeforeRequestStyleSheetRequest, {
-            // urls: uDark.userSettings.properWhiteList, // We can't assume the css is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
-            urls: ["<all_urls>"],
-            types: ["stylesheet"]
-          },
-          ["requestHeaders"]);
+
           /*end of Experimental*/
           
           // globalThis.browser.webRequest.onBeforeRequest.addListener(dark_object.misc.editBeforeServiceWorker, {
@@ -2886,19 +2951,6 @@ const dark_object = {
                 x.value = x.value.replace(/style-src/, "style-src *")
                 return false; // TODO: Review if false is the right value here
               }),
-              "content-type": (x => {
-                x.value = x.value.replace(/charset=[0-9A-Z-]+/i, "charset=utf-8")
-                return true;
-              }),
-            },
-            attributes_function_map: {
-              "color": (r, g, b, a, render, elem) => {
-                elem.style.p_ud_setProperty("--ud-html4-color", uDark.revert_rgba(r, g, b, a, render));
-                elem.setAttribute("ud-html4-support", true);
-                elem.removeAttribute("color");
-              },
-              "text": "color",
-              "bgcolor": uDark.rgba
             },
             edit_background_image_urls: function(str) {
               //  var valueblend=["overlay","multiply","color","exclusion"].join(","); 
@@ -2961,80 +3013,7 @@ const dark_object = {
             },
             handleMessageFromCS: function(message, sender) {
             },
-            parseAndEditHtml3: function(strO, details) {
-              let str = strO;
-              if (!str || !str.trim().length) {
-                return str;
-              }
-
-              // 1 : Available slot
-              
-              // 2. The issue isn't with <noscript> itself, but with disallowed tags inside the <head>, including those nested within <noscript>. Many sites make this mistake.
-              // The tags allowed in the <head> are: <base>, <link>, <meta>, <style>, <title>, <script>, <noscript>, and <template>.
-              // When placed in the <head>, the <noscript> tag has strict limitations on what it can contain. It only allows <link>, <style>, and <meta> as child elements.
-              // In contrast, the <template> tag has no such restrictions. It can contain any type of elements, even when placed in the <head>.
-              // The <script> tag is also flexible, as it allows raw text content.
-              // The <style> tag is similarly unrestricted in terms of content, as it handles raw CSS text.
-              // I chose to use the <script> tag with `type="text/plain"` because, unlike <template>, it doesn't break the entire page if there's an unclosed tag inside it.
-              // If <template> contains an unclosed tag, the DOM parser won't find the closing </template> tag, causing the entire page to break.
-              // However, <noscript> and <script> tags are unaffected by this issue. That said, <noscript> can still be problematic in the <head> because its content may include disallowed elements.
-              
-              str = str.replaceAll(/<noscript/g, "<script type='text/plain' secnoscript");
-              str = str.replaceAll(/<\/noscript/g, "</script");
-              
-              // 3. Parse the HTML string into a DOM document
-              const aDocument = uDark.createDocumentFromHtml(str);
-
-              
-                    
-              if(details.fromCache){
-                if(aDocument.getElementById("ud-meta-dark")) // Little experiment, to check if exist the case of double edition, if the code is never triggered, it's a good sign and we would be able to remove it
-                {  
-                  console.warn("DOUBLE EDITION WARNING: ",details.url,"was edited twice, this is not expected, please report this issue",details,aDocument) 
-                  return strO;
-                }
-              }
-              
-              // 4. Temporarily replace all SVG elements to avoid accidental style modifications
-              const svgElements = uDark.processSvgElements(aDocument, details);
-              
-              // 5. Edit styles and attributes inline for background elements
-              uDark.edit_styles_attributes(aDocument, details);
-              uDark.edit_styles_elements(aDocument, details, "ud-edited-background");
-              
-              // 6. Update meta tags to ensure proper charset is set (avoid issues with content-type)
-              uDark.processMetaTags(aDocument);
-              
-              // 8. Add a custom identifier to favicon links to manage cache
-              uDark.processLinks(aDocument);
-              
-              // 9. Process image sources and prepare them for custom modifications
-              uDark.processImages(aDocument);
-              
-              // 10. Recursively process iframes using the "srcdoc" attribute by applying the same editing logic
-              uDark.processIframes(aDocument, details, {});
-              
-              // 11. Handle elements with color attributes (color, bgcolor) and ensure proper color handling
-              uDark.processColoredItems(aDocument);
-              
-              // 12. Inject custom CSS and dark color scheme if required (only for the first data load)
-              uDark.injectStylesIfNeeded(aDocument, details); // Only benefit of this ; avoids page being white on uDark refresh
-              
-              // 13. Restore the original SVG elements that were temporarily replaced
-              uDark.restoreSvgElements(svgElements);
-              
-              // 14. Restore <noscript> elements that were converted to something else
-              // uDark.restoreTemplateElements(aDocument);
-              uDark.restoreNoscriptElements(aDocument);
-              
-              // 15. Remove the integrity attribute from elements and replace it with a custom attribute
-              uDark.restoreIntegrityAttributes(aDocument);
-              
-              // 16. Return the final edited HTML
-              const outerEdited = aDocument.documentElement.outerHTML;
-              
-              return "<!doctype html>" + outerEdited;
-            },
+   
           }
         }
         
@@ -3115,6 +3094,125 @@ const dark_object = {
           ...uDark,
           ...{
             
+            parseAndEditHtmlContentBackend4: function(strO, details) {
+              let str = strO;
+              if (!str || !str.trim().length) {
+                return str;
+              }
+              
+          
+              str = str.protect_simple(/(head|html|body)/gi, "ud-tag-ptd-$1");
+              let aDocument = document.createElement("udark-root-doc");
+              aDocument.innerHTML = str;
+              
+              // 4. Temporarily replace all SVG elements to avoid accidental style modifications
+              const svgElements = uDark.processSvgElements(aDocument, details);
+              
+              // 5. Edit styles and attributes inline for background elements
+              uDark.edit_styles_attributes(aDocument, details);
+              uDark.edit_styles_elements(aDocument, details, "ud-edited-background");
+              
+              
+              // 8. Add a custom identifier to favicon links to manage cache
+              uDark.processLinks(aDocument);
+              
+              // 9. Process image sources and prepare them for custom modifications
+              uDark.processImages(aDocument);
+              
+              // 10. Recursively process iframes using the "srcdoc" attribute by applying the same editing logic
+              uDark.processIframes(aDocument, details, {});
+              
+              // 11. Handle elements with color attributes (color, bgcolor) and ensure proper color handling
+              uDark.processColoredItems(aDocument);
+              
+              // 12. Inject custom CSS and dark color scheme if required (only for the first data load)
+              uDark.injectStylesIfNeeded(aDocument, details); // Only benefit of this ; avoids page being white on uDark refresh
+              
+              // 13. Restore the original SVG elements that were temporarily replaced
+              uDark.restoreSvgElements(svgElements);
+
+              // 15. Remove the integrity attribute from elements and replace it with a custom attribute
+              uDark.restoreIntegrityAttributes(aDocument);
+
+              // 16. Return the final edited HTML
+              const outerEdited = aDocument.innerHTML.unprotect_simple("ud-tag-ptd-");
+
+              return "<!doctype html>"+ outerEdited; // Once i tried to be funny and personalized the doctype, but it was a bad idea, it broke everything ! Doctype is a serious thing, very sensitive to any change outside of the standard
+              
+            },
+
+            parseAndEditHtmlContentBackend3: function(strO, details) {
+              let str = strO;
+              if (!str || !str.trim().length) {
+                return str;
+              }
+
+              // 1 : Available slot
+              
+              // 2. The issue isn't with <noscript> itself, but with disallowed tags inside the <head>, including those nested within <noscript>. Many sites make this mistake.
+              // The tags allowed in the <head> are: <base>, <link>, <meta>, <style>, <title>, <script>, <noscript>, and <template>.
+              // When placed in the <head>, the <noscript> tag has strict limitations on what it can contain. It only allows <link>, <style>, and <meta> as child elements.
+              // In contrast, the <template> tag has no such restrictions. It can contain any type of elements, even when placed in the <head>.
+              // The <script> tag is also flexible, as it allows raw text content.
+              // The <style> tag is similarly unrestricted in terms of content, as it handles raw CSS text.
+              // I chose to use the <script> tag with `type="text/plain"` because, unlike <template>, it doesn't break the entire page if there's an unclosed tag inside it.
+              // If <template> contains an unclosed tag, the DOM parser won't find the closing </template> tag, causing the entire page to break.
+              // However, <noscript> and <script> tags are unaffected by this issue. That said, <noscript> can still be problematic in the <head> because its content may include disallowed elements.
+              
+              str = str.replaceAll(/<noscript/g, "<script type='text/plain' secnoscript");
+              str = str.replaceAll(/<\/noscript/g, "</script");
+              
+              // 3. Parse the HTML string into a DOM document
+              const aDocument = uDark.createDocumentFromHtml(str);
+
+                    
+              if(details.fromCache){
+                if(aDocument.getElementById("ud-meta-dark")) // Little experiment, to check if exist the case of double edition, if the code is never triggered, it's a good sign and we would be able to remove it
+                {  
+                  console.warn("DOUBLE EDITION WARNING: ",details.url,"was edited twice, this is not expected, please report this issue",details,aDocument) 
+                  return strO;
+                }
+              }
+              
+              // 4. Temporarily replace all SVG elements to avoid accidental style modifications
+              const svgElements = uDark.processSvgElements(aDocument, details);
+              
+              // 5. Edit styles and attributes inline for background elements
+              uDark.edit_styles_attributes(aDocument, details);
+              uDark.edit_styles_elements(aDocument, details, "ud-edited-background");
+              
+              // 6. Update meta tags to ensure proper charset is set (avoid issues with content-type)
+              // uDark.processMetaTags(aDocument);
+              
+              // 8. Add a custom identifier to favicon links to manage cache
+              uDark.processLinks(aDocument);
+              
+              // 9. Process image sources and prepare them for custom modifications
+              uDark.processImages(aDocument);
+              
+              // 10. Recursively process iframes using the "srcdoc" attribute by applying the same editing logic
+              uDark.processIframes(aDocument, details, {});
+              
+              // 11. Handle elements with color attributes (color, bgcolor) and ensure proper color handling
+              uDark.processColoredItems(aDocument);
+              
+              // 12. Inject custom CSS and dark color scheme if required (only for the first data load)
+              uDark.injectStylesIfNeeded(aDocument, details); // Only benefit of this ; avoids page being white on uDark refresh
+              
+              // 13. Restore the original SVG elements that were temporarily replaced
+              uDark.restoreSvgElements(svgElements);
+              
+              // 14. Restore <noscript> elements that were converted to something else
+              // uDark.restoreTemplateElements(aDocument);
+              uDark.restoreNoscriptElements(aDocument);
+              
+              // 15. Remove the integrity attribute from elements and replace it with a custom attribute
+              uDark.restoreIntegrityAttributes(aDocument);
+              
+              // 16. Return the final edited HTML
+              const outerEdited = aDocument.documentElement.outerHTML;
+              return "<!doctype html>" + outerEdited;
+            },
             on_idk_missing_twice: {
               restore: true,
               fill_black: false,
@@ -3390,9 +3488,9 @@ const dark_object = {
           details.headersLow[details.responseHeaders[n].name.toLowerCase()] = details.responseHeaders[n].value;
         }
         
-        details.charset = ((details.headersLow["content-type"] || "").match(/charset=([0-9A-Z-]+)/i) || ["", "utf-8"])[1]
+        details.charset = ((details.headersLow["content-type"] || "").match(/charset=([0-9A-Z-]+)/i) || ["", "utf-8"])[1].toLowerCase();
         details.isSVGImage = (details.headersLow["content-type"] || "").includes("image/svg")
-        
+
         // Determine if the image deserves to be edited
         if (imageURLObject.pathname.startsWith("/favicon.ico") || imageURLObject.hash.endsWith("#ud_favicon")) {
           return {};
@@ -3431,7 +3529,6 @@ const dark_object = {
                 svgImage: true,
                 remoteSVG: true,
                 remoteSVGURL: svgURLObject.href,
-                no_body: true,
               });
               filter.write(encoder.encode(svgStringEdited));
               filter.disconnect();
@@ -3498,17 +3595,17 @@ const dark_object = {
         return resultEdit;
         
       },
-      editBeforeRequestStyleSheetRequest:function(details){
-        // DevTools does not bother to send the Origin header, for CORS requests, so we can't know if it's a devtools request
-        // We could go further by registering a ServiceWorker that adds a X-Real-Site-Request header via its fetch event.
-        let isCorsRequest=dark_object.misc.isCorsRequest(details);
-        let is_devToolsRequest =isCorsRequest && details.requestHeaders.find(x=>x.name.toLowerCase().trim()=="origin")==undefined;
-        if(is_devToolsRequest )
-          {
+      // editBeforeRequestStyleSheetRequest:function(details){
+      //   // DevTools does not bother to send the Origin header, for CORS requests, so we can't know if it's a devtools request
+      //   // We could go further by registering a ServiceWorker that adds a X-Real-Site-Request header via its fetch event.
+      //   let isCorsRequest=dark_object.misc.isCorsRequest(details);
+      //   let is_devToolsRequest =isCorsRequest && details.requestHeaders.find(x=>x.name.toLowerCase().trim()=="origin")==undefined;
+      //   if(is_devToolsRequest )
+      //     {
           
-          console.log("Loading CSS from DEVTOOLS:",details.url,details) 
-        }
-      },
+      //     console.log("Loading CSS from DEVTOOLS:",details.url,details) 
+      //   }
+      // },
       handleCSSChunk_sync(data, verify, details, filter) {
         let str = details.rejectedValues;
         if(data){ str += details.decoder.decode(data,{stream:true}); }
@@ -3543,23 +3640,7 @@ const dark_object = {
         
         filter.write(details.encoder.encode(options.chunk));
       },
-      reEncodeScriptsToUTF8(details) {
-          let port = uDark.getPort(details);
-          if(!port){return;} // No port found for this request, it's not a uDark eligible webpage
-          let charset = uDark.getPort(details).charset;
-          if(charset.toLowerCase()!="utf-8"){
-            let filter = globalThis.browser.webRequest.filterResponseData(details.requestId); // After this instruction, browser espect us to write data to the filter and close it
-            let decoder = new TextDecoder(charset);
-            let encoder = new TextEncoder();
-            filter.ondata = event => {
-              filter.write(encoder.encode(decoder.decode(event.data)));
-            };
-            filter.onstop = event => {
-              filter.disconnect();
-            };
-        }
-      }
-      ,
+  
       
       editBeforeRequestStyleSheet_sync: function(details) {
         let options = {};
@@ -3677,7 +3758,7 @@ const dark_object = {
             return;
           }
           else{
-            console.log("No cache found for",details.url,"chunk",details.dataCount,options);
+            // console.log("No cache found for",details.url,"chunk",details.dataCount,options);
           }
           let readable_variable_checker = `\n:root{--chunk_is_readable_${details.requestId}_${details.dataCount}:0.55;}`; 
           options.chunk += readable_variable_checker; // We edit the chunk to add a variable that will be checked by the content script to know if the chunk is readable or not
@@ -3785,8 +3866,6 @@ const dark_object = {
         
       },
       editBeforeData: function(details) {
-        
-        
         if (details.tabId == -1 && uDark.connected_options_ports_count || uDark.connected_cs_ports["port-from-popup-" + details.tabId]) { // -1 Happens sometimes, like on https://www.youtube.com/ at the time i write this, stackoverflow talks about worker threads
           
           // Here we are covering the needs of the option page: Be able to frame any page
@@ -3803,14 +3882,19 @@ const dark_object = {
           details.headersLow[details.responseHeaders[n].name.toLowerCase()] = details.responseHeaders[n].value;
         }
         if (!(details.headersLow["content-type"] || "text/html").includes("text/html")) return {}
-        details.charset = ((details.headersLow["content-type"] || "").match(/charset=([0-9A-Z-]+)/i) || ["", "utf-8"])[1]
+        details.charset = ((details.headersLow["content-type"] || "").match(/charset=([0-9A-Z-_]+)/i) || ["", "utf-8"])[1].toLowerCase()
+
+
         
         details.responseHeaders = details.responseHeaders.filter(x => {
           var a_filter = uDark.headersDo[x.name.toLowerCase()];
           return a_filter ? a_filter(x) : true;
         })
-        // details.fromCache; A webpage can be loaded from cache but in an unedited version, if the user navigated too quickly, the cache stays in an unedited version and might be served on new tab or previous page. It was hard to understand. There is not only cached / uncached state but uncached/undedited/cached states possible.
-          uDark.getPort(details).charset = details.charset;
+        
+      
+
+
+        uDark.getPort(details).charset = details.charset;
           // console.log("Editing", details.url, details.requestId, details.fromCache)
           let filter = globalThis.browser.webRequest.filterResponseData(details.requestId);
           let decoder = new TextDecoder(details.charset)
@@ -3827,8 +3911,21 @@ const dark_object = {
           filter.onstop = event => {
             details.dataCount = 1;
             
-            details.writeEnd = uDark.parseAndEditHtml3(details.writeEnd, details)
-            filter.write(encoder.encode(details.writeEnd));
+            details.writeEnd = uDark.parseAndEditHtmlContentBackend4(details.writeEnd, details)
+            if(details.charset!="utf-8"){
+              setTimeout(()=>{
+              globalThis.browser.tabs.executeScript(details.tabId, {
+                code: `document.wrappedJSObject.write(${JSON.stringify(details.writeEnd)})`,
+                runAt:"document_start",
+                frameId:details.frameId,
+                matchAboutBlank:true
+              })
+              },10)
+            }
+            else
+            {
+              filter.write(encoder.encode(details.writeEnd));
+            }
             filter.disconnect(); // Low perf if not disconnected !
           }
         
@@ -3851,3 +3948,4 @@ const dark_object = {
     dark_object.content_script.website_load();
     
   }
+  
