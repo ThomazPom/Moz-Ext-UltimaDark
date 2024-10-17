@@ -583,7 +583,6 @@ const dark_object = {
           str = str.protect_simple(/\b(head|html|body)\b/gi, "ud-tag-ptd-$1");
 
           let parsedDocument = uDark.createDocumentFromHtml(str);
-          console.log(new Error())
           const aDocument = parsedDocument.body;
           
           // 4. Temporarily replace all SVG elements to avoid accidental style modifications
