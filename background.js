@@ -574,15 +574,17 @@ const dark_object = {
             return strO;
           }
           
+          
           // 2. Special handling for <style> and <svg> style elements (returns edited value directly)
           if (elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement) {
             return uDark.edit_str(str, false, false, undefined, false, options);
           }
           
-          str = str.protect_simple(/(head|html|body)/gi, "ud-tag-ptd-$1");
-          
-          let aDocument = document.createElement("udark-root-doc");
-          aDocument.o_ud_innerHTML = str;
+          str = str.protect_simple(/\b(head|html|body)\b/gi, "ud-tag-ptd-$1");
+
+          let parsedDocument = uDark.createDocumentFromHtml(str);
+          console.log(new Error())
+          const aDocument = parsedDocument.body;
           
           // 4. Temporarily replace all SVG elements to avoid accidental style modifications
           const svgElements = uDark.processSvgElements(aDocument, details);
@@ -838,7 +840,6 @@ const dark_object = {
               if (possibleColor) {
                 let callResult = afunction(...possibleColor, uDark.hex_val /* this kind of html4 attributes does not fully supports rgba vals, prefer use hex vals  */, coloredItem);
                 
-              console.log("Processing", key, attributeValue, coloredItem,"'",possibleColor,"'",callResult)
                 if (callResult) {
                   coloredItem.setAttribute(key, callResult);
                 }
@@ -847,17 +848,17 @@ const dark_object = {
           });
         },
         
-        injectStylesIfNeeded: function(documentElement, details) {
+        injectStylesIfNeeded: function(aDocument, details) {
           // Inject custom CSS and the dark color scheme meta tag if this is the first data load
           if (details.dataCount === 1) {
             
             // Stopped using inject_css_suggested, as it was causing issues with some websites, like react ones that stats with a minimal body
             
-            const udMetaDark = documentElement.querySelector("meta[name='color-scheme']") || document.createElement("meta");
+            const udMetaDark = aDocument.querySelector("meta[name='color-scheme']") || document.createElement("meta");
             udMetaDark.id = "ud-meta-dark";
             udMetaDark.name = "color-scheme";
             udMetaDark.content = "dark";
-            headElem = documentElement.head || documentElement.querySelector("ud-tag-ptd-head") || documentElement;
+            headElem = aDocument.head || aDocument.querySelector("ud-tag-ptd-head") || aDocument;
             headElem.prepend(udMetaDark);
           }
         },
@@ -3100,43 +3101,44 @@ const dark_object = {
                 return str;
               }
               
-          
-              str = str.protect_simple(/(head|html|body)/gi, "ud-tag-ptd-$1");
-              let aDocument = document.createElement("udark-root-doc");
-              aDocument.innerHTML = str;
+              str = str.protect_simple(/\b(head|html|body)\b/gi, "ud-tag-ptd-$1"); // use word boundaries to avoid matching tags like "headings" or tbody or texts like innerHTML
+
+              let parsedDocument = uDark.createDocumentFromHtml(str);
+              const aDocument = parsedDocument.body;
               
-              // 4. Temporarily replace all SVG elements to avoid accidental style modifications
-              const svgElements = uDark.processSvgElements(aDocument, details);
-              
-              // 5. Edit styles and attributes inline for background elements
-              uDark.edit_styles_attributes(aDocument, details);
-              uDark.edit_styles_elements(aDocument, details, "ud-edited-background");
-              
-              
-              // 8. Add a custom identifier to favicon links to manage cache
-              uDark.processLinks(aDocument);
-              
-              // 9. Process image sources and prepare them for custom modifications
-              uDark.processImages(aDocument);
-              
-              // 10. Recursively process iframes using the "srcdoc" attribute by applying the same editing logic
-              uDark.processIframes(aDocument, details, {});
-              
-              // 11. Handle elements with color attributes (color, bgcolor) and ensure proper color handling
-              uDark.processColoredItems(aDocument);
-              
-              // 12. Inject custom CSS and dark color scheme if required (only for the first data load)
-              uDark.injectStylesIfNeeded(aDocument, details); // Only benefit of this ; avoids page being white on uDark refresh
-              
-              // 13. Restore the original SVG elements that were temporarily replaced
-              uDark.restoreSvgElements(svgElements);
+              if(!details.debugParsing){
+
+                  // 4. Temporarily replace all SVG elements to avoid accidental style modifications
+                  const svgElements = uDark.processSvgElements(aDocument, details);  
+                  // 5. Edit styles and attributes inline for background elements
+                  uDark.edit_styles_attributes(aDocument, details);
+                  uDark.edit_styles_elements(aDocument, details, "ud-edited-background");
+                  
+                  
+                  // 8. Add a custom identifier to favicon links to manage cache
+                  uDark.processLinks(aDocument);
+                  
+                  // 9. Process image sources and prepare them for custom modifications
+                  uDark.processImages(aDocument);
+                  
+                  // 10. Recursively process iframes using the "srcdoc" attribute by applying the same editing logic
+                  uDark.processIframes(aDocument, details, {});
+                  
+                  // 11. Handle elements with color attributes (color, bgcolor) and ensure proper color handling
+                  uDark.processColoredItems(aDocument);
+                  
+                  // 12. Inject custom CSS and dark color scheme if required (only for the first data load)
+                  uDark.injectStylesIfNeeded(aDocument, details); // Only benefit of this ; avoids page being white on uDark refresh
+                  
+                  // 13. Restore the original SVG elements that were temporarily replaced
+                  uDark.restoreSvgElements(svgElements);
+              }
 
               // 15. Remove the integrity attribute from elements and replace it with a custom attribute
               uDark.restoreIntegrityAttributes(aDocument);
 
               // 16. Return the final edited HTML
-              const outerEdited = aDocument.innerHTML.unprotect_simple("ud-tag-ptd-");
-
+              const outerEdited = aDocument.innerHTML.trim().unprotect_simple("ud-tag-ptd-");
               return "<!doctype html>"+ outerEdited; // Once i tried to be funny and personalized the doctype, but it was a bad idea, it broke everything ! Doctype is a serious thing, very sensitive to any change outside of the standard
               
             },
@@ -3173,35 +3175,40 @@ const dark_object = {
                   return strO;
                 }
               }
+              if(!details.debugParsing)
+                {
+                  
               
-              // 4. Temporarily replace all SVG elements to avoid accidental style modifications
-              const svgElements = uDark.processSvgElements(aDocument, details);
-              
-              // 5. Edit styles and attributes inline for background elements
-              uDark.edit_styles_attributes(aDocument, details);
-              uDark.edit_styles_elements(aDocument, details, "ud-edited-background");
-              
-              // 6. Update meta tags to ensure proper charset is set (avoid issues with content-type)
-              // uDark.processMetaTags(aDocument);
-              
-              // 8. Add a custom identifier to favicon links to manage cache
-              uDark.processLinks(aDocument);
-              
-              // 9. Process image sources and prepare them for custom modifications
-              uDark.processImages(aDocument);
-              
-              // 10. Recursively process iframes using the "srcdoc" attribute by applying the same editing logic
-              uDark.processIframes(aDocument, details, {});
-              
-              // 11. Handle elements with color attributes (color, bgcolor) and ensure proper color handling
-              uDark.processColoredItems(aDocument);
-              
-              // 12. Inject custom CSS and dark color scheme if required (only for the first data load)
-              uDark.injectStylesIfNeeded(aDocument, details); // Only benefit of this ; avoids page being white on uDark refresh
-              
-              // 13. Restore the original SVG elements that were temporarily replaced
-              uDark.restoreSvgElements(svgElements);
-              
+                    // 4. Temporarily replace all SVG elements to avoid accidental style modifications
+                    const svgElements = uDark.processSvgElements(aDocument, details);
+                    
+                    // 5. Edit styles and attributes inline for background elements
+                    uDark.edit_styles_attributes(aDocument, details);
+                    uDark.edit_styles_elements(aDocument, details, "ud-edited-background");
+                    
+                    // 6. Update meta tags to ensure proper charset is set (avoid issues with content-type)
+                    // uDark.processMetaTags(aDocument);
+                    
+                    // 8. Add a custom identifier to favicon links to manage cache
+                    uDark.processLinks(aDocument);
+                    
+                    // 9. Process image sources and prepare them for custom modifications
+                    uDark.processImages(aDocument);
+                    
+                    // 10. Recursively process iframes using the "srcdoc" attribute by applying the same editing logic
+                    uDark.processIframes(aDocument, details, {});
+                    
+                    // 11. Handle elements with color attributes (color, bgcolor) and ensure proper color handling
+                    uDark.processColoredItems(aDocument);
+                    
+                    // 12. Inject custom CSS and dark color scheme if required (only for the first data load)
+                    uDark.injectStylesIfNeeded(aDocument, details); // Only benefit of this ; avoids page being white on uDark refresh
+                    
+                    // 13. Restore the original SVG elements that were temporarily replaced
+                    uDark.restoreSvgElements(svgElements);
+                    
+                }
+
               // 14. Restore <noscript> elements that were converted to something else
               // uDark.restoreTemplateElements(aDocument);
               uDark.restoreNoscriptElements(aDocument);
@@ -3912,6 +3919,9 @@ const dark_object = {
             details.dataCount = 1;
             
             details.writeEnd = uDark.parseAndEditHtmlContentBackend4(details.writeEnd, details)
+            
+
+
             if(details.charset!="utf-8"){
               setTimeout(()=>{
               globalThis.browser.tabs.executeScript(details.tabId, {
