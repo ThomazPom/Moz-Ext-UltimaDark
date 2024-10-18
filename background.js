@@ -573,8 +573,6 @@ const dark_object = {
           if (elem instanceof HTMLScriptElement) {
             return strO;
           }
-          
-          
           // 2. Special handling for <style> and <svg> style elements (returns edited value directly)
           if (elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement) {
             return uDark.edit_str(str, false, false, undefined, false, options);
@@ -582,7 +580,9 @@ const dark_object = {
           
           str = str.protect_simple(/\b(head|html|body)\b/gi, "ud-tag-ptd-$1");
 
-          let parsedDocument = uDark.createDocumentFromHtml(str);
+          let parsedDocument = uDark.createDocumentFromHtml("<body>"+str+"</body>"
+            /* Re encapsulate str into a <body> is not an overkill : Exists something called unsafeHTML clid binding. I did not understood what it is, but it needs a body tag for proper parsing*/
+          );
           const aDocument = parsedDocument.body;
           
           // 4. Temporarily replace all SVG elements to avoid accidental style modifications
@@ -619,7 +619,6 @@ const dark_object = {
           }
           
           let resultEdited = aDocument.innerHTML.unprotect_simple("ud-tag-ptd-");
-          
           return resultEdited;
         },
         
@@ -2814,11 +2813,7 @@ const dark_object = {
           // At first, we used exclude_regex here to not register some content scripts, but thent we used it earlier, in the content script registration
           
           let portKey = `port-from-cs-${connectedPort.sender.tab.id}-${connectedPort.sender.frameId}`
-          let previousPort= uDark.connected_cs_ports[portKey]
           uDark.connected_cs_ports[portKey] = connectedPort;
-          if(previousPort){
-            connectedPort.charset=previousPort.charset;
-          }
           connectedPort.onDisconnect.addListener(disconnectedPort => {
             let portValue = uDark.connected_cs_ports[portKey]
             
@@ -3102,9 +3097,37 @@ const dark_object = {
               
               str = str.protect_simple(/\b(head|html|body)\b/gi, "ud-tag-ptd-$1"); // use word boundaries to avoid matching tags like "headings" or tbody or texts like innerHTML
 
-              let parsedDocument = uDark.createDocumentFromHtml(str);
+              let parsedDocument = uDark.createDocumentFromHtml("<body>"+str+"</body>"
+                /* Re encapsulate str into a <body> is not an overkill : Exists something called unsafeHTML clid binding. I did not understood what it is, but it needs a body tag for proper parsing*/
+              );
+
               const aDocument = parsedDocument.body;
               
+              if(details.unspecifiedCharset ){
+                // As we seen document.characterSet will default <meta http-equiv> we need to account the meta tag charset and re decode the document properly
+                // It Falbacks from http header charset to meta tag charset, then to http-equiv charset then to OS charset.
+                // We can use queryselector safely as it takes the first meta tag it finds
+                let metaContentType = aDocument.querySelector("meta[charset],meta[http-equiv='Content-Type']");
+                // If both charset and http-equiv attributes are set in the same tag , charset wins
+                
+                if(metaContentType){
+                  let usedContentType = metaContentType.getAttribute("content");
+                  if(metaContentType.hasAttribute("charset")){
+                    let usedCharset = metaContentType.getAttribute("charset");
+                    usedContentType = `text/html;charset=${usedCharset}`;
+                  }
+                  let metaDetails = {responseHeaders:[{name:"Content-Type",value: usedContentType }]}
+                  dark_object.misc.extractCharsetFromHeaders(metaDetails);
+                  if(metaDetails.charset!="utf-8")
+                    {
+                      details.metaContentType=usedContentType;
+                      details.unspecifiedCharset=false;
+                      details.charset=metaDetails.charset;
+                      const redDecoded = new TextDecoder(metaDetails.charset).decode(details.writeEnd, {stream: true});
+                      return uDark.parseAndEditHtmlContentBackend4(redDecoded, details);
+                    }
+                }
+              }
               if(!details.debugParsing){
 
                   // 4. Temporarily replace all SVG elements to avoid accidental style modifications
@@ -3132,6 +3155,7 @@ const dark_object = {
                   // 13. Restore the original SVG elements that were temporarily replaced
                   uDark.restoreSvgElements(svgElements);
               }
+              
 
               // 15. Remove the integrity attribute from elements and replace it with a custom attribute
               uDark.restoreIntegrityAttributes(aDocument);
@@ -3490,12 +3514,9 @@ const dark_object = {
         let imageURLObject = new URL(details.url);
         let n = details.responseHeaders.length;
         details.headersLow = {}
-        while (n--) {
-          details.headersLow[details.responseHeaders[n].name.toLowerCase()] = details.responseHeaders[n].value;
-        }
         
-        details.charset = ((details.headersLow["content-type"] || "").match(/charset=([0-9A-Z-_]+)/i) || ["", "utf-8"])[1].toLowerCase()
-        details.isSVGImage = (details.headersLow["content-type"] || "").includes("image/svg")
+        dark_object.misc.extractCharsetFromHeaders(details, "image/png",);
+        details.isSVGImage = details.contentType.includes("image/svg");
 
         // Determine if the image deserves to be edited
         if (imageURLObject.pathname.startsWith("/favicon.ico") || imageURLObject.hash.endsWith("#ud_favicon")) {
@@ -3662,17 +3683,10 @@ const dark_object = {
           return {}
         }
         
+        dark_object.misc.extractCharsetFromHeaders(details, "text/css");
         
         let filter = globalThis.browser.webRequest.filterResponseData(details.requestId); // After this instruction, browser espect us to write data to the filter and close it
         
-        let n = details.responseHeaders.length;
-        details.headersLow = {}
-        while (n--) {
-          details.headersLow[details.responseHeaders[n].name.toLowerCase()] = details.responseHeaders[n].value;
-        }
-        // console.log("Will darken", details.url, details.requestId, details.fromCache,details)
-        
-        details.charset = ((details.headersLow["content-type"] || "").match(/charset=([0-9A-Z-_]+)/i) || ["", "utf-8"])[1].toLowerCase()
         details.decoder = new TextDecoder(details.charset)
         details.encoder = new TextEncoder();
         details.dataCount = 0;
@@ -3871,7 +3885,24 @@ const dark_object = {
         }
         
       },
-      editBeforeData: function(details) {
+      extractCharsetFromHeaders: function(details,defaultCT="text/html",defaultCharset="utf-8") {
+        // We have seen cases where the charset was not specified in the content-type header, and the browser document.characterSet was defaulting to <meta> tag charset.
+        // This is why we need to extract the charset from the headers, to knwo if we are in this kind of cases.
+            
+        let contentTypeHeader = details.responseHeaders.find(x => x.name.toLowerCase() == "content-type");
+        if(!contentTypeHeader){
+          details.noContentTypeHeader=true;
+          details.contentType={value:defaultCT};
+        }
+        console.log("Content type",details.url,contentTypeHeader);
+        details.contentType = contentTypeHeader.value;
+        details.charset = details.contentType.match(/charset=([0-9A-Z-_]+)/i)
+        details.unspecifiedCharset = !details.charset;
+        details.charset=(details.charset ||["",defaultCharset])[1].toLowerCase();
+      },
+
+
+      editBeforeData: async function(details) {
         if (details.tabId == -1 && uDark.connected_options_ports_count || uDark.connected_cs_ports["port-from-popup-" + details.tabId]) { // -1 Happens sometimes, like on https://www.youtube.com/ at the time i write this, stackoverflow talks about worker threads
           
           // Here we are covering the needs of the option page: Be able to frame any page
@@ -3882,46 +3913,52 @@ const dark_object = {
           return {responseHeaders:details.responseHeaders};
         }
         
-        var n = details.responseHeaders.length;
-        details.headersLow = {}
-        while (n--) {
-          details.headersLow[details.responseHeaders[n].name.toLowerCase()] = details.responseHeaders[n].value;
+        dark_object.misc.extractCharsetFromHeaders(details);
+
+        if(!details.contentType.includes("text/html")){
+          return {responseHeaders:details.responseHeaders};
         }
-        if (!(details.headersLow["content-type"] || "text/html").includes("text/html")) return {}
-        details.charset = ((details.headersLow["content-type"] || "").match(/charset=([0-9A-Z-_]+)/i) || ["", "utf-8"])[1].toLowerCase()
-
-
-        
         details.responseHeaders = details.responseHeaders.filter(x => {
           var a_filter = uDark.headersDo[x.name.toLowerCase()];
           return a_filter ? a_filter(x) : true;
         })
-        
-      
-
-
-        uDark.getPort(details).charset = details.charset;
           // console.log("Editing", details.url, details.requestId, details.fromCache)
           let filter = globalThis.browser.webRequest.filterResponseData(details.requestId);
           let decoder = new TextDecoder(details.charset)
           let encoder = new TextEncoder();
           details.dataCount = 0;
-          details.writeEnd = "";        
-          
+          details.writeEnd = [];     
           filter.ondata = event => {
             details.dataCount++
-            details.writeEnd += decoder.decode(event.data, {
-              stream: true
-            });
+            details.writeEnd.push(event.data);
+            
           }
-          filter.onstop = event => {
+          filter.onstop = async event => {
+            
+            // Note the headers are already returned since a long time, so we can't edit them here. Fortunately we don't need to, and if we realy need.. use http equiv.
             details.dataCount = 1;
-            
-            details.writeEnd = uDark.parseAndEditHtmlContentBackend4(details.writeEnd, details)
+            details.writeEnd = await new Blob(details.writeEnd).arrayBuffer();
+
             
 
+            if(details.debugParsing){ // debug
+              details.writeEnd = decoder.decode(details.writeEnd, {stream: true});
+            }
+            else
+            {
+             details.writeEnd = uDark.parseAndEditHtmlContentBackend4(decoder.decode(details.writeEnd,{stream: true}), details)
+            }
 
-            if(details.charset!="utf-8"){
+            if(details.charset!="utf-8" ){ 
+              console.warn("Charset not utf-8",details.charset,details.url,"Using the javascript method to write the content");
+              filter.write(encoder.encode(`<!DOCTYPE html>`));
+              if(details.metaContentType && !uDark.fallbackOnMissingCharsetToWindows1252){
+                // If we are here, it means the charset was not specified in the headers, and the browser document.characterSet was defaulting to <meta> tag charset.
+                // We extracted the charset from the meta tag, and we are here to restore it, using the filter. So far it's the only way to do it and a perfect solution.
+                console.log("Found a meta charset",details.metaContentType," while parsing the html and no charset in the headers, using the filter to restore it");
+                filter.write(encoder.encode(`<head><meta charset="${details.charset}"></head>`));
+              }
+
               setTimeout(()=>{
               globalThis.browser.tabs.executeScript(details.tabId, {
                 code: `document.wrappedJSObject.write(${JSON.stringify(details.writeEnd)})`,
@@ -3933,14 +3970,12 @@ const dark_object = {
             }
             else
             {
+              console.log("Charset utf-8",details.charset,details.url,"Using the filter to write the content");
               filter.write(encoder.encode(details.writeEnd));
             }
             filter.disconnect(); // Low perf if not disconnected !
           }
-        
-        return {
-          responseHeaders: details.responseHeaders
-        }
+            return {responseHeaders:details.responseHeaders}
       }
     }
   }
