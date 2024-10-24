@@ -28,6 +28,8 @@ jobs:
         imageWorker.js
         bg.jpg
         background.js
+        entities.js
+        uDarkEncoder.js
         resolveIDKVars.js
         icons/
 

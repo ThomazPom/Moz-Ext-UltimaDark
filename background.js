@@ -76,8 +76,8 @@ const dark_object = {
         min_bright_bg_trigger: 0.2, // backgrounds with luminace under this value will remain as is
         min_bright_bg: 0.1, // background with value over min_bright_bg_trigger will be darkened from this value up to max_bright_bg
         max_bright_bg: 0.4, // background with value over min_bright_bg_trigger will be darkened from min_bright_bg up to this value
-       
-            
+        
+        
         
         str_protect: function(str, regexSearch, protectWith) {
           // sore values into an array:
@@ -437,7 +437,7 @@ const dark_object = {
                 if(encoded.message){
                   console.warn(encoded)
                   encoded=encodeURIComponent(imageData);
-                  encoded=rencodeToURI(encoded, dataHeader.replace("base64",""), false);
+                  encoded=uDark.rencodeToURI(encoded, dataHeader.replace("base64",""), false);
                 }
                 
                 
@@ -579,7 +579,7 @@ const dark_object = {
           }
           
           str = str.protect_simple(/\b(head|html|body)\b/gi, "ud-tag-ptd-$1");
-
+          
           let parsedDocument = uDark.createDocumentFromHtml("<body>"+str+"</body>"
             /* Re encapsulate str into a <body> is not an overkill : Exists something called unsafeHTML clid binding. I did not understood what it is, but it needs a body tag for proper parsing*/
           );
@@ -587,7 +587,7 @@ const dark_object = {
           
           // 4. Temporarily replace all SVG elements to avoid accidental style modifications
           const svgElements = uDark.processSvgElements(aDocument, details);
-              
+          
           // 5. Edit styles and attributes inline for background elements
           uDark.edit_styles_attributes(aDocument, details);
           uDark.edit_styles_elements(aDocument, details, "ud-edited-background");
@@ -610,7 +610,7 @@ const dark_object = {
           
           // 15. Remove the integrity attribute from elements and replace it with a custom attribute
           uDark.restoreIntegrityAttributes(aDocument);
-              
+          
           
           // 18. After all the edits, return the final HTML output
           
@@ -622,7 +622,7 @@ const dark_object = {
           return resultEdited;
         },
         
-
+        
         frontEditHTML_old: function(elem, strO, details, options = {}) {
           // 1. Ignore <script> elements to prevent unintended modifications to JavaScript
           let value = strO;
@@ -1875,7 +1875,7 @@ const dark_object = {
         canvasHeight: 3,
         indexes: Array(3).fill(0),
       }
-
+      
       uDark.attributes_function_map = {
         "color": (r, g, b, a, render, elem) => {
           elem.style.p_ud_setProperty("--ud-html4-color", uDark.revert_rgba(r, g, b, a, render));
@@ -2127,7 +2127,7 @@ const dark_object = {
     
     install() {
       console.info("UltimaDark", "Content script install", window);
-    
+      
       window.uDark = {
         ...uDark,
         ...{
@@ -2136,7 +2136,7 @@ const dark_object = {
           userSettings : window.userSettings
         }
       }
-   
+      
       
       if (uDark.direct_window_export) {
         
@@ -2345,7 +2345,7 @@ const dark_object = {
         // This is the one youtube uses
         uDark.valuePrototypeEditor([Element, ShadowRoot], "innerHTML", uDark.frontEditHTML); // toString : some objects can redefine tostring to generate their inner
         // uDark.valuePrototypeEditor([Element, ShadowRoot], "innerHTML", uDark.frontEditHTML, (elem,value)=>
-       
+          
         
         { // Wrap JS editing iframe and this kind of objects SRC's
           uDark.valuePrototypeEditor([HTMLIFrameElement, HTMLEmbedElement], "src", uDark.frontEditHTMLPossibleDataURL ); 
@@ -2670,10 +2670,10 @@ const dark_object = {
             types: ["stylesheet"]
           },
           ["blocking", "responseHeaders"]);
-
+          
           
           /* Debugging purposes */
-
+          
           // ["blocking", "responseHeaders"]);
           // globalThis.browser.webRequest.onBeforeRequest.addListener(function(details){
           //     console.log("XMLHTTPREQUEST:",details)
@@ -2695,7 +2695,7 @@ const dark_object = {
           
           
           /*Experimental*/
-
+          
           /*end of Experimental*/
           
           // globalThis.browser.webRequest.onBeforeRequest.addListener(dark_object.misc.editBeforeServiceWorker, {
@@ -3008,7 +3008,7 @@ const dark_object = {
             },
             handleMessageFromCS: function(message, sender) {
             },
-   
+            
           }
         }
         
@@ -3096,11 +3096,11 @@ const dark_object = {
               }
               
               str = str.protect_simple(/\b(head|html|body)\b/gi, "ud-tag-ptd-$1"); // use word boundaries to avoid matching tags like "headings" or tbody or texts like innerHTML
-
+              
               let parsedDocument = uDark.createDocumentFromHtml("<body>"+str+"</body>"
                 /* Re encapsulate str into a <body> is not an overkill : Exists something called unsafeHTML clid binding. I did not understood what it is, but it needs a body tag for proper parsing*/
               );
-
+              
               const aDocument = parsedDocument.body;
               
               if(details.unspecifiedCharset ){
@@ -3120,58 +3120,58 @@ const dark_object = {
                   dark_object.misc.extractCharsetFromHeaders(metaDetails);
                   if(metaDetails.charset!="utf-8")
                     {
-                      details.metaContentType=usedContentType;
-                      details.unspecifiedCharset=false;
-                      details.charset=metaDetails.charset;
-                      const redDecoded = new TextDecoder(metaDetails.charset).decode(details.writeEnd, {stream: true});
-                      return uDark.parseAndEditHtmlContentBackend4(redDecoded, details);
-                    }
+                    details.metaContentType=usedContentType;
+                    details.unspecifiedCharset=false;
+                    details.charset=metaDetails.charset;
+                    const redDecoded = uDarkDecode(metaDetails.charset,details.writeEnd,{stream:true})
+                    return uDark.parseAndEditHtmlContentBackend4(redDecoded, details);
+                  }
                 }
               }
               if(!details.debugParsing){
-
-                  // 4. Temporarily replace all SVG elements to avoid accidental style modifications
-                  const svgElements = uDark.processSvgElements(aDocument, details);  
-                  // 5. Edit styles and attributes inline for background elements
-                  uDark.edit_styles_attributes(aDocument, details);
-                  uDark.edit_styles_elements(aDocument, details, "ud-edited-background");
-                  
-                  
-                  // 8. Add a custom identifier to favicon links to manage cache
-                  uDark.processLinks(aDocument);
-                  
-                  // 9. Process image sources and prepare them for custom modifications
-                  uDark.processImages(aDocument);
-                  
-                  // 10. Recursively process iframes using the "srcdoc" attribute by applying the same editing logic
-                  uDark.processIframes(aDocument, details, {});
-                  
-                  // 11. Handle elements with color attributes (color, bgcolor) and ensure proper color handling
-                  uDark.processColoredItems(aDocument);
-                  
-                  // 12. Inject custom CSS and dark color scheme if required (only for the first data load)
-                  uDark.injectStylesIfNeeded(aDocument, details); // Only benefit of this ; avoids page being white on uDark refresh
-                  
-                  // 13. Restore the original SVG elements that were temporarily replaced
-                  uDark.restoreSvgElements(svgElements);
+                
+                // 4. Temporarily replace all SVG elements to avoid accidental style modifications
+                const svgElements = uDark.processSvgElements(aDocument, details);  
+                // 5. Edit styles and attributes inline for background elements
+                uDark.edit_styles_attributes(aDocument, details);
+                uDark.edit_styles_elements(aDocument, details, "ud-edited-background");
+                
+                
+                // 8. Add a custom identifier to favicon links to manage cache
+                uDark.processLinks(aDocument);
+                
+                // 9. Process image sources and prepare them for custom modifications
+                uDark.processImages(aDocument);
+                
+                // 10. Recursively process iframes using the "srcdoc" attribute by applying the same editing logic
+                uDark.processIframes(aDocument, details, {});
+                
+                // 11. Handle elements with color attributes (color, bgcolor) and ensure proper color handling
+                uDark.processColoredItems(aDocument);
+                
+                // 12. Inject custom CSS and dark color scheme if required (only for the first data load)
+                uDark.injectStylesIfNeeded(aDocument, details); // Only benefit of this ; avoids page being white on uDark refresh
+                
+                // 13. Restore the original SVG elements that were temporarily replaced
+                uDark.restoreSvgElements(svgElements);
               }
               
-
+              
               // 15. Remove the integrity attribute from elements and replace it with a custom attribute
               uDark.restoreIntegrityAttributes(aDocument);
-
+              
               // 16. Return the final edited HTML
               const outerEdited = aDocument.innerHTML.trim().unprotect_simple("ud-tag-ptd-");
               return "<!doctype html>"+ outerEdited; // Once i tried to be funny and personalized the doctype, but it was a bad idea, it broke everything ! Doctype is a serious thing, very sensitive to any change outside of the standard
               
             },
-
+            
             parseAndEditHtmlContentBackend3: function(strO, details) {
               let str = strO;
               if (!str || !str.trim().length) {
                 return str;
               }
-
+              
               // 1 : Available slot
               
               // 2. The issue isn't with <noscript> itself, but with disallowed tags inside the <head>, including those nested within <noscript>. Many sites make this mistake.
@@ -3189,8 +3189,8 @@ const dark_object = {
               
               // 3. Parse the HTML string into a DOM document
               const aDocument = uDark.createDocumentFromHtml(str);
-
-                    
+              
+              
               if(details.fromCache){
                 if(aDocument.getElementById("ud-meta-dark")) // Little experiment, to check if exist the case of double edition, if the code is never triggered, it's a good sign and we would be able to remove it
                 {  
@@ -3200,38 +3200,38 @@ const dark_object = {
               }
               if(!details.debugParsing)
                 {
-                  
+                
+                
+                // 4. Temporarily replace all SVG elements to avoid accidental style modifications
+                const svgElements = uDark.processSvgElements(aDocument, details);
+                
+                // 5. Edit styles and attributes inline for background elements
+                uDark.edit_styles_attributes(aDocument, details);
+                uDark.edit_styles_elements(aDocument, details, "ud-edited-background");
+                
+                // 6. Update meta tags to ensure proper charset is set (avoid issues with content-type)
+                // uDark.processMetaTags(aDocument);
+                
+                // 8. Add a custom identifier to favicon links to manage cache
+                uDark.processLinks(aDocument);
+                
+                // 9. Process image sources and prepare them for custom modifications
+                uDark.processImages(aDocument);
+                
+                // 10. Recursively process iframes using the "srcdoc" attribute by applying the same editing logic
+                uDark.processIframes(aDocument, details, {});
+                
+                // 11. Handle elements with color attributes (color, bgcolor) and ensure proper color handling
+                uDark.processColoredItems(aDocument);
+                
+                // 12. Inject custom CSS and dark color scheme if required (only for the first data load)
+                uDark.injectStylesIfNeeded(aDocument, details); // Only benefit of this ; avoids page being white on uDark refresh
+                
+                // 13. Restore the original SVG elements that were temporarily replaced
+                uDark.restoreSvgElements(svgElements);
+                
+              }
               
-                    // 4. Temporarily replace all SVG elements to avoid accidental style modifications
-                    const svgElements = uDark.processSvgElements(aDocument, details);
-                    
-                    // 5. Edit styles and attributes inline for background elements
-                    uDark.edit_styles_attributes(aDocument, details);
-                    uDark.edit_styles_elements(aDocument, details, "ud-edited-background");
-                    
-                    // 6. Update meta tags to ensure proper charset is set (avoid issues with content-type)
-                    // uDark.processMetaTags(aDocument);
-                    
-                    // 8. Add a custom identifier to favicon links to manage cache
-                    uDark.processLinks(aDocument);
-                    
-                    // 9. Process image sources and prepare them for custom modifications
-                    uDark.processImages(aDocument);
-                    
-                    // 10. Recursively process iframes using the "srcdoc" attribute by applying the same editing logic
-                    uDark.processIframes(aDocument, details, {});
-                    
-                    // 11. Handle elements with color attributes (color, bgcolor) and ensure proper color handling
-                    uDark.processColoredItems(aDocument);
-                    
-                    // 12. Inject custom CSS and dark color scheme if required (only for the first data load)
-                    uDark.injectStylesIfNeeded(aDocument, details); // Only benefit of this ; avoids page being white on uDark refresh
-                    
-                    // 13. Restore the original SVG elements that were temporarily replaced
-                    uDark.restoreSvgElements(svgElements);
-                    
-                }
-
               // 14. Restore <noscript> elements that were converted to something else
               // uDark.restoreTemplateElements(aDocument);
               uDark.restoreNoscriptElements(aDocument);
@@ -3517,7 +3517,7 @@ const dark_object = {
         
         dark_object.misc.extractCharsetFromHeaders(details, "image/png",);
         details.isSVGImage = details.contentType.includes("image/svg");
-
+        
         // Determine if the image deserves to be edited
         if (imageURLObject.pathname.startsWith("/favicon.ico") || imageURLObject.hash.endsWith("#ud_favicon")) {
           return {};
@@ -3629,7 +3629,7 @@ const dark_object = {
       //   let is_devToolsRequest =isCorsRequest && details.requestHeaders.find(x=>x.name.toLowerCase().trim()=="origin")==undefined;
       //   if(is_devToolsRequest )
       //     {
-          
+      
       //     console.log("Loading CSS from DEVTOOLS:",details.url,details) 
       //   }
       // },
@@ -3667,7 +3667,7 @@ const dark_object = {
         
         filter.write(details.encoder.encode(options.chunk));
       },
-  
+      
       
       editBeforeRequestStyleSheet_sync: function(details) {
         let options = {};
@@ -3888,20 +3888,19 @@ const dark_object = {
       extractCharsetFromHeaders: function(details,defaultCT="text/html",defaultCharset="utf-8") {
         // We have seen cases where the charset was not specified in the content-type header, and the browser document.characterSet was defaulting to <meta> tag charset.
         // This is why we need to extract the charset from the headers, to knwo if we are in this kind of cases.
-            
+        
         let contentTypeHeader = details.responseHeaders.find(x => x.name.toLowerCase() == "content-type");
         if(!contentTypeHeader){
           details.noContentTypeHeader=true;
           details.contentType={value:defaultCT};
         }
-        console.log("Content type",details.url,contentTypeHeader);
         details.contentType = contentTypeHeader.value;
         details.charset = details.contentType.match(/charset=([0-9A-Z-_]+)/i)
         details.unspecifiedCharset = !details.charset;
         details.charset=(details.charset ||["",defaultCharset])[1].toLowerCase();
       },
-
-
+      
+      
       editBeforeData: async function(details) {
         if (details.tabId == -1 && uDark.connected_options_ports_count || uDark.connected_cs_ports["port-from-popup-" + details.tabId]) { // -1 Happens sometimes, like on https://www.youtube.com/ at the time i write this, stackoverflow talks about worker threads
           
@@ -3914,7 +3913,7 @@ const dark_object = {
         }
         
         dark_object.misc.extractCharsetFromHeaders(details);
-
+        
         if(!details.contentType.includes("text/html")){
           return {responseHeaders:details.responseHeaders};
         }
@@ -3922,60 +3921,38 @@ const dark_object = {
           var a_filter = uDark.headersDo[x.name.toLowerCase()];
           return a_filter ? a_filter(x) : true;
         })
-          // console.log("Editing", details.url, details.requestId, details.fromCache)
-          let filter = globalThis.browser.webRequest.filterResponseData(details.requestId);
-          let decoder = new TextDecoder(details.charset)
-          let encoder = new TextEncoder();
-          details.dataCount = 0;
-          details.writeEnd = [];     
-          filter.ondata = event => {
-            details.dataCount++
-            details.writeEnd.push(event.data);
-            
+        // console.log("Editing", details.url, details.requestId, details.fromCache)
+        let filter = globalThis.browser.webRequest.filterResponseData(details.requestId);
+        
+        let encoder = new TextEncoder();
+        details.dataCount = 0;
+        details.writeEnd = [];     
+        filter.ondata = event => {
+          details.dataCount++
+          details.writeEnd.push(event.data);
+          
+        }
+        filter.onstop = async event => {
+          
+          // Note the headers are already returned since a long time, so we can't edit them here. Fortunately we don't need to, and if we realy need.. use http equiv.
+          details.dataCount = 1;
+          details.writeEnd = await new Blob(details.writeEnd).arrayBuffer();
+          
+          
+          let decodedValue= uDarkDecode(details.charset,details.writeEnd,{stream:true})
+          if(details.debugParsing){ // debug
+            details.writeEnd = decodedValue
           }
-          filter.onstop = async event => {
-            
-            // Note the headers are already returned since a long time, so we can't edit them here. Fortunately we don't need to, and if we realy need.. use http equiv.
-            details.dataCount = 1;
-            details.writeEnd = await new Blob(details.writeEnd).arrayBuffer();
-
-            
-
-            if(details.debugParsing){ // debug
-              details.writeEnd = decoder.decode(details.writeEnd, {stream: true});
-            }
-            else
-            {
-             details.writeEnd = uDark.parseAndEditHtmlContentBackend4(decoder.decode(details.writeEnd,{stream: true}), details)
-            }
-
-            if(details.charset!="utf-8" ){ 
-              console.warn("Charset not utf-8",details.charset,details.url,"Using the javascript method to write the content");
-              filter.write(encoder.encode(`<!DOCTYPE html>`));
-              if(details.metaContentType && !uDark.fallbackOnMissingCharsetToWindows1252){
-                // If we are here, it means the charset was not specified in the headers, and the browser document.characterSet was defaulting to <meta> tag charset.
-                // We extracted the charset from the meta tag, and we are here to restore it, using the filter. So far it's the only way to do it and a perfect solution.
-                console.log("Found a meta charset",details.metaContentType," while parsing the html and no charset in the headers, using the filter to restore it");
-                filter.write(encoder.encode(`<head><meta charset="${details.charset}"></head>`));
-              }
-
-              setTimeout(()=>{
-              globalThis.browser.tabs.executeScript(details.tabId, {
-                code: `document.wrappedJSObject.write(${JSON.stringify(details.writeEnd)})`,
-                runAt:"document_start",
-                frameId:details.frameId,
-                matchAboutBlank:true
-              })
-              },10)
-            }
-            else
-            {
-              console.log("Charset utf-8",details.charset,details.url,"Using the filter to write the content");
-              filter.write(encoder.encode(details.writeEnd));
-            }
-            filter.disconnect(); // Low perf if not disconnected !
+          else
+          {
+            details.writeEnd = uDark.parseAndEditHtmlContentBackend4(decodedValue, details)
           }
-            return {responseHeaders:details.responseHeaders}
+          
+          filter.write(uDarkEncode(details.charset,details.writeEnd));
+          
+          filter.disconnect(); // Low perf if not disconnected !
+        }
+        return {responseHeaders:details.responseHeaders}
       }
     }
   }
