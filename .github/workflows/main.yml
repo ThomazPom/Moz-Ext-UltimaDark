@@ -28,7 +28,7 @@ jobs:
         imageWorker.js
         bg.jpg
         background.js
-        entities.js
+        entities.json
         uDarkEncoder.js
         resolveIDKVars.js
         icons/
