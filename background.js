@@ -3123,7 +3123,7 @@ const dark_object = {
                     details.metaContentType=usedContentType;
                     details.unspecifiedCharset=false;
                     details.charset=metaDetails.charset;
-                    const redDecoded = uDarkDecode(metaDetails.charset,details.writeEnd,{stream:true})
+                    const redDecoded = uDarkDecode(metaDetails.charset,details.writeEnd,{stream:true});
                     return uDark.parseAndEditHtmlContentBackend4(redDecoded, details);
                   }
                 }
@@ -3512,7 +3512,6 @@ const dark_object = {
         }
         
         let imageURLObject = new URL(details.url);
-        let n = details.responseHeaders.length;
         details.headersLow = {}
         
         dark_object.misc.extractCharsetFromHeaders(details, "image/png",);
@@ -3533,8 +3532,6 @@ const dark_object = {
         }, 30000) // Take care of very big images
         details.buffers = details.buffers || [];
         if (details.isSVGImage) {
-          let decoder = new TextDecoder(details.charset)
-          let encoder = new TextEncoder();
           filter.ondata = event => details.buffers.push(event.data);
           let svgURLObject = new URL(details.url);
           { // Sometimes the website reencodes as html chars the data
@@ -3548,16 +3545,17 @@ const dark_object = {
           notableInfos.remoteSVG = true;
           filter.onstop = event => {
             new Blob(details.buffers).arrayBuffer().then((buffer) => {
-              let svgString = decoder.decode(buffer, {
+              let svgString = uDarkDecode(details.charset,buffer, {
                 stream: true
-              });
+              })
+
               let svgStringEdited = uDark.frontEditHTML(false, svgString, details, {
                 notableInfos,
                 svgImage: true,
                 remoteSVG: true,
                 remoteSVGURL: svgURLObject.href,
               });
-              filter.write(encoder.encode(svgStringEdited));
+              filter.write(uDarkEncode(details.charset,svgStringEdited));
               filter.disconnect();
               clearInterval(secureTimeout);
             });
@@ -3635,7 +3633,7 @@ const dark_object = {
       // },
       handleCSSChunk_sync(data, verify, details, filter) {
         let str = details.rejectedValues;
-        if(data){ str += details.decoder.decode(data,{stream:true}); }
+        if(data){ str += uDarkDecode(details.charset,data,{stream:true}); }
         
         
         let options = {  };
@@ -3665,7 +3663,7 @@ const dark_object = {
         }
         dark_object.misc.chunk_manage_idk_direct(details, options, filter);
         
-        filter.write(details.encoder.encode(options.chunk));
+        filter.write(uDarkEncode(details.charset,options.chunk));
       },
       
       
@@ -3687,8 +3685,6 @@ const dark_object = {
         
         let filter = globalThis.browser.webRequest.filterResponseData(details.requestId); // After this instruction, browser espect us to write data to the filter and close it
         
-        details.decoder = new TextDecoder(details.charset)
-        details.encoder = new TextEncoder();
         details.dataCount = 0;
         details.rejectedValues = "";
         
@@ -3924,7 +3920,6 @@ const dark_object = {
         // console.log("Editing", details.url, details.requestId, details.fromCache)
         let filter = globalThis.browser.webRequest.filterResponseData(details.requestId);
         
-        let encoder = new TextEncoder();
         details.dataCount = 0;
         details.writeEnd = [];     
         filter.ondata = event => {
@@ -3939,7 +3934,7 @@ const dark_object = {
           details.writeEnd = await new Blob(details.writeEnd).arrayBuffer();
           
           
-          let decodedValue= uDarkDecode(details.charset,details.writeEnd,{stream:true})
+          let decodedValue= uDarkDecode(details.charset,details.writeEnd,{stream:true});
           if(details.debugParsing){ // debug
             details.writeEnd = decodedValue
           }
