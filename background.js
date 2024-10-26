@@ -794,7 +794,7 @@ const dark_object = {
         },
         frontEditHTMLPossibleDataURL: function(elem,value,details,options,documentElement) {
           
-          let {b64,dataHeader,data,failure}=uDark.decodeBase64DataURIifIsDataURI(value);
+          let {b64,dataHeader,data,failure}=uDark.decodeBase64DataURIifIsDataURI(value||""); // Value can be null
           if(!failure && dataHeader){
             if(dataHeader.includes("image")){
               return uDark.image_element_prepare_href(elem,documentElement||document,value,{...options,cut:{b64,dataHeader,data}});
