@@ -3095,7 +3095,13 @@ const dark_object = {
                 return str;
               }
               
-              str = str.protect_simple(/\b(head|html|body)\b/gi, "ud-tag-ptd-$1"); // use word boundaries to avoid matching tags like "headings" or tbody or texts like innerHTML
+              
+              str = str.protect_simple(/\b(head|html|body|frameset|frame)\b/gi, "ud-tag-ptd-$1"
+                  // use word boundaries to avoid matching tags like "headings" or tbody or texts like innerHTML
+                  // Frame and frameset are obsolete, but there were meant to be in head, and will be removed from body, they need to be protected
+
+              ); 
+              
               
               let parsedDocument = uDark.createDocumentFromHtml("<body>"+str+"</body>"
                 /* Re encapsulate str into a <body> is not an overkill : Exists something called unsafeHTML clid binding. I did not understood what it is, but it needs a body tag for proper parsing*/

@@ -633,7 +633,6 @@ testURLCharset= async (url,charset)=>{
         {
             console.error("Decoding/Encoding Mismatch");
             
-            console.log("Decoded",decoder.decode(data),data.length);
             console.log("Original",decoded);
             console.log("Decoded",myStringVersion);
         }
@@ -658,3 +657,5 @@ testURLCharset= async (url,charset)=>{
 // z("http://charset.7jp.net/mojibake.html","shift_jis");
 // testURLCharset("http://charset.7jp.net/sjis.html","shift_jis");
 // testURLCharset("http://charset.7jp.net/ascii.cgi","shift_jis");
+// testURLCharset("http://charset.7jp.net/ascii.cgi","shift_jis");
+// testURLCharset("https://www.hyperhosting.gr/grdomains/","ISO-8859-7");
