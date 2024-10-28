@@ -3894,7 +3894,7 @@ const dark_object = {
         let contentTypeHeader = details.responseHeaders.find(x => x.name.toLowerCase() == "content-type");
         if(!contentTypeHeader){
           details.noContentTypeHeader=true;
-          details.contentType={value:defaultCT};
+          contentTypeHeader={value:defaultCT};
         }
         details.contentType = contentTypeHeader.value;
         details.charset = details.contentType.match(/charset=([0-9A-Z-_]+)/i)
