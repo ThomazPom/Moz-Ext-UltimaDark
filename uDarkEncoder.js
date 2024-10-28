@@ -14,6 +14,27 @@ namedEntitiesRawObject.then(data=>{
     window.regExpNamedEntities = new RegExp("&("+keptValues.join("|").replaceAll("&",'')+")","gi");   
 });
 
+/*
+ * Potential Bug: Misalignment Due to Undefined Byte Values in Multi-byte Encodings
+ *
+ * In multi-byte encodings like Big5, Shift JIS, EUC-JP, and GBK, certain byte values 
+ * (e.g., 0x80 in Big5, 0x80 and 0xA0 in Shift JIS) are undefined or reserved. These 
+ * bytes do not form valid parts of any multi-byte character sequences.
+ *
+ * If these undefined bytes are not treated carefully, they can cause misalignment 
+ * within multi-byte sequences. Misalignment occurs when the algorithm mistakenly tries 
+ * to interpret these undefined bytes as part of a two-byte sequence, resulting in 
+ * parsing errors or incorrect character interpretation.
+ * 
+ * Solution:
+ * - Treat undefined bytes like 0x80 as single-byte characters, effectively isolating 
+ *   them so they do not interfere with the expected two-byte sequences.
+ * - This approach ensures that each valid two-byte sequence remains aligned and is 
+ *   parsed correctly.
+ * 
+ * Example: In Big5, if 0x80 is received, handle it as a single-byte character to 
+ * avoid misalignment in multi-byte processing.
+ */
 
 window.encodingByteCounter = {
     "utf-8": (codepoint) => {
@@ -42,7 +63,7 @@ window.encodingByteCounter = {
     },
   
     "big5": (codepoint) => {
-      return (codepoint <= 0x007F) ? 1 : 2; // 1 byte for ASCII, 2 bytes otherwise
+      return (codepoint <= 0x007F+1) ? 1 : 2; // 1 byte for ASCII (+1 : Extended to the invalid inbetween byte 0x80 that will ever be single ), 2 bytes otherwise 
     },
     "windows-31j": (codepoint) => {
         if (codepoint <= 0x007F || (codepoint >= 0xA1 && codepoint <= 0xDF)) return 1; // 1 byte for ASCII and Katakana
