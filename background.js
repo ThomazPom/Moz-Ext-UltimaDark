@@ -1346,7 +1346,11 @@ const dark_object = {
               // l=Math.min(2*A*l,A+2*(B-A)*(l-0.5));
               // Same; Use a ternary operator to avoid calc twice the value of l line in min for comparison
               l = (l < 0.5) ? (2 * A * l) : (A + 2 * (B - A) * (l - 0.5));
-              
+
+              // with l on a scale of 100 : in CSS
+              // l = l<50? (2*A*l): ( 2 * (B - A) * l + 100 * (2 * A - B));
+
+              // 2 * (B - A) * l + 100 * (2 * A - B)
               // Old way to do it, but accuracy is not as good as the above one
               // https://www.desmos.com/calculator/oqqi9nzonh
               // if (l > 0.5) {
@@ -1623,7 +1627,7 @@ const dark_object = {
                 maybe_array = uDark.idk_twice_actions[unprotected_key](cssRule, restored);
               }
               
-              // console.log("IDK twice result '",unprotected_key,"' from",maybe_array,cssRule,match);
+              console.log("IDK twice result '",unprotected_key,"' from",maybe_array,cssRule,match);
               return maybe_array;
             });
           },
