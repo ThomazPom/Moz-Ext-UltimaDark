@@ -1,3 +1,20 @@
+
+/* New UltimaDark core, 2024 */
+:root {
+    --uDark_darken_A: 0.4;
+    --uDark_darken_B: 0.1;
+    --uDark_transform_darken: calc(min( var(--uDark_darken_calc_low) , var(--uDark_darken_calc_high) ));
+    --demo-background: hsl(from red h s var(--uDark_transform_darken));
+    --uDark_darken_calc_low: 2 * var(--uDark_darken_A) * l;
+    --uDark_darken_calc_high: ( 2 * (var(--uDark_darken_B) - var(--uDark_darken_A)) * l + 100 * (2 * var(--uDark_darken_A) - var(--uDark_darken_B)));
+}
+:root {
+    --uDark_lighten_A: 0.65;
+    --uDark_lighten_B: 1;
+    --uDark_transform_lighten: calc(min(2 * l, -2 * l + 200) * (var(--uDark_lighten_A) - var(--uDark_lighten_B)) + var(--uDark_lighten_B) * 100);
+}
+
+
 .ud_overImage {
     color: white;
     mix-blend-mode: exclusion;
