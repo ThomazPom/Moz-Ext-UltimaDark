@@ -53,7 +53,7 @@ class uDarkC extends uDarkExtended {
   namedColorsRegex = (new RegExp(`(?<![\w-])(${uDarkC.CSS_COLOR_NAMES.join("|")})(?![\w-])`, "gi"))
 
   regex_search_for_url = /url\("(.+?)(?<!\\)("\))/g
-  regex_search_for_url_raw = /url\(('.+?(?<!\\)'|(".+?(?<!\\)")|[^\)'"]*)\)/gsi
+  regex_search_for_url_raw = /url\(\s*?(('.+?(?<!\\)'|(".+?(?<!\\)")|[^\)'"]*)\s*?)\)/gsi
   background_match = /background|sprite|(?<![a-z])(bg|box|panel|fond|fundo|bck)(?![a-z])/i
   logo_match = /nav|avatar|logo|icon|alert|notif|cart|menu|tooltip|dropdown|control/i
   background_color_css_properties_regex = /color|fill|box-shadow|border|^background(?:-image|-color)?$|^--ud-ptd-background/ // Background images can contain colors // css properties that are background colors
@@ -1453,16 +1453,15 @@ class uDarkC extends uDarkExtended {
 
     if (alreadyEditedTestResult) {
       console.log("Already edited", key, value, alreadyEditedTestResult)
-      return;
+      return value; // Take care of no_edit here, dont forget to return value
     }
     let cssStyle = cssRule.style;
     if (actions.fastValue0) {
-      cssStyle.p_ud_setProperty(key_prefix + key, uDark.wrapIntoColor(value,transformation), cssStyle.getPropertyPriority(key));
-      return;
-    }
-    if (actions.prefix_only) {
-      cssStyle.p_ud_setProperty(key_prefix + key, value, cssStyle.getPropertyPriority(key));
-      return;
+      let wrapped=uDark.wrapIntoColor(value,transformation);
+      if(actions.no_edit){
+        return wrapped;
+      }
+      cssStyle.p_ud_setProperty(key_prefix + key, wrapped, cssStyle.getPropertyPriority(key));
     }
 
     let url_protected = uDark.str_protect(value, actions.raw_text ? uDark.regex_search_for_url_raw : uDark.regex_search_for_url, "url_protected");
@@ -1480,16 +1479,20 @@ class uDarkC extends uDarkExtended {
     new_value = uDark.edit_with_regex(key, new_value, uDark.namedColorsRegex, transformation, render); // edit_named_colors
     new_value = uDark.edit_with_regex(key, new_value, uDark.hexadecimalColorsRegex, transformation, render); // edit_hex_colors // The browser auto converts hex to rgb, but some times not like in  var(--123,#00ff00) as it cant resolve the var
     new_value = uDark.str_unprotect(new_value, url_protected);
-    if (value != new_value || key_prefix) {
+    if (!actions.no_edit && value != new_value || key_prefix) {
       // Edit the value only if necessary:  setting bacground image removes bacground property for intance
       cssStyle.p_ud_setProperty(key_prefix + key, new_value, cssStyle.getPropertyPriority(key)); // Once we had  an infinite loop here when uDark was loaded twice and redefining setProperty.
     }
+    return new_value;
   }
   edit_all_cssRule_colors(cssRule, keys, transformation, render, options, key_prefix = "", actions = {}, callBack = uDark.edit_all_cssRule_colors_cb) {
 
     keys.forEach(key => {
       let value = cssRule.style.getPropertyValue(key);
-
+      if(actions.raw_text_prefix){
+          // clone actions to avoid changing the original object, while adding a new property
+          actions = Object.assign({raw_text:key.startsWith(actions.raw_text_prefix)}, actions);
+      }
       if (actions.replaces) {
         for (let replace of actions.replaces) {
           value = value.replaceAll(...replace);
@@ -1534,6 +1537,7 @@ class uDarkC extends uDarkExtended {
 
     backgroundItems.length && uDark.edit_all_cssRule_colors(cssRule, backgroundItems, "--uDark_transform_darken", options.render, options, "", {
       prefix_vars: "bg",
+      raw_text_prefix: "--"
     })
 
     foregroundFastItems.length && uDark.edit_all_cssRule_colors(cssRule, foregroundFastItems, "--uDark_transform_lighten", options.render, options, "", {
@@ -1542,8 +1546,8 @@ class uDarkC extends uDarkExtended {
 
     variablesItems.length && uDark.edit_all_cssRule_colors(cssRule, variablesItems, "--uDark_transform_darken", options.render, options,
       "--ud-bg", {
-        raw_text: true,
         prefix_vars: "bg",
+        raw_text: true
       })
 
   }
@@ -1700,12 +1704,7 @@ class uDarkC extends uDarkExtended {
 
     });
   }
-
-}
-
-let uDark = new uDarkC();
-class AllLevels {
-  static createInternalProperty = function(leType, atName, condition = true) {
+  createInternalProperty = function(leType, atName, condition = true) {
     // We can search in the code for unsafe looping use of the property, and replace it by the internal property with the regex [.](?<!(o|p)_ud_)innerHTML[\s+]*?[+]?= in VSCode
     if (condition) {
 
@@ -1720,7 +1719,13 @@ class AllLevels {
       Object.defineProperty(leType.prototype, "p_ud_" + atName, originalProperty);
     }
   }
-  static install() {
+
+}
+
+let uDark = new uDarkC();
+class AllLevels {
+  
+  static install=function() {
     {
 
       // Any level protected proptotypes for safe intenal use without ternaries or worries.
@@ -1728,10 +1733,10 @@ class AllLevels {
       CSSStyleSheet.prototype.p_ud_replaceSync = CSSStyleSheet.prototype.replaceSync;
       CSSStyleSheet.prototype.p_ud_insertRule = CSSStyleSheet.prototype.insertRule;
 
-      AllLevels.createInternalProperty(Element, "innerHTML");
-      AllLevels.createInternalProperty(ShadowRoot, "innerHTML");
-      AllLevels.createInternalProperty(CSS2Properties, "backgroundColor");
-      AllLevels.createInternalProperty(Navigator, "serviceWorker", navigator.serviceWorker != undefined);
+      uDark.createInternalProperty(Element, "innerHTML");
+      uDark.createInternalProperty(ShadowRoot, "innerHTML");
+      uDark.createInternalProperty(CSS2Properties, "backgroundColor");
+      uDark.createInternalProperty(Navigator, "serviceWorker", navigator.serviceWorker != undefined);
     }
 
     {
