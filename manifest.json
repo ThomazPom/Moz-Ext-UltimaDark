@@ -30,7 +30,7 @@
     "default_popup": "popup.html?mode=uDark-popup"
   },
   "background": {
-    "scripts": ["MurmurHash3.js","background.js","uDarkEncoder.js"]
+    "scripts": ["MurmurHash3.js","fakeContentScripClass.js","backgroundClass.js","Listeners.js","background.js","uDarkEncoder.js"]
   }
   
 
