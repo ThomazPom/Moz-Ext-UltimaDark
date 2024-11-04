@@ -13,11 +13,13 @@ class uDarkExtendedContentScript  {
         z=>{
           window.uDark=new uDarkC();
         },
+        AllLevels.install,
         uDark.override_website
         
         
       ].map(code => {
         let codeStr = code.join?code.map(x=>x.toString()).join("\n"): "(" + code.toString()  + ")()";
+        console.log("UltimaDark", "Content script install code", codeStr);
         window.wrappedJSObject.eval( codeStr );
       });
       
@@ -100,21 +102,22 @@ class uDarkExtendedContentScript  {
     })
     
     uDark.functionPrototypeEditor(CSSStyleDeclaration, CSSStyleDeclaration.prototype.setProperty, (elem, args) => {
-      let parts = uDark.edit_str_nochunk(args[0] + ":" + args[1]);
-      let partsIndex = parts.indexOf("; --ud-fg--");
-      let part1 = parts.slice(0, partsIndex);
-      let part2 = parts.slice(partsIndex + 2); //+2: Remove the ; and the space
-      let subParts1_1 = part1.slice(0, part1.indexOf(":"));
-      let subParts1_2 = part1.slice(part1.indexOf(":") + 2); // +2 to remove the : and the space
-      let subParts2_1 = part2.slice(0, part2.indexOf(":"));
-      let subParts2_2 = part2.slice(part2.indexOf(":") + 2, -1); // +2 to remove the : and the space, -1 to remove the ;
-      
-      args[0] = subParts1_1
-      args[1] = subParts1_2
-      
-      elem.o_ud_setProperty(subParts2_1, subParts2_2, args[2]);
+      let edited = uDark.edit_str_nochunk(args[0] + ":" + args[1])
+      .protect_simple(uDark.shortHandRegex, "--ud-setProperty-ptd-$1:");
+      let cssParser = new CSSStyleSheet()
+      cssParser.o_ud_replaceSync (`z{${edited }`);
+      let cssStyle = cssParser.cssRules[0].style 
+      let keys= Object.values(cssParser.cssRules[0].style)
+      let firstKey = keys.shift();
+      // We dont need to unprotect since we know the first key from args[0], and there will be no addional keys in the css if a shorthand is used
+      args[1] = cssStyle.getPropertyValue(firstKey);
+
+      for (let key of /*remaining*/keys ) {
+        elem.o_ud_setProperty(key, cssStyle.getPropertyValue(key));
+      }
+
       return args
-    }, (elem, args) => args[0].startsWith("--"))
+    })
     
     uDark.functionPrototypeEditor(CSSStyleSheet,
       [
@@ -310,12 +313,10 @@ class uDarkExtendedContentScript  {
       
     }, (elem, value) => elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement)
     
-    uDark.valuePrototypeEditor(CSS2Properties, "background", (elem, value) => {
-      let possiblecolor = uDark.is_color(value);
-      return possiblecolor ? uDark.rgba(...possiblecolor) : value;
-      
-    })
+    
     uDark.valuePrototypeEditor(CSS2Properties, "fill", (elem, value) => {
+      console.warn("Fill not reimplented", elem, value);
+      return value;
       let randIdentifier = Math.random().toString().slice(2)
       elem.floodColor = `var(--${randIdentifier})`
       return uDark.get_fill_for_svg_elem(document.querySelector(`[style*='${randIdentifier}]`) ||
@@ -343,14 +344,43 @@ class uDarkExtendedContentScript  {
     
     // W3C uses this one
     
+    let bg_websiteEditFn = (elem, value,key) => {
+      
+      let edited =   uDark.edit_all_cssRule_colors_cb({
+        style:elem
+      }, "background", value, "--uDark_transform_darken", null, {
+        
+      }, "", {
+        prefix_vars: "bg",
+        raw_text: true,
+        no_edit: true
+      }) 
+      console.log("Background edited with fastValue", edited);
+      return edited;
+
+      
+    }
+
+    uDark.valuePrototypeEditor(CSS2Properties, "background", bg_websiteEditFn)
+  
+    uDark.valuePrototypeEditor(CSS2Properties, "backgroundColor",  bg_websiteEditFn   )
+    uDark.valuePrototypeEditor(CSS2Properties, "background-color",  bg_websiteEditFn  )
     
     
-    uDark.valuePrototypeEditor(CSS2Properties, "backgroundColor", (elem, value) =>  uDark.edit_str_nochunk(["background-color:",value]).slice(18,-1)   )
-    uDark.valuePrototypeEditor(CSS2Properties, "background-color", (elem, value) =>  uDark.edit_str_nochunk(["background-color:",value]).slice(18,-1)   )
     
+    uDark.valuePrototypeEditor(CSS2Properties, "color", (elem, value) => {
     
-    
-    uDark.valuePrototypeEditor(CSS2Properties, "color", (elem, value) => uDark.edit_str_nochunk(["color:",value]).slice(7,-1))
+      let edited =   uDark.edit_all_cssRule_colors_cb({
+        style:elem
+      }, "color", value, "--uDark_transform_lighten", null, {
+        
+      }, "", {
+        fastValue0:true,
+        no_edit: true
+      }) 
+      console.log("Color edited with fastValue", edited);
+      return edited;
+    })
     uDark.valuePrototypeEditor([HTMLElement, SVGElement], "style", (elem, value) => uDark.edit_str_nochunk(value)) // Care with "style and eget, this cause recursions"
     // TODO: Support CSS url(data-image) in all image relevant CSS properties like background-image etc
     
