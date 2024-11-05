@@ -19,7 +19,6 @@ class uDarkExtendedContentScript  {
         
       ].map(code => {
         let codeStr = code.join?code.map(x=>x.toString()).join("\n"): "(" + code.toString()  + ")()";
-        console.log("UltimaDark", "Content script install code", codeStr);
         window.wrappedJSObject.eval( codeStr );
       });
       
@@ -315,8 +314,8 @@ class uDarkExtendedContentScript  {
     
     
     uDark.valuePrototypeEditor(CSS2Properties, "fill", (elem, value) => {
-      console.warn("Fill not reimplented", elem, value);
-      return value;
+      if(!console.warn("Fill not reimplented", elem, value))
+        {return value};
       let randIdentifier = Math.random().toString().slice(2)
       elem.floodColor = `var(--${randIdentifier})`
       return uDark.get_fill_for_svg_elem(document.querySelector(`[style*='${randIdentifier}]`) ||
