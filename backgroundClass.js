@@ -265,7 +265,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
         browser.storage.onChanged.addListener((changes, area) => {
           console.log("Settings changed", changes, area);
           if (area == "local") {
-            new Promise(background.getSettings).then(r => background.setListener(false));
+            new Promise(uDark.getSettings).then(uDark.setListener);
           }
         });
       }
