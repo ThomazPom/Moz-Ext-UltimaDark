@@ -56,7 +56,7 @@ class uDarkC extends uDarkExtended {
   regex_search_for_url_raw = /url\(\s*?(('.+?(?<!\\)'|(".+?(?<!\\)")|[^\)'"]*)\s*?)\)/gsi
   background_match = /background|sprite|(?<![a-z])(bg|box|panel|fond|fundo|bck)(?![a-z])/i
   logo_match = /nav|avatar|logo|icon|alert|notif|cart|menu|tooltip|dropdown|control/i
-  background_color_css_properties_regex = /color|fill|box-shadow|border|^background(?:-image|-color)?$|^--ud-ptd-background/ // Background images can contain colors // css properties that are background colors
+  background_color_css_properties_regex = /color|fill|(?:box|text)-shadow|border|^background(?:-image|-color)?$|^--ud-ptd-background/ // Background images can contain colors // css properties that are background colors
 
   exactAtRuleProtect = true
   matchAllCssCommentsRegex = /\/\*[^*]*\*+([^/*][^*]*\*+)*\/|\/\*[^*]*\*+([^/*][^*]*\*+)*|\/\*[^*]*(\*+[^/*][^*]*)*/g
@@ -350,7 +350,7 @@ class uDarkC extends uDarkExtended {
       }
     }
   }
-  functionPrototypeEditor(leType, laFonction, watcher = x => x, conditon = x => x, result_editor = x => x, getter) {
+  functionPrototypeEditor(leType, laFonction, watcher = x => x, conditon = x => x, result_editor = x => x) {
     //  console.log(leType,leType.name,leType.prototype,laFonction,laFonction.name)
     if (laFonction.concat) {
       return laFonction.forEach(aFonction => {
@@ -378,11 +378,11 @@ class uDarkC extends uDarkExtended {
     Object.defineProperty(leType.prototype, laFonction.name, {
       value: {
         [laFonction.name]: exportFunction(function() {
-          if (conditon === true || conditon(this, arguments)) {
+          if (conditon === true || conditon.apply(this, arguments)) { // if a standard function is provided, it will will be able to use the 'this' keyword
             // console.log("Setting",leType,laFonction,this,arguments[0],watcher(this, arguments)[0])
             let watcher_result = watcher(this, arguments);
             // console.log("watcher_result", this,originalFunction,watcher_result,originalFunctionKey,leType.prototype[originalFunctionKey],this[originalFunctionKey],this.getP);
-            let result = originalFunction.apply(this, watcher_result)
+            let result = originalFunction.apply(this, watcher_result) // if a standard function is provided, it will will be able to use the 'this' keyword
             return result_editor(result, this, arguments, watcher_result);
           } else {
             return (originalFunction.apply(this, arguments));
@@ -674,6 +674,7 @@ class uDarkC extends uDarkExtended {
   }
 
   frontEditHTML(elem, strO, details, options = {}) {
+
     // 1. Ignore <script> elements to prevent unintended modifications to JavaScript
     let str = strO;
     if (elem instanceof HTMLScriptElement) {
@@ -729,7 +730,7 @@ class uDarkC extends uDarkExtended {
   createDocumentFromHtml(html) {
     // Use DOMParser to convert the HTML string into a DOM document
     const parser = new DOMParser();
-    return parser.parseFromString(html, "text/html");
+    return parser.p_ud_parseFromString(html, "text/html");
   }
 
   processSvgElements(documentElement, details) {
@@ -1733,10 +1734,13 @@ class AllLevels {
       CSSStyleSheet.prototype.p_ud_replaceSync = CSSStyleSheet.prototype.replaceSync;
       CSSStyleSheet.prototype.p_ud_insertRule = CSSStyleSheet.prototype.insertRule;
 
+      DOMParser.prototype.p_ud_parseFromString = DOMParser.prototype.parseFromString;
+
       uDark.createInternalProperty(Element, "innerHTML");
       uDark.createInternalProperty(ShadowRoot, "innerHTML");
       uDark.createInternalProperty(CSS2Properties, "backgroundColor");
       uDark.createInternalProperty(Navigator, "serviceWorker", navigator.serviceWorker != undefined);
+      
     }
 
     {
