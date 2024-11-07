@@ -151,7 +151,7 @@ class uDarkExtendedContentScript  {
         );
         args[1] = res;
         return args;
-      }, (elem, args) => args[0].toLowerCase() == "style")
+      }, (attribute, value ) => attribute.toLowerCase() == "style")
       
       uDark.valuePrototypeEditor(HTMLImageElement, "src", (image, value) => {
         let res = uDark.image_element_prepare_href(image, document, value);
@@ -165,6 +165,7 @@ class uDarkExtendedContentScript  {
       }
       
     );
+    
     
     uDark.valuePrototypeEditor(SVGImageElement, "href", (image, value) => { // the <image> tag inside an SVG, no an <img> tag !
       return uDark.image_element_prepare_href(image, document, value);
@@ -185,7 +186,6 @@ class uDarkExtendedContentScript  {
         elem.addEventListener("load", uDark.do_idk_mode);
       }
     })
-    
     // uDark.valuePrototypeEditor(HTMLLinkElement, "integrity", (elem, value) => {
       //   console.log("CSS integrity set", elem, value);
     //   return value;
@@ -246,13 +246,24 @@ class uDarkExtendedContentScript  {
     //   return x;
     
     // })
-    uDark.functionPrototypeEditor(Node, [
+
+    
+    uDark.functionPrototypeEditor(DOMParser,   DOMParser.prototype.parseFromString, (elem, args) => {
+        // Catching the parsing of the document, to edit it before it's inserted in the DOM, is in the philosophy of UltimaDark of doing things at key moments.
+        // parseFromString is a key moment, as it manipulates strings. insertBefore, used with an instanciated element for instance is not a key moment, as we could have edited the element before.
+          args[0]=uDark.frontEditHTML("ANY_ELEMENT",args[0])
+          return args
+   }, (text,type) => type == "text/html")
+
+
+
+    uDark.functionPrototypeEditor(Node, [ // So far we assume the CSS inserted in HTMStyleElements via appendChild or insertBefore are valid. This migh not always be the case, this is to keep in mind.
       Node.prototype.appendChild,
       Node.prototype.insertBefore
     ], (elem, args) => {
       (args[0].o_ud_textContent = uDark.edit_str(args[0].textContent));
       return args
-    }, (elem, value) => elem instanceof HTMLStyleElement)
+    }, function(){ return this instanceof HTMLStyleElement})
     
     
     /******************** BUT ********************** */

@@ -3,10 +3,15 @@
 :root {
     --uDark_darken_A: 0.4;
     --uDark_darken_B: 0.1;
-    --uDark_transform_darken: calc(min( var(--uDark_darken_calc_low) , var(--uDark_darken_calc_high) ));
-    --demo-background: hsl(from red h s var(--uDark_transform_darken));
+    --uDark_treshold: 0.2;
+     --uDark_transform_darken: calc(min( var(--uDark_darken_calc_low) , var(--uDark_darken_calc_high) ));
+    --uDark_transform_darken_treshold:calc(min(var(--uDark_darken_calc_low) , var(--uDark_darken_calc_high) ) * var(--uDark_isOverTreshold) + l * (1 - var(--uDark_isOverTreshold)))  ;
+    --demo-background: red;
     --uDark_darken_calc_low: 2 * var(--uDark_darken_A) * l;
     --uDark_darken_calc_high: ( 2 * (var(--uDark_darken_B) - var(--uDark_darken_A)) * l + 100 * (2 * var(--uDark_darken_A) - var(--uDark_darken_B)));
+    --demo-color: hsl(from var(--demo-background) h s var(--uDark_transform_darken));
+    --uDark_isOverTreshold: clamp( 0, calc( l - var(--uDark_treshold) * 100 + 0.01 ) * infinity  ,1); /* 0 if under treshold, 1 if over treshold, + 0.01 avoids a bug on precise values */
+    
 }
 :root {
     --uDark_lighten_A: 0.65;
@@ -39,8 +44,6 @@ iframe,embed,object,video {
 :root{
     color-scheme: dark!important; /*Force dark color scheme: 
     This is sensible to other elements being color-schemed in css, be we have a replace in background css editing for these cases.*/
-    --ud-failed-idktwice-ceilbrightness:160 /* When udark failed, idk mode failed we are in idktwice mode, and in this mode exists a function ceilBrightness
-    This functions aims at a last resort to make the color at least not too bright. This variable is the maximum value for the brightness of the color in this case.    */
 }
 
 
