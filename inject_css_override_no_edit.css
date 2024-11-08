@@ -4,14 +4,23 @@
     --uDark_darken_A: 0.4;
     --uDark_darken_B: 0.1;
     --uDark_treshold: 0.2;
-     --uDark_transform_darken: calc(min( var(--uDark_darken_calc_low) , var(--uDark_darken_calc_high) ));
+    
+    --uDark_transform_darken: var(--uDark_transform_darken_treshold);
+    --uDark_transform_darken_standard: calc(min( var(--uDark_darken_calc_low) , var(--uDark_darken_calc_high) ));
     --uDark_transform_darken_treshold:calc(min(var(--uDark_darken_calc_low) , var(--uDark_darken_calc_high) ) * var(--uDark_isOverTreshold) + l * (1 - var(--uDark_isOverTreshold)))  ;
     --demo-background: red;
     --uDark_darken_calc_low: 2 * var(--uDark_darken_A) * l;
     --uDark_darken_calc_high: ( 2 * (var(--uDark_darken_B) - var(--uDark_darken_A)) * l + 100 * (2 * var(--uDark_darken_A) - var(--uDark_darken_B)));
     --demo-color: hsl(from var(--demo-background) h s var(--uDark_transform_darken));
-    --uDark_isOverTreshold: clamp( 0, calc( l - var(--uDark_treshold) * 100 + 0.01 ) * infinity  ,1); /* 0 if under treshold, 1 if over treshold, + 0.01 avoids a bug on precise values */
+    --uDark_isOverTreshold: clamp( 0, ( l - var(--uDark_treshold) * 100 + 0.000001 ) * infinity  ,1); /* 0 if under treshold, 1 if over treshold, + 0.01 avoids a bug on precise values */
+    /* Sign css function is not widely available */
+    --uDark_isOverTreshold_sign: max(0 , sign(l - var(--uDark_treshold) * 100));
+    --uDark_transform_darken_treshold_sign:calc(min(var(--uDark_darken_calc_low) , var(--uDark_darken_calc_high) ) * var(--uDark_isOverTreshold_sign) + l * (1 - var(--uDark_isOverTreshold_sign)))  ;
     
+}
+:root{
+    --uDark_issueHueLow1:  237.60;
+    --uDark_issueHueHigh1:  259.2;
 }
 :root {
     --uDark_lighten_A: 0.65;

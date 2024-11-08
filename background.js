@@ -485,12 +485,6 @@ class uDarkC extends uDarkExtended {
     }
     return str;
   }
-  transform_color(color, actions = {}, transformation = uDark.revert_rgba, render = uDark.rgba_val) {
-    return uDark.edit_all_cssRule_colors_cb(false, {
-      style: false
-    }, "none", "none", color, transformation, render, {}, false, actions, false)
-  }
-
   get_fill_for_svg_elem(fillElem, override_value = false, options = {}, class_name = "udark-fill", transform = true) {
     let fillValue = override_value || fillElem.getAttribute("fill");
     if (override_value == "none" || !uDark.is_color(fillValue)) {
@@ -510,12 +504,10 @@ class uDarkC extends uDarkExtended {
     fillElem.setAttribute("udark-edit", true);
     fillElem.setAttribute(class_name, `${options.notableInfos.guessed_type}${is_text?"-text":""}`);
     
-    if (transform && console.warn("Transforming color for svgs has been disabled")) {
+    if (transform) {
       // Wont work with new mthod, will need to be updated
-      let edit_result = uDark.transform_color(fillValue, {
-        prefix_fg_vars: is_text
-      }, is_text ? uDark.revert_rgba_rgb_raw : uDark.rgba_rgb_raw)
-      return edit_result.new_value;
+      let edit_result = uDark.eget_color(fillValue, is_text ? uDark.revert_rgba_rgb_raw : uDark.rgba_rgb_raw,false,true)
+      return edit_result;
     }
     return "Not implemented";
   }
