@@ -47,7 +47,7 @@ class uDarkC extends uDarkExtended {
 
   colorRegex = new RegExp(`(?<![\w-])(?:${uDarkC.CSS_COLOR_FUNCTIONS.join("|")})` + uDarkC.generateNestedParenthesisRegexNC(10), "gi")
 
-  hexadecimalColorsRegex = /#[0-9a-f]{3,4}(?:[0-9a-f]{2})?(?:[0-9a-f]{2})?/g // hexadecimal colors
+  hexadecimalColorsRegex = /#[0-9a-f]{3,4}(?:[0-9a-f]{2})?(?:[0-9a-f]{2})?/gi // hexadecimal colors
 
   // Cant't use \b because of the possibility of a - next to the identifier, it's a word character
   namedColorsRegex = (new RegExp(`(?<![\w-])(${uDarkC.CSS_COLOR_NAMES.join("|")})(?![\w-])`, "gi"))
@@ -115,9 +115,12 @@ class uDarkC extends uDarkExtended {
 
       // TODO: Needs rework since we replaced prefix_fg_vars by prefix_vars
       callBacks: [(cssStyle, cssRule, details, options) => {
+    
         let value = cssStyle.getPropertyValue("fill");
-        this.edit_all_cssRule_colors_cb(false, cssRule, "color", "color", value, options.lighten, options.render, options, "--ud-fg--fill-", {
-          prefix_fg_vars: true
+        this.edit_all_cssRule_colors_cb(cssRule, "color", value, options, {
+          key_prefix:"--ud-fg--fill-",
+          l_var: "--uDark_transform_lighten",
+          fastValue0:true
         })
 
       }]
@@ -585,7 +588,6 @@ class uDarkC extends uDarkExtended {
     if (!str || !str.trim().length) {
       return str;
     }
-
     str = str.protect_simple(uDark.tagsToProtectRegex, "ud-tag-ptd-$1"
       // use word boundaries to avoid matching tags like "headings" or tbody or texts like innerHTML
       // Frame and frameset are obsolete, but there were meant to be in head, and will be removed from body, they need to be protected
@@ -629,6 +631,7 @@ class uDarkC extends uDarkExtended {
         }
       }
     }
+    aDocument.querySelectorAll("meta[http-equiv=content-security-policy]").forEach(m => m.remove());
     if (!details.debugParsing) {
 
       // 4. Temporarily replace all SVG elements to avoid accidental style modifications
@@ -1409,9 +1412,9 @@ class uDarkC extends uDarkExtended {
     // Still not sure about the best way to do it ^ has implicity while indeed a saturation boost might be nice          
     // l = Math.pow(Math.min(2 * l, -2 * l + 2),E) * (A - B) + B;
 
-    if (h > 0.66 && h < 0.72 && l > .60) {
+    if (h > 0.61 && h < 0.72 && l > .60) {
       // FIXME: EXPERIMENTAL:
-      h += 0.66 - 0.72; // Avoid blueish colors being purple 
+      h += 0.61 - h; // Avoid blueish colors being purple by sending them back into blues
     }
 
     // i dont like how saturation boost gives a blue color to some texts like gitlab's ones.
@@ -1432,29 +1435,32 @@ class uDarkC extends uDarkExtended {
   restore_vars(value) {
     return value.replaceAll("..1..", "var(").replaceAll("..2..", ")").replaceAll("..3..", "calc(");
   }
-  wrapIntoColor(color, transformation) {
-    return `hsl(from ${color} h s var(${transformation}) / alpha)`
+  wrapIntoColor(color, actions) {
+    let l_var = actions.l_var? `var(${actions.l_var})` : "l";
+    let h_var = actions.h_var? `var(${actions.h_var})` : "h";
+    return `hsl(from ${color} ${h_var} s ${l_var} / alpha)`
   }
-  edit_with_regex(key, value, regex, transformation, render, cssRule) {
+  edit_with_regex(key, value, regex, actions, cssRule) {
     return value.replaceAll(regex, (match) => {
-      return uDark.wrapIntoColor(match, transformation);
+      return uDark.wrapIntoColor(match, actions);
     });
   }
 
-  edit_all_cssRule_colors_cb(cssRule, key, value, transformation, render, options, key_prefix, actions) {
+  edit_all_cssRule_colors_cb(cssRule, key, value, options, actions) {
     let alreadyEditedTestResult = value.match("NotImplemented" + uDark.alreadyEditedTestRegex);
-
+    let key_prefix = actions.key_prefix || "";
     if (alreadyEditedTestResult) {
       console.log("Already edited", key, value, alreadyEditedTestResult)
       return value; // Take care of no_edit here, dont forget to return value
     }
     let cssStyle = cssRule.style;
     if (actions.fastValue0) {
-      let wrapped=uDark.wrapIntoColor(value,transformation);
-      if(actions.no_edit){
+      let wrapped=uDark.wrapIntoColor(value,actions);
+      if(actions.no_edit || wrapped==value && !key_prefix){
         return wrapped;
       }
       cssStyle.p_ud_setProperty(key_prefix + key, wrapped, cssStyle.getPropertyPriority(key));
+      return;
     }
 
     let url_protected = uDark.str_protect(value, actions.raw_text ? uDark.regex_search_for_url_raw : uDark.regex_search_for_url, "url_protected");
@@ -1468,9 +1474,9 @@ class uDarkC extends uDarkExtended {
     if (actions.prefix_vars) {
       new_value = uDark.edit_prefix_vars(new_value, actions);
     }
-    new_value = uDark.edit_with_regex(key, new_value, usedColorRegex, transformation, render);
-    new_value = uDark.edit_with_regex(key, new_value, uDark.namedColorsRegex, transformation, render); // edit_named_colors
-    new_value = uDark.edit_with_regex(key, new_value, uDark.hexadecimalColorsRegex, transformation, render); // edit_hex_colors // The browser auto converts hex to rgb, but some times not like in  var(--123,#00ff00) as it cant resolve the var
+    new_value = uDark.edit_with_regex(key, new_value, usedColorRegex, actions);
+    new_value = uDark.edit_with_regex(key, new_value, uDark.namedColorsRegex, actions); // edit_named_colors
+    new_value = uDark.edit_with_regex(key, new_value, uDark.hexadecimalColorsRegex, actions); // edit_hex_colors // The browser auto converts hex to rgb, but some times not like in  var(--123,#00ff00) as it cant resolve the var
     new_value = uDark.str_unprotect(new_value, url_protected);
     if (!actions.no_edit && value != new_value || key_prefix) {
       // Edit the value only if necessary:  setting bacground image removes bacground property for intance
@@ -1478,7 +1484,7 @@ class uDarkC extends uDarkExtended {
     }
     return new_value;
   }
-  edit_all_cssRule_colors(cssRule, keys, transformation, render, options, key_prefix = "", actions = {}, callBack = uDark.edit_all_cssRule_colors_cb) {
+  edit_all_cssRule_colors(cssRule, keys, options,  actions = {}, callBack = uDark.edit_all_cssRule_colors_cb) {
 
     keys.forEach(key => {
       let value = cssRule.style.getPropertyValue(key);
@@ -1492,7 +1498,7 @@ class uDarkC extends uDarkExtended {
         }
       }
       if (value) {
-        callBack(cssRule, key, value, transformation, render, options, key_prefix, actions);
+        callBack(cssRule, key, value, options, actions);
       }
     });
   }
@@ -1528,41 +1534,38 @@ class uDarkC extends uDarkExtended {
 
     wordingActions.length && uDark.css_properties_wording_action(cssRule.style, wordingActions, details, cssRule, options);
 
-    backgroundItems.length && uDark.edit_all_cssRule_colors(cssRule, backgroundItems, "--uDark_transform_darken", options.render, options, "", {
+    backgroundItems.length && uDark.edit_all_cssRule_colors(cssRule, backgroundItems, options, 
+      uDark.overrideBGColorActions || {
       prefix_vars: "bg",
-      raw_text_prefix: "--"
+      raw_text_prefix: "--",
+      l_var:"--uDark_transform_darken"
     })
 
-    foregroundFastItems.length && uDark.edit_all_cssRule_colors(cssRule, foregroundFastItems, "--uDark_transform_lighten", options.render, options, "", {
-      fastValue0: true
+    foregroundFastItems.length && uDark.edit_all_cssRule_colors(cssRule, foregroundFastItems, options, {
+      fastValue0: true,
+      l_var:"--uDark_transform_lighten",
+      h_var:"--uDark_transform_text_hue"
     })
 
-    variablesItems.length && uDark.edit_all_cssRule_colors(cssRule, variablesItems, "--uDark_transform_darken", options.render, options,
-      "--ud-bg", {
+    variablesItems.length && uDark.edit_all_cssRule_colors(cssRule, variablesItems, options,
+      {
         prefix_vars: "bg",
-        raw_text: true
+        raw_text: true,
+        l_var:"--uDark_transform_darken",
+        key_prefix:"--ud-bg"
       })
 
   }
-  edit_cssRules(cssRules, details, options = {}, callBack = uDark.edit_cssProperties, clean_empty_rules = false) {
+  edit_cssRules(cssRules, details, options = {}, callBack = uDark.edit_cssProperties) {
     [...cssRules].forEach(cssRule => {
+      
       if (cssRule.cssRules && cssRule.cssRules.length) {
-        uDark.edit_cssRules(cssRule.cssRules, details, options, callBack, clean_empty_rules);
-        if (clean_empty_rules) {
-          for (let i = cssRule.cssRules.length - 1; i >= 0; i--) {
-            let cssStyle = cssRule.cssRules[i].style;
-            if (cssStyle && cssStyle.length == 0 || !cssStyle && cssRule.cssRules.length == 0) {
-
-              // console.log("Deleted empty rule",cssRule.cssRules[i],"from",cssRule,cssStyle,cssStyle.length)
-              cssRule.deleteRule(i);
-            }
-          }
-        }
-        return;
-      } else if (cssRule.style && cssRule.constructor.name != "CSSFontFaceRule") {
-        callBack(cssRule, details, options);
-
+        uDark.edit_cssRules(cssRule.cssRules, details, options, callBack);
       }
+      if (cssRule.style && cssRule.constructor.name != "CSSFontFaceRule") {
+        callBack(cssRule, details, options);
+      }
+
     })
   }
   addNocacheToStrLink(linkP1) {
