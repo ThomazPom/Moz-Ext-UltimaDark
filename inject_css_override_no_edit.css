@@ -12,20 +12,42 @@
     --uDark_darken_calc_low: 2 * var(--uDark_darken_A) * l;
     --uDark_darken_calc_high: ( 2 * (var(--uDark_darken_B) - var(--uDark_darken_A)) * l + 100 * (2 * var(--uDark_darken_A) - var(--uDark_darken_B)));
     --demo-color: hsl(from var(--demo-background) h s var(--uDark_transform_darken));
-    --uDark_isOverTreshold: clamp( 0, ( l - var(--uDark_treshold) * 100 + 0.000001 ) * infinity  ,1); /* 0 if under treshold, 1 if over treshold, + 0.01 avoids a bug on precise values */
-    /* Sign css function is not widely available */
+
+    /* This is quite uderstandable and fastest */
+    --uDark_isOverTreshold: clamp( 0, ( l - var(--uDark_treshold) * 100 + 0.00001 ) * infinity  ,1); /* 0 if under treshold, 1 if over treshold, + 0.01 avoids a bug on precise values */
+    /* Sign css function is not widely available  */
     --uDark_isOverTreshold_sign: max(0 , sign(l - var(--uDark_treshold) * 100));
-    --uDark_transform_darken_treshold_sign:calc(min(var(--uDark_darken_calc_low) , var(--uDark_darken_calc_high) ) * var(--uDark_isOverTreshold_sign) + l * (1 - var(--uDark_isOverTreshold_sign)))  ;
-    
+    --uDark_transform_darken_treshold_sign: calc(min(var(--uDark_darken_calc_low) , var(--uDark_darken_calc_high) ) * var(--uDark_isOverTreshold_sign) + l * (1 - var(--uDark_isOverTreshold_sign)))  ;
+   
 }
 :root{
-    --uDark_issueHueLow1:  237.60;
-    --uDark_issueHueHigh1:  259.2;
+    --uDark_comp1:clamp( 0, ( var(--uDark_comp1-a) - var(--uDark_comp1-b) + 0.00001 ) * infinity  ,1);
+    --uDark_comp2:clamp( 0, ( var(--uDark_comp2-a) - var(--uDark_comp2-b) + 0.00001 ) * infinity  ,1);
+    --uDark_comp3:clamp( 0, ( var(--uDark_comp3-a) - var(--uDark_comp3-b) + 0.00001 ) * infinity  ,1);
+    --uDark_comp4:clamp( 0, ( var(--uDark_comp4-a) - var(--uDark_comp4-b) + 0.00001 ) * infinity  ,1);
+    --uDark_comp5:clamp( 0, ( var(--uDark_comp5-a) - var(--uDark_comp5-b) + 0.00001 ) * infinity  ,1);
+    
 }
 :root {
     --uDark_lighten_A: 0.65;
     --uDark_lighten_B: 1;
     --uDark_transform_lighten: calc(min(2 * l, -2 * l + 200) * (var(--uDark_lighten_A) - var(--uDark_lighten_B)) + var(--uDark_lighten_B) * 100);
+    
+}
+:root{
+    --uDark_transform_text_hue: calc(h + var(--uDarkHueAdjust1)); /*Send to closest bound , 222 or 260*/
+}
+:root{
+
+
+
+    --uDark_issueHueLow1:  220;
+    --uDark_issueHueHigh1: 260;
+    
+    --uDark_isOverHueLow1: clamp( 0, ( h - var(--uDark_issueHueLow1) + 0.0001  ) * infinity  ,1);
+    --uDark_isUnderHueHigh1: clamp( 0, ( var(--uDark_issueHueHigh1) - h + 0.0001  ) * infinity  ,1);
+    --uDarkIsInRange1: (var(--uDark_isUnderHueHigh1) * var(--uDark_isOverHueLow1));
+    --uDarkHueAdjust1: var(--uDarkIsInRange1) * (var(--uDark_issueHueLow1) - h) /*  we have the int, now we need to calc the diff with the closest bound  */
 }
 
 
@@ -67,8 +89,11 @@ svg[udark-guess="logo"] [style]:not([fill])
      If no fill value was set, use the inherited color attribute, which is defined in currentColor ( And edited ) and if there is none, it will fallback to body color which is white
      Theorically, it's perfect. How long before proven wrong? 6 months : I've found text with fill with overriden color to white . Let's see if we can use a not([fill]) on text and tspan.
      The only Con is the currentColor is edited by a different ligtening algorithm. But it's close enough.
-     Note: fill and color in website stylesheets are edited by the same algorithm : revert_rgba which is different from revert_rgba_raw used for the svg stylesheets
+     Note: fill and color in website stylesheets are edited by the same algorithm : revert_rgba which is different from revert_rgba_raw used for the svg stylesheets.
      */
+     /* 2024 way, we could define in this css code block the --ud-fg--fill-color.
+    --uDark_lighten_A: 0.0; which is equivalent to  revert_rgba_raw especially since  the --ud-fg--fill-color is defined without the --uDark_transform_lighten_hue
+    */
 }
 
 

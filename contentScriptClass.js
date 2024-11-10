@@ -47,7 +47,32 @@ class uDarkExtendedContentScript  {
     elem.removeAttribute("onerror");
     
   }
-  override_website =function() {
+  override_website = function() {
+    // Note : We dont support document.write() yet. Shoudl we find a way to monitor document.close?
+    /*
+      I need to check if i can catch the automatic or explicit document.close
+      or use an event
+      window.addEventListener("DOMContentLoaded", () => {
+          // Code to run after all document.write operations are complete
+      });
+      or if its safe to frontEdit HTML the document.write args
+      
+   
+   { // Quick try
+    const originalClose = Document.prototype.close;
+    window.addEventListener("DOMContentLoaded", () => {
+      console.log('UtimaDark',"DOMContentLoaded")
+      // Code to run after all document.write operations are complete
+  });
+      // Override document.close
+      Document.prototype.close = function() {
+          console.log("Intercepted document.close");
+          // Place any additional actions here that should happen after the last document.write
+          // Call the original close to ensure the document is properly closed
+          originalClose.call(this);
+      };
+   }
+ */
     try {
       typeof localStorage;
       uDark.localStorageAvailable = true;
@@ -358,9 +383,8 @@ class uDarkExtendedContentScript  {
       
       let edited =   uDark.edit_all_cssRule_colors_cb({
         style:elem
-      }, "background", value, "--uDark_transform_darken", null, {
-        
-      }, "", {
+      }, "background", value, {}, {
+        l_var:"--uDark_transform_darken",
         prefix_vars: "bg",
         raw_text: true,
         no_edit: true
@@ -382,9 +406,9 @@ class uDarkExtendedContentScript  {
     
       let edited =   uDark.edit_all_cssRule_colors_cb({
         style:elem
-      }, "color", value, "--uDark_transform_lighten", null, {
-        
-      }, "", {
+      }, "color", value, {},  {
+        l_var: "--uDark_transform_lighten",
+        h_var: "--uDark_transform_text_hue",
         fastValue0:true,
         no_edit: true
       }) 

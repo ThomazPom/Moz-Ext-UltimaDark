@@ -166,7 +166,6 @@ class uDarkExtended extends uDarkExtendedContentScript {
             {
               file: "background.js",
             },
-            // {       file: "MurmurHash3.js"           }
           ], // Forced overrides
           css: [{
             code: uDark.inject_css_override
