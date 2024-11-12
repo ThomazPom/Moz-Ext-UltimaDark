@@ -18,7 +18,6 @@ jobs:
         popup.js
         popup.html
         options_styles.css
-        MurmurHash3.js
         manifest.json
         inject_css_override_no_edit.css
         inject_css_override_top_only.css
@@ -32,6 +31,11 @@ jobs:
         uDarkEncoder.js
         resolveIDKVars.js
         icons/
+        Listeners.js
+        contentScriptClass.js
+        backgroundClass.js
+        fakeContentScriptClass.js
+
 
     steps:
       # Checkout the repository
