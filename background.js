@@ -669,15 +669,21 @@ class uDarkC extends uDarkExtended {
   }
 
   frontEditHTML(elem, strO, details, options = {}) {
-
-    // 1. Ignore <script> elements to prevent unintended modifications to JavaScript and invalid string inputs
+    // 0. Return the original value if it's not a string
+    if(!(strO instanceof String || typeof strO === "string")){
+      return strO;
+    }
+    // 1. Ignore <script> elements to prevent unintended modifications to JavaScript
     let str = strO;
-    if (elem instanceof HTMLScriptElement || !strO) {
+    if (elem instanceof HTMLScriptElement) {
       return strO;
     }
     // 2. Special handling for <style> and <svg> style elements (returns edited value directly)
     if (elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement) {
       return uDark.edit_str(str, false, false, undefined, false, options);
+    }
+    if(!str.protect_simple){
+      console.error("str.protect_simple is not a function",str)
     }
     // Cant use \b because of the possibility of a - next to the identifier, it's a word character
     str = str.protect_simple(uDark.tagsToProtectRegex, "ud-tag-ptd-$1");
