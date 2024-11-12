@@ -682,9 +682,6 @@ class uDarkC extends uDarkExtended {
     if (elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement) {
       return uDark.edit_str(str, false, false, undefined, false, options);
     }
-    if(!str.protect_simple){
-      console.error("str.protect_simple is not a function",str)
-    }
     // Cant use \b because of the possibility of a - next to the identifier, it's a word character
     str = str.protect_simple(uDark.tagsToProtectRegex, "ud-tag-ptd-$1");
     
