@@ -151,6 +151,7 @@ class uDarkExtendedContentScript  {
         args[0] = uDark.edit_str(args[0]);
         return args;
       })
+
       // This is the one youtube uses
       uDark.valuePrototypeEditor([Element, ShadowRoot], "innerHTML", uDark.frontEditHTML); // toString : some objects can redefine tostring to generate their inner
       // uDark.valuePrototypeEditor([Element, ShadowRoot], "innerHTML", uDark.frontEditHTML, (elem,value)=>
@@ -272,7 +273,6 @@ class uDarkExtendedContentScript  {
     
     // })
 
-    
     uDark.functionPrototypeEditor(DOMParser,   DOMParser.prototype.parseFromString, (elem, args) => {
         // Catching the parsing of the document, to edit it before it's inserted in the DOM, is in the philosophy of UltimaDark of doing things at key moments.
         // parseFromString is a key moment, as it manipulates strings. insertBefore, used with an instanciated element for instance is not a key moment, as we could have edited the element before.

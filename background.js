@@ -17,10 +17,10 @@ class uDarkC extends uDarkExtended {
   static SHORTHANDS = ["all", "animation", "animation-range", "background", "border", "border-block", "border-block-end", "border-block-start", "border-bottom", "border-color", "border-image", "border-inline", "border-inline-end", "border-inline-start", "border-left", "border-radius", "border-right", "border-style", "border-top", "border-width", "column-rule", "columns", "contain-intrinsic-size", "container", "flex", "flex-flow", "font", "font-synthesis", "font-variant", "gap", "grid", "grid-area", "grid-column", "grid-row", "grid-template", "inset", "inset-block", "inset-inline", "list-style", "margin", "margin-block", "margin-inline", "mask", "mask-border", "offset", "outline", "overflow", "overscroll-behavior", "padding", "padding-block", "padding-inline", "place-content", "place-items", "place-self", "position-try", "scroll-margin", "scroll-margin-block", "scroll-margin-inline", "scroll-padding", "scroll-padding-block", "scroll-padding-inline", "scroll-timeline", "text-decoration", "text-emphasis", "text-wrap", "transition"]
   static TAGS_TO_PROTECT = ["head", "html", "body", "frameset", "frame"]
   static CSS_COLOR_FUNCTIONS = ["rgb", "rgba", "hsl", "hsla", "hwb", "lab", "lch", "color", "color-mix", "oklch", "oklab"]
-  shortHandRegex = new RegExp(`(?<![\w-])(${uDarkC.SHORTHANDS.join("|")})([\s\t]*:)`, "gi") // The \t is probably not needed, as \s includes it
-  tagsToProtectRegex = new RegExp(`(?<![\w-])(${uDarkC.TAGS_TO_PROTECT.join("|")})(?![\w-])`, "gi")
+  shortHandRegex = new RegExp(`(?<![\\w-])(${uDarkC.SHORTHANDS.join("|")})([\s\t]*:)`, "gi") // The \t is probably not needed, as \s includes it
+  tagsToProtectRegex = new RegExp(`(?<![\\w-])(${uDarkC.TAGS_TO_PROTECT.join("|")})(?![\\w-])`, "gi")
   // How much the color syntax can be complex: https://developer.mozilla.org/en-US/docs/Web/CSS/color_value#formal_syntax
-  fastColorRegex = new RegExp(`(?<![\w-])(${uDarkC.CSS_COLOR_FUNCTIONS.join("|")})\\(.*?\\)`, "gi")
+  fastColorRegex = new RegExp(`(?<![\\w-])(${uDarkC.CSS_COLOR_FUNCTIONS.join("|")})\\(.*?\\)`, "gi")
 
   static colorWorkSource = {
     canvasWidth: 5,
@@ -45,12 +45,12 @@ class uDarkC extends uDarkExtended {
     "bgcolor": this.rgba
   }
 
-  colorRegex = new RegExp(`(?<![\w-])(?:${uDarkC.CSS_COLOR_FUNCTIONS.join("|")})` + uDarkC.generateNestedParenthesisRegexNC(10), "gi")
+  colorRegex = new RegExp(`(?<![\\w-])(?:${uDarkC.CSS_COLOR_FUNCTIONS.join("|")})` + uDarkC.generateNestedParenthesisRegexNC(10), "gi")
 
   hexadecimalColorsRegex = /#[0-9a-f]{3,4}(?:[0-9a-f]{2})?(?:[0-9a-f]{2})?/gi // hexadecimal colors
 
   // Cant't use \b because of the possibility of a - next to the identifier, it's a word character
-  namedColorsRegex = (new RegExp(`(?<![\w-])(${uDarkC.CSS_COLOR_NAMES.join("|")})(?![\w-])`, "gi"))
+  namedColorsRegex = (new RegExp(`(?<![\\w-])(${uDarkC.CSS_COLOR_NAMES.join("|")})(?![\\w-])`, "gi"))
 
   regex_search_for_url = /url\("(.+?)(?<!\\)("\))/g
   regex_search_for_url_raw = /url\(\s*?(('.+?(?<!\\)'|(".+?(?<!\\)")|[^\)'"]*)\s*?)\)/gsi
@@ -670,9 +670,9 @@ class uDarkC extends uDarkExtended {
 
   frontEditHTML(elem, strO, details, options = {}) {
 
-    // 1. Ignore <script> elements to prevent unintended modifications to JavaScript
+    // 1. Ignore <script> elements to prevent unintended modifications to JavaScript and invalid string inputs
     let str = strO;
-    if (elem instanceof HTMLScriptElement) {
+    if (elem instanceof HTMLScriptElement || !strO) {
       return strO;
     }
     // 2. Special handling for <style> and <svg> style elements (returns edited value directly)
@@ -681,11 +681,13 @@ class uDarkC extends uDarkExtended {
     }
     // Cant use \b because of the possibility of a - next to the identifier, it's a word character
     str = str.protect_simple(uDark.tagsToProtectRegex, "ud-tag-ptd-$1");
-
+    
+    
     let parsedDocument = uDark.createDocumentFromHtml("<body>" + str + "</body>"
       /* Re encapsulate str into a <body> is not an overkill : Exists something called unsafeHTML clid binding. I did not understood what it is, but it needs a body tag for proper parsing*/
     );
     const aDocument = parsedDocument.body;
+ 
 
     // 4. Temporarily replace all SVG elements to avoid accidental style modifications
     const svgElements = uDark.processSvgElements(aDocument, details);
