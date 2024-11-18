@@ -1,5 +1,3 @@
-console.log("backgroundClass.js loaded")
-
 class uDarkExtended extends uDarkExtendedContentScript {
   handleCSSChunk_sync(data, verify, details, filter) {
     let str = details.rejectedValues;
@@ -187,12 +185,12 @@ class uDarkExtended extends uDarkExtendedContentScript {
         }); // Register a default content script, to be able to edit the page before the other one is loaded
         
       } else
-      console.info("UD Did not load : ",
+      uDark.info("UD Did not load : ",
         "White list", uDark.userSettings.properWhiteList,
         "UltimaDark enable state :", !userSettings.disable_webext)
         
-        browser.webRequest.handlerBehaviorChanged().then(x => console.info(`In-memory cache flushed`), error => console.error(`Error: ${error}`));
-        browser.browsingData.removeCache({}).then(x => console.info(`Browser cache flushed`), error => console.error(`Error: ${error}`));
+        browser.webRequest.handlerBehaviorChanged().then(x => uDark.info(`In-memory cache flushed`), error => console.error(`Error: ${error}`));
+        browser.browsingData.removeCache({}).then(x => uDark.info(`Browser cache flushed`), error => console.error(`Error: ${error}`));
         
       }
       filterContentScript(x) {
@@ -211,14 +209,16 @@ class uDarkExtended extends uDarkExtendedContentScript {
       }
       
       install() {
+        this.logPrefix = "UD";
         fetch("manifest.json").then(x => x.json()).then(x => {
           uDark.production = x.browser_specific_settings.gecko.id;
-          uDark.testFunction = function() {
-            console.log("Test function");
-          }
+      
           if (uDark.production) {
-            console.log("UltimaDark", "Production mode", uDark.production);
+            uDark.success( "Production mode", uDark.production);
             [console.log, console.warn, console.table, console.info] = Array(20).fill(z => {})
+          }
+          else {
+            uDark.success( "Development mode");
           }
           
         });
@@ -260,9 +260,9 @@ class uDarkExtended extends uDarkExtendedContentScript {
             }
           }),
           new Promise(uDark.getSettings)
-        ]).then(x => console.info("CSS processed")).then(r => uDark.setListener(true));
+        ]).then(x => uDark.info("CSS processed")).then(r => uDark.setListener(true));
         browser.storage.onChanged.addListener((changes, area) => {
-          console.log("Settings changed", changes, area);
+          uDark.success("Settings changed", changes, area);
           if (area == "local") {
             new Promise(uDark.getSettings).then(uDark.setListener);
           }
@@ -271,7 +271,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
       
       
       portConnected(connectedPort) {
-        console.info("Connected", connectedPort.sender.url, connectedPort.sender.contextId, connectedPort.sender);
+        uDark.info("Connected", connectedPort.sender.url, connectedPort.sender.contextId, connectedPort.sender);
         if (connectedPort.name == "port-from-cs" && connectedPort.sender.tab) {
           // At first, we used exclude_regex here to not register some content scripts, but thent we used it earlier, in the content script registration
           
@@ -280,9 +280,9 @@ class uDarkExtended extends uDarkExtendedContentScript {
           connectedPort.onDisconnect.addListener(disconnectedPort => {
             let portValue = uDark.connected_cs_ports[portKey]
             
-            console.log("Disconnected", disconnectedPort.sender.url, disconnectedPort.sender.contextId);
+            uDark.info("Disconnected", disconnectedPort.sender.url, disconnectedPort.sender.contextId);
             if (portValue === disconnectedPort) { // If the port is the same, we can delete it, otherwise, we are on a late disconnection, the port is already replaced either by a new one or by one that will arrive soon
-              console.log("Deleting", portKey)
+              uDark.info("Deleting", portKey)
               delete uDark.connected_cs_ports[portKey];
               
             }
@@ -322,11 +322,9 @@ class uDarkExtended extends uDarkExtendedContentScript {
         return uDark.connected_cs_ports[uDark.getPortKey(details)];
       }
       deletePort(details,moment){
-        // console.log("Deleting","port-from-cs-", details.tabId , details.frameId,moment)
         delete uDark.connected_cs_ports[uDark.getPortKey(details)];
       }
       setPort(details,port,moment){
-        // console.log("Setting","port-from-cs-", details.tabId , details.frameId,moment)
         uDark.connected_cs_ports[uDark.getPortKey(details)]=port;
       }
       extractCharsetFromHeaders(details,defaultCT="text/html",defaultCharset="utf-8") {
@@ -360,7 +358,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
           if (uDark.loggingWorkersActiveLogging) {
             this.addEventListener('message', function(e) {
               if (e.data.logMessage) {
-                console.log("imageWorker:", ...e.data.logMessage);
+                uDark.log("imageWorker:", ...e.data.logMessage);
               }
             });
           }

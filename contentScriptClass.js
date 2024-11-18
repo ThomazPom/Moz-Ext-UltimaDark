@@ -41,7 +41,7 @@ class uDarkExtendedContentScript  {
   }
   linkIntegrityErrorEvent = function(elem) {
     // This fix is needed for some websites that use link integrity, i don't know why but sometime even removing the integrity earlier in the code does not work
-    console.log("UltimaDark", "Link integrity error", elem,  "lead to a reload of this script");
+    uDark.info("Link integrity error", elem,  "lead to a reload of this script");
     let href = elem.getAttribute("href");
     href && elem.setAttribute("href",uDark.addNocacheToStrLink(href) );
     elem.removeAttribute("onerror");
@@ -77,15 +77,15 @@ class uDarkExtendedContentScript  {
       typeof localStorage;
       uDark.localStorageAvailable = true;
     } catch (e) {
-      // console.log("UltimaDark", "Local storage is not available", e,document.location.href);
+      // uDark.log("UltimaDark", "Local storage is not available", e,document.location.href);
     }
     
     let start = performance.now();
     
-    console.log("UltimaDark", "Content script override website", window);
+    uDark.info( "Content script override website", window);
     
     window.userSettingsReadyAction = function() {
-      console.log(new Error(),JSON.stringify(uDark.userSettings));
+      uDark.success("User settings ready", window.userSettings);
       if (!uDark.userSettings.keep_service_workers && window.navigator.serviceWorker) {
         if (uDark.localStorageAvailable) {
           // Insecure operations have in common a non available localStorage
@@ -118,10 +118,8 @@ class uDarkExtendedContentScript  {
       
       // End of zone for revoking property edition by the website
     }
-    console.info("UltimaDark", "Websites overrides install", window);
-    
+    uDark.info("Websites overrides install", window);
     uDark.functionPrototypeEditor(HTMLObjectElement,HTMLObjectElement.prototype.checkValidity, (elem, args) => {
-      console.log("UltimaDark:", elem, args);
       return args;
     })
     
@@ -389,7 +387,6 @@ class uDarkExtendedContentScript  {
         raw_text: true,
         no_edit: true
       }) 
-      console.log("Background edited with fastValue", edited);
       return edited;
 
       
@@ -412,7 +409,6 @@ class uDarkExtendedContentScript  {
         fastValue0:true,
         no_edit: true
       }) 
-      console.log("Color edited with fastValue", edited);
       return edited;
     })
     uDark.valuePrototypeEditor([HTMLElement, SVGElement], "style", (elem, value) => uDark.edit_str_nochunk(value)) // Care with "style and eget, this cause recursions"
