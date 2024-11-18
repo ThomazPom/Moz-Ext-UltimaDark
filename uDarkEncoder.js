@@ -1,7 +1,7 @@
 
 let namedEntitiesRawObject = fetch("entities.json").then(response=>response.json()).then(data=>data);
 namedEntitiesRawObject.then(data=>{
-    console.log(data);
+    uDark.success("Named entities loaded");
     window.namedEntities = data;
 
     let keptValues = new Array()
@@ -101,12 +101,12 @@ findByteCountEscapeSequences = function(decoder,escapeLength,nextBytes,character
         let decoded = decoder.decode(escapeSequence);
         if(decoded==character)
         {
-            // console.info("Found escape sequence",escapeSequence,"for character",character,"byteCount",byteCount);
+            // uDark.info("Found escape sequence",escapeSequence,"for character",character,"byteCount",byteCount);
             return byteCount;
         }
-        // console.info("Escape sequence",escapeSequence,"didn't match character",character,"decoded",decoded);
+        // uDark.info("Escape sequence",escapeSequence,"didn't match character",character,"decoded",decoded);
     }
-    console.error("Couldn't find escape sequence for character",character,"defaultByteCount")
+    uDark.error("Couldn't find escape sequence for character",character,"defaultByteCount")
     return defaultByteCount;
 }
 
@@ -117,14 +117,14 @@ window.getSafeDecoder = function(charset,decoderOptions={}) {
     }
     catch(e)
     {
-        console.warn("Couldn't create decoder for charset",charset);
+        uDark.warn("Couldn't create decoder for charset",charset);
         decoder=new TextDecoder("utf-8",decoderOptions);
     }
     return decoder;
 };
 
 window.uDarkDecode = function(charsetUnsafe,bufferData,decoderOptions={},url) {
-    console.log("Decoding into charset",charsetUnsafe,url);
+    uDark.log("Decoding into charset",charsetUnsafe,url);
     
     
     let start= performance.now();
@@ -141,11 +141,11 @@ window.uDarkDecode = function(charsetUnsafe,bufferData,decoderOptions={},url) {
         }
     if(!(charset in encodingByteCounter))
     {
-        console.log("Creating encoding byte counter for",charset);
+        uDark.log("Creating encoding byte counter for",charset);
         encodingByteCounter[charset]={monoByte:1};
     }
     let fnCharset = encodingByteCounter[charset];
-    console.log("Decoding into charset",charset,fnCharset);
+    uDark.log("Decoding into charset",charset,fnCharset);
     if(!fnCharset.map)
     {
         fnCharset.map=new Map();
@@ -167,7 +167,7 @@ window.uDarkDecode = function(charsetUnsafe,bufferData,decoderOptions={},url) {
     // Since replacement will never contain a $& it's safe to use it as a replacement string without callback function.
     decoded=decoded.replaceAll(/&(#x?[0-9A-F]+)/g,replacement).replaceAll(window.regExpNamedEntities,replacement);
     let end=performance.now();
-    console.log("Decoding took",end-start,"ms");
+    uDark.log("Decoding took",end-start,"ms");
     return decoded;
 
 }
