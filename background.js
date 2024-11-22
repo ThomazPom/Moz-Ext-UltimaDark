@@ -998,11 +998,16 @@ class uDarkC extends uDarkExtended {
       };
       return strO;
     }
+    if(!details)
+    {
+      // return strO;
+    }
+    
     // Protection of imports
     // Unfortunately, this could lead to a reparation of a broken css if the chunking splits the @import in two parts
     // We might someday encounter this very improbable case, and have to check if the last rule is an unclosed @rule, while having some rules before it and reject the CSS chunk
     // In the end the chunk would eventualy come back contatenated with the next chunk, and then we could edit it properly.
-    let import_protection = strO.protect_numbered(uDark.cssAtRulesRegex, "udarkAtRuleProtect{index} { }", uDark.exactAtRuleProtect)
+    let import_protection = strO.protect_numbered(uDark.cssAtRulesRegex, 'udarkAtRuleProtect { content: "{index}"; }', uDark.exactAtRuleProtect)
     
     str = import_protection.str;
     str = str.protect_simple(uDark.shortHandRegex, "--ud-ptd-$1:");
@@ -1052,11 +1057,12 @@ class uDarkC extends uDarkExtended {
       if (verifyIntegrity) {
         
         let last_rule = cssStyleSheet.cssRules[cssStyleSheet.cssRules.length - 1];
+        let antp_ult_rule = cssStyleSheet.cssRules[cssStyleSheet.cssRules.length - 2];
         let is_rejected = !last_rule || last_rule.selectorText != ".integrity_rule"; // It must ne an exact match to avoid reparations of broken CSS in the middle of a css identifier
-        if (is_rejected) {
-          
+        let is_rejected_at_rule = !is_rejected && antp_ult_rule && antp_ult_rule.selectorText == "udarkAtRuleProtect"; // Our protection of @rules might have repaired a half cut @rule, we have to reject it if the last known rule is an @rule
+        if (is_rejected || is_rejected_at_rule) {
           //
-          let can_iterate = cssStyleSheet.cssRules.length > 1; // If there is only one rule, and it's rejected, we dont'have to find the previous one
+          let can_iterate = !is_rejected_at_rule && cssStyleSheet.cssRules.length > 1; // If there is only one rule, and it's rejected, we dont'have to find the previous one
           if (can_iterate && !uDark.disable_live_chunk_repair) // We accept CSS until it breaks, and cut it from there
           {
             rejected_str = ""; // Pass from false to empty string
