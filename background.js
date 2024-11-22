@@ -1472,6 +1472,10 @@ class uDarkC extends uDarkExtended {
     }
     
     edit_all_cssRule_colors_cb(cssRule, key, value, options, actions) {
+      // 0. Return the original value if it's not a string
+      if(!(value instanceof String || typeof value === "string")){
+        return value;
+      }
       let alreadyEditedTestResult = value.match("NotImplemented" + uDark.alreadyEditedTestRegex);
       let key_prefix = actions.key_prefix || "";
       if (alreadyEditedTestResult) {

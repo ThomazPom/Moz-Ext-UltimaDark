@@ -377,8 +377,7 @@ class uDarkExtendedContentScript  {
     
     // W3C uses this one
     
-    let bg_websiteEditFn = (elem, value,key) => {
-      
+    let bg_websiteEditFn = (elem, value) => {
       let edited =   uDark.edit_all_cssRule_colors_cb({
         style:elem
       }, "background", value, {}, {
