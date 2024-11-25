@@ -228,7 +228,7 @@ class Listeners {
     }
     
   }
-  static async editBeforeData(details) {
+  static editBeforeData(details) {
     if (details.tabId == -1 && uDark.connected_options_ports_count || uDark.connected_cs_ports["port-from-popup-" + details.tabId]) { // -1 Happens sometimes, like on https://www.youtube.com/ at the time i write this, stackoverflow talks about worker threads
       
       // Here we are covering the needs of the option page: Be able to frame any page

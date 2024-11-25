@@ -998,10 +998,7 @@ class uDarkC extends uDarkExtended {
       };
       return strO;
     }
-    if(!details)
-    {
-      // return strO;
-    }
+
     
     // Protection of imports
     // Unfortunately, this could lead to a reparation of a broken css if the chunking splits the @import in two parts
@@ -1460,18 +1457,23 @@ class uDarkC extends uDarkExtended {
       let h_var = actions.h_var? `var(${actions.h_var})` : "h";
       return `hsl(from ${color} ${h_var} s ${l_var} / alpha)`
     }
+    edit_fastValue0( value, actions, cssRule) {
+      if(actions.js_static_transform){
+        if(!value.includes("var(")){
+          return uDark.eget_color(value, actions.js_static_transform, cssRule, true, true);
+        }
+      }
+      return uDark.wrapIntoColor(value, actions);
+        
+    }
     edit_with_regex(key, value, regex, actions, cssRule) {
       return value.replaceAll(regex, (match) => {
-        if(actions.js_static_transform){
-          if(!value.includes("var(")){
-            return uDark.eget_color(match, actions.js_static_transform, cssRule, true, true);
-          }
-        }
-        return uDark.wrapIntoColor(match, actions);
+        return uDark.edit_fastValue0(match, actions, cssRule);
       });
     }
     
     edit_all_cssRule_colors_cb(cssRule, key, value, options, actions) {
+    
       // 0. Return the original value if it's not a string
       if(!(value instanceof String || typeof value === "string")){
         return value;
@@ -1484,7 +1486,7 @@ class uDarkC extends uDarkExtended {
       }
       let cssStyle = cssRule.style;
       if (actions.fastValue0) {
-        let wrapped=uDark.wrapIntoColor(value,actions);
+        let wrapped=uDark.edit_fastValue0(value, actions, cssRule);
         if(actions.no_edit || wrapped==value && !key_prefix){
           return wrapped;
         }
@@ -1493,7 +1495,7 @@ class uDarkC extends uDarkExtended {
       }
       
       let url_protected = uDark.str_protect(value, actions.raw_text ? uDark.regex_search_for_url_raw : uDark.regex_search_for_url, "url_protected");
-      
+    
       // url_protected=value.protect(/DISABLED/,"url_protected");
       let new_value = url_protected.str;
       
@@ -1507,6 +1509,7 @@ class uDarkC extends uDarkExtended {
       new_value = uDark.edit_with_regex(key, new_value, uDark.namedColorsRegex, actions); // edit_named_colors
       new_value = uDark.edit_with_regex(key, new_value, uDark.hexadecimalColorsRegex, actions); // edit_hex_colors // The browser auto converts hex to rgb, but some times not like in  var(--123,#00ff00) as it cant resolve the var
       new_value = uDark.str_unprotect(new_value, url_protected);
+      
       if (!actions.no_edit && value != new_value || key_prefix) {
         // Edit the value only if necessary:  setting bacground image removes bacground property for intance
         cssStyle.p_ud_setProperty(key_prefix + key, new_value, cssStyle.getPropertyPriority(key)); // Once we had  an infinite loop here when uDark was loaded twice and redefining setProperty.

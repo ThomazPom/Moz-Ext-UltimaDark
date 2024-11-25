@@ -212,7 +212,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
         this.logPrefix = "UD";
         fetch("manifest.json").then(x => x.json()).then(x => {
           uDark.production = x.browser_specific_settings.gecko.id;
-      
+          
           if (uDark.production) {
             uDark.success( "Production mode", uDark.production);
             [console.log, console.warn, console.table, console.info] = Array(20).fill(z => {})
@@ -342,11 +342,44 @@ class uDarkExtended extends uDarkExtendedContentScript {
         details.charset=(details.charset ||["",defaultCharset])[1].toLowerCase();
       }
       headersDo = {
+        "content-security-policy-report-only": (x => { false }),
         "content-security-policy": (x => {
-          x.value = x.value.replace(/script-src/, "script-src *")
-          x.value = x.value.replace(/default-src/, "default-src *")
-          x.value = x.value.replace(/style-src/, "style-src *")
-          return false; // TODO: Review if false is the right value here
+          let csp = x.value.toLowerCase();
+          let cspArray = csp.split(/;|,/g).map(x => x.trim()); 
+          /* Quoted values are very defined and never contain a comma or a semicolon. No protection needed
+          Urls in CSP break on these characters, browser expects them to be url encoded, so we can't have them in the value
+          */
+          let cspObject = {};
+          
+          cspArray.forEach(element => {
+            element = element.trim();
+            let spIndex = element.indexOf(" ");
+            let key = element.slice(0, spIndex);
+            let value = " ";
+            if (spIndex != -1) {
+              value = element.slice(spIndex + 1);
+            }
+            cspObject[key] = value;
+          });
+          let CSPBypass_map = {
+            "* 'unsafe-inline' 'unsafe-eval'": ["script-src", "default-src", "script-src-attr", "style-src-attr", "style-src"],
+            "* 'unsafe-inline'": ["script-src-elem"],
+            "delete": ["report-uri", "report-to","require-trusted-types-for"],
+          }
+          for(let [newCSPValue,cspDirectiveKeys] of Object.entries(CSPBypass_map)){
+            for(let cspDirective of cspDirectiveKeys){
+              if(cspObject[cspDirective]){
+                cspObject[cspDirective] = newCSPValue;
+              }
+              if(newCSPValue === "delete")
+                delete cspObject[cspDirective];
+              }
+          }
+          let newCSP = Object.entries(cspObject).map(([key, value]) => {
+            return `${key} ${value}`;
+          }).join("; ");
+          x.value = newCSP;
+          return true; // Return true to apply the change, false to remove the header. We must keep the header since a website can send x frame options, among CSP, and removing it would give priority to the x frame options
         }),
       }
       regiteredCS = []
