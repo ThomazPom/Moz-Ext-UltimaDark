@@ -345,26 +345,24 @@ class uDarkExtended extends uDarkExtendedContentScript {
         "content-security-policy-report-only": (x => { false }),
         "content-security-policy": (x => {
           let csp = x.value.toLowerCase();
-          let cspArray = csp.split(/;|,/g).map(x => x.trim()); 
+          let cspArray = csp.split(/;|,/g).map(x => x.trim()).filter(x => x); 
           /* Quoted values are very defined and never contain a comma or a semicolon. No protection needed
           Urls in CSP break on these characters, browser expects them to be url encoded, so we can't have them in the value
           */
           let cspObject = {};
           
           cspArray.forEach(element => {
-            element = element.trim();
+            element = element + " ";
             let spIndex = element.indexOf(" ");
             let key = element.slice(0, spIndex);
             let value = " ";
-            if (spIndex != -1) {
-              value = element.slice(spIndex + 1);
-            }
-            cspObject[key] = value;
+            value = element.slice(spIndex + 1);
+            uDark.log("CSP", key, value,spIndex);
+            cspObject[key] = value.trim();
           });
           let CSPBypass_map = {
-            "* 'unsafe-inline' 'unsafe-eval'": ["script-src", "default-src", "script-src-attr", "style-src-attr", "style-src"],
-            "* 'unsafe-inline'": ["script-src-elem"],
-            "delete": ["report-uri", "report-to","require-trusted-types-for"],
+            "* 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data:": ["default-src"],
+            "delete": new Set(["report-uri", "report-to","require-trusted-types-for","img-src","script-src", "script-src-attr","style-src-attr","style-src"]),
           }
           for(let [newCSPValue,cspDirectiveKeys] of Object.entries(CSPBypass_map)){
             for(let cspDirective of cspDirectiveKeys){
