@@ -984,7 +984,10 @@ class uDarkC extends uDarkExtended {
   }
   
   edit_str(strO, cssStyleSheet, verifyIntegrity = false, details, options = {}) {
-    
+    if(!strO){ // Avoiding errors when strO is null, especially  in frontEnd
+      return new String().valueOf(); // Return an empty string to avoid errors in our own code
+    }
+
     let str = strO;
     
     if (false && strO.includes("/*!sc*/")) { // TODO: Fix thins in abetter way; this is a temporary and specific fix; 

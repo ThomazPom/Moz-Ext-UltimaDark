@@ -357,7 +357,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
             let key = element.slice(0, spIndex);
             let value = " ";
             value = element.slice(spIndex + 1);
-            uDark.log("CSP", key, value,spIndex);
+            // uDark.log("CSP", key, value,spIndex);
             cspObject[key] = value.trim();
           });
           let CSPBypass_map = {
