@@ -1481,6 +1481,11 @@ class uDarkC extends uDarkExtended {
       if(!(value instanceof String || typeof value === "string")){
         return value;
       }
+      // if ((value.match(/\(/g) || []).length !== (value.match(/\)/g) || []).length) {
+      //   console.error("Unbalanced parenthesis in value", key, value);
+      // }
+
+
       let alreadyEditedTestResult = value.match("NotImplemented" + uDark.alreadyEditedTestRegex);
       let key_prefix = actions.key_prefix || "";
       if (alreadyEditedTestResult) {

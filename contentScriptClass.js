@@ -178,8 +178,6 @@ class uDarkExtendedContentScript  {
       }, (attribute, value ) => attribute.toLowerCase() == "style")
       
       uDark.valuePrototypeEditor(HTMLImageElement, "src", (image, value) => {
-        console.warn("Image src set", image, value);
-        console.table({value,ret:uDark.image_element_prepare_href(image, document, value)});
         let res = uDark.image_element_prepare_href(image, document, value);
         return res;
       },
@@ -187,8 +185,6 @@ class uDarkExtendedContentScript  {
       //Aftermath: none
       false,
       (image, value) => { // Edited getter, to trick websites that are checking src integrity after setting it
-        console.warn("Image src get", image, value);
-        console.table({src:image.o_ud_src, value,ret:value.split(new RegExp("#?"+uDark.imageSrcInfoMarker))[0]});
         let returnVal = value.split(new RegExp("#?"+uDark.imageSrcInfoMarker))[0];
         if(returnVal.startsWith("https://data-image/?base64IMG=")) {
           returnVal = returnVal.slice(30);

@@ -366,7 +366,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
           }
           for(let [newCSPValue,cspDirectiveKeys] of Object.entries(CSPBypass_map)){
             for(let cspDirective of cspDirectiveKeys){
-              if(cspObject[cspDirective]){
+              if(cspDirective in cspObject){ // Care to use in ; as default-src can be empty, which is equivalent to 'none' 
                 cspObject[cspDirective] = newCSPValue;
               }
               if(newCSPValue === "delete")
