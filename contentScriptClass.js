@@ -385,6 +385,7 @@ class uDarkExtendedContentScript  {
       let edited =   uDark.edit_all_cssRule_colors_cb({
         style:elem
       }, "background", value, {}, {
+        override: uDark.backOverrides,
         l_var:"--uDark_transform_darken",
         prefix_vars: "bg",
         raw_text: true,
@@ -407,6 +408,7 @@ class uDarkExtendedContentScript  {
       let edited =   uDark.edit_all_cssRule_colors_cb({
         style:elem
       }, "color", value, {},  {
+        override: uDark.frontOverrides,
         l_var: "--uDark_transform_lighten",
         h_var: "--uDark_transform_text_hue",
         fastValue0:true,
