@@ -8,6 +8,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
     
     options.chunk = uDark.edit_str( str, false, verify, details, false, options);
     
+    
     if (options.chunk.message) {
       details.rejectedValues = str;  // Keep rejected values for later use
       return;
