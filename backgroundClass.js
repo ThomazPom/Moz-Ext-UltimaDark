@@ -8,7 +8,6 @@ class uDarkExtended extends uDarkExtendedContentScript {
     
     options.chunk = uDark.edit_str( str, false, verify, details, false, options);
     
-    
     if (options.chunk.message) {
       details.rejectedValues = str;  // Keep rejected values for later use
       return;
@@ -361,8 +360,8 @@ class uDarkExtended extends uDarkExtendedContentScript {
             cspObject[key] = value.trim();
           });
           let CSPBypass_map = {
-            "* 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data:": ["default-src"],
-            "delete": new Set(["report-uri", "report-to","require-trusted-types-for","img-src","script-src", "script-src-attr","style-src-attr","style-src"]),
+            // "* 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data:": ["default-src"],
+            "delete": new Set(["default-src","report-uri", "report-to","require-trusted-types-for","img-src","script-src", "script-src-attr","style-src-attr","style-src"]),
           }
           for(let [newCSPValue,cspDirectiveKeys] of Object.entries(CSPBypass_map)){
             for(let cspDirective of cspDirectiveKeys){

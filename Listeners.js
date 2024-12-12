@@ -169,7 +169,7 @@ class Listeners {
     details.dataCount = 0;
     details.rejectedValues = "";
     
-    
+    console.log(JSON.parse(JSON.stringify(details)))
     
     // // ondata event handler
     filter.ondata = event => {
@@ -264,7 +264,7 @@ class Listeners {
       details.dataCount = 1;
       details.writeEnd = await new Blob(details.writeEnd).arrayBuffer();
       
-      
+      // details.debugParsing = 1;
       let decodedValue= uDarkDecode(details.charset,details.writeEnd,{stream:true});
       if(details.debugParsing){ // debug
         details.writeEnd = decodedValue

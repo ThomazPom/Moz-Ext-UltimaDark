@@ -16,8 +16,9 @@ html:not(.uDark-popup) .uDark-popup,html.uDark-popup .uDark-options{
     padding: 15px 10px 5px;
     border: white solid 2px;
 }
-.version{
+.version,.production{
     font-size: 10px;
+    margin-right: 20px;
 }
 .disable_something{
     display:none;	

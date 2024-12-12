@@ -84,15 +84,16 @@ class uDarkC extends uDarkExtended {
   matchAllCssCommentsRegex = /\/\*[^*]*\*+([^/*][^*]*\*+)*\/|\/\*[^*]*\*+([^/*][^*]*\*+)*|\/\*[^*]*(\*+[^/*][^*]*)*/g
   // At-rules : https://developer.mozilla.org/fr/docs/Web/CSS/At-rule
   
-  // @charset, @import or @namespace, followed by some space or \n, followed by some content, followed by ; or end of STRING
+  // @charset, @import or @namespace, followed by some space or \n, followed by some content, followed by a code block a semicolon; or end of STRING
   // Surpisingly and fortunately end of LINE does not delimits the end of the at-rule and forces devs & minifers either to add a ; or end of STRING 
   // which and fortunately simplifies a LOT the handling 
+  // See https://www.w3.org/TR/css-syntax-3/#block-at-rule ( Block at-rules )
   // 'm' flag is not set on purpose to avoid matching $ as a line end, and keeping it at end of STRING
   // Content must not be interupted while between quotes or parenthesis.
   // It wont break on string ("te\"st") or this one('te\'st') or @import ('abc\)d;s'); thanks to
   // priority matches (\\\)) and (\\') and (\\")  
   //-------------------v-Rule name----space or-CR--v-----v--Protected values-v----v-the content dot
-  cssAtRulesRegex = /@(charset|import|namespace)(\n|\s)+((\((\\\)|.)+?\))|("(\\"|.)+?")|('(\\'|.)+?')|.)+?(;|$)/gs
+  cssAtRulesRegex = /@(charset|import|namespace)(\n|\s)+((\((\\\)|.)+?\))|("(\\"|.)+?")|('(\\'|.)+?')|.)+?({.+?}|;|$)/gs
   
   direct_window_export = true
   general_cache = new Map()
@@ -1571,7 +1572,7 @@ class uDarkC extends uDarkExtended {
         } // Do background regex match
         
       }
-      
+
       wordingActions.length && uDark.css_properties_wording_action(cssRule.style, wordingActions, details, cssRule, options);
       
       backgroundItems.length && uDark.edit_all_cssRule_colors(cssRule, backgroundItems, options, 

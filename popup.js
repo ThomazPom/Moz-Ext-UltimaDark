@@ -13,7 +13,26 @@ if(usedMode)
 
 window.onload=function()
 {
-  fetch("manifest.json").then(x=>x.json()).then(x=>document.querySelectorAll(".version").forEach(z=>z.innerText=x.version))
+  fetch("manifest.json").then(x=>x.json()).then(x=>{
+    document.querySelectorAll(".version").forEach(z=>z.innerText=x.version)
+    let production = x.browser_specific_settings.gecko.id;
+    
+    document.querySelectorAll(".production").forEach(z=>{
+      
+      if(production)
+        {
+        
+        z.textContent="Production mode";
+        z.style.color="lime";
+        
+      }
+      else
+      {
+        z.textContent="Development mode";
+        z.style.color="red";
+      }
+    })
+  })
   var updatefunction = function(event){
     console.log("Popup will ask background to update status and list because of",event)
     var checkbox_status =  Object.fromEntries( [...disable_checkboxes].map( x => [x.id, x.checked]) );
