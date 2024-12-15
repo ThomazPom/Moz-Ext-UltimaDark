@@ -3,7 +3,7 @@ class uDarkExtendedContentScript  {
   is_content_script =  true
   website_context = true
   install() {
-    
+    uDark.exportFunction = globalThis.exportFunction; // Don't override the exportFunction function, but make it available to ultimadark
     console.info("UltimaDark", "Content script install", window);     
     
     if (uDark.direct_window_export) {
@@ -83,7 +83,7 @@ class uDarkExtendedContentScript  {
     let start = performance.now();
     
     uDark.info( "Content script override website", window);
-    
+    uDark.website_context = true;
     window.userSettingsReadyAction = function() {
       uDark.success("User settings ready", window.userSettings);
       if (!uDark.userSettings.keep_service_workers && window.navigator.serviceWorker) {
@@ -95,6 +95,7 @@ class uDarkExtendedContentScript  {
       }
     }
     if (uDark.direct_window_export) {
+      uDark.direct_window_context = true;
       document.wrappedJSObject = document;
       // Avoid infinite loops 
       if (window.uDark && window.uDark.installed) {
@@ -103,8 +104,6 @@ class uDarkExtendedContentScript  {
         uDark.installed = true;
       }
       
-      // Emulate content script exportFunction in one line;
-      globalThis.exportFunction = f => f;
       
       // Zone for revoking property edition by the website : // no true=no trust
       // https://developer.mozilla.org/fr/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty
@@ -146,6 +145,7 @@ class uDarkExtendedContentScript  {
         CSSStyleSheet.prototype.replace,
         CSSStyleSheet.prototype.replaceSync
       ], (elem, args) => { // Needed to manage it some day, now done :)
+        console.log("CSSStyleSheet replace", elem, args);
         args[0] = uDark.edit_str(args[0]);
         return args;
       })
