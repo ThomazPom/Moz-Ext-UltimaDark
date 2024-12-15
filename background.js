@@ -12,6 +12,7 @@ class Common {
   }
 };
 class uDarkC extends uDarkExtended {
+  exportFunction= f => f; // Emulate the exportFunction function of the content script to avoid many ternary operators
   logPrefix = "UltimaDark:";
   log(...args) {
     console.log("%c"+this.logPrefix,  "color:white;font-weight:bolder",...args);
@@ -343,7 +344,7 @@ class uDarkC extends uDarkExtended {
     Object.defineProperty(leType.prototype, "o_ud_" + atName, originalProperty);
     let override_get_set = {};
     if (setter) {
-      override_get_set.set = exportFunction(function(value) { // getters must be exported like regular functions
+      override_get_set.set = uDark.exportFunction(function(value) { // getters must be exported like regular functions
         var new_value = (!conditon || conditon(this, value) === true) ? setter(this, value) : value;
         let call_result = originalProperty.set.call(this, new_value || value);
         aftermath && aftermath(this, value, new_value);
@@ -351,7 +352,7 @@ class uDarkC extends uDarkExtended {
       }, window);
     }
     if (getter) {
-      override_get_set.get = exportFunction(function() { // getters must be exported like regular functions
+      override_get_set.get = uDark.exportFunction(function() { // getters must be exported like regular functions
         let call_result = originalProperty.get.call(this);
         return getter(this, call_result);
       }, window);
@@ -389,14 +390,14 @@ class uDarkC extends uDarkExtended {
       return;
     }
     let originalFunctionKey = "o_ud_" + laFonction.name
-    var originalFunction = exportFunction(Object.getOwnPropertyDescriptor(leType.prototype, laFonction.name).value, window);
+    var originalFunction = uDark.exportFunction(Object.getOwnPropertyDescriptor(leType.prototype, laFonction.name).value, window);
     Object.defineProperty(leType.prototype, originalFunctionKey, {
       value: originalFunction,
       writable: true
     });
     Object.defineProperty(leType.prototype, laFonction.name, {
       value: {
-        [laFonction.name]: exportFunction(function() {
+        [laFonction.name]: uDark.exportFunction(function() {
           if (conditon === true || conditon.apply(this, arguments)) { // if a standard function is provided, it will will be able to use the 'this' keyword
             let watcher_result = watcher(this, arguments);
             let result = originalFunction.apply(this, watcher_result) // if a standard function is provided, it will will be able to use the 'this' keyword
@@ -985,8 +986,9 @@ class uDarkC extends uDarkExtended {
   }
   
   edit_str(strO, cssStyleSheet, verifyIntegrity = false, details, options = {}) {
-    if(!strO){ // Avoiding errors when strO is null, especially  in frontEnd
-      return new String().valueOf(); // Return an empty string to avoid errors in our own code
+   
+    if(!( typeof strO === "string" || strO instanceof String)){
+      return strO; // Do not edit non string values to avoid errors, web is wide and wild
     }
 
     let str = strO;
@@ -1008,6 +1010,7 @@ class uDarkC extends uDarkExtended {
     // Unfortunately, this could lead to a reparation of a broken css if the chunking splits the @import in two parts
     // We might someday encounter this very improbable case, and have to check if the last rule is an unclosed @rule, while having some rules before it and reject the CSS chunk
     // In the end the chunk would eventualy come back contatenated with the next chunk, and then we could edit it properly.
+   
     let import_protection = strO.protect_numbered(uDark.cssAtRulesRegex, 'udarkAtRuleProtect { content: "{index}"; }', uDark.exactAtRuleProtect)
     
     str = import_protection.str;
