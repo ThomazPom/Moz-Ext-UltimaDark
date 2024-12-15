@@ -145,7 +145,6 @@ class uDarkExtendedContentScript  {
         CSSStyleSheet.prototype.replace,
         CSSStyleSheet.prototype.replaceSync
       ], (elem, args) => { // Needed to manage it some day, now done :)
-        console.log("CSSStyleSheet replace", elem, args);
         args[0] = uDark.edit_str(args[0]);
         return args;
       })
