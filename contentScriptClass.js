@@ -1,7 +1,7 @@
 class uDarkExtendedContentScript  {
   
   is_content_script =  true
-  website_context = true
+  website_context = true // Tell ultimadark we are in a website context and is_color_var is available
   install() {
     uDark.exportFunction = globalThis.exportFunction; // Don't override the exportFunction function, but make it available to ultimadark
     console.info("UltimaDark", "Content script install", window);     
@@ -83,7 +83,7 @@ class uDarkExtendedContentScript  {
     let start = performance.now();
     
     uDark.info( "Content script override website", window);
-    uDark.website_context = true;
+    uDark.website_context = true; // Tell ultimadark we are in a website context and is_color_var is available
     window.userSettingsReadyAction = function() {
       uDark.success("User settings ready", window.userSettings);
       if (!uDark.userSettings.keep_service_workers && window.navigator.serviceWorker) {
