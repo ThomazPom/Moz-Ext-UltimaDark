@@ -1239,7 +1239,7 @@ class uDarkC extends uDarkExtended {
     if (!possiblecolor || possiblecolor === "none") { // none is not a color, and it not usefull to create a style element for it
       return false
     }
-    if (uDark.website_context && possiblecolor.includes("var(")) {
+    if (!uDark.is_background && possiblecolor.includes("var(")) {
       return uDark.is_color_var(possiblecolor, as_float, fill, cssRule, spanp)
     }
     
