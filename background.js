@@ -986,11 +986,11 @@ class uDarkC extends uDarkExtended {
   }
   
   edit_str(strO, cssStyleSheet, verifyIntegrity = false, details, options = {}) {
-   
+    
     if(!( typeof strO === "string" || strO instanceof String)){
       return strO; // Do not edit non string values to avoid errors, web is wide and wild
     }
-
+ 
     let str = strO;
     
     if (false && strO.includes("/*!sc*/")) { // TODO: Fix thins in abetter way; this is a temporary and specific fix; 
@@ -1025,7 +1025,7 @@ class uDarkC extends uDarkExtended {
     } else if (!cssStyleSheet.rules.length) {
       return strO; // Empty styles from domparser can't be edited as they are not "constructed"
     }
-    
+
     let rejected_str = false;
     
     // Protection of CSS shorthand properties, 
@@ -1120,7 +1120,7 @@ class uDarkC extends uDarkExtended {
       }
     }
     
-    return str;
+        return str || strO; // It's essential to return the original value if the CSS is broken, if e did not knew what to do with it, we should not have edited it. This is demostrated on hub.docker.com that looks into a comment only css
   }
   rgba_val(r, g, b, a) {
     a = typeof a == "number" ? a : 1;

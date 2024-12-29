@@ -362,7 +362,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
           });
           let CSPBypass_map = {
             // "* 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data:": ["default-src"],
-            "delete": new Set(["default-src","report-uri", "report-to","require-trusted-types-for","img-src","script-src", "script-src-attr","style-src-attr","style-src"]),
+            "delete": new Set(["default-src","report-uri", "report-to","require-trusted-types-for","img-src","script-src", "script-src-attr","style-src-attr","script-src-elem","style-src"]),
           }
           for(let [newCSPValue,cspDirectiveKeys] of Object.entries(CSPBypass_map)){
             for(let cspDirective of cspDirectiveKeys){
