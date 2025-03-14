@@ -25,7 +25,7 @@
 
   "browser_action": {
     "default_icon": "icons/38.png",
-    "default_title": "UltimaDark is active",
+    "default_title": "UltimaDark is following automatically default-theme@mozilla.org",
   
     "default_popup": "popup.html?mode=uDark-popup"
   },
