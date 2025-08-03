@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta id="ud-meta-dark" name="color-scheme" content="dark">
+    <title>UltimaDark Settings</title>
+    <link rel="stylesheet" type="text/css" href="bundle.css">
+    <link rel="stylesheet" type="text/css" href="options_styles.css">
+    <!-- Bootstrap Icons for info button -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+</head>
+<body x-data class="dark" data-bs-theme="dark">
+    
+    <div class="container py-3" style="max-width: 600px;">
+        <!-- Header -->
+        <div class="text-center mb-4">
+            UltimaDark 
+            <span class="version" x-text="$store.app.version"></span>
+            <span class="production" x-text="$store.app.productionMode"></span>
+        </div>
+
+        <!-- Main Toggle -->
+        <div class="mb-3">
+          <input class="form-check-input d-none" id="disable_webext" type="checkbox" x-model="$store.app.isEnabled" @change="$store.app.saveSettings();">
+          <label for="disable_webext" class="d-flex align-items-center justify-content-between gap-3 p-3 rounded border" :class="$store.app.isEnabled ? 'border-success bg-success bg-opacity-10' : 'border-danger bg-danger bg-opacity-10'" :style="$store.app.isEnabled ? '' : 'opacity: 0.7;'">
+            <span class="fw-medium">UltimaDark Extension</span>
+            <div class="btn-group" role="group" aria-label="Enable/Disable">
+              <button type="button" class="btn btn-sm" :class="$store.app.isEnabled ? 'btn-success' : 'btn-outline-secondary'" @click="$store.app.isEnabled = true; $store.app.saveSettings();">ENABLED</button>
+              <button type="button" class="btn btn-sm" :class="!$store.app.isEnabled ? 'btn-danger' : 'btn-outline-secondary'" @click="$store.app.isEnabled = false; $store.app.saveSettings();">DISABLED</button>
+            </div>
+          </label>
+        </div>
+
+        <!-- Promoted Links -->
+        <div class="d-flex flex-wrap gap-2 mb-3 justify-content-center">
+          <a href="https://github.com/ThomazPom/Moz-Ext-UltimaDark" target="_blank" class="btn btn-outline-primary btn-sm px-3 fw-semibold">
+            <i class="bi bi-github me-1"></i> Sources & Updates
+          </a>
+          <a href="https://www.paypal.me/ThomazPom" target="_blank" class="btn btn-warning btn-sm px-3 fw-semibold">
+            <i class="bi bi-heart-fill me-1"></i> Donate
+          </a>
+          <a href="https://addons.mozilla.org/fr/firefox/addon/UltimaDark/" 
+             target="_blank"
+             class="btn btn-outline-secondary btn-sm px-3 fw-semibold">
+            <i class="bi bi-star me-1"></i> Rate & About
+          </a>
+        </div>
+    
+        <!-- Current Site Section -->
+        <div class="mb-4">
+            <!-- Info Modal Trigger (moved below quick actions) -->
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <button type="button" class="btn btn-outline-info btn-sm d-flex align-items-center" style="font-size: 13px;" @click="$modals.showExclusionPriorityInfo()">
+                <i class="bi bi-info-circle me-1"></i> Info
+              </button>
+              <span style="font-size: 13px; color: #b5d6f8;">Exclusion takes priority over inclusion <i class="bi bi-arrow-up-right"></i></span>
+            </div>
+            <h3 class="text-light" style="margin-bottom: 10px;">Current Site Control</h3>
+            
+            <!-- Site Information -->
+            <div class="bg-dark border rounded p-3 mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="text-light">
+                        <strong>Site:</strong> <span x-text="$store.app.currentSite().host"></span>
+                        <template x-if="$store.app.currentSite().isProtected">
+                            <span class="badge bg-warning text-dark ms-2" title="This site is protected by your browser and cannot be changed by any extension.">
+                                <i class="bi bi-shield-lock-fill me-1"></i> PROTECTED
+                            </span>
+                        </template>
+                    </div>
+                    <div class="badge"
+                         :class="$store.app.currentSite().exclusionMatches.length > 0 ? 'bg-danger' : 
+                                 $store.app.currentSite().inclusionMatches.length > 0 ? 'bg-success' : 
+                                 'bg-secondary'"
+                         x-text="$store.app.currentSite().exclusionMatches.length > 0 ? 'EXCLUDED' : 
+                                $store.app.currentSite().inclusionMatches.length > 0 ? 'INCLUDED' : 
+                                'DEFAULT'">
+                    </div>
+                </div>
+                <div class="text-muted small">
+                    <span x-text="$store.app.currentSite().url"></span>
+                </div>
+                <template x-if="$store.app.currentSite().isProtected">
+                    <div class="alert alert-warning mt-3 mb-0 py-2 px-3 small" style="font-size: 13px;">
+                        <strong>This site is protected by your browser.</strong><br>
+                        Extensions like UltimaDark are not allowed to change or darken this page.<br>
+                        <span class="fst-italic">(Examples: browser settings, extension stores, or internal pages.)</span>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Current Site Status -->
+            <div x-show="$store.app.currentSite().exclusionMatches.length > 0" 
+                 class="alert alert-danger mb-2">
+                <template x-if="$store.app.currentSite().exclusionMatches.length > 0 && $store.app.exclusionPatterns.split('\n').filter(p => p.trim() && p.endsWith('##img') && $store.app.currentSite().exclusionMatches.includes(p.split('##')[0])).length === $store.app.currentSite().exclusionMatches.length">
+                  <div>
+                    <div class="fw-bold mb-2">⚠️ This site might have some images excluded.</div>
+                    <div class="small text-muted">
+                      Matching image-only exclusion patterns: <span x-text="$store.app.currentSite().exclusionMatches.join(', ')"></span>
+                    </div>
+                  </div>
+                </template>
+                <template x-if="$store.app.currentSite().exclusionMatches.length > 0 && $store.app.exclusionPatterns.split('\n').filter(p => p.trim() && (!p.endsWith('##img')) && $store.app.currentSite().exclusionMatches.includes(p.split('##')[0])).length > 0">
+                  <div>
+                    <div class="fw-bold mb-2">⚠️ This site is currently <span class="badge bg-danger">EXCLUDED</span></div>
+                    <div class="small text-muted">
+                      Matching patterns: <span x-text="$store.app.currentSite().exclusionMatches.join(', ')"></span>
+                    </div>
+                  </div>
+                </template>
+            </div>
+            <div x-show="$store.app.currentSite().inclusionMatches.length > 0 && $store.app.currentSite().exclusionMatches.length === 0" 
+                 class="alert alert-success mb-2">
+                <div class="fw-bold mb-2">✓ This site is currently <span class="badge bg-success">INCLUDED</span></div>
+                <div class="small text-muted">
+                    Matching patterns: <span x-text="$store.app.currentSite().inclusionMatches.join(', ')"></span>
+                </div>
+            </div>
+            <div x-show="$store.app.currentSite().exclusionMatches.length === 0 && $store.app.currentSite().inclusionMatches.length === 0" 
+                 class="alert alert-secondary mb-2">
+                <div class="fw-bold mb-2">⚪ <span class="badge bg-secondary">DEFAULT</span> behavior for this site</div>
+                <div class="small text-muted">
+                    This site will be <strong>not darkened</strong> until specifically included.<br>
+                    <span class="fst-italic">(No inclusion or exclusion pattern matches this site.)</span>
+                </div>
+            </div>
+
+            <!-- Proposed Pattern Section -->
+            <div class="mb-2 text-center">
+                <div class="fw-bold text-info small">Proposed pattern for this site (precision: <span x-text="$store.app.precisionNumber"></span>):</div>
+                <div class="mb-1">
+                    <code>*://<span x-text="$store.app.lastTargetHost"></span>/*</code> &nbsp; &nbsp;
+                    <code>*://*.<span x-text="$store.app.lastTargetHost"></span>/*</code>
+                </div>
+            </div>
+            <!-- Quick Actions for Current Site -->
+            <div class="d-flex gap-2 mb-3">
+                <button class="btn btn-danger flex-fill" 
+                        @click="(() => {
+                          const site = $store.app.currentSite();
+                          $modals.confirmExcludeSite(site, () => $store.app.excludeCurrentSite());
+                        })()">
+                    <span id="donotdarken">Exclude This Site</span>
+                </button>
+                <button class="btn btn-success flex-fill"
+                        @click="(() => {
+                          const site = $store.app.currentSite();
+                          $modals.confirmIncludeSite(site, () => $store.app.includeCurrentSite());
+                        })()">
+                  Include This Site
+                </button>
+            </div>
+
+            <!-- Precision Setting -->
+            <div class="mb-3">
+                <label class="form-label text-light">
+                    Precision Level (affects pattern matching for both Exclude and Include):
+                    <input id="precision_number"
+                           class="form-control form-control-sm d-inline-block numberinput ms-2"
+                           type="number"
+                           value="2"
+                           min="2"
+                           max="10"
+                           x-model="$store.app.precisionNumber"
+                           @change="$store.app.updatePrecision()"
+                           style="width: 60px;">
+                </label>
+                <div class="form-text">
+                    Higher values = more specific pattern matching for both exclusions and inclusions
+                </div>
+            </div>
+        </div>
+        <!-- Tabs Navigation -->
+        <ul class="nav nav-tabs mb-3" id="udark-main-tabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tab-exclusions" data-bs-toggle="tab" data-bs-target="#tab-pane-exclusions" type="button" role="tab" aria-controls="tab-pane-exclusions" aria-selected="true">Exclusions</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-inclusions" data-bs-toggle="tab" data-bs-target="#tab-pane-inclusions" type="button" role="tab" aria-controls="tab-pane-inclusions" aria-selected="false">Inclusions</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-embeds" data-bs-toggle="tab" data-bs-target="#tab-pane-embeds" type="button" role="tab" aria-controls="tab-pane-embeds" aria-selected="false">Embeds</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-settings" data-bs-toggle="tab" data-bs-target="#tab-pane-settings" type="button" role="tab" aria-controls="tab-pane-settings" aria-selected="false">Settings</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-advanced" data-bs-toggle="tab" data-bs-target="#tab-pane-advanced" type="button" role="tab" aria-controls="tab-pane-advanced" aria-selected="false">Advanced</button>
+            </li>
+        </ul>
+        <div class="tab-content" id="udark-main-tab-content">
+                <!-- Exclusions Tab -->
+                <div class="tab-pane fade show active" id="tab-pane-exclusions" role="tabpanel" aria-labelledby="tab-exclusions">
+                    <h4 class="text-light mb-3">Excluded Sites</h4>
+                    <p class="text-secondary small mb-3">
+                        These sites will not be darkened by UltimaDark
+                    </p>
+                    <!-- Common Sites Quick Exclusion -->
+                    <div class="mb-3">
+                        <h5 class="text-light mb-2">Quick Exclude Popular Sites:</h5>
+                        <div class="row row-cols-2 g-2 mb-2">
+                            <div class="col"><button class="btn btn-outline-secondary w-100 btn-sm" @click="$store.app.toggleSiteExclusion('*.google.com/*')">Google</button></div>
+                            <div class="col"><button class="btn btn-outline-secondary w-100 btn-sm" @click="$store.app.toggleSiteExclusion('*.youtube.com/*')">YouTube</button></div>
+                            <div class="col"><button class="btn btn-outline-secondary w-100 btn-sm" @click="$store.app.toggleSiteExclusion('*.facebook.com/*')">Facebook</button></div>
+                            <div class="col"><button class="btn btn-outline-secondary w-100 btn-sm" @click="$store.app.toggleSiteExclusion('*.twitter.com/*')">Twitter</button></div>
+                            <div class="col"><button class="btn btn-outline-secondary w-100 btn-sm" @click="$store.app.toggleSiteExclusion('*.github.com/*')">GitHub</button></div>
+                            <div class="col"><button class="btn btn-outline-secondary w-100 btn-sm" @click="$store.app.toggleSiteExclusion('*.stackoverflow.com/*')">Stack Overflow</button></div>
+                        </div>
+                    </div>
+                <!-- Embeds Tab -->
+                <div class="tab-pane fade" id="tab-pane-embeds" role="tabpanel" aria-labelledby="tab-embeds">
+                    <h4 class="text-light mb-3">Embeds in This Tab</h4>
+                 
+                </div>
+                    <!-- Current Exclusions List -->
+                    <div class="mb-4">
+                        <h5 class="fw-semibold mb-3 text-light"><i class="fas fa-list me-2" style="color: var(--dark-accent-red);"></i>Currently Excluded:</h5>
+                        <div x-data="{ editing: null, newValue: '' }">
+                            <template x-if="editing !== null">
+                                <div class="d-flex align-items-center gap-2 mb-3">
+                                    <input x-model="newValue" @keyup.enter="$store.app.editExclusionPattern(editing, newValue); editing=null" class="form-control form-control-sm font-monospace" placeholder="Edit pattern..." />
+                                    <button @click="$store.app.editExclusionPattern(editing, newValue); editing=null" class="btn btn-success btn-sm">Save</button>
+                                    <button @click="editing=null" class="btn btn-secondary btn-sm">Cancel</button>
+                                </div>
+                            </template>
+                            <div class="table-responsive overflow-auto" style="max-height: 180px;">
+                                <table class="table table-dark table-sm align-middle mb-0" style="min-width: 420px;">
+                                    <tbody>
+                                        <template x-for="(pattern, idx) in $store.app.exclusionPatterns.split('\n').filter(p => p.trim())" :key="idx">
+                                            <tr :style="
+                                              pattern.endsWith('##img') && $store.app.currentSite().exclusionMatches.includes(pattern.split('##')[0])
+                                                ? 'background: linear-gradient(135deg, #ffe066 20%, rgba(255, 224, 102, 0.1) 100%); border-left: 3px solid #ffe066;'
+                                                : $store.app.currentSite().exclusionMatches.includes(pattern.split('##')[0])
+                                                  ? 'background: linear-gradient(135deg, var(--dark-accent-red) 20%, rgba(220, 53, 69, 0.1) 100%); border-left: 3px solid var(--dark-accent-red);'
+                                                  : 'background: linear-gradient(135deg, var(--dark-bg-secondary) 0%, #2a2a2a 100%);'">
+                                                <td class="ps-1 pe-1" style="width:1%; white-space:nowrap;">
+                                                    <div class="btn-group btn-group-sm me-2" role="group" aria-label="Resource type">
+                                                        <button type="button"
+                                                            class="btn"
+                                                            :class="pattern.endsWith('##img') ? 'btn-info' : 'btn-outline-info'"
+                                                            @click="$store.app.setExclusionPatternType(idx, 'img')"
+                                                            title="Exclude only images">
+                                                            <i class="fas fa-image"></i>
+                                                        </button>
+                                                        <button type="button"
+                                                            class="btn"
+                                                            :class="pattern.endsWith('##all') || (!pattern.includes('##')) ? 'btn-primary' : 'btn-outline-primary'"
+                                                            @click="$store.app.setExclusionPatternType(idx, 'all')"
+                                                            title="Exclude all resources">
+                                                            <i class="fas fa-ban"></i>
+                                                        </button>
+                                                    </div>
+                                                    <button @click="editing=idx; newValue=pattern.split('##')[0]" class="btn btn-outline-info btn-sm me-1">Edit</button>
+                                                    <button @click="$store.app.deleteExclusionPattern(idx)" class="btn btn-outline-danger btn-sm">Delete</button>
+                                                </td>
+                                                <td class="font-monospace text-nowrap" style="min-width: 300px;">
+                                                    <span :class="
+                                                      pattern.endsWith('##img') && $store.app.currentSite().exclusionMatches.includes(pattern.split('##')[0])
+                                                        ? 'fw-bold text-warning'
+                                                        : $store.app.currentSite().exclusionMatches.includes(pattern.split('##')[0])
+                                                          ? 'fw-bold text-danger'
+                                                          : 'text-light'">
+                                                        <i x-show="$store.app.currentSite().exclusionMatches.includes(pattern.split('##')[0])" class="fas fa-circle me-2" :style="pattern.endsWith('##img') ? 'color: #ffe066; font-size: 8px;' : 'color: var(--dark-accent-red); font-size: 8px;' "></i>
+                                                        <span x-text="pattern.split('##')[0]" class="text-nowrap"></span>
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div x-show="$store.app.exclusionPatterns.split('\\n').filter(p => p.trim()).length === 0" class="text-muted fst-italic text-center py-4">
+                            <i class="fas fa-info-circle me-2" style="color: var(--dark-accent-blue);"></i>
+                            No exclusion patterns configured
+                        </div>
+                    </div>
+                    <!-- Custom Pattern Input -->
+                    <div>
+                        <h5 class="text-light mb-2">Add Custom Pattern:</h5>
+                        <!-- Smart suggestions -->
+                        <div class="mb-3">
+                            <h6 class="text-light mb-2 fw-semibold small">
+                                <i class="fas fa-lightbulb me-2" style="color: var(--dark-accent-yellow);"></i> Suggested patterns for current site:
+                            </h6>
+                            <div class="d-flex flex-wrap gap-2">
+                                <template x-for="suggestion in $store.app.getSuggestedPatterns()" :key="suggestion">
+                                    <button @click="$store.app.addExclusionPattern(suggestion)" class="btn btn-outline-secondary btn-sm font-monospace" x-text="suggestion"></button>
+                                </template>
+                            </div>
+                        </div>
+                        <div x-data="{ customPattern: '' }" class="input-group mb-2">
+                            <input type="text" x-model="customPattern" placeholder="e.g., *.example.com/*" class="form-control form-control-sm font-monospace" @keyup.enter="$store.app.addExclusionPattern(customPattern); customPattern = ''">
+                            <button @click="$store.app.addExclusionPattern(customPattern); customPattern = ''" class="btn btn-success btn-sm"><i class="fas fa-plus"></i> Add</button>
+                        </div>
+                        <div class="form-text mt-1">
+                            <a href="https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Match_patterns" target="_blank" class="link-info text-decoration-none">
+                               <i class="fas fa-external-link-alt me-1" style="font-size: 10px;"></i>Match patterns reference
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <!-- Inclusions Tab -->
+                <div class="tab-pane fade" id="tab-pane-inclusions" role="tabpanel" aria-labelledby="tab-inclusions">
+                    <h4 class="text-light mb-3">Included Sites</h4>
+                    <p class="text-secondary small mb-3">
+                        Only these sites will be darkened (leave empty to darken all sites except excluded ones)
+                    </p>
+                    <!-- Current Site Matching -->
+                    <div x-show="$store.app.currentSite().inclusionMatches.length > 0" class="bg-success bg-opacity-10 rounded p-2 mb-3">
+                        <div class="text-success small mb-1">✓ Current site matches these patterns:</div>
+                        <div class="text-light small" x-text="$store.app.currentSite().inclusionMatches.join(', ')"></div>
+                    </div>
+                    <!-- Current Inclusions List -->
+                    <div class="mb-4">
+                        <h5 class="text-light mb-2">Currently Included:</h5>
+                        <div x-data="{ editing: null, newValue: '' }">
+                            <template x-if="editing !== null">
+                                <div class="d-flex align-items-center gap-2 mb-3">
+                                    <input x-model="newValue" @keyup.enter="$store.app.editInclusionPattern(editing, newValue); editing=null" class="form-control form-control-sm font-monospace" placeholder="Edit pattern..." />
+                                    <button @click="$store.app.editInclusionPattern(editing, newValue); editing=null" class="btn btn-success btn-sm">Save</button>
+                                    <button @click="editing=null" class="btn btn-secondary btn-sm">Cancel</button>
+                                </div>
+                            </template>
+                            <div class="table-responsive overflow-auto" style="max-height: 150px;">
+                                <table class="table table-dark table-sm align-middle mb-0" style="min-width: 420px;">
+                                    <tbody>
+                                        <template x-for="(pattern, idx) in $store.app.inclusionPatterns.split('\n').filter(p => p.trim())" :key="idx">
+                                            <tr :style="$store.app.currentSite().inclusionMatches.includes(pattern) ? 'background-color: #2d4d2d; border-left: 3px solid #28a745;' : 'background-color: #3d3d3d;'">
+                                                <td class="ps-3 pe-1" style="width:1%; white-space:nowrap;">
+                                                    <button @click="editing=idx; newValue=pattern" class="btn btn-outline-info btn-sm me-1">Edit</button>
+                                                    <button @click="$store.app.deleteInclusionPattern(idx)" class="btn btn-outline-danger btn-sm">Delete</button>
+                                                </td>
+                                                <td class="font-monospace text-nowrap text-light" style="min-width: 300px;">
+                                                    <span>
+                                                        <span x-show="$store.app.currentSite().inclusionMatches.includes(pattern)" class="text-success me-2">●</span>
+                                                        <span x-text="pattern" class="text-nowrap"></span>
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div x-show="$store.app.inclusionPatterns.split('\\n').filter(p => p.trim()).length === 0" class="text-muted fst-italic text-center py-3">
+                            No inclusion patterns configured - all sites will be darkened except excluded ones
+                        </div>
+                    </div>
+                    <!-- Quick Include Current Site -->
+                    <div class="mb-3">
+                        <button @click="$store.app.includeCurrentSite()" class="btn btn-success w-100">
+                            Include Current Site
+                        </button>
+                    </div>
+                    <!-- Custom Pattern Input -->
+                    <div>
+                        <h5 class="text-light mb-2">Add Custom Pattern:</h5>
+                        <!-- Smart suggestions -->
+                        <div class="mb-3">
+                            <div class="text-light mb-2 small">Suggested patterns for current site:</div>
+                            <div class="d-flex flex-wrap gap-2">
+                                <template x-for="suggestion in $store.app.getSuggestedPatterns()" :key="suggestion">
+                                    <button @click="$store.app.addInclusionPattern(suggestion)" class="btn btn-outline-secondary btn-sm font-monospace" x-text="suggestion"></button>
+                                </template>
+                            </div>
+                        </div>
+                        <div x-data="{ customPattern: '' }" class="input-group mb-2">
+                            <input type="text" x-model="customPattern" placeholder="e.g., *.example.com/*" class="form-control form-control-sm font-monospace" @keyup.enter="$store.app.addInclusionPattern(customPattern); customPattern = ''">
+                            <button @click="$store.app.addInclusionPattern(customPattern); customPattern = ''" class="btn btn-success btn-sm">Add</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Settings Tab -->
+                <div class="tab-pane fade" id="tab-pane-settings" role="tabpanel" aria-labelledby="tab-settings">
+                    <h4 style="color: #ffffff; margin-bottom: 15px;">Extension Settings</h4>
+                    
+                    <!-- Feature Toggles -->
+                    <div class="mb-4">
+                        <div class="mb-3">
+                            <div class="d-flex align-items-center justify-content-between p-3 rounded border" :class="$store.app.cacheEnabled ? 'border-success bg-success bg-opacity-10' : 'border-danger bg-danger bg-opacity-10'" :style="$store.app.cacheEnabled ? '' : 'opacity: 0.7;'">
+                                <span class="fw-medium">Cache System</span>
+                                <div class="btn-group" role="group" aria-label="Cache Toggle">
+                                    <button type="button" class="btn btn-sm" :class="$store.app.cacheEnabled ? 'btn-success' : 'btn-outline-secondary'" @click="$store.app.cacheEnabled = true; $store.app.saveSettings();">ENABLED</button>
+                                    <button type="button" class="btn btn-sm" :class="!$store.app.cacheEnabled ? 'btn-danger' : 'btn-outline-secondary'" @click="$store.app.cacheEnabled = false; $store.app.saveSettings();">DISABLED</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex align-items-center justify-content-between p-3 rounded border" :class="$store.app.imageEditionEnabled ? 'border-success bg-success bg-opacity-10' : 'border-danger bg-danger bg-opacity-10'" :style="$store.app.imageEditionEnabled ? '' : 'opacity: 0.7;'">
+                                <span class="fw-medium">Image Edition</span>
+                                <div class="btn-group" role="group" aria-label="Image Edition Toggle">
+                                    <button type="button" class="btn btn-sm" :class="$store.app.imageEditionEnabled ? 'btn-success' : 'btn-outline-secondary'" @click="$store.app.imageEditionEnabled = true; $store.app.saveSettings();">ENABLED</button>
+                                    <button type="button" class="btn btn-sm" :class="!$store.app.imageEditionEnabled ? 'btn-danger' : 'btn-outline-secondary'" @click="$store.app.imageEditionEnabled = false; $store.app.saveSettings();">DISABLED</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex align-items-center justify-content-between p-3 rounded border" :class="$store.app.serviceWorkersEnabled ? 'border-success bg-success bg-opacity-10' : 'border-danger bg-danger bg-opacity-10'" :style="$store.app.serviceWorkersEnabled ? '' : 'opacity: 0.7;'">
+                                <span class="fw-medium">Service Workers Compatibility</span>
+                                <div class="btn-group" role="group" aria-label="Service Workers Toggle">
+                                    <button type="button" class="btn btn-sm" :class="$store.app.serviceWorkersEnabled ? 'btn-success' : 'btn-outline-secondary'" @click="$store.app.serviceWorkersEnabled = true; $store.app.saveSettings();">ENABLED</button>
+                                    <button type="button" class="btn btn-sm" :class="!$store.app.serviceWorkersEnabled ? 'btn-danger' : 'btn-outline-secondary'" @click="$store.app.serviceWorkersEnabled = false; $store.app.saveSettings();">DISABLED</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex align-items-center justify-content-between p-3 rounded border" :class="$store.app.autoRefreshOnSetting ? 'border-success bg-success bg-opacity-10' : 'border-danger bg-danger bg-opacity-10'" :style="$store.app.autoRefreshOnSetting ? '' : 'opacity: 0.7;'">
+                                <span class="fw-medium">Auto-Refresh Tab on Toggle</span>
+                                <div class="btn-group" role="group" aria-label="Auto-Refresh Toggle">
+                                    <button type="button" class="btn btn-sm" :class="$store.app.autoRefreshOnSetting ? 'btn-success' : 'btn-outline-secondary'" @click="$store.app.autoRefreshOnSetting = true; $store.app.saveSettings();">ENABLED</button>
+                                    <button type="button" class="btn btn-sm" :class="!$store.app.autoRefreshOnSetting ? 'btn-danger' : 'btn-outline-secondary'" @click="$store.app.autoRefreshOnSetting = false; $store.app.saveSettings();">DISABLED</button>
+                                </div>
+                            </div>
+                            <div class="form-text mt-1" style="margin-left: 8px; color: #b5d6f8; font-size: 13px;">
+                                When enabled, the current tab will automatically refresh whenever you change the site's state (excluded/included) or enable/disable the extension. This ensures changes take effect immediately.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div style="margin-bottom: 20px;">
+                        <h5 style="color: #ffffff; margin-bottom: 10px;">Quick Actions:</h5>
+                        <div style="display: grid; gap: 8px;">
+                            <button @click="$store.app.clearAllData()" 
+                                    style="padding: 8px; background-color: #dc3545; color: white; border: none; border-radius: 4px; font-size: 13px;">
+                                Clear All Settings
+                            </button>
+                            <button @click="$store.app.exportSettings()" 
+                                    style="padding: 8px; background-color: #6c757d; color: white; border: none; border-radius: 4px; font-size: 13px;">
+                                Export Settings
+                            </button>
+                            <button @click="$store.app.importSettings()" 
+                                    style="padding: 8px; background-color: #6c757d; color: white; border: none; border-radius: 4px; font-size: 13px;">
+                                Import Settings
+                            </button>
+                            <button @click="$store.app.debugState()" 
+                                    style="padding: 8px; background-color: #ffc107; color: #000; border: none; border-radius: 4px; font-size: 13px;">
+                                Debug State (Check Console)
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Status Debug Panel -->
+                    <div style="margin-bottom: 20px; background-color: #2d2d2d; padding: 10px; border-radius: 5px;">
+                        <h5 style="color: #ffffff; margin-bottom: 10px;">Current Status:</h5>
+                        <div style="font-size: 11px; color: #cccccc; font-family: monospace;">
+                            <div>Extension: <span :style="$store.app.isEnabled ? 'color: #28a745;' : 'color: #dc3545;'" x-text="$store.app.isEnabled ? 'ENABLED' : 'DISABLED'"></span></div>
+                            <div>Cache: <span :style="$store.app.cacheEnabled ? 'color: #28a745;' : 'color: #dc3545;'" x-text="$store.app.cacheEnabled ? 'ENABLED' : 'DISABLED'"></span></div>
+                            <div>Images: <span :style="$store.app.imageEditionEnabled ? 'color: #28a745;' : 'color: #dc3545;'" x-text="$store.app.imageEditionEnabled ? 'ENABLED' : 'DISABLED'"></span></div>
+                            <div>Service Workers: <span :style="$store.app.serviceWorkersEnabled ? 'color: #28a745;' : 'color: #dc3545;'" x-text="$store.app.serviceWorkersEnabled ? 'ENABLED' : 'DISABLED'"></span></div>
+                            <div>Precision: <span style="color: #ffc107;" x-text="$store.app.precisionNumber"></span></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Advanced Tab -->
+                <div class="tab-pane fade" id="tab-pane-advanced" role="tabpanel" aria-labelledby="tab-advanced">
+                    <h4 style="color: #ffffff; margin-bottom: 15px;">Advanced Options</h4>
+                    
+                    <!-- Advanced Settings Link -->
+                    <div style="margin-bottom: 20px;">
+                        <a href="../popup.html" target="_blank" 
+                           class="btn right" 
+                           style="display: flex; align-items: center; justify-content: space-between; padding: 10px; background-color: #495057; color: white; text-decoration: none; border-radius: 4px;">
+                            <span class="left title close_window">
+                                <span class="arrow-left">⟵</span> Advanced settings
+                            </span>
+                            <span class="right icon close_window">⚙️</span>
+                        </a>
+                    </div>
+
+                    <!-- Textarea for Manual Pattern Editing (Hidden by default) -->
+                    <div x-data="{ showManualEdit: false }">
+                        <div style="margin-bottom: 15px;">
+                            <button @click="showManualEdit = !showManualEdit" 
+                                    style="padding: 6px 12px; background-color: #ffc107; color: #000; border: none; border-radius: 4px; font-size: 12px;">
+                                ⚠️ Manual Pattern Editing
+                            </button>
+                            <div style="font-size: 11px; color: #ffc107; margin-top: 5px;">
+                                Warning: Manual editing is for advanced users only
+                            </div>
+                        </div>
+
+                        <div x-show="showManualEdit" style="margin-bottom: 15px;">
+                            <div style="margin-bottom: 10px;">
+                                <label style="color: #cccccc; display: block; margin-bottom: 5px; font-size: 13px;">
+                                    Exclusion Patterns (Manual):
+                                </label>
+                                <textarea x-model="$store.app.exclusionPatterns"
+                                          @input="$store.app.saveSettings()"
+                                          style="width: 100%; height: 80px; background-color: #3d3d3d; color: white; border: 1px solid #555; border-radius: 3px; padding: 5px; font-size: 11px; font-family: monospace;"
+                                          placeholder="*://example.com/*"></textarea>
+                            </div>
+                            
+                            <div style="margin-bottom: 10px;">
+                                <label style="color: #cccccc; display: block; margin-bottom: 5px; font-size: 13px;">
+                                    Inclusion Patterns (Manual):
+                                </label>
+                                <textarea x-model="$store.app.inclusionPatterns"
+                                          @input="$store.app.saveSettings()"
+                                          style="width: 100%; height: 80px; background-color: #3d3d3d; color: white; border: 1px solid #555; border-radius: 3px; padding: 5px; font-size: 11px; font-family: monospace;"
+                                          placeholder="<all_urls>"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Links (removed, now in promoted links above) -->
+                </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer with Keyboard Shortcut Info -->
+        <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #555;">
+            <div style="font-size: 11px; color: #999999; text-align: center;">
+                Press <kbd style="background-color: #3d3d3d; padding: 2px 5px; border-radius: 3px;">Ctrl+Shift+U</kbd> to toggle UltimaDark on current site
+            </div>
+        </div>
+    </div>
+    
+    
+    
+    
+    <script type="module" src="./bundle.js"></script>
+</body>
+</html>

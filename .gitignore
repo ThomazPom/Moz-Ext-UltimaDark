@@ -1,3 +1,4 @@
 *.zip
 ./UltimaDark/*
 ./UltimaDark
+./popup/node_modules
