@@ -7,11 +7,12 @@ document.addEventListener("alpine:init", () => {
         setExclusionPatternType(idx, type) {
             let patterns = this.exclusionPatterns.split('\n');
             let base = patterns[idx].split('##')[0];
-            if (type === 'img') {
-                patterns[idx] = base + '##img';
-            } else {
-                patterns[idx] = base + '##all';
-            }
+            // Remove all patterns with the same base
+            patterns = patterns.filter(p => p.split('##')[0] !== base);
+            // Add the new pattern with the selected type
+            patterns.push(base + (type === 'img' ? '##img' : '##all'));
+            // Remove any other duplicate base (shouldn't be needed, but for safety)
+            patterns = patterns.filter((p, i, arr) => arr.findIndex(q => q.split('##')[0] === p.split('##')[0]) === i);
             this.exclusionPatterns = patterns.join('\n');
             this.saveSettings();
             this.recomputeCurrentSiteMatches();
@@ -90,7 +91,12 @@ document.addEventListener("alpine:init", () => {
         // Pattern management methods
         editExclusionPattern(idx, newValue) {
             let patterns = this.exclusionPatterns.split('\n');
+            const base = newValue.split('##')[0];
+            // Remove any pattern with the same base except the one being edited
+            patterns = patterns.filter((p, i) => i === idx || p.split('##')[0] !== base);
             patterns[idx] = newValue;
+            // Remove any other duplicate base
+            patterns = patterns.filter((p, i, arr) => arr.findIndex(q => q.split('##')[0] === p.split('##')[0]) === i);
             this.exclusionPatterns = patterns.join('\n');
             this.saveSettings();
             this.recomputeCurrentSiteMatches();
@@ -131,7 +137,10 @@ document.addEventListener("alpine:init", () => {
                 });
                 return;
             }
-            const patterns = this.exclusionPatterns.split('\n').filter(p => p.trim());
+            let patterns = this.exclusionPatterns.split('\n').filter(p => p.trim());
+            // Remove any pattern with the same base
+            const base = trimmedPattern.split('##')[0];
+            patterns = patterns.filter(p => p.split('##')[0] !== base);
             // Use searchTabIDMatchingPatterns for accurate match
             let alreadyCovered = false;
             if (checkAlreadyCovered && this.currentSite()?.tab) {
@@ -139,15 +148,11 @@ document.addEventListener("alpine:init", () => {
                 alreadyCovered = matches.length > 0;
             }
             const doAdd = async () => {
-                if (!patterns.includes(trimmedPattern)) {
-                    patterns.push(trimmedPattern);
-                    this.exclusionPatterns = patterns.join('\n');
-                    this.saveSettings();
-                    this.recomputeCurrentSiteMatches();
-                    console.log('Added exclusion pattern:', trimmedPattern);
-                } else {
-                    console.log('Pattern already exists:', trimmedPattern);
-                }
+                patterns.push(trimmedPattern);
+                this.exclusionPatterns = patterns.join('\n');
+                this.saveSettings();
+                this.recomputeCurrentSiteMatches();
+                console.log('Added/updated exclusion pattern:', trimmedPattern);
             };
             if (alreadyCovered && checkAlreadyCovered) {
                 showBS5Modal({

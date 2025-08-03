@@ -291,8 +291,12 @@
                             </div>
                         </div>
                         <div x-data="{ customPattern: '' }" class="input-group mb-2">
-                            <input type="text" x-model="customPattern" placeholder="e.g., *.example.com/*" class="form-control form-control-sm font-monospace" @keyup.enter="$store.app.addExclusionPattern(customPattern); customPattern = ''">
-                            <button @click="$store.app.addExclusionPattern(customPattern); customPattern = ''" class="btn btn-success btn-sm"><i class="fas fa-plus"></i> Add</button>
+                            <input type="text" x-model="customPattern" placeholder="e.g., *.example.com/*" class="form-control form-control-sm font-monospace" style="max-width: 60%" @keyup.enter="$store.app.addExclusionPattern(customPattern + (customFlag ? customFlag : '')); customPattern = ''">
+                            <select x-model="customFlag" class="form-select form-select-sm font-monospace" style="max-width: 25%">
+                              <option value="">All resources</option>
+                              <option value="##img">Images only</option>
+                            </select>
+                            <button @click="$store.app.addExclusionPattern(customPattern + (customFlag ? customFlag : '')); customPattern = ''" class="btn btn-success btn-sm"><i class="fas fa-plus"></i> Add</button>
                         </div>
                         <div class="form-text mt-1">
                             <a href="https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Match_patterns" target="_blank" class="link-info text-decoration-none">
