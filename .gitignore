@@ -2,3 +2,4 @@
 ./UltimaDark/*
 ./UltimaDark
 ./popup/node_modules
+./popup/node_modules/*
