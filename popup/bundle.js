@@ -8479,11 +8479,9 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       setExclusionPatternType(idx, type) {
         let patterns = this.exclusionPatterns.split("\n");
         let base = patterns[idx].split("##")[0];
-        if (type === "img") {
-          patterns[idx] = base + "##img";
-        } else {
-          patterns[idx] = base + "##all";
-        }
+        patterns = patterns.filter((p) => p.split("##")[0] !== base);
+        patterns.push(base + (type === "img" ? "##img" : "##all"));
+        patterns = patterns.filter((p, i, arr) => arr.findIndex((q) => q.split("##")[0] === p.split("##")[0]) === i);
         this.exclusionPatterns = patterns.join("\n");
         this.saveSettings();
         this.recomputeCurrentSiteMatches();
@@ -8549,7 +8547,10 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       // Pattern management methods
       editExclusionPattern(idx, newValue) {
         let patterns = this.exclusionPatterns.split("\n");
+        const base = newValue.split("##")[0];
+        patterns = patterns.filter((p, i) => i === idx || p.split("##")[0] !== base);
         patterns[idx] = newValue;
+        patterns = patterns.filter((p, i, arr) => arr.findIndex((q) => q.split("##")[0] === p.split("##")[0]) === i);
         this.exclusionPatterns = patterns.join("\n");
         this.saveSettings();
         this.recomputeCurrentSiteMatches();
@@ -8589,22 +8590,20 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
           });
           return;
         }
-        const patterns = this.exclusionPatterns.split("\n").filter((p) => p.trim());
+        let patterns = this.exclusionPatterns.split("\n").filter((p) => p.trim());
+        const base = trimmedPattern.split("##")[0];
+        patterns = patterns.filter((p) => p.split("##")[0] !== base);
         let alreadyCovered = false;
         if (checkAlreadyCovered && this.currentSite()?.tab) {
           const matches = await searchTabIDMatchingPatterns(this.currentSite().tab, patterns);
           alreadyCovered = matches.length > 0;
         }
         const doAdd = async () => {
-          if (!patterns.includes(trimmedPattern)) {
-            patterns.push(trimmedPattern);
-            this.exclusionPatterns = patterns.join("\n");
-            this.saveSettings();
-            this.recomputeCurrentSiteMatches();
-            console.log("Added exclusion pattern:", trimmedPattern);
-          } else {
-            console.log("Pattern already exists:", trimmedPattern);
-          }
+          patterns.push(trimmedPattern);
+          this.exclusionPatterns = patterns.join("\n");
+          this.saveSettings();
+          this.recomputeCurrentSiteMatches();
+          console.log("Added/updated exclusion pattern:", trimmedPattern);
         };
         if (alreadyCovered && checkAlreadyCovered) {
           showBS5Modal({

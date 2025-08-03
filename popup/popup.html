@@ -69,14 +69,20 @@
                             </span>
                         </template>
                     </div>
-                    <div class="badge"
-                         :class="$store.app.currentSite().exclusionMatches.length > 0 ? 'bg-danger' : 
-                                 $store.app.currentSite().inclusionMatches.length > 0 ? 'bg-success' : 
-                                 'bg-secondary'"
-                         x-text="$store.app.currentSite().exclusionMatches.length > 0 ? 'EXCLUDED' : 
-                                $store.app.currentSite().inclusionMatches.length > 0 ? 'INCLUDED' : 
-                                'DEFAULT'">
-                    </div>
+                    <template x-if="$store.app.currentSite().exclusionMatches.length > 0 && $store.app.exclusionPatterns.split('\n').filter(p => p.trim() && p.endsWith('##img') && $store.app.currentSite().exclusionMatches.includes(p.split('##')[0])).length === $store.app.currentSite().exclusionMatches.length">
+                      <div class="badge bg-warning text-dark" title="This site is not fully excluded, but some images may be.">
+                        PARTIAL (Images Only)
+                      </div>
+                    </template>
+                    <template x-if="$store.app.currentSite().exclusionMatches.length > 0 && $store.app.exclusionPatterns.split('\n').filter(p => p.trim() && (!p.endsWith('##img')) && $store.app.currentSite().exclusionMatches.includes(p.split('##')[0])).length > 0">
+                      <div class="badge bg-danger">EXCLUDED</div>
+                    </template>
+                    <template x-if="$store.app.currentSite().exclusionMatches.length === 0 && $store.app.currentSite().inclusionMatches.length > 0">
+                      <div class="badge bg-success">INCLUDED</div>
+                    </template>
+                    <template x-if="$store.app.currentSite().exclusionMatches.length === 0 && $store.app.currentSite().inclusionMatches.length === 0">
+                      <div class="badge bg-secondary">DEFAULT</div>
+                    </template>
                 </div>
                 <div class="text-muted small">
                     <span x-text="$store.app.currentSite().url"></span>
@@ -196,18 +202,6 @@
                     <p class="text-secondary small mb-3">
                         These sites will not be darkened by UltimaDark
                     </p>
-                    <!-- Common Sites Quick Exclusion -->
-                    <div class="mb-3">
-                        <h5 class="text-light mb-2">Quick Exclude Popular Sites:</h5>
-                        <div class="row row-cols-2 g-2 mb-2">
-                            <div class="col"><button class="btn btn-outline-secondary w-100 btn-sm" @click="$store.app.toggleSiteExclusion('*.google.com/*')">Google</button></div>
-                            <div class="col"><button class="btn btn-outline-secondary w-100 btn-sm" @click="$store.app.toggleSiteExclusion('*.youtube.com/*')">YouTube</button></div>
-                            <div class="col"><button class="btn btn-outline-secondary w-100 btn-sm" @click="$store.app.toggleSiteExclusion('*.facebook.com/*')">Facebook</button></div>
-                            <div class="col"><button class="btn btn-outline-secondary w-100 btn-sm" @click="$store.app.toggleSiteExclusion('*.twitter.com/*')">Twitter</button></div>
-                            <div class="col"><button class="btn btn-outline-secondary w-100 btn-sm" @click="$store.app.toggleSiteExclusion('*.github.com/*')">GitHub</button></div>
-                            <div class="col"><button class="btn btn-outline-secondary w-100 btn-sm" @click="$store.app.toggleSiteExclusion('*.stackoverflow.com/*')">Stack Overflow</button></div>
-                        </div>
-                    </div>
                 <!-- Embeds Tab -->
                 <div class="tab-pane fade" id="tab-pane-embeds" role="tabpanel" aria-labelledby="tab-embeds">
                     <h4 class="text-light mb-3">Embeds in This Tab</h4>
@@ -219,8 +213,12 @@
                         <div x-data="{ editing: null, newValue: '' }">
                             <template x-if="editing !== null">
                                 <div class="d-flex align-items-center gap-2 mb-3">
-                                    <input x-model="newValue" @keyup.enter="$store.app.editExclusionPattern(editing, newValue); editing=null" class="form-control form-control-sm font-monospace" placeholder="Edit pattern..." />
-                                    <button @click="$store.app.editExclusionPattern(editing, newValue); editing=null" class="btn btn-success btn-sm">Save</button>
+                                    <input x-model="newValue" class="form-control form-control-sm font-monospace" placeholder="Edit pattern..." style="max-width: 60%" />
+                                    <select x-model="$store.app.editingFlag" class="form-select form-select-sm font-monospace" style="max-width: 25%">
+                                      <option value="">All resources</option>
+                                      <option value="##img">Images only</option>
+                                    </select>
+                                    <button @click="$store.app.editExclusionPattern(editing, newValue + ($store.app.editingFlag ? $store.app.editingFlag : '')); editing=null" class="btn btn-success btn-sm">Save</button>
                                     <button @click="editing=null" class="btn btn-secondary btn-sm">Cancel</button>
                                 </div>
                             </template>
@@ -290,13 +288,13 @@
                                 </template>
                             </div>
                         </div>
-                        <div x-data="{ customPattern: '' }" class="input-group mb-2">
-                            <input type="text" x-model="customPattern" placeholder="e.g., *.example.com/*" class="form-control form-control-sm font-monospace" style="max-width: 60%" @keyup.enter="$store.app.addExclusionPattern(customPattern + (customFlag ? customFlag : '')); customPattern = ''">
+                        <div x-data="patternInput" class="input-group mb-2">
+                            <input type="text" x-model="customPattern" placeholder="e.g., *.example.com/*" class="form-control form-control-sm font-monospace" style="max-width: 60%" @keyup.enter="add">
                             <select x-model="customFlag" class="form-select form-select-sm font-monospace" style="max-width: 25%">
                               <option value="">All resources</option>
                               <option value="##img">Images only</option>
                             </select>
-                            <button @click="$store.app.addExclusionPattern(customPattern + (customFlag ? customFlag : '')); customPattern = ''" class="btn btn-success btn-sm"><i class="fas fa-plus"></i> Add</button>
+                            <button @click="add" class="btn btn-success btn-sm"><i class="fas fa-plus"></i> Add</button>
                         </div>
                         <div class="form-text mt-1">
                             <a href="https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Match_patterns" target="_blank" class="link-info text-decoration-none">
