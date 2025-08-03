@@ -1,5 +1,16 @@
 
 class Listeners {
+  static cancelPopupXHRCalls(details) {
+    if(details.tabId == uDark.popupTabId ) {
+      console.log("Canceling popup XHR call",details.url,details);
+      // message to popup, we fund his friend
+      uDark.connected_cs_ports["port-from-popup-" + details.tabId].postMessage({
+        cancelPopupXHRCalls: true,
+        url:details.url
+      });
+      return {cancel: true};
+    }
+  }
   static editOnHeadersImage(details) {
     // Util 2024 jan 02 we were checking details.documentUrl, or details.url to know if a stylesheet was loaded in a excluded page
     // Since only CS ports that matches blaclist and whitelist are connected, we can simply check if this resource has a corresponding CS port
@@ -18,7 +29,10 @@ class Listeners {
     if (imageURLObject.pathname.startsWith("/favicon.ico") || imageURLObject.hash.endsWith("#ud_favicon")) {
       return {};
     }
-    
+    let {is_enforced_nobody} = uDark.getNoBodyStatus(details);
+    if (is_enforced_nobody) {
+      return {}; // We cannot edit this request: either it has no body, or it's empty because unmodified, so the webRequestFilter will receive an already edited content from the cache
+    }
     let filter = globalThis.browser.webRequest.filterResponseData(details.requestId); // After this instruction, browser espect us to write data to the filter and close it
     let imageWorker;
     let secureTimeout = setTimeout(() => {
@@ -164,6 +178,11 @@ class Listeners {
     
     uDark.extractCharsetFromHeaders(details, "text/css");
     
+    let {is_enforced_nobody} = uDark.getNoBodyStatus(details);
+    if (is_enforced_nobody) {
+      return {}; // We cannot edit this request: either it has no body, or it's empty because unmodified, so the webRequestFilter will receive an already edited content from the cache
+    }
+
     let filter = globalThis.browser.webRequest.filterResponseData(details.requestId); // After this instruction, browser espect us to write data to the filter and close it
     
     details.dataCount = 0;
@@ -248,6 +267,14 @@ class Listeners {
       var a_filter = uDark.headersDo[x.name.toLowerCase()];
       return a_filter ? a_filter(x) : true;
     })
+    
+   
+
+
+    let {is_enforced_nobody} = uDark.getNoBodyStatus(details);
+    if (is_enforced_nobody) {
+      return {responseHeaders:details.responseHeaders}; // We cannot edit this request: either it has no body, or it's empty because unmodified, so the webRequestFilter will receive an already edited content from the cache
+    }
     // console.log("Editing", details.url, details.requestId, details.fromCache)
     let filter = globalThis.browser.webRequest.filterResponseData(details.requestId);
     

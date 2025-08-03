@@ -8,7 +8,17 @@
     "48": "icons/48.png",
     "96": "icons/2x.png"
   },
-
+  
+  "content_security_policy": "script-src 'self' 'unsafe-eval'; ",
+  "commands": {
+    "toggle-site": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+U",
+        "mac": "Ctrl+Shift+U"
+      },
+      "description": "Toggles UltimaDark on the current site"
+    }
+  },
   "browser_specific_settings": {
     "gecko": {
       "strict_min_version": "79.0"
@@ -19,7 +29,7 @@
     
   },  
   "permissions": [
-    "<all_urls>","tabs","browsingData","webNavigation", "webRequest", "webRequestBlocking","storage","unlimitedStorage"
+    "<all_urls>","tabs","browsingData","webNavigation", "webRequest", "webRequestBlocking","storage","unlimitedStorage","tabHide"
 ]
   ,
 
@@ -27,7 +37,7 @@
     "default_icon": "icons/38.png",
     "default_title": "UltimaDark is active",
   
-    "default_popup": "popup.html?mode=uDark-popup"
+    "default_popup": "popup/popup.html?mode=uDark-popup"
   },
   "background": {
     "scripts": ["fakeContentScriptClass.js","backgroundClass.js","Listeners.js","background.js","uDarkEncoder.js"]

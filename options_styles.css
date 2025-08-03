@@ -267,11 +267,11 @@ a.btn-small span.btn {
     
     padding: 10px 20px 0px 20px;
 }
-.shiftSelectors
+#shiftSelectors
 {
     clear: both;
 }
-.shiftSelector
+#shiftSelector
 {
     width: 450px;
     float: left;
@@ -280,7 +280,7 @@ a.btn-small span.btn {
     padding: 5px;
     border-radius: 5px;
 }
-.shiftSelector input
+#shiftSelector input
 {
     width: 50px;
 }
@@ -369,4 +369,18 @@ table.cols{
 }
 #websitePickerIframe{
     color-scheme: light;
+}
+/* 
+Floating muliple choice form
+ */
+#floatingForm{
+    position: fixed;
+    top: 10px;
+    left: 5%;
+    right: 5%;
+    background-color: #3a3a3a;
+    border: white solid 2px;
+    padding: 20px;
+    border-radius: 10px;
+    z-index: 1000;
 }

@@ -1,3 +1,23 @@
+// Listen for keyboard shortcut commands (e.g., Ctrl+Shift+U)
+if (typeof browser !== 'undefined' && browser.commands && browser.commands.onCommand) {
+    browser.commands.onCommand.addListener(async function(command) {
+        if (command === 'toggle-site') {
+            // Get the active tab
+            let tabs = await browser.tabs.query({active: true, currentWindow: true});
+            let tab = tabs[0];
+            if (!tab || !tab.url) return;
+            // Send a message to the popup or content script to toggle exclusion for this site
+            // We'll use storage as a trigger for the popup logic
+            let url = tab.url;
+            // Use a custom event in storage to trigger popup logic
+            await browser.storage.local.set({__udark_toggle_site: {url, time: Date.now()}});
+            // Optionally, open the popup if not already open
+            if (browser.browserAction && browser.browserAction.openPopup) {
+                try { await browser.browserAction.openPopup(); } catch (e) {}
+            }
+        }
+    });
+}
 class Common {
   static appCompat(res) {
     
@@ -33,7 +53,7 @@ class uDarkC extends uDarkExtended {
   keypoint(...args) {
     console.info("%c"+this.logPrefix,  "color:lime;font-weight:bolder;font-size:14px",...args);
   }
-
+  
   static CSS_COLOR_NAMES = [
     //"currentcolor",
      "AliceBlue", "AntiqueWhite", "Aqua", "Aquamarine", "Azure", "Beige", "Bisque", "Black", "BlanchedAlmond", "Blue", "BlueViolet", "Brown", "BurlyWood", "CadetBlue", "Chartreuse", "Chocolate", "Coral", "CornflowerBlue", "Cornsilk", "Crimson", "Cyan", "DarkBlue", "DarkCyan", "DarkGoldenRod", "DarkGray", "DarkGrey", "DarkGreen", "DarkKhaki", "DarkMagenta", "DarkOliveGreen", "DarkOrange", "DarkOrchid", "DarkRed", "DarkSalmon", "DarkSeaGreen", "DarkSlateBlue", "DarkSlateGray", "DarkSlateGrey", "DarkTurquoise", "DarkViolet", "DeepPink", "DeepSkyBlue", "DimGray", "DimGrey", "DodgerBlue", "FireBrick", "FloralWhite", "ForestGreen", "Fuchsia", "Gainsboro", "GhostWhite", "Gold", "GoldenRod", "Gray", "Grey", "Green", "GreenYellow", "HoneyDew", "HotPink", "IndianRed", "Indigo", "Ivory", "Khaki", "Lavender", "LavenderBlush", "LawnGreen", "LemonChiffon", "LightBlue", "LightCoral", "LightCyan", "LightGoldenRodYellow", "LightGray", "LightGrey", "LightGreen", "LightPink", "LightSalmon", "LightSeaGreen", "LightSkyBlue", "LightSlateGray", "LightSlateGrey", "LightSteelBlue", "LightYellow", "Lime", "LimeGreen", "Linen", "Magenta", "Maroon", "MediumAquaMarine", "MediumBlue", "MediumOrchid", "MediumPurple", "MediumSeaGreen", "MediumSlateBlue", "MediumSpringGreen", "MediumTurquoise", "MediumVioletRed", "MidnightBlue", "MintCream", "MistyRose", "Moccasin", "NavajoWhite", "Navy", "OldLace", "Olive", "OliveDrab", "Orange", "OrangeRed", "Orchid", "PaleGoldenRod", "PaleGreen", "PaleTurquoise", "PaleVioletRed", "PapayaWhip", "PeachPuff", "Peru", "Pink", "Plum", "PowderBlue", "Purple", "RebeccaPurple", "Red", "RosyBrown", "RoyalBlue", "SaddleBrown", "Salmon", "SandyBrown", "SeaGreen", "SeaShell", "Sienna", "Silver", "SkyBlue", "SlateBlue", "SlateGray", "SlateGrey", "Snow", "SpringGreen", "SteelBlue", "Tan", "Teal", "Thistle", "Tomato", "Turquoise", "Violet", "Wheat", "White", "WhiteSmoke", "Yellow", "YellowGreen"]
@@ -108,7 +128,7 @@ class uDarkC extends uDarkExtended {
   min_bright_bg_trigger = 0.2 // backgrounds with luminace under this value will remain as is
   min_bright_bg = 0.1 // background with value over min_bright_bg_trigger will be darkened from this value up to max_bright_bg
   max_bright_bg = 0.4 // background with value over min_bright_bg_trigger will be darkened from min_bright_bg up to this value
-  foreground_color_css_properties = ["color"] // css properties that are foreground colors
+  foreground_color_css_properties = ["color","caret-color"] // css properties that are foreground colors;, putting caret-color or any other property will edit the caret color with lightening and preventing the caret from being darkened
   // Gradients can be set in background-image
   
   static generateNestedParenthesisRegex(depth) { // Generates a regex that matches nested parenthesis
@@ -909,12 +929,14 @@ class uDarkC extends uDarkExtended {
     // Inject custom CSS and the dark color scheme meta tag if this is the first data load
     if (details.dataCount === 1) {
       
-      // Stopped using inject_css_suggested, as it was causing issues with some websites, like react ones that stats with a minimal body
+      // Stopped using inject_css_suggested as direct inection, as it was causing issues with some websites, like react ones that starts with a minimal body
       
       const udMetaDark = aDocument.querySelector("meta[name='color-scheme']") || document.createElement("meta");
       udMetaDark.id = "ud-meta-dark";
       udMetaDark.name = "color-scheme";
       udMetaDark.content = "dark";
+
+      // Note : looking for a head first is not a problem since aDocument, in the last iteration of parsing is a body.
       let headElem = aDocument.head || aDocument.querySelector("ud-tag-ptd-head") || aDocument;
       headElem.prepend(udMetaDark);
     }
@@ -1119,8 +1141,7 @@ class uDarkC extends uDarkExtended {
         rejected: rejected_str,
       }
     }
-    
-        return str || strO; // It's essential to return the original value if the CSS is broken, if e did not knew what to do with it, we should not have edited it. This is demostrated on hub.docker.com that looks into a comment only css
+    return str || strO; // It's essential to return the original value if the CSS is broken, if e did not knew what to do with it, we should not have edited it. This is demostrated on hub.docker.com that looks into a comment only css
   }
   rgba_val(r, g, b, a) {
     a = typeof a == "number" ? a : 1;
