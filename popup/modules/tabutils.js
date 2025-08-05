@@ -21,8 +21,8 @@ export async function isSiteProtected(tab) {
 export async function searchTabIDMatchingPatterns(tab, patterns, remove_flags = true) {
     if(remove_flags) {
         patterns = patterns.map(pattern => {
-            // Remove any flags like "###all" or "###ud"
-            return pattern.split("##")[0].trim();
+            // Remove any flags like "#ud_#all" or "#ud_#ud"
+            return pattern.split("#ud_")[0].trim();
         });
     }
     console.log("searchTabIDMatchingPatterns", tab, patterns);

@@ -1,38 +1,38 @@
-name: Broken site Report 
-description: Report a site broken in a novel way with UltimaDark on a supported platform (Desktop) 
+name: Broken Site Report
+description: Help us improve UltimaDark by reporting a site that is broken in a new way on a supported desktop browser.
 labels: [bug]
 body:
   - type: checkboxes
     attributes:
-      label: DO NOT REMOVE OR SKIP THE ISSUE TEMPLATE
-      description: Fill all fields 
+      label: Please do not remove or skip any part of this template
+      description: All fields are required for a helpful report.
       options:
-        - label: I understand that I will be **blocked** if I *intentionally* remove or skip any mandatory\* field
+        - label: I understand that skipping or removing required fields may result in my issue being closed or blocked.
           required: true
   - type: checkboxes
     id: checklist
     attributes:
-      label: Checklist
+      label: Quick Checklist
       description: |
-        Carefully read and work through this check list before submitting:
+        Before submitting, please make sure you have completed all of the following steps:
       options:
-        - label: I am on a compatible (Desktop) browser that is up-to-date or explicitly listed as being compatible in the [README](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/blob/master/readme.md)
+        - label: I am using a compatible desktop browser that is up-to-date, or listed as compatible in the [README](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/blob/master/readme.md).
           required: true
-        - label: I'm reporting that UltimaDark is broken in a novel way that deserves it's own issue meaning it should not be added to [#6](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/issues/6) [#7](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/issues/7) [#8](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/issues/8) or [#94](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/issues/94)  
+        - label: I am reporting a genuinely new issue, not something that belongs in [#6](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/issues/6), [#7](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/issues/7), [#8](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/issues/8), or [#94](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/issues/94).
           required: true
-        - label: This site is not listed in an existing issue or in [#6](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/issues/6) [#7](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/issues/7) [#8](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/issues/8) or [#94](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/issues/94)
+        - label: This site is not already listed in an open or closed issue, or in the issues above.
           required: true
-        - label: I verified that I am on the latest version
+        - label: I am using the latest version of UltimaDark.
           required: true
-        - label: I verified that ImageEdition, Caching, Service Worker Compatibility and the extension itself are all enabled and that I loaded the site cleanly by closing the tab and opening the URL in a new tab or I flushed it completely with [Tab Suspender](https://www.github.com/Hau-Hau/firefox-tab-suspender)
+        - label: I have checked that ImageEdition, Caching, Service Worker Compatibility, and the extension itself are all enabled. I have also reloaded the site in a new tab, or flushed it with [Tab Suspender](https://www.github.com/Hau-Hau/firefox-tab-suspender).
           required: true
-        - label: I tried disabling caching and refreshing the page several times and it is still broken. 
+        - label: I tried disabling caching and refreshed the page several times, but the problem persists.
           required: true
-        - label: I confirmed that the target site is not on the excluded sites list or a Mozilla domain on Firefox's protected site listin about:config 
+        - label: The site is not on my excluded sites list, nor is it a protected domain.
           required: true
-        - label: I've searched [known issues](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/issues) for similar issues **including closed ones**. DO NOT post duplicates
+        - label: I have searched [known issues](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/issues), including closed ones, to avoid posting a duplicate.
           required: true
-        - label: I've read the [README](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/blob/master/readme.md) and understand how and why to open an issue. 
+        - label: I have read the [README](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/blob/master/readme.md) and understand how to open a helpful issue.
           required: true
   - type: textarea
     id: url
@@ -64,24 +64,16 @@ body:
   - type: textarea
     id: log
     attributes:
-      label: Complete Log
+      label: Console Log or Error Output
       description: |
-        It should look something like this when there is an issue: 
+        Please copy and paste any output from the browser console or extension log that seems unusual, denotes a problem, or looks related to your issue—even if it's not an obvious error. This could be an error, a warning, or just something that stands out.
+        You do not need to paste the entire log—just the lines that seem connected to the problem (errors, warnings, or anything mentioning UltimaDark or the site).
       placeholder: |
-        Loaded html example.com background.js:2620:15
-        Disconnected: example.com Checking
-        Set []
-        background.js:502:21
-        Unknown property ‘-moz-letter-spacing’. Declaration dropped. _generated_background_page.html:1:418
-        Unknown property ‘-moz-letter-spacing’. Declaration dropped. _generated_background_page.html:5:418
-        Unknown property ‘-moz-letter-spacing’. Declaration dropped. _generated_background_page.html:9:418
-        Unknown property ‘-moz-letter-spacing’. Declaration dropped. _generated_background_page.html:118:420
-        Unknown property ‘-moz-letter-spacing’. Declaration dropped. _generated_background_page.html:119:421
-        Unknown property ‘-moz-letter-spacing’. Declaration dropped. _generated_background_page.html:120:421
-        Unknown property ‘-moz-letter-spacing’. Declaration dropped. _generated_background_page.html:121:421
-        Unknown property ‘-moz-letter-spacing’. Declaration dropped. _generated_background_page.html:122:421
-        Unknown property ‘-moz-letter-spacing’. Declaration dropped. _generated_background_page.html:124:877
-        <more lines>
+        Example:
+        Error: Failed to apply dark mode on example.com background.js:2620:15
+        Warning: Disconnected from tab example.com
+        Set [] background.js:502:21
+         ...more relevant lines...
       render: shell
     validations:
       required: false

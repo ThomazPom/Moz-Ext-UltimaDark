@@ -18,7 +18,16 @@ class Listeners {
       // uDark.log("Image","No port found for",details.url,"loaded by webpage:",details.originUrl,"Assuming it is not an eligible webpage, or even blocked by another extension");
       return {}
     }
-    
+    // now in 2025 we can exclude all res or image res
+    if( details.url.match(uDark.userSettings.exclude_regexRes) || details.url.match(uDark.userSettings.exclude_regexImgr)) {
+      // uDark.log("Image","This image is excluded by the user settings",details.url,"loaded by webpage:",details.originUrl,"Assuming it is not an eligible webpage, or even blocked by another extension");
+      return {}
+    }
+    // now in 2025 we van exclude all image from site
+    if (details.url.match(uDark.userSettings.exclude_regexImg)) {
+      return {}
+    }
+
     let imageURLObject = new URL(details.url);
     details.headersLow = {}
     
@@ -175,6 +184,14 @@ class Listeners {
       // console.log("If i'm lacking of knowledge, here is what i know about this request", details.tabId, details.frameId);
       return {}
     }
+    // now in 2025 we can exclude all res or css res
+    if( details.url.match(uDark.userSettings.exclude_regexRes) || details.url.match(uDark.userSettings.exclude_regexCss)) {
+      console.log("CSS", "This CSS is excluded by the user settings", details.url, "loaded by webpage:", details.originUrl, "Assuming it is not an eligible webpage, or even blocked by another extension");
+      console.log("It matches :", details.url.match(uDark.userSettings.exclude_regexRes) ? uDark.userSettings.exclude_regexRes : uDark.userSettings.exclude_regexCss);
+      console.log("basic exclude_regex",uDark.userSettings.exclude_regex);
+      return {}
+    }
+
     
     uDark.extractCharsetFromHeaders(details, "text/css");
     

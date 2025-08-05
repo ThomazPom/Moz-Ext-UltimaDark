@@ -15,8 +15,28 @@ import "./modules/store.js";
 // Import the modals module
 import { showBS5Modal } from './modules/bs5modals.js';
 
+// Import and register patternInput Alpine component
+
 
 import "./modules/modals.js";
+
+// Initialize Alpine and register patternInput
+window.Alpine = Alpine;
+Alpine.data('patternInput', () => ({
+  customPattern: '',
+  customFlag: '',
+  get suggestions() {
+    return Alpine.store('app').getSuggestedPatterns();
+  },
+  async add() {
+    const pattern = this.customPattern + (this.customFlag ? this.customFlag : '');
+    if (pattern.trim()) {
+      await Alpine.store('app').addExclusionPattern(pattern);
+      this.customPattern = '';
+      this.customFlag = '';
+    }
+  }
+}));
 
 // Initialize Alpine
 window.Alpine = Alpine;
@@ -30,7 +50,7 @@ let alpineStore = Alpine.store("app");
 import { searchTabIDMatchingPatterns, isSiteProtected , getEmbedsOfTab} from './modules/tabutils.js';
 
 // Hook for inclusion matches
-alpineStore.addHook("inclusionMatches", async function(hookData) {
+alpineStore.addHook("update", "inclusionMatches", async function(hookData) {
     let {tab} = hookData;
     if (!tab) return [];
     
@@ -44,7 +64,7 @@ alpineStore.addHook("inclusionMatches", async function(hookData) {
 });
 
 // Hook for exclusion matches  
-alpineStore.addHook("exclusionMatches", async function(hookData) {
+alpineStore.addHook("update", "exclusionMatches", async function(hookData) {
     let {tab} = hookData;
     if (!tab) return [];
     
@@ -57,6 +77,19 @@ alpineStore.addHook("exclusionMatches", async function(hookData) {
     }
 });
 
+setTimeout(() => {
+    
+// Hook to auto-refresh tab if badge status changes
+alpineStore.addHook("badge_change", "refreshOnBadgeChange", async function(hookData) {
+    
+        const { prevBadge, newBadge } = hookData;
+        if (prevBadge !== newBadge) {
+            if (typeof window.autoRefreshIfEnabled === "function") {
+                await window.autoRefreshIfEnabled();
+            }
+        }
+    });
+}, 1000);
 // Main popup initialization
 async function loadPopup() {
     try {
@@ -114,28 +147,19 @@ async function loadPopup() {
             if (!alpineStore.autoRefreshOnSetting) return;
             let tab = alpineStore.sites[alpineStore.activeSite].tab;
             if (!tab || typeof tab.id === 'undefined') return;
+            console.log("Auto-refreshing tab:", tab.id,new Error());
             try { await browser.tabs.reload(tab.id); } catch(e) {}
         }
         // Watch isEnabled changes
         let lastIsEnabled = alpineStore.isEnabled;
         Alpine.effect(() => {
             if (alpineStore.isEnabled !== lastIsEnabled) {
+                console.log("Auto refresh isEnabled", alpineStore.isEnabled !== lastIsEnabled);
                 lastIsEnabled = alpineStore.isEnabled;
                 autoRefreshIfEnabled();
             }
         });
-        // Watch current site inclusion/exclusion status changes
-        let lastExcl = (alpineStore.sites[alpineStore.activeSite].exclusionMatches || []).join(',');
-        let lastIncl = (alpineStore.sites[alpineStore.activeSite].inclusionMatches || []).join(',');
-        Alpine.effect(() => {
-            let excl = (alpineStore.sites[alpineStore.activeSite].exclusionMatches || []).join(',');
-            let incl = (alpineStore.sites[alpineStore.activeSite].inclusionMatches || []).join(',');
-            if (excl !== lastExcl || incl !== lastIncl) {
-                lastExcl = excl;
-                lastIncl = incl;
-                autoRefreshIfEnabled();
-            }
-        });
+        
         // Expose for popup.html button events
         window.autoRefreshIfEnabled = autoRefreshIfEnabled;
         
@@ -182,12 +206,23 @@ document.addEventListener('keydown', function(e) {
     // Close popup on Escape
    
     
-    // Quick exclude current site with Ctrl+E
+    // Quick toggle exclude/include current site with Ctrl+Shift+U
+    if (e.ctrlKey && e.shiftKey && (e.key === 'u' || e.key === 'U')) {
+        e.preventDefault();
+        const badge = alpineStore.getSiteBadge().text;
+        if (badge === 'EXCLUDED' || badge === 'PARTIAL (Images Only)') {
+            // If excluded, include site
+            $modals.confirmIncludeSite(alpineStore.sites[alpineStore.activeSite], () => alpineStore.includeCurrentSite());
+        } else {
+            // If not excluded, exclude site
+            $modals.confirmExcludeSite(alpineStore.sites[alpineStore.activeSite], () => alpineStore.excludeCurrentSite());
+        }
+    }
+    // Quick exclude current site with Ctrl+E (legacy)
     if (e.ctrlKey && e.key === 'e') {
         e.preventDefault();
         alpineStore.excludeCurrentSite();
     }
-    
 });
 // Handle action from URL parameters (for keyboard shortcuts)
 const urlParams = new URLSearchParams(window.location.search);
@@ -212,5 +247,32 @@ if (action === 'toggleSite') {
 }
 
 // Initialize popup when DOM is ready
-document.addEventListener('DOMContentLoaded', loadPopup);
+document.addEventListener('DOMContentLoaded', () => {
+    loadPopup();
+
+    // Add exclusion pattern form logic
+    const addBtn = document.getElementById('addExclBtn');
+    if (addBtn) {
+        addBtn.addEventListener('click', () => {
+            const patternInput = document.getElementById('newExclPattern');
+            const flagSelect = document.getElementById('newExclFlag');
+            if (!patternInput) return;
+            const pattern = patternInput.value.trim();
+            const flag = flagSelect ? flagSelect.value : '';
+            if (pattern) {
+                let newPattern = pattern + (flag ? flag : '');
+                if (!alpineStore.exclusionPatterns.split('\n').includes(newPattern)) {
+                    alpineStore.exclusionPatterns += (alpineStore.exclusionPatterns.trim() ? '\n' : '') + newPattern;
+                    alpineStore.saveSettings();
+                    // Force recompute of matches so UI updates immediately
+                    if (typeof alpineStore.recomputeCurrentSiteMatches === 'function') {
+                        alpineStore.recomputeCurrentSiteMatches();
+                    }
+                    patternInput.value = '';
+                    if (flagSelect) flagSelect.value = '';
+                }
+            }
+        });
+    }
+});
 

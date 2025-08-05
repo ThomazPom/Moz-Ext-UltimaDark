@@ -8434,7 +8434,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
   async function searchTabIDMatchingPatterns(tab, patterns, remove_flags = true) {
     if (remove_flags) {
       patterns = patterns.map((pattern) => {
-        return pattern.split("##")[0].trim();
+        return pattern.split("#ud_")[0].trim();
       });
     }
     console.log("searchTabIDMatchingPatterns", tab, patterns);
@@ -8475,15 +8475,20 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
   // modules/store.js
   document.addEventListener("alpine:init", () => {
     Alpine.store("app", {
-      // Set exclusion pattern type (all/img) by adding ##img or ##all suffix
+      // ...existing code...
+      // Set exclusion pattern type (all/img) by adding #ud_img or #ud_all suffix
       setExclusionPatternType(idx, type) {
         let patterns = this.exclusionPatterns.split("\n");
-        let base = patterns[idx].split("##")[0];
-        if (type === "img") {
-          patterns[idx] = base + "##img";
-        } else {
-          patterns[idx] = base + "##all";
-        }
+        let base = patterns[idx].split("#ud_")[0];
+        patterns = patterns.map((p, i) => {
+          if (i === idx) {
+            return base + (type === "img" ? "#ud_img" : "#ud_all");
+          }
+          if (i !== idx && p.split("#ud_")[0] === base) {
+            return null;
+          }
+          return p;
+        }).filter(Boolean);
         this.exclusionPatterns = patterns.join("\n");
         this.saveSettings();
         this.recomputeCurrentSiteMatches();
@@ -8507,7 +8512,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       inclusionPatterns: "",
       exclusionPatterns: "",
       // Hooks system
-      updateHooks: {},
+      hooks: {},
       // Sites data
       sites: {
         main: {
@@ -8519,9 +8524,64 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
           tab: null
         }
       },
+      getSiteBadge: function() {
+        const site = this.sites[this.activeSite];
+        const exclusionMatches = site.exclusionMatches;
+        const inclusionMatches = site.inclusionMatches;
+        const patterns = this.exclusionPatterns.split("\n").filter((p) => p.trim());
+        const imgExclusions = patterns.filter((p) => p.endsWith("#ud_img") && exclusionMatches.includes(p.split("#ud_")[0]));
+        const cssExclusions = patterns.filter((p) => p.endsWith("#ud_css") && exclusionMatches.includes(p.split("#ud_")[0]));
+        const imgrExclusions = patterns.filter((p) => p.endsWith("#ud_imgr") && exclusionMatches.includes(p.split("#ud_")[0]));
+        const resExclusions = patterns.filter((p) => p.endsWith("#ud_res") && exclusionMatches.includes(p.split("#ud_")[0]));
+        const allExclusions = patterns.filter((p) => (!p.includes("#ud_") || p.endsWith("#ud_all")) && exclusionMatches.includes(p.split("#ud_")[0]));
+        let processedBageValue = { text: "DEFAULT", class: "bg-secondary", title: "Default behavior." };
+        if (allExclusions.length > 0) {
+          processedBageValue = { text: "EXCLUDED", class: "bg-danger", title: "This site is fully excluded." };
+        } else if (exclusionMatches.length > 0 && imgExclusions.length === exclusionMatches.length) {
+          processedBageValue = { text: "PARTIAL (Images Only)", class: "bg-warning text-dark", title: "This site is not fully excluded, but images are." };
+        } else if (exclusionMatches.length > 0 && cssExclusions.length === exclusionMatches.length) {
+          processedBageValue = { text: "PARTIAL (CSS Only)", class: "bg-warning text-dark", title: "This site is not fully excluded, but CSS is." };
+        } else if (exclusionMatches.length > 0 && imgrExclusions.length === exclusionMatches.length) {
+          processedBageValue = { text: "PARTIAL (Image Resource Only)", class: "bg-warning text-dark", title: "This site is not fully excluded, but image resources are." };
+        } else if (exclusionMatches.length > 0 && resExclusions.length === exclusionMatches.length) {
+          processedBageValue = { text: "PARTIAL (Resources Only)", class: "bg-warning text-dark", title: "This site is not fully excluded, but resources (CSS, JS, images) are." };
+        } else if (exclusionMatches.length > 0) {
+          processedBageValue = { text: "PARTIAL", class: "bg-warning text-dark", title: "This site is partially excluded (mixed resources)." };
+        } else if (exclusionMatches.length === 0 && inclusionMatches.length > 0) {
+          processedBageValue = { text: "INCLUDED", class: "bg-success", title: "This site is included." };
+        }
+        if (this._lastSiteBadge != processedBageValue.text) {
+          this.activate_hooks("badge_change", { prevBadge: this._lastSiteBadge, newBadge: processedBageValue.text, site: this.sites[this.activeSite] });
+        }
+        this._lastSiteBadge = processedBageValue.text;
+        return processedBageValue;
+      },
       // Hook system methods
-      addHook(key, hook) {
-        this.updateHooks[key] = hook;
+      // Add a hook to a named hook group
+      addHook(hookGroup, key, hook) {
+        if (!this.hooks[hookGroup]) {
+          this.hooks[hookGroup] = {};
+        }
+        this.hooks[hookGroup][key] = hook;
+      },
+      // Activate all hooks in a named group
+      async activate_hooks(hookGroup, context = {}) {
+        if (!this.hooks[hookGroup]) return;
+        if (context.do) {
+          context.do(context);
+        }
+        console.log(`Activating hooks for group: ${hookGroup}`, context);
+        for (const [key, hook] of Object.entries(this.hooks[hookGroup])) {
+          try {
+            let value = await hook(context);
+            if (this.sites && this.activeSite && this.sites[this.activeSite]) {
+              this.sites[this.activeSite][key] = value;
+            }
+            console.log(`Hooked [${hookGroup}]`, key, value);
+          } catch (error2) {
+            console.error(`Hook error for [${hookGroup}]`, key, error2);
+          }
+        }
       },
       // Site management
       updateUrl(url, site, extra = {}) {
@@ -8532,15 +8592,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
         if (extra.tab) {
           this.sites[site].tab = extra.tab;
         }
-        Object.entries(this.updateHooks).forEach(async ([key, hook]) => {
-          try {
-            let value = await hook({ ...extra, url, site, tab: this.sites[site].tab });
-            this.sites[site][key] = value;
-            console.log("Hooked", key, value);
-          } catch (error2) {
-            console.error("Hook error for", key, error2);
-          }
-        });
+        this.activate_hooks("update", { ...extra, url, site, tab: this.sites[site].tab });
         this.loadEmbedsInStore();
       },
       currentSite() {
@@ -8549,7 +8601,10 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       // Pattern management methods
       editExclusionPattern(idx, newValue) {
         let patterns = this.exclusionPatterns.split("\n");
+        const base = newValue.split("#ud_")[0];
+        patterns = patterns.filter((p, i) => i === idx || p.split("#ud_")[0] !== base);
         patterns[idx] = newValue;
+        patterns = patterns.filter((p, i, arr) => arr.findIndex((q) => q.split("#ud_")[0] === p.split("#ud_")[0]) === i);
         this.exclusionPatterns = patterns.join("\n");
         this.saveSettings();
         this.recomputeCurrentSiteMatches();
@@ -8589,22 +8644,20 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
           });
           return;
         }
-        const patterns = this.exclusionPatterns.split("\n").filter((p) => p.trim());
+        let patterns = this.exclusionPatterns.split("\n").filter((p) => p.trim());
+        const base = trimmedPattern.split("#ud_")[0];
+        patterns = patterns.filter((p) => p.split("#ud_")[0] !== base);
         let alreadyCovered = false;
         if (checkAlreadyCovered && this.currentSite()?.tab) {
           const matches = await searchTabIDMatchingPatterns(this.currentSite().tab, patterns);
           alreadyCovered = matches.length > 0;
         }
         const doAdd = async () => {
-          if (!patterns.includes(trimmedPattern)) {
-            patterns.push(trimmedPattern);
-            this.exclusionPatterns = patterns.join("\n");
-            this.saveSettings();
-            this.recomputeCurrentSiteMatches();
-            console.log("Added exclusion pattern:", trimmedPattern);
-          } else {
-            console.log("Pattern already exists:", trimmedPattern);
-          }
+          patterns.push(trimmedPattern);
+          this.exclusionPatterns = patterns.join("\n");
+          this.saveSettings();
+          this.recomputeCurrentSiteMatches();
+          console.log("Added/updated exclusion pattern:", trimmedPattern);
         };
         if (alreadyCovered && checkAlreadyCovered) {
           showBS5Modal({
@@ -8673,21 +8726,12 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
         }
       },
       removeExclusionPattern(pattern) {
-        showBS5Modal({
-          title: "Remove Exclusion Pattern",
-          body: `Remove exclusion pattern: <code>${pattern}</code>?`,
-          okText: "Remove",
-          okClass: "btn-danger",
-          cancelText: "Cancel",
-          showCancel: true,
-          onOk: () => {
-            const patterns = this.exclusionPatterns.split("\n").filter((p) => p.trim() && p !== pattern);
-            this.exclusionPatterns = patterns.join("\n");
-            this.saveSettings();
-            this.recomputeCurrentSiteMatches();
-            console.log("Removed exclusion pattern:", pattern);
-          }
-        });
+        const base = pattern.split("#ud_")[0];
+        const patterns = this.exclusionPatterns.split("\n").filter((p) => p.trim() && p.split("#ud_")[0] !== base);
+        this.exclusionPatterns = patterns.join("\n");
+        this.saveSettings();
+        this.recomputeCurrentSiteMatches();
+        console.log("Removed exclusion pattern:", pattern);
       },
       addInclusionPattern(pattern) {
         if (!pattern || !pattern.trim()) return;
@@ -8732,13 +8776,13 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       recomputeCurrentSiteMatches() {
         const site = this.currentSite();
         if (!site || !site.url) return;
-        Object.entries(this.updateHooks).forEach(async ([key, hook]) => {
-          try {
-            let value = await hook({ url: site.url, site: this.activeSite, tab: site.tab });
-            this.sites[this.activeSite][key] = value;
-          } catch (error2) {
-            console.error("Hook error for", key, error2);
-          }
+        const prevBadge = this._lastSiteBadge;
+        this.activate_hooks("update", {
+          url: site.url,
+          site: this.activeSite,
+          tab: site.tab,
+          prevBadge,
+          newBadge: this.getSiteBadge().text
         });
         if (window.Alpine) {
           window.Alpine.nextTick(() => {
@@ -8908,14 +8952,9 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
             imageEditionEnabled: this.imageEditionEnabled,
             serviceWorkersEnabled: this.serviceWorkersEnabled
           });
-          this.updateToggleDisplays();
         } catch (error2) {
           console.error("Failed to load settings:", error2);
         }
-      },
-      // Update toggle displays after loading settings
-      updateToggleDisplays() {
-        console.log("Toggle states updated");
       },
       // Advanced actions
       clearAllData() {
@@ -9041,11 +9080,35 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
   function confirmExcludeSite(site, onConfirm) {
     const store2 = module_default && module_default.store ? module_default.store("app") : window.$store ? window.$store.app : null;
     const displayHost = store2 && store2.lastTargetHost ? store2.lastTargetHost : site.host;
-    let matchingExclusions = site.exclusionMatches && site.exclusionMatches.length > 0 ? '<br><span class="text-danger">Matching exclusion patterns:</span><br><code>' + site.exclusionMatches.join(", ") + "</code>" : "";
-    let matchingInclusions = site.inclusionMatches && site.inclusionMatches.length > 0 ? '<br><span class="text-success">Matching inclusion patterns:</span><br><code>' + site.inclusionMatches.join(", ") + "</code>" : "";
+    let matchingExclusions = "";
+    if (site.exclusionMatches && site.exclusionMatches.length > 0) {
+      const storePatterns = store2 ? store2.exclusionPatterns.split("\n") : [];
+      const patternHtml = site.exclusionMatches.map((p) => {
+        const fullPattern = storePatterns.find((sp) => sp.split("#ud_")[0] === p);
+        if (fullPattern && fullPattern.endsWith("#ud_img")) {
+          return '<span style="color:#ffe066">' + fullPattern + "</span>";
+        } else {
+          return '<span class="text-danger">' + p + "</span>";
+        }
+      }).join(", ");
+      matchingExclusions = "<br>Matching exclusion patterns:<br><code>" + patternHtml + "</code>";
+    }
+    let matchingInclusions = "";
+    if (site.inclusionMatches && site.inclusionMatches.length > 0) {
+      matchingInclusions = "<br>Matching inclusion patterns:<br><code>" + site.inclusionMatches.map((p) => '<span style="color:#28a745">' + p + "</span>").join(", ") + "</code>";
+    }
+    const badge = store2 ? store2.getSiteBadge() : { text: "EXCLUDED" };
+    let badgeHtml = "";
+    if (badge.text === "EXCLUDED") {
+      badgeHtml = 'This site is currently <span class="text-danger">EXCLUDED</span>.';
+    } else if (badge.text === "PARTIAL (Images Only)") {
+      badgeHtml = 'This site is currently <span class="text-warning">PARTIAL (Images Only)</span>.';
+    } else {
+      badgeHtml = 'This site is currently <span class="text-secondary">' + badge.text + "</span>.";
+    }
     showBS5Modal({
       title: "Exclude This Site",
-      body: "Are you sure you want to exclude <strong>" + displayHost + "</strong>?" + matchingExclusions + matchingInclusions,
+      body: badgeHtml + "<br>Are you sure you want to exclude <strong>" + displayHost + "</strong>?" + matchingExclusions + matchingInclusions,
       okText: "Exclude",
       okClass: "btn-danger",
       cancelText: "Cancel",
@@ -9055,18 +9118,57 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
   }
   function confirmIncludeSite(site, onConfirm) {
     const store2 = module_default && module_default.store ? module_default.store("app") : window.$store ? window.$store.app : null;
-    let matchingExclusions = site.exclusionMatches && site.exclusionMatches.length > 0 ? '<br><span class="text-danger">Matching exclusion patterns:</span><br><code>' + site.exclusionMatches.join(", ") + "</code>" : "";
-    let matchingInclusions = site.inclusionMatches && site.inclusionMatches.length > 0 ? '<br><span class="text-success">Matching inclusion patterns:</span><br><code>' + site.inclusionMatches.join(", ") + "</code>" : "";
+    let matchingExclusions = "";
+    let exclusionCheckboxes = "";
+    if (site.exclusionMatches && site.exclusionMatches.length > 0) {
+      const storePatterns = store2 ? store2.exclusionPatterns.split("\n") : [];
+      exclusionCheckboxes = site.exclusionMatches.map((p, i) => {
+        const fullPattern = storePatterns.find((sp) => sp.split("#ud_")[0] === p) || p;
+        const label = fullPattern.endsWith("#ud_img") ? `<span style='color:#ffe066'>${fullPattern}</span>` : `<span class='text-danger'>${fullPattern}</span>`;
+        return `<label style='display:block;'><input type='checkbox' class='excl-remove-checkbox' data-pattern='${encodeURIComponent(fullPattern)}' checked> ${label}</label>`;
+      }).join("");
+      matchingExclusions = `<br>Matching exclusion patterns:<br>${exclusionCheckboxes}`;
+    }
+    let matchingInclusions = "";
+    if (site.inclusionMatches && site.inclusionMatches.length > 0) {
+      matchingInclusions = "<br>Matching inclusion patterns:<br><code>" + site.inclusionMatches.map((p) => '<span style="color:#28a745">' + p + "</span>").join(", ") + "</code>";
+    }
+    const badge = store2 ? store2.getSiteBadge() : { text: "EXCLUDED" };
     if (site.exclusionMatches.length > 0) {
+      let badgeHtml = "";
+      if (badge.text === "EXCLUDED") {
+        badgeHtml = 'This site is currently <span class="text-danger">EXCLUDED</span>.';
+      } else if (badge.text === "PARTIAL (Images Only)") {
+        badgeHtml = 'This site is currently <span class="text-warning">PARTIAL (Images Only)</span>.';
+      } else {
+        badgeHtml = 'This site is currently <span class="text-secondary">' + badge.text + "</span>.";
+      }
       showBS5Modal({
         title: "Site is Excluded",
-        body: 'This site is currently <span class="text-danger">EXCLUDED</span>.' + matchingExclusions + "<br><br>Do you want to <strong>remove</strong> these exclusion patterns and include the site?",
+        body: badgeHtml + matchingExclusions + "<br><br>Uncheck any exclusion patterns you want to keep.<br>Do you want to <strong>remove</strong> the selected exclusion patterns and include the site?",
         okText: "Remove Exclusions & Include",
         okClass: "btn-success",
         cancelText: "Cancel",
         showCancel: true,
         onOk: () => {
-          if (store2) site.exclusionMatches.forEach((p) => store2.removeExclusionPattern(p));
+          if (store2) {
+            const modal = document.querySelector(".modal.show");
+            if (modal) {
+              const checked = Array.from(modal.querySelectorAll(".excl-remove-checkbox:checked"));
+              checked.forEach((cb) => {
+                const pattern = decodeURIComponent(cb.getAttribute("data-pattern"));
+                if (typeof store2.removeExclusionPattern === "function") {
+                  store2.removeExclusionPattern(pattern, true);
+                }
+              });
+            } else {
+              site.exclusionMatches.forEach((p) => {
+                if (typeof store2.removeExclusionPattern === "function") {
+                  store2.removeExclusionPattern(p, true);
+                }
+              });
+            }
+          }
           onConfirm();
         }
       });
@@ -9115,11 +9217,27 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
     precision_number: 2
   };
   window.Alpine = module_default;
+  module_default.data("patternInput", () => ({
+    customPattern: "",
+    customFlag: "",
+    get suggestions() {
+      return module_default.store("app").getSuggestedPatterns();
+    },
+    async add() {
+      const pattern = this.customPattern + (this.customFlag ? this.customFlag : "");
+      if (pattern.trim()) {
+        await module_default.store("app").addExclusionPattern(pattern);
+        this.customPattern = "";
+        this.customFlag = "";
+      }
+    }
+  }));
+  window.Alpine = module_default;
   var myPort = browser.runtime.connect({ name: "port-from-popup" });
   console.log("Popup script loaded!");
   module_default.start();
   var alpineStore = module_default.store("app");
-  alpineStore.addHook("inclusionMatches", async function(hookData) {
+  alpineStore.addHook("update", "inclusionMatches", async function(hookData) {
     let { tab } = hookData;
     if (!tab) return [];
     try {
@@ -9130,7 +9248,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       return [];
     }
   });
-  alpineStore.addHook("exclusionMatches", async function(hookData) {
+  alpineStore.addHook("update", "exclusionMatches", async function(hookData) {
     let { tab } = hookData;
     if (!tab) return [];
     try {
@@ -9141,6 +9259,16 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       return [];
     }
   });
+  setTimeout(() => {
+    alpineStore.addHook("badge_change", "refreshOnBadgeChange", async function(hookData) {
+      const { prevBadge, newBadge } = hookData;
+      if (prevBadge !== newBadge) {
+        if (typeof window.autoRefreshIfEnabled === "function") {
+          await window.autoRefreshIfEnabled();
+        }
+      }
+    });
+  }, 1e3);
   async function loadPopup() {
     try {
       await alpineStore.loadVersionInfo();
@@ -9178,6 +9306,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
         if (!alpineStore.autoRefreshOnSetting) return;
         let tab2 = alpineStore.sites[alpineStore.activeSite].tab;
         if (!tab2 || typeof tab2.id === "undefined") return;
+        console.log("Auto-refreshing tab:", tab2.id, new Error());
         try {
           await browser.tabs.reload(tab2.id);
         } catch (e) {
@@ -9186,18 +9315,8 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       let lastIsEnabled = alpineStore.isEnabled;
       module_default.effect(() => {
         if (alpineStore.isEnabled !== lastIsEnabled) {
+          console.log("Auto refresh isEnabled", alpineStore.isEnabled !== lastIsEnabled);
           lastIsEnabled = alpineStore.isEnabled;
-          autoRefreshIfEnabled();
-        }
-      });
-      let lastExcl = (alpineStore.sites[alpineStore.activeSite].exclusionMatches || []).join(",");
-      let lastIncl = (alpineStore.sites[alpineStore.activeSite].inclusionMatches || []).join(",");
-      module_default.effect(() => {
-        let excl = (alpineStore.sites[alpineStore.activeSite].exclusionMatches || []).join(",");
-        let incl = (alpineStore.sites[alpineStore.activeSite].inclusionMatches || []).join(",");
-        if (excl !== lastExcl || incl !== lastIncl) {
-          lastExcl = excl;
-          lastIncl = incl;
           autoRefreshIfEnabled();
         }
       });
@@ -9231,6 +9350,15 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
     });
   }
   document.addEventListener("keydown", function(e) {
+    if (e.ctrlKey && e.shiftKey && (e.key === "u" || e.key === "U")) {
+      e.preventDefault();
+      const badge = alpineStore.getSiteBadge().text;
+      if (badge === "EXCLUDED" || badge === "PARTIAL (Images Only)") {
+        $modals.confirmIncludeSite(alpineStore.sites[alpineStore.activeSite], () => alpineStore.includeCurrentSite());
+      } else {
+        $modals.confirmExcludeSite(alpineStore.sites[alpineStore.activeSite], () => alpineStore.excludeCurrentSite());
+      }
+    }
     if (e.ctrlKey && e.key === "e") {
       e.preventDefault();
       alpineStore.excludeCurrentSite();
@@ -9252,7 +9380,31 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       }
     }, 500);
   }
-  document.addEventListener("DOMContentLoaded", loadPopup);
+  document.addEventListener("DOMContentLoaded", () => {
+    loadPopup();
+    const addBtn = document.getElementById("addExclBtn");
+    if (addBtn) {
+      addBtn.addEventListener("click", () => {
+        const patternInput = document.getElementById("newExclPattern");
+        const flagSelect = document.getElementById("newExclFlag");
+        if (!patternInput) return;
+        const pattern = patternInput.value.trim();
+        const flag = flagSelect ? flagSelect.value : "";
+        if (pattern) {
+          let newPattern = pattern + (flag ? flag : "");
+          if (!alpineStore.exclusionPatterns.split("\n").includes(newPattern)) {
+            alpineStore.exclusionPatterns += (alpineStore.exclusionPatterns.trim() ? "\n" : "") + newPattern;
+            alpineStore.saveSettings();
+            if (typeof alpineStore.recomputeCurrentSiteMatches === "function") {
+              alpineStore.recomputeCurrentSiteMatches();
+            }
+            patternInput.value = "";
+            if (flagSelect) flagSelect.value = "";
+          }
+        }
+      });
+    }
+  });
 })();
 /*! Bundled license information:
 

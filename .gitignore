@@ -3,3 +3,6 @@
 ./UltimaDark
 ./popup/node_modules
 ./popup/node_modules/*
+node_modules
+node_modules/*
+/node_modules
