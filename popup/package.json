@@ -2,7 +2,7 @@
   "dependencies": {
     "alpinejs": "^3.14.8",
     "bootstrap": "^5.3.3",
-    "esbuild": "^0.24.2"
+    "esbuild": "^0.25.0"
   },
   "scripts": {
     "watch": "npx esbuild popup.js --bundle --sourcemap --outfile=bundle.js --loader:.css=css --watch",
