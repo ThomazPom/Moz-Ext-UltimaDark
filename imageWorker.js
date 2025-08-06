@@ -1,40 +1,46 @@
 let imageBuffers = [];
-console.log=(...args)=>{
-        for (let i = 0; i < args.length; i++) {
-            if(typeof args[i]=="function")
-            {
-                args[i]=args[i].name;
-            }
+let activeMessageLogging = false;
+// console.log=(...args)=>{
+  
+//         for (let i = 0; i < args.length; i++) {
+//             if(typeof args[i]=="function")
+//             {
+//                 args[i]=args[i].name;
+//             }
             
             
-            if(typeof args[i]=="object")
-            {
-                if(args[i].name)
-                {
-                    args[i]=args[i].name;
-                }
-                // args[i]=JSON.stringify(args[i]);
-            }
-        }
-    postMessage({logMessage:args})
-    // setTimeout(() => {
-    //     for (i = 0; i < args.length; i++) {
-    //         if(typeof args[i]=="undefined")
-    //         {   
+//             if(typeof args[i]=="object")
+//             {
+//                 if(args[i].name)
+//                 {
+//                     args[i]=args[i].name;
+//                 }
+//                 // args[i]=JSON.stringify(args[i]);
+//             }
+//         }
+//     postMessage({logMessage:args})
+//     // setTimeout(() => {
+//     //     for (i = 0; i < args.length; i++) {
+//     //         if(typeof args[i]=="undefined")
+//     //         {   
 
-    //             args[i]="undefined";
-    //         }
-    //         if(args[i].name)
-    //         {
-    //             args[i]=args[i].name;
-    //         }
-    //         if (typeof args[i] == "object") {
-    //             args[i] = JSON.stringify(args[i]);
-    //         }
-    //         args[i] = args[i] + "";
-    //     }
-    //     throw new Error("MESSAGE FROM WORKER " + args.join("  --  "));
-    // }, 0);
+//     //             args[i]="undefined";
+//     //         }
+//     //         if(args[i].name)
+//     //         {
+//     //             args[i]=args[i].name;
+//     //         }
+//     //         if (typeof args[i] == "object") {
+//     //             args[i] = JSON.stringify(args[i]);
+//     //         }
+//     //         args[i] = args[i] + "";
+//     //     }
+//     //     throw new Error("MESSAGE FROM WORKER " + args.join("  --  "));
+//     // }, 0);
+// }
+if(!activeMessageLogging)
+{
+  console.log =()=>undefined
 }
 
 console.log("Image Service worker started")
