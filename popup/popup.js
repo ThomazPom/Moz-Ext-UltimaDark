@@ -9,17 +9,35 @@ var defaultValues = {
 import Alpine from "alpinejs";
 import 'bootstrap'; // Pour les composants JS (nécessite Popper.js)
 import 'bootstrap/dist/css/bootstrap.min.css'; // Pour le CSS de Bootstrap
+import 'bootstrap-icons/font/bootstrap-icons.css'; // Pour les icônes Bootstrap
 
 // Import the store module
 import "./modules/store.js";
 // Import the modals module
 import { showBS5Modal } from './modules/bs5modals.js';
 
+// Import and register patternInput Alpine component
+
 
 import "./modules/modals.js";
 
-// Initialize Alpine
+// Initialize Alpine and register patternInput
 window.Alpine = Alpine;
+Alpine.data('patternInput', () => ({
+  customPattern: '',
+  customFlag: '',
+  get suggestions() {
+    return Alpine.store('app').getSuggestedPatterns();
+  },
+  async add() {
+    const pattern = this.customPattern + (this.customFlag ? this.customFlag : '');
+    if (pattern.trim()) {
+      await Alpine.store('app').addExclusionPattern(pattern);
+      this.customPattern = '';
+      this.customFlag = '';
+    }
+  }
+}));
 
 let myPort = browser.runtime.connect({name:"port-from-popup"});
 console.log('Popup script loaded!');
@@ -29,8 +47,9 @@ let alpineStore = Alpine.store("app");
 
 import { searchTabIDMatchingPatterns, isSiteProtected , getEmbedsOfTab} from './modules/tabutils.js';
 
+
 // Hook for inclusion matches
-alpineStore.addHook("inclusionMatches", async function(hookData) {
+alpineStore.addHook("update", "inclusionMatches", async function(hookData) {
     let {tab} = hookData;
     if (!tab) return [];
     
@@ -44,7 +63,7 @@ alpineStore.addHook("inclusionMatches", async function(hookData) {
 });
 
 // Hook for exclusion matches  
-alpineStore.addHook("exclusionMatches", async function(hookData) {
+alpineStore.addHook("update", "exclusionMatches", async function(hookData) {
     let {tab} = hookData;
     if (!tab) return [];
     
@@ -57,6 +76,17 @@ alpineStore.addHook("exclusionMatches", async function(hookData) {
     }
 });
 
+setTimeout(() => {
+    
+// Hook to auto-refresh tab if badge status changes
+// alpineStore.addHook("badge_change", "refreshOnBadgeChange", async function(hookData) {
+//     const { prevBadge, newBadge } = hookData;
+//     if (prevBadge !== newBadge) {
+//         await alpineStore.autoRefreshIfEnabled();
+//     }
+// });
+
+}, 1000);
 // Main popup initialization
 async function loadPopup() {
     try {
@@ -81,12 +111,15 @@ async function loadPopup() {
         }
         alpineStore.sites.main.isProtected = protectedStatus;
 
-        console.log("Current tab embed:", tab);
+        console.log("Current tab :", tab);
         // Update current site
         alpineStore.updateUrl(url, "main", {tab});
         
         // Setup watchers for settings changes
         setupSettingsWatchers();
+
+        // Enable tab change listeners for real-time updates
+        alpineStore.enableTabChangeListeners();
 
         // Update exclude button text initially
         setTimeout(() => {
@@ -94,50 +127,16 @@ async function loadPopup() {
             // Debug current state
             alpineStore.debugState();
         }, 300);
-        // Update protected status reactively if tab changes
-        Alpine.effect(async () => {
-            let tab = alpineStore.sites[alpineStore.activeSite].tab;
-            if (tab && typeof tab.id !== 'undefined') {
-                let protectedStatus = false;
-                try {
-                    protectedStatus = await isSiteProtected(tab);
-                } catch (e) {
-                    protectedStatus = false;
-                }
-                alpineStore.sites.main.isProtected = protectedStatus;
-            }
-        });
+     
 
         // Auto-refresh tab on toggle if enabled
-        // Helper: reload tab if auto-refresh is enabled
-        async function autoRefreshIfEnabled() {
-            if (!alpineStore.autoRefreshOnSetting) return;
-            let tab = alpineStore.sites[alpineStore.activeSite].tab;
-            if (!tab || typeof tab.id === 'undefined') return;
-            try { await browser.tabs.reload(tab.id); } catch(e) {}
-        }
-        // Watch isEnabled changes
         let lastIsEnabled = alpineStore.isEnabled;
         Alpine.effect(() => {
             if (alpineStore.isEnabled !== lastIsEnabled) {
                 lastIsEnabled = alpineStore.isEnabled;
-                autoRefreshIfEnabled();
+                alpineStore.autoRefreshIfEnabled();
             }
         });
-        // Watch current site inclusion/exclusion status changes
-        let lastExcl = (alpineStore.sites[alpineStore.activeSite].exclusionMatches || []).join(',');
-        let lastIncl = (alpineStore.sites[alpineStore.activeSite].inclusionMatches || []).join(',');
-        Alpine.effect(() => {
-            let excl = (alpineStore.sites[alpineStore.activeSite].exclusionMatches || []).join(',');
-            let incl = (alpineStore.sites[alpineStore.activeSite].inclusionMatches || []).join(',');
-            if (excl !== lastExcl || incl !== lastIncl) {
-                lastExcl = excl;
-                lastIncl = incl;
-                autoRefreshIfEnabled();
-            }
-        });
-        // Expose for popup.html button events
-        window.autoRefreshIfEnabled = autoRefreshIfEnabled;
         
         console.log('Popup loaded successfully');
     } catch (error) {
@@ -147,70 +146,26 @@ async function loadPopup() {
 
 // Setup watchers for automatic saving
 function setupSettingsWatchers() {
-    // Clear any existing timeout
-    if (window.settingsSaveTimeout) {
-        clearTimeout(window.settingsSaveTimeout);
-    }
-    
     // Watch for changes in settings and auto-save with debounce
     Alpine.effect(() => {
         // These properties will trigger the watcher when they change
-        const watchedSettings = {
-            isEnabled: alpineStore.isEnabled,
-            cacheEnabled: alpineStore.cacheEnabled,
-            imageEditionEnabled: alpineStore.imageEditionEnabled,
-            serviceWorkersEnabled: alpineStore.serviceWorkersEnabled,
-            precisionNumber: alpineStore.precisionNumber,
-            inclusionPatterns: alpineStore.inclusionPatterns,
-            exclusionPatterns: alpineStore.exclusionPatterns,
-            autoRefreshOnSetting: alpineStore.autoRefreshOnSetting
-        };
         
-        console.log('Settings changed, scheduling save...', watchedSettings);
         
-        // Debounce the save operation
-        clearTimeout(window.settingsSaveTimeout);
-        window.settingsSaveTimeout = setTimeout(() => {
+        console.log('Settings changed, scheduling save...');
+        
+        // Debounce the save operation using store state
+        if (alpineStore.settingsSaveTimeout) {
+            clearTimeout(alpineStore.settingsSaveTimeout);
+        }
+        alpineStore.settingsSaveTimeout = setTimeout(() => {
             console.log('Auto-saving settings...');
             alpineStore.saveSettings();
         }, 500);
     });
 }
 
-// Handle keyboard shortcuts
-document.addEventListener('keydown', function(e) {
-    // Close popup on Escape
-   
-    
-    // Quick exclude current site with Ctrl+E
-    if (e.ctrlKey && e.key === 'e') {
-        e.preventDefault();
-        alpineStore.excludeCurrentSite();
-    }
-    
-});
-// Handle action from URL parameters (for keyboard shortcuts)
-const urlParams = new URLSearchParams(window.location.search);
-const action = urlParams.get('action');
-
-if (action === 'toggleSite') {
-    // Mimic user clicking the include/exclude button in the UI
-    setTimeout(() => {
-        const site = alpineStore.sites[alpineStore.activeSite];
-        let btn;
-        if (site.exclusionMatches && site.exclusionMatches.length > 0) {
-            // Find the include button
-            btn = document.querySelector('.btn-success.flex-fill');
-        } else {
-            // Find the exclude button
-            btn = document.querySelector('.btn-danger.flex-fill');
-        }
-        if (btn) {
-            btn.dispatchEvent(new MouseEvent('click', {bubbles:true, cancelable:true}));
-        }
-    }, 500);
-}
-
 // Initialize popup when DOM is ready
-document.addEventListener('DOMContentLoaded', loadPopup);
+document.addEventListener('DOMContentLoaded', () => {
+    loadPopup();
+});
 

@@ -15,9 +15,6 @@ jobs:
 
     env:
       FILES_TO_PACKAGE: |
-        popup.js
-        popup.html
-        options_styles.css
         manifest.json
         inject_css_override_no_edit.css
         inject_css_override_top_only.css
@@ -35,7 +32,15 @@ jobs:
         contentScriptClass.js
         backgroundClass.js
         fakeContentScriptClass.js
-
+        popup/popup.html
+        popup/bundle.js
+        popup/bundle.css
+        popup/options_styles.css
+        popup/bootstrap-icons-CVBWLLHT.woff2
+        popup/bootstrap-icons-VQNJTM6Q.woff
+        popup/modules/
+        popup/bootstrapdarkened.css
+        
 
     steps:
       # Checkout the repository

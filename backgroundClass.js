@@ -131,7 +131,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
     properBlackListToExcludeRegex(list) {
       return list.map(x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // Sanitize regex
       .replace(/(^<all_urls>|\\\*)/g, "(.*?)") // Allow wildcards
-      .replace(/^(.*)$/g, "^$1$")).join("|") // User multi match
+      .replace(/^(.*)$/g, "^$1$")).join("|").replace(/^$/,"no_match") // User multi match
     }
     async asyncFilter(array, asyncPredicate) {
       const results = await Promise.all(array.map(asyncPredicate));
@@ -141,22 +141,42 @@ class uDarkExtended extends uDarkExtendedContentScript {
       let userSettings = uDark.userSettings;
       initial && Common.appCompat(userSettings);
       uDark.userSettings.properWhiteList = (userSettings.white_list || uDark.defaultRegexes.white_list).split("\n").filter(uDark.filterValidExpression)
-      uDark.userSettings.properBlackList = (userSettings.black_list || uDark.defaultRegexes.black_list)
-      .split("\n") // split by new line
-      .map(x=>uDark.mapRegexAndRemoveUdFlag(x,["","all"],"erased")) // keep all & non specified 
 
-      uDark.userSettings.properBlackList = await uDark.asyncFilter(uDark.userSettings.properBlackList, uDark.filterValidExpression); // Filter out invalid expressions & erased ones
-      console.log("Proper white list:", uDark.userSettings.properWhiteList);
-      console.log("Proper black list:", uDark.userSettings.properBlackList);
+      // Process all exclusion patterns
+      const allBlacklistPatterns = (userSettings.black_list || uDark.defaultRegexes.black_list).split("\n");
+
+      // Helper to filter by flag
+      function filterByFlag(flagArr) {
+        return allBlacklistPatterns
+          .map(x => uDark.mapRegexAndRemoveUdFlag(x, flagArr, "erased"))
+          .filter(x => x !== "erased" && x !== null && x !== undefined);
+      }
+
+      // Full exclusion (no flag or #ud_all)
+      uDark.userSettings.properBlackList = filterByFlag(["", "all"]);
+      uDark.userSettings.properBlackList = await uDark.asyncFilter(uDark.userSettings.properBlackList, uDark.filterValidExpression);
       uDark.userSettings.exclude_regex = uDark.properBlackListToExcludeRegex(uDark.userSettings.properBlackList);
-      
-      
-      uDark.userSettings.properBlackListImg = (userSettings.black_list || uDark.defaultRegexes.black_list)
-      .split("\n") // split by new line
-      .map(x=>uDark.mapRegexAndRemoveUdFlag(x,["img"],"erased")) // keep only img
-      uDark.userSettings.properBlackListImg = await uDark.asyncFilter(uDark.userSettings.properBlackListImg, uDark.filterValidExpression); // Filter out invalid expressions & erased ones
+
+      // Images only
+      uDark.userSettings.properBlackListImg = filterByFlag(["img"]);
+      uDark.userSettings.properBlackListImg = await uDark.asyncFilter(uDark.userSettings.properBlackListImg, uDark.filterValidExpression);
       uDark.userSettings.exclude_regexImg = uDark.properBlackListToExcludeRegex(uDark.userSettings.properBlackListImg);
-      console.log("Proper black list for images:", uDark.userSettings.properBlackListImg);
+
+      // CSS only
+      uDark.userSettings.properBlackListCss = filterByFlag(["css"]);
+      uDark.userSettings.properBlackListCss = await uDark.asyncFilter(uDark.userSettings.properBlackListCss, uDark.filterValidExpression);
+      uDark.userSettings.exclude_regexCss = uDark.properBlackListToExcludeRegex(uDark.userSettings.properBlackListCss);
+
+      // Image resource only (#ud_imgr)
+      uDark.userSettings.properBlackListImgr = filterByFlag(["imgr"]);
+      uDark.userSettings.properBlackListImgr = await uDark.asyncFilter(uDark.userSettings.properBlackListImgr, uDark.filterValidExpression);
+      uDark.userSettings.exclude_regexImgr = uDark.properBlackListToExcludeRegex(uDark.userSettings.properBlackListImgr);
+
+      // Resources only (CSS, JS, images)
+      uDark.userSettings.properBlackListRes = filterByFlag(["res"]);
+      uDark.userSettings.properBlackListRes = await uDark.asyncFilter(uDark.userSettings.properBlackListRes, uDark.filterValidExpression);
+      uDark.userSettings.exclude_regexRes = uDark.properBlackListToExcludeRegex(uDark.userSettings.properBlackListRes);
+
       
       
       uDark.fixedRandom = Math.random();
@@ -173,15 +193,15 @@ class uDarkExtended extends uDarkExtendedContentScript {
         }
       }
       
-      { // EvenOff listeners
-        uDark.log("EvenOff listeners removed");
-        browser.webRequest.onBeforeRequest.removeListener(Listeners.cancelPopupXHRCalls);
-        browser.webRequest.onBeforeRequest.addListener(Listeners.cancelPopupXHRCalls, {
-          urls: ["<all_urls>"],
-          types: ["xmlhttprequest"]
-        }, ["blocking"]);
-        uDark.info("EvenOff listeners added");
-      }
+      // { // EvenOff listeners
+      //   uDark.log("EvenOff listeners removed");
+      //   browser.webRequest.onBeforeRequest.removeListener(Listeners.cancelPopupXHRCalls);
+      //   browser.webRequest.onBeforeRequest.addListener(Listeners.cancelPopupXHRCalls, {
+      //     urls: ["<all_urls>"],
+      //     types: ["xmlhttprequest"]
+      //   }, ["blocking"]);
+      //   uDark.info("EvenOff listeners added");
+      // }
       // uDark.registerCS({matches:["<all_urls>"],excludeMatches:null,js: [{file: "contentScriptEvenOff.js"}],css:[{file: "contentScriptEvenOff.css"}]});
       if (!userSettings.disable_webext && userSettings.properWhiteList.length) {
         
@@ -206,6 +226,8 @@ class uDarkExtended extends uDarkExtendedContentScript {
         if (!uDark.userSettings.disable_image_edition) {
           browser.webRequest.onBeforeRequest.addListener(Listeners.editBeforeRequestImage, {
             urls: ["<all_urls>"],
+            
+            
             // urls: uDark.userSettings.properWhiteList, // We can't assume the image is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
             types: ["image"]
           },
@@ -277,8 +299,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
         } 
       }
       mapRegexAndRemoveUdFlag(x, keepFlags=["","all"],notFoundValue = null) { 
-        let [pattern,flag] = x.split("##");
-        console.log("mapRegexAndRemoveUdFlag",x,pattern,flag,keepFlags);
+        let [pattern,flag] = x.split("#ud_");
         if (keepFlags.includes(flag)||!flag) {
           return pattern;
         }
@@ -351,7 +372,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
           new Promise(uDark.installToggleSiteCommand)
         ]).then(x => uDark.info("CSS processed")).then(r => uDark.setListener(true));
         browser.storage.onChanged.addListener((changes, area) => {
-          uDark.success("Settings changed", changes, area);
+          uDark.success("Settings changed");
           if (area == "local") {
             new Promise(uDark.getSettings).then(uDark.setListener);
           }
@@ -490,7 +511,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
       }
       regiteredCS = []
       is_background = true // Tell ultimadark that we are in the background script and is_color_var is not available for instance
-      loggingWorkersActiveLogging = false // Conider moving this to imageWorker to avoid messages passing for nothing
+      loggingWorkersActiveLogging = true // Conider moving this to imageWorker to avoid messages passing for nothing
       LoggingWorker = class LoggingWorker extends Worker {
         constructor(...args) {
           super(...args);

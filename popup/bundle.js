@@ -1603,7 +1603,7 @@
           });
         };
         const execute = (possibleCallback, args = [], defaultValue = possibleCallback) => {
-          return typeof possibleCallback === "function" ? possibleCallback(...args) : defaultValue;
+          return typeof possibleCallback === "function" ? possibleCallback.call(...args) : defaultValue;
         };
         const executeAfterTransition = (callback, transitionElement, waitForTransition = true) => {
           if (!waitForTransition) {
@@ -1880,7 +1880,7 @@
             const bsKeys = Object.keys(element.dataset).filter((key) => key.startsWith("bs") && !key.startsWith("bsConfig"));
             for (const key of bsKeys) {
               let pureKey = key.replace(/^bs/, "");
-              pureKey = pureKey.charAt(0).toLowerCase() + pureKey.slice(1, pureKey.length);
+              pureKey = pureKey.charAt(0).toLowerCase() + pureKey.slice(1);
               attributes[pureKey] = normalizeData(element.dataset[key]);
             }
             return attributes;
@@ -1928,7 +1928,7 @@
             }
           }
         }
-        const VERSION = "5.3.3";
+        const VERSION = "5.3.7";
         class BaseComponent extends Config {
           constructor(element, config) {
             super();
@@ -1948,6 +1948,7 @@
               this[propertyName] = null;
             }
           }
+          // Private
           _queueCallback(callback, element, isAnimated = true) {
             executeAfterTransition(callback, element, isAnimated);
           }
@@ -2700,10 +2701,10 @@
             this._element.style[dimension] = "";
             this._queueCallback(complete, this._element, true);
           }
+          // Private
           _isShown(element = this._element) {
             return element.classList.contains(CLASS_NAME_SHOW$7);
           }
-          // Private
           _configAfterMerge(config) {
             config.toggle = Boolean(config.toggle);
             config.parent = getElement(config.parent);
@@ -2902,6 +2903,7 @@
             this._element.setAttribute("aria-expanded", "false");
             Manipulator.removeDataAttribute(this._menu, "popper");
             EventHandler.trigger(this._element, EVENT_HIDDEN$5, relatedTarget);
+            this._element.focus();
           }
           _getConfig(config) {
             config = super._getConfig(config);
@@ -2912,7 +2914,7 @@
           }
           _createPopper() {
             if (typeof Popper__namespace === "undefined") {
-              throw new TypeError("Bootstrap's dropdowns require Popper (https://popper.js.org)");
+              throw new TypeError("Bootstrap's dropdowns require Popper (https://popper.js.org/docs/v2/)");
             }
             let referenceElement = this._element;
             if (this._config.reference === "parent") {
@@ -2987,7 +2989,7 @@
             }
             return {
               ...defaultBsPopperConfig,
-              ...execute(this._config.popperConfig, [defaultBsPopperConfig])
+              ...execute(this._config.popperConfig, [void 0, defaultBsPopperConfig])
             };
           }
           _selectMenuItem({
@@ -3968,7 +3970,7 @@
             return this._config.sanitize ? sanitizeHtml(arg, this._config.allowList, this._config.sanitizeFn) : arg;
           }
           _resolvePossibleFunction(arg) {
-            return execute(arg, [this]);
+            return execute(arg, [void 0, this]);
           }
           _putElementInTemplate(element, templateElement) {
             if (this._config.html) {
@@ -4049,7 +4051,7 @@
         class Tooltip extends BaseComponent {
           constructor(element, config) {
             if (typeof Popper__namespace === "undefined") {
-              throw new TypeError("Bootstrap's tooltips require Popper (https://popper.js.org)");
+              throw new TypeError("Bootstrap's tooltips require Popper (https://popper.js.org/docs/v2/)");
             }
             super(element, config);
             this._isEnabled = true;
@@ -4089,7 +4091,6 @@
             if (!this._isEnabled) {
               return;
             }
-            this._activeTrigger.click = !this._activeTrigger.click;
             if (this._isShown()) {
               this._leave();
               return;
@@ -4261,7 +4262,7 @@
             return offset;
           }
           _resolvePossibleFunction(arg) {
-            return execute(arg, [this._element]);
+            return execute(arg, [this._element, this._element]);
           }
           _getPopperConfig(attachment) {
             const defaultBsPopperConfig = {
@@ -4297,7 +4298,7 @@
             };
             return {
               ...defaultBsPopperConfig,
-              ...execute(this._config.popperConfig, [defaultBsPopperConfig])
+              ...execute(this._config.popperConfig, [void 0, defaultBsPopperConfig])
             };
           }
           _setListeners() {
@@ -4306,6 +4307,7 @@
               if (trigger2 === "click") {
                 EventHandler.on(this._element, this.constructor.eventName(EVENT_CLICK$1), this._config.selector, (event) => {
                   const context = this._initializeOnDelegatedTarget(event);
+                  context._activeTrigger[TRIGGER_CLICK] = !(context._isShown() && context._activeTrigger[TRIGGER_CLICK]);
                   context.toggle();
                 });
               } else if (trigger2 !== TRIGGER_MANUAL) {
@@ -6694,7 +6696,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
     get raw() {
       return raw;
     },
-    version: "3.14.8",
+    version: "3.14.9",
     flushAndStopDeferringMutations,
     dontAutoEvaluateFunctions,
     disableEffectScheduling,
@@ -8422,7 +8424,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
   }
 
   // modules/tabutils.js
-  async function isSiteProtected(tab) {
+  async function isSiteProtected2(tab) {
     if (!tab || typeof tab.id === "undefined") return false;
     try {
       await browser.tabs.executeScript(tab.id, { code: "1+1", runAt: "document_start" });
@@ -8434,10 +8436,9 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
   async function searchTabIDMatchingPatterns(tab, patterns, remove_flags = true) {
     if (remove_flags) {
       patterns = patterns.map((pattern) => {
-        return pattern.split("##")[0].trim();
+        return pattern.split("#ud_")[0].trim();
       });
     }
-    console.log("searchTabIDMatchingPatterns", tab, patterns);
     let matchingPatterns = [];
     for (let pattern of patterns) {
       try {
@@ -8450,7 +8451,6 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
         console.warn("Pattern matching error for", pattern, error2);
       }
     }
-    console.log("Matching patterns:", matchingPatterns);
     return matchingPatterns;
   }
   async function getEmbedsOfTab(tab, filterfunction) {
@@ -8475,13 +8475,20 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
   // modules/store.js
   document.addEventListener("alpine:init", () => {
     Alpine.store("app", {
-      // Set exclusion pattern type (all/img) by adding ##img or ##all suffix
+      // ...existing code...
+      // Set exclusion pattern type (all/img) by adding #ud_img or #ud_all suffix
       setExclusionPatternType(idx, type) {
         let patterns = this.exclusionPatterns.split("\n");
-        let base = patterns[idx].split("##")[0];
-        patterns = patterns.filter((p) => p.split("##")[0] !== base);
-        patterns.push(base + (type === "img" ? "##img" : "##all"));
-        patterns = patterns.filter((p, i, arr) => arr.findIndex((q) => q.split("##")[0] === p.split("##")[0]) === i);
+        let base = patterns[idx].split("#ud_")[0];
+        patterns = patterns.map((p, i) => {
+          if (i === idx) {
+            return base + (type === "img" ? "#ud_img" : "#ud_all");
+          }
+          if (i !== idx && p.split("#ud_")[0] === base) {
+            return null;
+          }
+          return p;
+        }).filter(Boolean);
         this.exclusionPatterns = patterns.join("\n");
         this.saveSettings();
         this.recomputeCurrentSiteMatches();
@@ -8496,6 +8503,10 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       isEnabled: true,
       precisionNumber: 2,
       lastTargetHost: "",
+      excludeButtonText: "Exclude",
+      // Internal state
+      settingsSaveTimeout: null,
+      tabChangeListenersEnabled: false,
       // Feature toggles
       cacheEnabled: true,
       imageEditionEnabled: true,
@@ -8505,7 +8516,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       inclusionPatterns: "",
       exclusionPatterns: "",
       // Hooks system
-      updateHooks: {},
+      hooks: {},
       // Sites data
       sites: {
         main: {
@@ -8517,9 +8528,62 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
           tab: null
         }
       },
+      getSiteBadge: function() {
+        const site = this.sites[this.activeSite];
+        const exclusionMatches = site.exclusionMatches;
+        const inclusionMatches = site.inclusionMatches;
+        const patterns = this.exclusionPatterns.split("\n").filter((p) => p.trim());
+        const imgExclusions = patterns.filter((p) => p.endsWith("#ud_img") && exclusionMatches.includes(p.split("#ud_")[0]));
+        const cssExclusions = patterns.filter((p) => p.endsWith("#ud_css") && exclusionMatches.includes(p.split("#ud_")[0]));
+        const imgrExclusions = patterns.filter((p) => p.endsWith("#ud_imgr") && exclusionMatches.includes(p.split("#ud_")[0]));
+        const resExclusions = patterns.filter((p) => p.endsWith("#ud_res") && exclusionMatches.includes(p.split("#ud_")[0]));
+        const allExclusions = patterns.filter((p) => (!p.includes("#ud_") || p.endsWith("#ud_all")) && exclusionMatches.includes(p.split("#ud_")[0]));
+        let processedBageValue = { text: "DEFAULT", class: "bg-secondary", title: "Default behavior." };
+        if (allExclusions.length > 0) {
+          processedBageValue = { text: "EXCLUDED", class: "bg-danger", title: "This site is fully excluded." };
+        } else if (exclusionMatches.length > 0 && imgExclusions.length === exclusionMatches.length) {
+          processedBageValue = { text: "PARTIAL (Images Only)", class: "bg-warning text-dark", title: "This site is not fully excluded, but images are." };
+        } else if (exclusionMatches.length > 0 && cssExclusions.length === exclusionMatches.length) {
+          processedBageValue = { text: "PARTIAL (CSS Only)", class: "bg-warning text-dark", title: "This site is not fully excluded, but CSS is." };
+        } else if (exclusionMatches.length > 0 && imgrExclusions.length === exclusionMatches.length) {
+          processedBageValue = { text: "PARTIAL (Image Resource Only)", class: "bg-warning text-dark", title: "This site is not fully excluded, but image resources are." };
+        } else if (exclusionMatches.length > 0 && resExclusions.length === exclusionMatches.length) {
+          processedBageValue = { text: "PARTIAL (Resources Only)", class: "bg-warning text-dark", title: "This site is not fully excluded, but resources (CSS, JS, images) are." };
+        } else if (exclusionMatches.length > 0) {
+          processedBageValue = { text: "PARTIAL", class: "bg-warning text-dark", title: "This site is partially excluded (mixed resources)." };
+        } else if (exclusionMatches.length === 0 && inclusionMatches.length > 0) {
+          processedBageValue = { text: "INCLUDED", class: "bg-success", title: "This site is included." };
+        }
+        if (this._lastSiteBadge != processedBageValue.text) {
+          this.activate_hooks("badge_change", { prevBadge: this._lastSiteBadge, newBadge: processedBageValue.text, site: this.sites[this.activeSite] });
+        }
+        this._lastSiteBadge = processedBageValue.text;
+        return processedBageValue;
+      },
       // Hook system methods
-      addHook(key, hook) {
-        this.updateHooks[key] = hook;
+      // Add a hook to a named hook group
+      addHook(hookGroup, key, hook) {
+        if (!this.hooks[hookGroup]) {
+          this.hooks[hookGroup] = {};
+        }
+        this.hooks[hookGroup][key] = hook;
+      },
+      // Activate all hooks in a named group
+      async activate_hooks(hookGroup, context = {}) {
+        if (!this.hooks[hookGroup]) return;
+        if (context.do) {
+          context.do(context);
+        }
+        for (const [key, hook] of Object.entries(this.hooks[hookGroup])) {
+          try {
+            let value = await hook(context);
+            if (this.sites && this.activeSite && this.sites[this.activeSite]) {
+              this.sites[this.activeSite][key] = value;
+            }
+          } catch (error2) {
+            console.error(`Hook error for [${hookGroup}]`, key, error2);
+          }
+        }
       },
       // Site management
       updateUrl(url, site, extra = {}) {
@@ -8530,15 +8594,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
         if (extra.tab) {
           this.sites[site].tab = extra.tab;
         }
-        Object.entries(this.updateHooks).forEach(async ([key, hook]) => {
-          try {
-            let value = await hook({ ...extra, url, site, tab: this.sites[site].tab });
-            this.sites[site][key] = value;
-            console.log("Hooked", key, value);
-          } catch (error2) {
-            console.error("Hook error for", key, error2);
-          }
-        });
+        this.activate_hooks("update", { ...extra, url, site, tab: this.sites[site].tab });
         this.loadEmbedsInStore();
       },
       currentSite() {
@@ -8547,10 +8603,10 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       // Pattern management methods
       editExclusionPattern(idx, newValue) {
         let patterns = this.exclusionPatterns.split("\n");
-        const base = newValue.split("##")[0];
-        patterns = patterns.filter((p, i) => i === idx || p.split("##")[0] !== base);
+        const base = newValue.split("#ud_")[0];
+        patterns = patterns.filter((p, i) => i === idx || p.split("#ud_")[0] !== base);
         patterns[idx] = newValue;
-        patterns = patterns.filter((p, i, arr) => arr.findIndex((q) => q.split("##")[0] === p.split("##")[0]) === i);
+        patterns = patterns.filter((p, i, arr) => arr.findIndex((q) => q.split("#ud_")[0] === p.split("#ud_")[0]) === i);
         this.exclusionPatterns = patterns.join("\n");
         this.saveSettings();
         this.recomputeCurrentSiteMatches();
@@ -8591,8 +8647,8 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
           return;
         }
         let patterns = this.exclusionPatterns.split("\n").filter((p) => p.trim());
-        const base = trimmedPattern.split("##")[0];
-        patterns = patterns.filter((p) => p.split("##")[0] !== base);
+        const base = trimmedPattern.split("#ud_")[0];
+        patterns = patterns.filter((p) => p.split("#ud_")[0] !== base);
         let alreadyCovered = false;
         if (checkAlreadyCovered && this.currentSite()?.tab) {
           const matches = await searchTabIDMatchingPatterns(this.currentSite().tab, patterns);
@@ -8628,7 +8684,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
         }
         this.embedsLoading = true;
         try {
-          let embeds = await getEmbedsOfTab(tab);
+          let embeds = await getEmbedsOfTab(tab, (embed) => embed.width > 10 && embed.height > 10);
           this.embeds = embeds;
         } catch (error2) {
           console.error("Failed to load embeds:", error2);
@@ -8641,7 +8697,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
         try {
           let tab = this.currentSite().tab;
           if (!tab || typeof tab.id === "undefined") return [];
-          let embeds = await getEmbedsOfTab(tab);
+          let embeds = await getEmbedsOfTab(tab, (embed) => embed.width > 10 && embed.height > 10);
           return embeds;
         } catch (error2) {
           console.error("Failed to get embeds of tab:", error2);
@@ -8652,10 +8708,74 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
         let tab = this.currentSite().tab;
         if (!tab || typeof tab.id === "undefined") return [];
         try {
-          return await getEmbedsOfTab(tab);
+          return await getEmbedsOfTab(tab, (embed) => embed.width > 10 && embed.height > 10);
         } catch (error2) {
           console.error("Failed to get embeds of current site:", error2);
           return [];
+        }
+      },
+      // Embed helper methods
+      async excludeAllEmbedDomains() {
+        if (this.embeds.length === 0) return;
+        const domains = [...new Set(this.embeds.map((embed) => {
+          try {
+            return new URL(embed.href).host;
+          } catch (e) {
+            return null;
+          }
+        }).filter(Boolean))];
+        if (domains.length === 0) return;
+        const patterns = domains.map((domain) => `*://${domain}/*`);
+        for (const pattern of patterns) {
+          await this.addExclusionPattern(pattern, false);
+        }
+        console.log("Excluded all embed domains:", domains);
+      },
+      copyEmbedUrls() {
+        if (this.embeds.length === 0) return;
+        const urls = this.embeds.map((embed) => embed.href).join("\n");
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(urls).then(() => {
+            showBS5Modal({
+              title: "URLs Copied",
+              body: `Copied ${this.embeds.length} embed URL(s) to clipboard`,
+              okText: "OK",
+              showCancel: false
+            });
+          }).catch((err) => {
+            console.error("Failed to copy to clipboard:", err);
+            this.fallbackCopyToClipboard(urls);
+          });
+        } else {
+          this.fallbackCopyToClipboard(urls);
+        }
+      },
+      fallbackCopyToClipboard(text) {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.top = "-9999px";
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+          document.execCommand("copy");
+          showBS5Modal({
+            title: "URLs Copied",
+            body: `Copied ${this.embeds.length} embed URL(s) to clipboard`,
+            okText: "OK",
+            showCancel: false
+          });
+        } catch (err) {
+          console.error("Failed to copy to clipboard:", err);
+          showBS5Modal({
+            title: "Copy Failed",
+            body: "Failed to copy URLs to clipboard. Please copy manually from the console.",
+            okText: "OK",
+            showCancel: false
+          });
+          console.log("Embed URLs:", text);
+        } finally {
+          document.body.removeChild(textArea);
         }
       },
       // Convert a match pattern to a RegExp (simple version)
@@ -8666,27 +8786,18 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
         if (pattern === "<all_urls>") return /^.*$/;
         if (!regexStr.endsWith(".*")) regexStr += ".*";
         try {
-          return new RegExp("^" + regexStr + "$", "i");
+          return new RegExp(`^${regexStr}$`, "i");
         } catch (e) {
           return null;
         }
       },
       removeExclusionPattern(pattern) {
-        showBS5Modal({
-          title: "Remove Exclusion Pattern",
-          body: `Remove exclusion pattern: <code>${pattern}</code>?`,
-          okText: "Remove",
-          okClass: "btn-danger",
-          cancelText: "Cancel",
-          showCancel: true,
-          onOk: () => {
-            const patterns = this.exclusionPatterns.split("\n").filter((p) => p.trim() && p !== pattern);
-            this.exclusionPatterns = patterns.join("\n");
-            this.saveSettings();
-            this.recomputeCurrentSiteMatches();
-            console.log("Removed exclusion pattern:", pattern);
-          }
-        });
+        const base = pattern.split("#ud_")[0];
+        const patterns = this.exclusionPatterns.split("\n").filter((p) => p.trim() && p.split("#ud_")[0] !== base);
+        this.exclusionPatterns = patterns.join("\n");
+        this.saveSettings();
+        this.recomputeCurrentSiteMatches();
+        console.log("Removed exclusion pattern:", pattern);
       },
       addInclusionPattern(pattern) {
         if (!pattern || !pattern.trim()) return;
@@ -8728,17 +8839,21 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
         });
       },
       // Force recalc of matches for current site after any pattern change
-      recomputeCurrentSiteMatches() {
+      async recomputeCurrentSiteMatches() {
         const site = this.currentSite();
         if (!site || !site.url) return;
-        Object.entries(this.updateHooks).forEach(async ([key, hook]) => {
-          try {
-            let value = await hook({ url: site.url, site: this.activeSite, tab: site.tab });
-            this.sites[this.activeSite][key] = value;
-          } catch (error2) {
-            console.error("Hook error for", key, error2);
-          }
+        const prevBadge = this._lastSiteBadge;
+        await this.activate_hooks("update", {
+          url: site.url,
+          site: this.activeSite,
+          tab: site.tab,
+          prevBadge,
+          newBadge: this.getSiteBadge().text
         });
+        if (this._lastSiteBadge != prevBadge) {
+          this.autoRefreshIfEnabled();
+        }
+        this._lastSite = site;
         if (window.Alpine) {
           window.Alpine.nextTick(() => {
             this.sites = { ...this.sites };
@@ -8865,9 +8980,67 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
         const precision = Math.min(this.precisionNumber, hostParts.length);
         const targetHost = hostParts.slice(-precision).join(".");
         this.lastTargetHost = targetHost;
-        const excludeBtn = document.getElementById("donotdarken");
-        if (excludeBtn) {
-          excludeBtn.textContent = `Exclude ${targetHost}`;
+        this.excludeButtonText = `Exclude ${targetHost}`;
+      },
+      // Tab change detection functionality
+      enableTabChangeListeners() {
+        if (this.tabChangeListenersEnabled) return;
+        this.tabChangeListenersEnabled = true;
+        browser.tabs.onActivated.addListener(this.handleTabActivated.bind(this));
+        browser.tabs.onUpdated.addListener(this.handleTabUpdated.bind(this));
+        console.log("Tab change listeners enabled");
+      },
+      disableTabChangeListeners() {
+        if (!this.tabChangeListenersEnabled) return;
+        this.tabChangeListenersEnabled = false;
+        browser.tabs.onActivated.removeListener(this.handleTabActivated.bind(this));
+        browser.tabs.onUpdated.removeListener(this.handleTabUpdated.bind(this));
+        console.log("Tab change listeners disabled");
+      },
+      async handleTabActivated(activeInfo) {
+        console.log("Active tab changed to:", activeInfo.tabId);
+        try {
+          const tab = await browser.tabs.get(activeInfo.tabId);
+          console.log("New active tab:", tab);
+          if (tab.url) {
+            await this.updateToNewTab(tab);
+          }
+        } catch (error2) {
+          console.error("Failed to handle tab activation:", error2);
+        }
+      },
+      async handleTabUpdated(tabId, changeInfo, tab) {
+        if (changeInfo.url && tab.active) {
+          console.log("Active tab URL updated:", changeInfo.url);
+          try {
+            await this.updateToNewTab(tab);
+          } catch (error2) {
+            console.error("Failed to handle tab update:", error2);
+          }
+        }
+      },
+      async updateToNewTab(tab) {
+        let protectedStatus = false;
+        try {
+          protectedStatus = await isSiteProtected(tab);
+        } catch (e) {
+          protectedStatus = false;
+        }
+        this.sites.main.isProtected = protectedStatus;
+        this.updateUrl(tab.url, "main", { tab });
+        this.updateExcludeButtonText();
+        console.log("Store updated for new tab:", tab.url);
+      },
+      // Auto-refresh functionality
+      async autoRefreshIfEnabled() {
+        if (!this.autoRefreshOnSetting) return;
+        let tab = this.sites[this.activeSite].tab;
+        if (!tab || typeof tab.id === "undefined") return;
+        console.log("Auto-refreshing tab:", tab.id);
+        try {
+          await browser.tabs.reload(tab.id);
+        } catch (e) {
+          console.error("Failed to refresh tab:", e);
         }
       },
       // Settings management
@@ -8884,7 +9057,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
         };
         try {
           await browser.storage.local.set(settings);
-          console.log("Settings saved", settings);
+          console.log("Settings saved");
         } catch (error2) {
           console.error("Failed to save settings:", error2);
         }
@@ -8900,21 +9073,16 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
           this.imageEditionEnabled = !result.disable_image_edition;
           this.serviceWorkersEnabled = result.keep_service_workers;
           this.autoRefreshOnSetting = result.autoRefreshOnSetting;
-          console.log("Settings loaded:", result);
+          console.log("Settings loaded");
           console.log("Current state:", {
             isEnabled: this.isEnabled,
             cacheEnabled: this.cacheEnabled,
             imageEditionEnabled: this.imageEditionEnabled,
             serviceWorkersEnabled: this.serviceWorkersEnabled
           });
-          this.updateToggleDisplays();
         } catch (error2) {
           console.error("Failed to load settings:", error2);
         }
-      },
-      // Update toggle displays after loading settings
-      updateToggleDisplays() {
-        console.log("Toggle states updated");
       },
       // Advanced actions
       clearAllData() {
@@ -9037,14 +9205,130 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
   console.log("Store script loaded!");
 
   // modules/modals.js
+  function createSafePatternHTML(patterns, color) {
+    const container = document.createElement("div");
+    patterns.forEach((pattern, index) => {
+      if (index > 0) container.appendChild(document.createTextNode(", "));
+      const span = document.createElement("span");
+      span.style.color = color;
+      span.textContent = pattern;
+      container.appendChild(span);
+    });
+    return container.innerHTML;
+  }
+  function getStore() {
+    return module_default && module_default.store ? module_default.store("app") : window.$store ? window.$store.app : null;
+  }
+  function createSafeHostElement(displayHost) {
+    const hostSpan = document.createElement("strong");
+    hostSpan.textContent = displayHost;
+    return hostSpan.outerHTML;
+  }
+  function generateBadgeHTML(badge) {
+    const badgeMap = {
+      "EXCLUDED": 'This site is currently <span class="text-danger">EXCLUDED</span>.',
+      "PARTIAL (Images Only)": 'This site is currently <span class="text-warning">PARTIAL (Images Only)</span>.',
+      "DEFAULT": `This site is currently <span class="text">${badge.text}</span>.`
+    };
+    return badgeMap[badge.text] || `This site is currently <b class="text">${badge.text}</b>.`;
+  }
+  function generateExclusionPatternsHTML(site, store2) {
+    if (!site.exclusionMatches || site.exclusionMatches.length === 0) {
+      return "";
+    }
+    const storePatterns = store2 ? store2.exclusionPatterns.split("\n") : [];
+    const patternData = site.exclusionMatches.map((p) => {
+      const fullPattern = storePatterns.find((sp) => sp.split("#ud_")[0] === p);
+      return {
+        pattern: fullPattern || p,
+        isImageOnly: fullPattern && fullPattern.endsWith("#ud_img")
+      };
+    });
+    const regularPatterns = patternData.filter((p) => !p.isImageOnly).map((p) => p.pattern);
+    const imagePatterns = patternData.filter((p) => p.isImageOnly).map((p) => p.pattern);
+    let patternHtml = "";
+    if (regularPatterns.length > 0) {
+      patternHtml += createSafePatternHTML(regularPatterns, "#dc3545");
+    }
+    if (imagePatterns.length > 0) {
+      if (regularPatterns.length > 0) patternHtml += ", ";
+      patternHtml += createSafePatternHTML(imagePatterns, "#ffe066");
+    }
+    return `<br>Matching exclusion patterns:<br><code>${patternHtml}</code>`;
+  }
+  function generateInclusionPatternsHTML(site) {
+    if (!site.inclusionMatches || site.inclusionMatches.length === 0) {
+      return "";
+    }
+    const inclusionHtml = createSafePatternHTML(site.inclusionMatches, "#28a745");
+    return `<br>Matching inclusion patterns:<br><code>${inclusionHtml}</code>`;
+  }
+  function createPatternCheckbox(fullPattern, index) {
+    const label = document.createElement("label");
+    label.style.display = "block";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.className = "excl-remove-checkbox";
+    checkbox.setAttribute("data-index", index);
+    checkbox.setAttribute("checked", "checked");
+    checkbox.checked = true;
+    const span = document.createElement("span");
+    span.style.color = fullPattern.endsWith("#ud_img") ? "#ffe066" : "#dc3545";
+    span.textContent = fullPattern;
+    label.appendChild(checkbox);
+    label.appendChild(document.createTextNode(" "));
+    label.appendChild(span);
+    return label.outerHTML;
+  }
+  function generateExclusionCheckboxes(site, store2, patternsToRemove) {
+    if (!site.exclusionMatches || site.exclusionMatches.length === 0) {
+      return "";
+    }
+    const storePatterns = store2 ? store2.exclusionPatterns.split("\n") : [];
+    const checkboxes = site.exclusionMatches.map((p, i) => {
+      const fullPattern = storePatterns.find((sp) => sp.split("#ud_")[0] === p) || p;
+      patternsToRemove.push(fullPattern);
+      return createPatternCheckbox(fullPattern, i);
+    }).join("");
+    return `<br>Matching exclusion patterns:<br>${checkboxes}`;
+  }
+  function handlePatternRemoval(store2, patternsToRemove, onConfirm) {
+    if (!store2) {
+      onConfirm();
+      return;
+    }
+    const modal = document.querySelector(".modal.show");
+    if (modal) {
+      const checked = Array.from(modal.querySelectorAll(".excl-remove-checkbox:checked"));
+      checked.forEach((cb) => {
+        const index = parseInt(cb.getAttribute("data-index"));
+        const pattern = patternsToRemove[index];
+        if (pattern && typeof store2.removeExclusionPattern === "function") {
+          console.log("Removing exclusion pattern:", pattern);
+          store2.removeExclusionPattern(pattern, true);
+        }
+      });
+    } else {
+      patternsToRemove.forEach((pattern) => {
+        if (typeof store2.removeExclusionPattern === "function") {
+          console.log("Removing exclusion pattern (fallback):", pattern);
+          store2.removeExclusionPattern(pattern, true);
+        }
+      });
+    }
+    onConfirm();
+  }
   function confirmExcludeSite(site, onConfirm) {
-    const store2 = module_default && module_default.store ? module_default.store("app") : window.$store ? window.$store.app : null;
+    const store2 = getStore();
     const displayHost = store2 && store2.lastTargetHost ? store2.lastTargetHost : site.host;
-    let matchingExclusions = site.exclusionMatches && site.exclusionMatches.length > 0 ? '<br><span class="text-danger">Matching exclusion patterns:</span><br><code>' + site.exclusionMatches.join(", ") + "</code>" : "";
-    let matchingInclusions = site.inclusionMatches && site.inclusionMatches.length > 0 ? '<br><span class="text-success">Matching inclusion patterns:</span><br><code>' + site.inclusionMatches.join(", ") + "</code>" : "";
+    const matchingExclusions = generateExclusionPatternsHTML(site, store2);
+    const matchingInclusions = generateInclusionPatternsHTML(site);
+    const badge = store2 ? store2.getSiteBadge() : { text: "EXCLUDED" };
+    const badgeHtml = generateBadgeHTML(badge);
+    const hostElement = createSafeHostElement(displayHost);
     showBS5Modal({
       title: "Exclude This Site",
-      body: "Are you sure you want to exclude <strong>" + displayHost + "</strong>?" + matchingExclusions + matchingInclusions,
+      body: `${badgeHtml}<br>Are you sure you want to exclude ${hostElement}?${matchingExclusions}${matchingInclusions}`,
       okText: "Exclude",
       okClass: "btn-danger",
       cancelText: "Cancel",
@@ -9053,26 +9337,26 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
     });
   }
   function confirmIncludeSite(site, onConfirm) {
-    const store2 = module_default && module_default.store ? module_default.store("app") : window.$store ? window.$store.app : null;
-    let matchingExclusions = site.exclusionMatches && site.exclusionMatches.length > 0 ? '<br><span class="text-danger">Matching exclusion patterns:</span><br><code>' + site.exclusionMatches.join(", ") + "</code>" : "";
-    let matchingInclusions = site.inclusionMatches && site.inclusionMatches.length > 0 ? '<br><span class="text-success">Matching inclusion patterns:</span><br><code>' + site.inclusionMatches.join(", ") + "</code>" : "";
+    const store2 = getStore();
+    const patternsToRemove = [];
+    const matchingExclusions = generateExclusionCheckboxes(site, store2, patternsToRemove);
+    const matchingInclusions = generateInclusionPatternsHTML(site);
+    const badge = store2 ? store2.getSiteBadge() : { text: "EXCLUDED" };
     if (site.exclusionMatches.length > 0) {
+      const badgeHtml = `This site is currently <b>${badge.text}</b>.`;
       showBS5Modal({
         title: "Site is Excluded",
-        body: 'This site is currently <span class="text-danger">EXCLUDED</span>.' + matchingExclusions + "<br><br>Do you want to <strong>remove</strong> these exclusion patterns and include the site?",
+        body: `${badgeHtml}${matchingExclusions}<br><br>Uncheck any exclusion patterns you want to keep.<br>Do you want to <strong>remove</strong> the selected exclusion patterns and include the site?`,
         okText: "Remove Exclusions & Include",
         okClass: "btn-success",
         cancelText: "Cancel",
         showCancel: true,
-        onOk: () => {
-          if (store2) site.exclusionMatches.forEach((p) => store2.removeExclusionPattern(p));
-          onConfirm();
-        }
+        onOk: () => handlePatternRemoval(store2, patternsToRemove, onConfirm)
       });
     } else if (site.inclusionMatches.length > 0) {
       showBS5Modal({
         title: "Already Included",
-        body: 'This site is already <span class="text-success">INCLUDED</span>.' + matchingInclusions + "<br><br>Do you really want to add another include pattern for this site?",
+        body: `This site is already <span class="text-success">INCLUDED</span>.${matchingInclusions}<br><br>Do you really want to add another include pattern for this site?`,
         okText: "Add Include Pattern",
         okClass: "btn-success",
         cancelText: "Cancel",
@@ -9082,7 +9366,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
     } else {
       showBS5Modal({
         title: "Include This Site",
-        body: "Do you want to include this site?" + matchingExclusions + matchingInclusions,
+        body: `Do you want to include this site?${matchingExclusions}${matchingInclusions}`,
         okText: "Include",
         okClass: "btn-success",
         cancelText: "Cancel",
@@ -9114,11 +9398,26 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
     precision_number: 2
   };
   window.Alpine = module_default;
+  module_default.data("patternInput", () => ({
+    customPattern: "",
+    customFlag: "",
+    get suggestions() {
+      return module_default.store("app").getSuggestedPatterns();
+    },
+    async add() {
+      const pattern = this.customPattern + (this.customFlag ? this.customFlag : "");
+      if (pattern.trim()) {
+        await module_default.store("app").addExclusionPattern(pattern);
+        this.customPattern = "";
+        this.customFlag = "";
+      }
+    }
+  }));
   var myPort = browser.runtime.connect({ name: "port-from-popup" });
   console.log("Popup script loaded!");
   module_default.start();
   var alpineStore = module_default.store("app");
-  alpineStore.addHook("inclusionMatches", async function(hookData) {
+  alpineStore.addHook("update", "inclusionMatches", async function(hookData) {
     let { tab } = hookData;
     if (!tab) return [];
     try {
@@ -9129,7 +9428,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       return [];
     }
   });
-  alpineStore.addHook("exclusionMatches", async function(hookData) {
+  alpineStore.addHook("update", "exclusionMatches", async function(hookData) {
     let { tab } = hookData;
     if (!tab) return [];
     try {
@@ -9140,6 +9439,8 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       return [];
     }
   });
+  setTimeout(() => {
+  }, 1e3);
   async function loadPopup() {
     try {
       await alpineStore.loadVersionInfo();
@@ -9149,116 +9450,53 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       let url = tab.url;
       let protectedStatus = false;
       try {
-        protectedStatus = await isSiteProtected(tab);
+        protectedStatus = await isSiteProtected2(tab);
       } catch (e) {
         protectedStatus = false;
       }
       alpineStore.sites.main.isProtected = protectedStatus;
-      console.log("Current tab embed:", tab);
+      console.log("Current tab :", tab);
       alpineStore.updateUrl(url, "main", { tab });
       setupSettingsWatchers();
+      alpineStore.enableTabChangeListeners();
       setTimeout(() => {
         alpineStore.updateExcludeButtonText();
         alpineStore.debugState();
       }, 300);
-      module_default.effect(async () => {
-        let tab2 = alpineStore.sites[alpineStore.activeSite].tab;
-        if (tab2 && typeof tab2.id !== "undefined") {
-          let protectedStatus2 = false;
-          try {
-            protectedStatus2 = await isSiteProtected(tab2);
-          } catch (e) {
-            protectedStatus2 = false;
-          }
-          alpineStore.sites.main.isProtected = protectedStatus2;
-        }
-      });
-      async function autoRefreshIfEnabled() {
-        if (!alpineStore.autoRefreshOnSetting) return;
-        let tab2 = alpineStore.sites[alpineStore.activeSite].tab;
-        if (!tab2 || typeof tab2.id === "undefined") return;
-        try {
-          await browser.tabs.reload(tab2.id);
-        } catch (e) {
-        }
-      }
       let lastIsEnabled = alpineStore.isEnabled;
       module_default.effect(() => {
         if (alpineStore.isEnabled !== lastIsEnabled) {
           lastIsEnabled = alpineStore.isEnabled;
-          autoRefreshIfEnabled();
+          alpineStore.autoRefreshIfEnabled();
         }
       });
-      let lastExcl = (alpineStore.sites[alpineStore.activeSite].exclusionMatches || []).join(",");
-      let lastIncl = (alpineStore.sites[alpineStore.activeSite].inclusionMatches || []).join(",");
-      module_default.effect(() => {
-        let excl = (alpineStore.sites[alpineStore.activeSite].exclusionMatches || []).join(",");
-        let incl = (alpineStore.sites[alpineStore.activeSite].inclusionMatches || []).join(",");
-        if (excl !== lastExcl || incl !== lastIncl) {
-          lastExcl = excl;
-          lastIncl = incl;
-          autoRefreshIfEnabled();
-        }
-      });
-      window.autoRefreshIfEnabled = autoRefreshIfEnabled;
       console.log("Popup loaded successfully");
     } catch (error2) {
       console.error("Failed to load popup:", error2);
     }
   }
   function setupSettingsWatchers() {
-    if (window.settingsSaveTimeout) {
-      clearTimeout(window.settingsSaveTimeout);
-    }
     module_default.effect(() => {
-      const watchedSettings = {
-        isEnabled: alpineStore.isEnabled,
-        cacheEnabled: alpineStore.cacheEnabled,
-        imageEditionEnabled: alpineStore.imageEditionEnabled,
-        serviceWorkersEnabled: alpineStore.serviceWorkersEnabled,
-        precisionNumber: alpineStore.precisionNumber,
-        inclusionPatterns: alpineStore.inclusionPatterns,
-        exclusionPatterns: alpineStore.exclusionPatterns,
-        autoRefreshOnSetting: alpineStore.autoRefreshOnSetting
-      };
-      console.log("Settings changed, scheduling save...", watchedSettings);
-      clearTimeout(window.settingsSaveTimeout);
-      window.settingsSaveTimeout = setTimeout(() => {
+      console.log("Settings changed, scheduling save...");
+      if (alpineStore.settingsSaveTimeout) {
+        clearTimeout(alpineStore.settingsSaveTimeout);
+      }
+      alpineStore.settingsSaveTimeout = setTimeout(() => {
         console.log("Auto-saving settings...");
         alpineStore.saveSettings();
       }, 500);
     });
   }
-  document.addEventListener("keydown", function(e) {
-    if (e.ctrlKey && e.key === "e") {
-      e.preventDefault();
-      alpineStore.excludeCurrentSite();
-    }
+  document.addEventListener("DOMContentLoaded", () => {
+    loadPopup();
   });
-  var urlParams = new URLSearchParams(window.location.search);
-  var action = urlParams.get("action");
-  if (action === "toggleSite") {
-    setTimeout(() => {
-      const site = alpineStore.sites[alpineStore.activeSite];
-      let btn;
-      if (site.exclusionMatches && site.exclusionMatches.length > 0) {
-        btn = document.querySelector(".btn-success.flex-fill");
-      } else {
-        btn = document.querySelector(".btn-danger.flex-fill");
-      }
-      if (btn) {
-        btn.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
-      }
-    }, 500);
-  }
-  document.addEventListener("DOMContentLoaded", loadPopup);
 })();
 /*! Bundled license information:
 
 bootstrap/dist/js/bootstrap.js:
   (*!
-    * Bootstrap v5.3.3 (https://getbootstrap.com/)
-    * Copyright 2011-2024 The Bootstrap Authors (https://github.com/twbs/bootstrap/graphs/contributors)
+    * Bootstrap v5.3.7 (https://getbootstrap.com/)
+    * Copyright 2011-2025 The Bootstrap Authors (https://github.com/twbs/bootstrap/graphs/contributors)
     * Licensed under MIT (https://github.com/twbs/bootstrap/blob/main/LICENSE)
     *)
 */
