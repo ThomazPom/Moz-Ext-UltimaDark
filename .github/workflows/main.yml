@@ -34,6 +34,7 @@ jobs:
         fakeContentScriptClass.js
         popup/popup.html
         popup/bundle.js
+        popup/bundle.js.map
         popup/bundle.css
         popup/options_styles.css
         popup/bootstrap-icons-CVBWLLHT.woff2
