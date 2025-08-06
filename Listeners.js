@@ -24,7 +24,7 @@ class Listeners {
       return {}
     }
     // now in 2025 we van exclude all image from site
-    if (details.url.match(uDark.userSettings.exclude_regexImg)) {
+    if (details.documentUrl.match(uDark.userSettings.exclude_regexImg)) {
       return {}
     }
 
@@ -49,7 +49,7 @@ class Listeners {
         filter.disconnect();
         imageWorker && imageWorker.terminate();
       } catch (e) {}
-    }, 30000) // Take care of very big images
+    }, 30000) // Take care of very big images 
     details.buffers = details.buffers || [];
     if (details.isSVGImage) {
       filter.ondata = event => details.buffers.push(event.data);

@@ -25,7 +25,6 @@ export async function searchTabIDMatchingPatterns(tab, patterns, remove_flags = 
             return pattern.split("#ud_")[0].trim();
         });
     }
-    console.log("searchTabIDMatchingPatterns", tab, patterns);
     let matchingPatterns = [];
     for (let pattern of patterns) {
         try {
@@ -38,7 +37,6 @@ export async function searchTabIDMatchingPatterns(tab, patterns, remove_flags = 
             console.warn("Pattern matching error for", pattern, error);
         }
     }
-    console.log("Matching patterns:", matchingPatterns);
     return matchingPatterns;
 }
 export async function getEmbedsOfTab(tab,filterfunction) {

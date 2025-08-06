@@ -300,7 +300,6 @@ class uDarkExtended extends uDarkExtendedContentScript {
       }
       mapRegexAndRemoveUdFlag(x, keepFlags=["","all"],notFoundValue = null) { 
         let [pattern,flag] = x.split("#ud_");
-        console.log("mapRegexAndRemoveUdFlag",x,pattern,flag,keepFlags);
         if (keepFlags.includes(flag)||!flag) {
           return pattern;
         }
@@ -373,7 +372,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
           new Promise(uDark.installToggleSiteCommand)
         ]).then(x => uDark.info("CSS processed")).then(r => uDark.setListener(true));
         browser.storage.onChanged.addListener((changes, area) => {
-          uDark.success("Settings changed", changes, area);
+          uDark.success("Settings changed");
           if (area == "local") {
             new Promise(uDark.getSettings).then(uDark.setListener);
           }
@@ -512,7 +511,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
       }
       regiteredCS = []
       is_background = true // Tell ultimadark that we are in the background script and is_color_var is not available for instance
-      loggingWorkersActiveLogging = false // Conider moving this to imageWorker to avoid messages passing for nothing
+      loggingWorkersActiveLogging = true // Conider moving this to imageWorker to avoid messages passing for nothing
       LoggingWorker = class LoggingWorker extends Worker {
         constructor(...args) {
           super(...args);

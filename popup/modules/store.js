@@ -33,6 +33,11 @@ document.addEventListener("alpine:init", () => {
         isEnabled: true,
         precisionNumber: 2,
         lastTargetHost: "",
+        excludeButtonText: "Exclude",
+        
+        // Internal state
+        settingsSaveTimeout: null,
+        tabChangeListenersEnabled: false,
         
         // Feature toggles
         cacheEnabled: true,
@@ -119,14 +124,12 @@ document.addEventListener("alpine:init", () => {
             if(context.do) {
                 context.do(context);
             }
-            console.log(`Activating hooks for group: ${hookGroup}`, context);
             for (const [key, hook] of Object.entries(this.hooks[hookGroup])) {
                 try {
                     let value = await hook(context);
                     if (this.sites && this.activeSite && this.sites[this.activeSite]) {
                         this.sites[this.activeSite][key] = value;
                     }
-                    console.log(`Hooked [${hookGroup}]`, key, value);
                 } catch (error) {
                     console.error(`Hook error for [${hookGroup}]`, key, error);
                 }
@@ -240,8 +243,8 @@ document.addEventListener("alpine:init", () => {
             }
             this.embedsLoading = true;
             try {
-                // Get all embeds of the current tab (pass full tab object)
-                let embeds = await getEmbedsOfTab(tab);
+                // Get all embeds of the current tab with size filter
+                let embeds = await getEmbedsOfTab(tab, (embed) => embed.width > 10 && embed.height > 10);
                 this.embeds = embeds;
             } catch (error) {
                 console.error("Failed to load embeds:", error);
@@ -254,7 +257,7 @@ document.addEventListener("alpine:init", () => {
             try {
                 let tab = this.currentSite().tab;
                 if (!tab || typeof tab.id === 'undefined') return [];
-                let embeds = await getEmbedsOfTab(tab);
+                let embeds = await getEmbedsOfTab(tab, (embed) => embed.width > 10 && embed.height > 10);
                 return embeds;
             } catch (error) {
                 console.error("Failed to get embeds of tab:", error);
@@ -265,12 +268,90 @@ document.addEventListener("alpine:init", () => {
             let tab = this.currentSite().tab;
             if (!tab || typeof tab.id === 'undefined') return [];
             try {
-                return await getEmbedsOfTab(tab);
+                return await getEmbedsOfTab(tab, (embed) => embed.width > 10 && embed.height > 10);
             } catch (error) {
                 console.error("Failed to get embeds of current site:", error);
                 return [];
             }
         },
+        
+        // Embed helper methods
+        async excludeAllEmbedDomains() {
+            if (this.embeds.length === 0) return;
+            
+            const domains = [...new Set(this.embeds.map(embed => {
+                try {
+                    return (new URL(embed.href)).host;
+                } catch (e) {
+                    return null;
+                }
+            }).filter(Boolean))];
+            
+            if (domains.length === 0) return;
+            
+            const patterns = domains.map(domain => `*://${domain}/*`);
+            
+            // Add all patterns
+            for (const pattern of patterns) {
+                await this.addExclusionPattern(pattern, false); // Don't check for already covered
+            }
+            
+            console.log('Excluded all embed domains:', domains);
+        },
+        
+        copyEmbedUrls() {
+            if (this.embeds.length === 0) return;
+            
+            const urls = this.embeds.map(embed => embed.href).join('\n');
+            
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(urls).then(() => {
+                    showBS5Modal({
+                        title: 'URLs Copied',
+                        body: `Copied ${this.embeds.length} embed URL(s) to clipboard`,
+                        okText: 'OK',
+                        showCancel: false
+                    });
+                }).catch(err => {
+                    console.error('Failed to copy to clipboard:', err);
+                    this.fallbackCopyToClipboard(urls);
+                });
+            } else {
+                this.fallbackCopyToClipboard(urls);
+            }
+        },
+        
+        fallbackCopyToClipboard(text) {
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.top = '-9999px';
+            document.body.appendChild(textArea);
+            textArea.select();
+            
+            try {
+                document.execCommand('copy');
+                showBS5Modal({
+                    title: 'URLs Copied',
+                    body: `Copied ${this.embeds.length} embed URL(s) to clipboard`,
+                    okText: 'OK',
+                    showCancel: false
+                });
+            } catch (err) {
+                console.error('Failed to copy to clipboard:', err);
+                showBS5Modal({
+                    title: 'Copy Failed',
+                    body: 'Failed to copy URLs to clipboard. Please copy manually from the console.',
+                    okText: 'OK',
+                    showCancel: false
+                });
+                console.log('Embed URLs:', text);
+            } finally {
+                document.body.removeChild(textArea);
+            }
+        },
+        
         // Convert a match pattern to a RegExp (simple version)
         patternToRegex(pattern) {
             if (!pattern) return null;
@@ -282,7 +363,7 @@ document.addEventListener("alpine:init", () => {
             // Remove trailing slashes for matching
             if (!regexStr.endsWith(".*")) regexStr += ".*";
             try {
-                return new RegExp("^" + regexStr + "$", "i");
+                return new RegExp(`^${regexStr}$`, "i");
             } catch (e) {
                 return null;
             }
@@ -340,19 +421,23 @@ document.addEventListener("alpine:init", () => {
             });
         },
         // Force recalc of matches for current site after any pattern change
-        recomputeCurrentSiteMatches() {
+        async   recomputeCurrentSiteMatches() {
             const site = this.currentSite();
             if (!site || !site.url) return;
             // Store previous badge state
             const prevBadge = this._lastSiteBadge;
             // Activate hooks for 'update' group, passing prevBadge and newBadge
-            this.activate_hooks('update', { url: site.url,
+            await this.activate_hooks('update', { url: site.url,
                 site: this.activeSite,
                 tab: site.tab,
                 prevBadge,
                 newBadge:this.getSiteBadge().text
             });
-            
+            if(this._lastSiteBadge != prevBadge)
+            {
+                this.autoRefreshIfEnabled();
+            }
+            this._lastSite=site;
             if (window.Alpine) {
                 window.Alpine.nextTick(() => {
                     this.sites = { ...this.sites };
@@ -500,9 +585,92 @@ document.addEventListener("alpine:init", () => {
             const precision = Math.min(this.precisionNumber, hostParts.length);
             const targetHost = hostParts.slice(-precision).join('.');
             this.lastTargetHost = targetHost;
-            const excludeBtn = document.getElementById('donotdarken');
-            if (excludeBtn) {
-                excludeBtn.textContent = `Exclude ${targetHost}`;
+            // Remove direct DOM manipulation - use reactive data instead
+            this.excludeButtonText = `Exclude ${targetHost}`;
+        },
+        
+        // Tab change detection functionality
+        enableTabChangeListeners() {
+            if (this.tabChangeListenersEnabled) return;
+            this.tabChangeListenersEnabled = true;
+            
+            // Listen for tab activation changes
+            browser.tabs.onActivated.addListener(this.handleTabActivated.bind(this));
+            
+            // Listen for tab updates (URL changes, etc.)
+            browser.tabs.onUpdated.addListener(this.handleTabUpdated.bind(this));
+            
+            console.log('Tab change listeners enabled');
+        },
+        
+        disableTabChangeListeners() {
+            if (!this.tabChangeListenersEnabled) return;
+            this.tabChangeListenersEnabled = false;
+            
+            // Remove listeners
+            browser.tabs.onActivated.removeListener(this.handleTabActivated.bind(this));
+            browser.tabs.onUpdated.removeListener(this.handleTabUpdated.bind(this));
+            
+            console.log('Tab change listeners disabled');
+        },
+        
+        async handleTabActivated(activeInfo) {
+            console.log('Active tab changed to:', activeInfo.tabId);
+            
+            try {
+                const tab = await browser.tabs.get(activeInfo.tabId);
+                console.log('New active tab:', tab);
+                
+                if (tab.url) {
+                    await this.updateToNewTab(tab);
+                }
+            } catch (error) {
+                console.error('Failed to handle tab activation:', error);
+            }
+        },
+        
+        async handleTabUpdated(tabId, changeInfo, tab) {
+            // Only process if this is the active tab and URL changed
+            if (changeInfo.url && tab.active) {
+                console.log('Active tab URL updated:', changeInfo.url);
+                
+                try {
+                    await this.updateToNewTab(tab);
+                } catch (error) {
+                    console.error('Failed to handle tab update:', error);
+                }
+            }
+        },
+        
+        async updateToNewTab(tab) {
+            // Check if site is protected
+            let protectedStatus = false;
+            try {
+                protectedStatus = await isSiteProtected(tab);
+            } catch (e) {
+                protectedStatus = false;
+            }
+            this.sites.main.isProtected = protectedStatus;
+            
+            // Update the current site in the store
+            this.updateUrl(tab.url, "main", {tab});
+            
+            // Update button text
+            this.updateExcludeButtonText();
+            
+            console.log('Store updated for new tab:', tab.url);
+        },
+        
+        // Auto-refresh functionality
+        async autoRefreshIfEnabled() {
+            if (!this.autoRefreshOnSetting) return;
+            let tab = this.sites[this.activeSite].tab;
+            if (!tab || typeof tab.id === 'undefined') return;
+            console.log("Auto-refreshing tab:", tab.id);
+            try { 
+                await browser.tabs.reload(tab.id); 
+            } catch(e) {
+                console.error("Failed to refresh tab:", e);
             }
         },
         
@@ -520,7 +688,7 @@ document.addEventListener("alpine:init", () => {
             }
             try {
                 await browser.storage.local.set(settings);
-                console.log('Settings saved', settings);
+                console.log('Settings saved');
             } catch (error) {
                 console.error('Failed to save settings:', error);
             }
@@ -542,7 +710,7 @@ document.addEventListener("alpine:init", () => {
                 this.serviceWorkersEnabled = result.keep_service_workers;
                 this.autoRefreshOnSetting = result.autoRefreshOnSetting;
                 
-                console.log('Settings loaded:', result);
+                console.log('Settings loaded');
                 console.log('Current state:', {
                     isEnabled: this.isEnabled,
                     cacheEnabled: this.cacheEnabled,

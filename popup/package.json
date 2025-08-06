@@ -2,11 +2,11 @@
   "dependencies": {
     "alpinejs": "^3.14.8",
     "bootstrap": "^5.3.3",
-    "esbuild": "^0.24.2"
+    "bootstrap-icons": "^1.13.1",
+    "esbuild": "^0.25.8"
   },
   "scripts": {
-    "watch": "npx esbuild popup.js --bundle --sourcemap --outfile=bundle.js --loader:.css=css --watch",
-    "build": "npx esbuild popup.js --bundle --sourcemap --outfile=bundle.js --loader:.css=css"
+    "watch": "npx esbuild popup.js --bundle --sourcemap --outfile=bundle.js --loader:.css=css --loader:.woff=file --loader:.woff2=file --loader:.ttf=file --loader:.eot=file --loader:.svg=file --watch",
+    "build": "npx esbuild popup.js --bundle --sourcemap --outfile=bundle.js --loader:.css=css --loader:.woff=file --loader:.woff2=file --loader:.ttf=file --loader:.eot=file --loader:.svg=file"
   }
-  
 }
