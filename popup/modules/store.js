@@ -677,7 +677,7 @@ document.addEventListener("alpine:init", () => {
         // Settings management
         async saveSettings() {
             const settings = {
-                whitelist: this.inclusionPatterns,
+                white_list: this.inclusionPatterns,
                 black_list: this.exclusionPatterns,
                 precision_number: this.precisionNumber,
                 disable_webext: !this.isEnabled,

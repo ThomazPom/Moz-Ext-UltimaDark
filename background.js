@@ -1012,7 +1012,7 @@ class uDarkC extends uDarkExtended {
     if(!( typeof strO === "string" || strO instanceof String)){
       return strO; // Do not edit non string values to avoid errors, web is wide and wild
     }
- 
+    
     let str = strO;
     
     if (false && strO.includes("/*!sc*/")) { // TODO: Fix thins in abetter way; this is a temporary and specific fix; 
@@ -1057,6 +1057,7 @@ class uDarkC extends uDarkExtended {
     let nochunk = options.nochunk || !verifyIntegrity && !cssStyleSheet.cssRules.length // if we want to check integrity, it means we have a chunked css
     
     if (nochunk) {
+
       // Here if :
       // - We only have properties like background: white; 
       if (import_protection.values) {
@@ -1141,6 +1142,7 @@ class uDarkC extends uDarkExtended {
         rejected: rejected_str,
       }
     }
+    
     return str || strO; // It's essential to return the original value if the CSS is broken, if e did not knew what to do with it, we should not have edited it. This is demostrated on hub.docker.com that looks into a comment only css
   }
   rgba_val(r, g, b, a) {
@@ -1492,7 +1494,6 @@ class uDarkC extends uDarkExtended {
         }
       }
       return uDark.wrapIntoColor(value, actions);
-        
     }
     edit_with_regex(key, value, regex, actions, cssRule) {
       return value.replaceAll(regex, (match) => {

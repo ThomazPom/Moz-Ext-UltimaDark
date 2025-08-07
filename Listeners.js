@@ -143,6 +143,13 @@ class Listeners {
     if (details.url.startsWith("https://data-image/?base64IMG=")) {
       const dataUrl = details.url.slice(30);
       
+    // now in 2025 we can exclude all res or image res
+      if( details.documentUrl.match(uDark.userSettings.exclude_regexImg) || details.url.match(uDark.userSettings.exclude_regexRes) || details.url.match(uDark.userSettings.exclude_regexImgr)) {
+        // uDark.log("Image","This image is excluded by the user settings",details.url,"loaded by webpage:",details.originUrl,"Assuming it is not an eligible webpage, or even blocked by another extension");
+        return {
+          redirectUrl: dataUrl
+        }
+      }
       const arrayBuffer = await (await fetch(dataUrl)).arrayBuffer();
       const reader = new FileReader() // Faster but ad what cost later ? 
       
