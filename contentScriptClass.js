@@ -25,6 +25,11 @@ class uDarkExtendedContentScript  {
       
     }
     
+    window.wrappedJSObject.uDark.userSettings = cloneInto({  // Preserve user privacy by not exporting sensible settings to the page
+      disable_cache: window.userSettings.disable_cache,
+      keep_service_workers:window.userSettings.keep_service_workers,
+      disable_image_edition: window.userSettings.disable_image_edition,
+    }, window);
     window.wrappedJSObject.userSettingsReadyAction()
     
     

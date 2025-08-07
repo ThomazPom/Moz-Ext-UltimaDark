@@ -58,6 +58,7 @@ class uDarkC extends uDarkExtended {
     //"currentcolor",
      "AliceBlue", "AntiqueWhite", "Aqua", "Aquamarine", "Azure", "Beige", "Bisque", "Black", "BlanchedAlmond", "Blue", "BlueViolet", "Brown", "BurlyWood", "CadetBlue", "Chartreuse", "Chocolate", "Coral", "CornflowerBlue", "Cornsilk", "Crimson", "Cyan", "DarkBlue", "DarkCyan", "DarkGoldenRod", "DarkGray", "DarkGrey", "DarkGreen", "DarkKhaki", "DarkMagenta", "DarkOliveGreen", "DarkOrange", "DarkOrchid", "DarkRed", "DarkSalmon", "DarkSeaGreen", "DarkSlateBlue", "DarkSlateGray", "DarkSlateGrey", "DarkTurquoise", "DarkViolet", "DeepPink", "DeepSkyBlue", "DimGray", "DimGrey", "DodgerBlue", "FireBrick", "FloralWhite", "ForestGreen", "Fuchsia", "Gainsboro", "GhostWhite", "Gold", "GoldenRod", "Gray", "Grey", "Green", "GreenYellow", "HoneyDew", "HotPink", "IndianRed", "Indigo", "Ivory", "Khaki", "Lavender", "LavenderBlush", "LawnGreen", "LemonChiffon", "LightBlue", "LightCoral", "LightCyan", "LightGoldenRodYellow", "LightGray", "LightGrey", "LightGreen", "LightPink", "LightSalmon", "LightSeaGreen", "LightSkyBlue", "LightSlateGray", "LightSlateGrey", "LightSteelBlue", "LightYellow", "Lime", "LimeGreen", "Linen", "Magenta", "Maroon", "MediumAquaMarine", "MediumBlue", "MediumOrchid", "MediumPurple", "MediumSeaGreen", "MediumSlateBlue", "MediumSpringGreen", "MediumTurquoise", "MediumVioletRed", "MidnightBlue", "MintCream", "MistyRose", "Moccasin", "NavajoWhite", "Navy", "OldLace", "Olive", "OliveDrab", "Orange", "OrangeRed", "Orchid", "PaleGoldenRod", "PaleGreen", "PaleTurquoise", "PaleVioletRed", "PapayaWhip", "PeachPuff", "Peru", "Pink", "Plum", "PowderBlue", "Purple", "RebeccaPurple", "Red", "RosyBrown", "RoyalBlue", "SaddleBrown", "Salmon", "SandyBrown", "SeaGreen", "SeaShell", "Sienna", "Silver", "SkyBlue", "SlateBlue", "SlateGray", "SlateGrey", "Snow", "SpringGreen", "SteelBlue", "Tan", "Teal", "Thistle", "Tomato", "Turquoise", "Violet", "Wheat", "White", "WhiteSmoke", "Yellow", "YellowGreen"]
   static SHORTHANDS = ["all", "animation", "animation-range", "background", "border", "border-block", "border-block-end", "border-block-start", "border-bottom", "border-color", "border-image", "border-inline", "border-inline-end", "border-inline-start", "border-left", "border-radius", "border-right", "border-style", "border-top", "border-width", "column-rule", "columns", "contain-intrinsic-size", "container", "flex", "flex-flow", "font", "font-synthesis", "font-variant", "gap", "grid", "grid-area", "grid-column", "grid-row", "grid-template", "inset", "inset-block", "inset-inline", "list-style", "margin", "margin-block", "margin-inline", "mask", "mask-border", "offset", "outline", "overflow", "overscroll-behavior", "padding", "padding-block", "padding-inline", "place-content", "place-items", "place-self", "position-try", "scroll-margin", "scroll-margin-block", "scroll-margin-inline", "scroll-padding", "scroll-padding-block", "scroll-padding-inline", "scroll-timeline", "text-decoration", "text-emphasis", "text-wrap", "transition"]
+  .map(s => `(?:-moz-|-webkit-|-ms-)?${s}`); // Add vendor prefixes
   static TAGS_TO_PROTECT = ["head", "html", "body", "frameset", "frame"]
   static CSS_COLOR_FUNCTIONS = ["rgb", "rgba", "hsl", "hsla", "hwb", "lab", "lch", "color", "color-mix", "oklch", "oklab"]
   shortHandRegex = new RegExp(`(?<![\\w-])(${uDarkC.SHORTHANDS.join("|")})([\s\t]*:)`, "gi") // The \t is probably not needed, as \s includes it
@@ -89,7 +90,7 @@ class uDarkC extends uDarkExtended {
   }
   
   colorRegex = new RegExp(`(?<![\\w-])(?:${uDarkC.CSS_COLOR_FUNCTIONS.join("|")})` + uDarkC.generateNestedParenthesisRegexNC(10), "gi")
-  
+  variableRegex = new RegExp(`(?<![\\w-])(?:${["var"].join("|")})` + uDarkC.generateNestedParenthesisRegexNC(10), "gi")
   hexadecimalColorsRegex = /#[0-9a-f]{3,4}(?:[0-9a-f]{2})?(?:[0-9a-f]{2})?/gi // hexadecimal colors
   
   // Cant't use \b because of the possibility of a - next to the identifier, it's a word character
@@ -1536,7 +1537,10 @@ class uDarkC extends uDarkExtended {
       let fastValue1 = !value.match(/\([^\)]+\(/)
       
       let usedColorRegex = fastValue1 ? uDark.fastColorRegex : uDark.colorRegex;
-      if (actions.prefix_vars) {
+      if(actions.disableNamespaceVars){
+        new_value=uDark.edit_with_regex(key, new_value, uDark.variableRegex,actions); 
+      }
+      else if (actions.prefix_vars) {
         new_value = uDark.edit_prefix_vars(new_value, actions);
       }
       new_value = uDark.edit_with_regex(key, new_value, usedColorRegex, actions);
@@ -1597,12 +1601,14 @@ class uDarkC extends uDarkExtended {
         } // Do background regex match
         
       }
+      let disableNamespaceVars = false; // seems promising but not ready yet.
 
       wordingActions.length && uDark.css_properties_wording_action(cssRule.style, wordingActions, details, cssRule, options);
       
       backgroundItems.length && uDark.edit_all_cssRule_colors(cssRule, backgroundItems, options, 
         uDark.overrideBGColorActions || {
           prefix_vars: "bg",
+          disableNamespaceVars: disableNamespaceVars, // Disable namespace vars for background colors
           raw_text_prefix: "--",
           l_var:"--uDark_transform_darken",
           js_static_transform: uDark.rgba,
@@ -1615,7 +1621,7 @@ class uDarkC extends uDarkExtended {
           js_static_transform: uDark.revert_rgba,
         })
         
-        variablesItems.length && uDark.edit_all_cssRule_colors(cssRule, variablesItems, options,
+        !disableNamespaceVars && variablesItems.length && uDark.edit_all_cssRule_colors(cssRule, variablesItems, options,
           {
             prefix_vars: "bg",
             raw_text: true,

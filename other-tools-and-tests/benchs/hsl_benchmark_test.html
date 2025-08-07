@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HSL to RGB Benchmark</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            margin: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #4CAF50;
+            text-align: center;
+        }
+        .console-output {
+            background-color: #000;
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .run-button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        .run-button:hover {
+            background-color: #45a049;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .status.running {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .status.complete {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>HSL to RGB Conversion Benchmark</h1>
+        <p>This benchmark compares your custom <code>hslToRgb</code> method against the browser's native conversion using computed styles.</p>
+        
+        <div id="status" class="status" style="display: none;"></div>
+        
+        <div>
+            <button class="run-button" onclick="runBenchmark()">Run Full Benchmark</button>
+            <button class="run-button" onclick="runAccuracyOnly()">Accuracy Test Only</button>
+            <button class="run-button" onclick="runPerformanceOnly()">Performance Test Only</button>
+            <button class="run-button" onclick="clearOutput()">Clear Output</button>
+        </div>
+        
+        <div id="output" class="console-output"></div>
+    </div>
+
+    <!-- Load your extension's background script classes -->
+    <script src="../../background.js"></script>
+    
+    <script>
+        // Initialize uDark class
+        const uDark = new uDarkC();
+        
+        // Override console methods to capture output
+        const originalConsole = {
+            log: console.log,
+            warn: console.warn,
+            error: console.error,
+            info: console.info
+        };
+        
+        const output = document.getElementById('output');
+        const status = document.getElementById('status');
+        
+        function showStatus(message, type = 'running') {
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+        }
+        
+        function hideStatus() {
+            status.style.display = 'none';
+        }
+        
+        function appendOutput(text, type = 'log') {
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'warn' ? '⚠️' : type === 'info' ? 'ℹ️' : '📝';
+            output.textContent += `[${timestamp}] ${prefix} ${text}\n`;
+            output.scrollTop = output.scrollHeight;
+        }
+        
+        // Override console methods
+        console.log = (...args) => {
+            originalConsole.log(...args);
+            appendOutput(args.join(' '), 'log');
+        };
+        
+        console.warn = (...args) => {
+            originalConsole.warn(...args);
+            appendOutput(args.join(' '), 'warn');
+        };
+        
+        console.error = (...args) => {
+            originalConsole.error(...args);
+            appendOutput(args.join(' '), 'error');
+        };
+        
+        console.info = (...args) => {
+            originalConsole.info(...args);
+            appendOutput(args.join(' '), 'info');
+        };
+        
+        function clearOutput() {
+            output.textContent = '';
+            hideStatus();
+        }
+        
+        async function loadBenchmarkScript() {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'hsl_to_rgb_conversion_benchmark.js';
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+        
+        async function runBenchmark() {
+            try {
+                showStatus('Running full benchmark suite...', 'running');
+                clearOutput();
+                
+                // Load and run the benchmark script
+                await loadBenchmarkScript();
+                
+                showStatus('Benchmark completed successfully!', 'complete');
+            } catch (error) {
+                console.error('Benchmark failed:', error);
+                showStatus('Benchmark failed. Check console for details.', 'error');
+            }
+        }
+        
+        async function runAccuracyOnly() {
+            try {
+                showStatus('Running accuracy test...', 'running');
+                clearOutput();
+                
+                // Create a minimal version just for accuracy
+                const script = `
+                    const testSpan = document.createElement('span');
+                    document.body.appendChild(testSpan);
+                    
+                    function browserHslToRgb(h, s, l) {
+                        const hDeg = Math.round(h * 360);
+                        const sPercent = Math.round(s * 100);
+                        const lPercent = Math.round(l * 100);
+                        testSpan.style.color = \`hsl(\${hDeg}, \${sPercent}%, \${lPercent}%)\`;
+                        const computedColor = getComputedStyle(testSpan).color;
+                        const match = computedColor.match(/rgb\\((\\d+),\\s*(\\d+),\\s*(\\d+)\\)/);
+                        if (match) {
+                            return [parseInt(match[1]), parseInt(match[2]), parseInt(match[3])];
+                        }
+                        return [0, 0, 0];
+                    }
+                    
+                    function accuracyTest(numTests = 1000) {
+                        let maxDifference = 0;
+                        let totalDifference = 0;
+                        let matches = 0;
+
+                        console.log("=== Accuracy Test ===");
+                        console.log("Comparing custom hslToRgb vs browser conversion...");
+
+                        for (let i = 0; i < numTests; i++) {
+                            const h = Math.random();
+                            const s = Math.random();
+                            const l = Math.random();
+
+                            const [customR, customG, customB] = uDark.hslToRgb(h, s, l);
+                            const [browserR, browserG, browserB] = browserHslToRgb(h, s, l);
+
+                            const rDiff = Math.abs(customR - browserR);
+                            const gDiff = Math.abs(customG - browserG);
+                            const bDiff = Math.abs(customB - browserB);
+                            
+                            const totalDiff = rDiff + gDiff + bDiff;
+                            totalDifference += totalDiff;
+                            maxDifference = Math.max(maxDifference, totalDiff);
+
+                            if (totalDiff === 0) matches++;
+
+                            if (i < 5) {
+                                console.log(\`Test \${i + 1}: HSL(\${h.toFixed(3)}, \${s.toFixed(3)}, \${l.toFixed(3)})\`);
+                                console.log(\`  Custom:  RGB(\${customR}, \${customG}, \${customB})\`);
+                                console.log(\`  Browser: RGB(\${browserR}, \${browserG}, \${browserB})\`);
+                                console.log(\`  Diff:    (\${rDiff}, \${gDiff}, \${bDiff}) = \${totalDiff}\`);
+                            }
+                        }
+
+                        const avgDifference = totalDifference / numTests;
+                        const exactMatches = (matches / numTests) * 100;
+
+                        console.log(\`\\nAccuracy Results (\${numTests} tests):\`);
+                        console.log(\`  Exact matches: \${matches}/\${numTests} (\${exactMatches.toFixed(1)}%)\`);
+                        console.log(\`  Average total difference: \${avgDifference.toFixed(2)}\`);
+                        console.log(\`  Maximum total difference: \${maxDifference}\`);
+                        
+                        document.body.removeChild(testSpan);
+                    }
+                    
+                    accuracyTest(1000);
+                `;
+                
+                eval(script);
+                showStatus('Accuracy test completed!', 'complete');
+            } catch (error) {
+                console.error('Accuracy test failed:', error);
+                showStatus('Accuracy test failed. Check console for details.', 'error');
+            }
+        }
+        
+        async function runPerformanceOnly() {
+            try {
+                showStatus('Running performance test...', 'running');
+                clearOutput();
+                
+                const script = `
+                    function benchmarkCustomHslToRgb(iterations = 100000) {
+                        const start = performance.now();
+                        for (let i = 0; i < iterations; i++) {
+                            const h = Math.random();
+                            const s = Math.random();
+                            const l = Math.random();
+                            uDark.hslToRgb(h, s, l);
+                        }
+                        return performance.now() - start;
+                    }
+
+                    function benchmarkBrowserHslToRgb(iterations = 100000) {
+                        const testSpan = document.createElement('span');
+                        document.body.appendChild(testSpan);
+                        
+                        const start = performance.now();
+                        for (let i = 0; i < iterations; i++) {
+                            const h = Math.random();
+                            const s = Math.random();
+                            const l = Math.random();
+                            
+                            const hDeg = Math.round(h * 360);
+                            const sPercent = Math.round(s * 100);
+                            const lPercent = Math.round(l * 100);
+                            testSpan.style.color = \`hsl(\${hDeg}, \${sPercent}%, \${lPercent}%)\`;
+                            getComputedStyle(testSpan).color;
+                        }
+                        const time = performance.now() - start;
+                        document.body.removeChild(testSpan);
+                        return time;
+                    }
+
+                    console.log("=== Performance Test ===");
+                    const testSizes = [10000, 50000, 100000];
+                    
+                    for (const iterations of testSizes) {
+                        console.log(\`\\nTesting with \${iterations.toLocaleString()} iterations:\`);
+                        
+                        const customTime = benchmarkCustomHslToRgb(iterations);
+                        console.log(\`  Custom hslToRgb: \${customTime.toFixed(2)}ms\`);
+                        
+                        const browserTime = benchmarkBrowserHslToRgb(iterations);
+                        console.log(\`  Browser conversion: \${browserTime.toFixed(2)}ms\`);
+                        
+                        const faster = customTime < browserTime ? 'Custom' : 'Browser';
+                        const fasterTime = Math.min(customTime, browserTime);
+                        const slowerTime = Math.max(customTime, browserTime);
+                        const speedupRatio = slowerTime / fasterTime;
+                        
+                        console.log(\`  \${faster} method is \${speedupRatio.toFixed(2)}x faster\`);
+                        console.log(\`  Ops/sec - Custom: \${(iterations / customTime * 1000).toLocaleString()} | Browser: \${(iterations / browserTime * 1000).toLocaleString()}\`);
+                    }
+                `;
+                
+                eval(script);
+                showStatus('Performance test completed!', 'complete');
+            } catch (error) {
+                console.error('Performance test failed:', error);
+                showStatus('Performance test failed. Check console for details.', 'error');
+            }
+        }
+        
+        // Show initial instructions
+        appendOutput('Click "Run Full Benchmark" to start the complete test suite.', 'info');
+        appendOutput('Or use individual test buttons for specific comparisons.', 'info');
+    </script>
+</body>
+</html>

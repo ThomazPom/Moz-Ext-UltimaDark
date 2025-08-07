@@ -435,7 +435,7 @@ document.addEventListener("alpine:init", () => {
             });
             if(this._lastSiteBadge != prevBadge)
             {
-                this.autoRefreshIfEnabled();
+                await this.autoRefreshIfEnabled();
             }
             this._lastSite=site;
             if (window.Alpine) {
@@ -540,7 +540,7 @@ document.addEventListener("alpine:init", () => {
                 if (added) {
                     this.exclusionPatterns = patterns.join('\n');
                     this.saveSettings();
-                    this.recomputeCurrentSiteMatches();
+                    await this.recomputeCurrentSiteMatches();
                     console.log('Added exclusion patterns:', patternsToAdd);
                 } else {
                     console.log('Patterns already exist:', patternsToAdd);
@@ -668,7 +668,11 @@ document.addEventListener("alpine:init", () => {
             if (!tab || typeof tab.id === 'undefined') return;
             console.log("Auto-refreshing tab:", tab.id);
             try { 
-                await browser.tabs.reload(tab.id); 
+                return new Promise((resolve, reject) => {
+                    setTimeout(() => {
+                        resolve(browser.tabs.reload(tab.id));
+                    }, 200); // Delay to ensure any changes are applied
+                });
             } catch(e) {
                 console.error("Failed to refresh tab:", e);
             }
@@ -699,7 +703,7 @@ document.addEventListener("alpine:init", () => {
                 const result = await browser.storage.local.get(null);
                 
                 // Load patterns
-                this.inclusionPatterns = result.whitelist || "<all_urls>\n*://*/*\nhttps://*.w3schools.com/*";
+                this.inclusionPatterns = result.white_list || "<all_urls>\n*://*/*\nhttps://*.w3schools.com/*";
                 this.exclusionPatterns = result.black_list || "*://example.com/*";
                 this.precisionNumber = result.precision_number || 2;
                 

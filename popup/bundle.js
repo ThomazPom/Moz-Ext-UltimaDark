@@ -8851,7 +8851,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
           newBadge: this.getSiteBadge().text
         });
         if (this._lastSiteBadge != prevBadge) {
-          this.autoRefreshIfEnabled();
+          await this.autoRefreshIfEnabled();
         }
         this._lastSite = site;
         if (window.Alpine) {
@@ -8939,7 +8939,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
           if (added) {
             this.exclusionPatterns = patterns.join("\n");
             this.saveSettings();
-            this.recomputeCurrentSiteMatches();
+            await this.recomputeCurrentSiteMatches();
             console.log("Added exclusion patterns:", patternsToAdd);
           } else {
             console.log("Patterns already exist:", patternsToAdd);
@@ -9038,7 +9038,11 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
         if (!tab || typeof tab.id === "undefined") return;
         console.log("Auto-refreshing tab:", tab.id);
         try {
-          await browser.tabs.reload(tab.id);
+          return new Promise((resolve, reject) => {
+            setTimeout(() => {
+              resolve(browser.tabs.reload(tab.id));
+            }, 200);
+          });
         } catch (e) {
           console.error("Failed to refresh tab:", e);
         }
@@ -9065,7 +9069,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       async loadSettings() {
         try {
           const result = await browser.storage.local.get(null);
-          this.inclusionPatterns = result.whitelist || "<all_urls>\n*://*/*\nhttps://*.w3schools.com/*";
+          this.inclusionPatterns = result.white_list || "<all_urls>\n*://*/*\nhttps://*.w3schools.com/*";
           this.exclusionPatterns = result.black_list || "*://example.com/*";
           this.precisionNumber = result.precision_number || 2;
           this.isEnabled = !result.disable_webext;
