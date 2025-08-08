@@ -213,7 +213,11 @@ class Listeners {
     details.rejectedValues = "";
     
     
-    
+    filter.onstart = event => {
+      // console.log("CSS filter started",details.url,details.requestId,details.fromCache)
+      filter.write(uDarkEncode("UTF-8", `@import "${browser.runtime.getURL("ultimaDark.css")}";\n`));
+    }
+
     // // ondata event handler
     filter.ondata = event => {
       details.dataCount++;

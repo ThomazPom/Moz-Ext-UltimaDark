@@ -1,5 +1,5 @@
 {
-  "manifest_version": 2,
+  "manifest_version": 3,
   "name": "UltimaDark",
   "version": "1.6.14",
   "description": "The extension uses agressive techniques to get a dark mode everywhere on internet\nThis is still highly experimental so it can also ruin your internet experience",
@@ -9,9 +9,18 @@
     "96": "icons/2x.png"
   },
   "web_accessible_resources": [
-    "ultimaDark.css"
+    {
+      "resources": ["ultimaDark.css"],
+      "matches": ["<all_urls>"]
+    }
   ],
-  "content_security_policy": "script-src 'self' 'unsafe-eval'; ",
+  "content_security_policy":{
+    "extension_pages":  "script-src 'self' ; "
+  },
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  
   "commands": {
     "toggle-site": {
       "suggested_key": {
@@ -31,19 +40,19 @@
     
   },  
   "permissions": [
-    "<all_urls>","tabs","browsingData","webNavigation", "webRequest", "webRequestBlocking","storage","unlimitedStorage","tabHide"
-]
+    "scripting","tabs","browsingData","webNavigation", "webRequest", "webRequestBlocking","storage","unlimitedStorage","tabHide","webRequestFilterResponse"
+  ]
   ,
-
-  "browser_action": {
+  
+  "action": {
     "default_icon": "icons/38.png",
     "default_title": "UltimaDark is active",
-  
+    
     "default_popup": "popup/popup.html?mode=uDark-popup"
   },
   "background": {
     "scripts": ["fakeContentScriptClass.js","backgroundClass.js","Listeners.js","background.js","uDarkEncoder.js"]
   }
   
-
+  
 }

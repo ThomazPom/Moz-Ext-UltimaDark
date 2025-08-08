@@ -8,7 +8,7 @@ export async function isSiteProtected(tab) {
     if (!tab || typeof tab.id === 'undefined') return false;
     try {
         // Try to execute a trivial script; if it throws, the site is protected
-        await browser.tabs.executeScript(tab.id, { code: '1+1', runAt: 'document_start' });
+        await browser.scripting.executeScript(tab.id, { code: '1+1', runAt: 'document_start' });
         return false;
     } catch (e) {
         // Most likely protected by browser policy

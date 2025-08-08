@@ -806,6 +806,19 @@ class uDarkC extends uDarkExtended {
     documentElement.querySelectorAll("link[rel*='icon' i][href]").forEach(link => {
       link.setAttribute("href", link.getAttribute("href") + "#ud_favicon");
     });
+    // add ud_edit=1 to href of sylesheets :
+    documentElement.querySelectorAll("link[rel=stylesheet]").forEach(link => {
+      if (!link.hasAttribute("href")) {
+        return;
+      }
+      let href = link.getAttribute("href");
+      if (href.includes("?")) {
+        href += "&ud_edit=1";
+      } else {
+        href += "?ud_edit=1";
+      }
+      link.setAttribute("href", href);
+    });
   }
   decodeBase64DataURIifIsDataURI(maybeBase64DataURI) {
     maybeBase64DataURI = maybeBase64DataURI.trim();
@@ -1537,10 +1550,7 @@ class uDarkC extends uDarkExtended {
       let fastValue1 = !value.match(/\([^\)]+\(/)
       
       let usedColorRegex = fastValue1 ? uDark.fastColorRegex : uDark.colorRegex;
-      if(actions.disableNamespaceVars){
-        new_value=uDark.edit_with_regex(key, new_value, uDark.variableRegex,actions); 
-      }
-      else if (actions.prefix_vars) {
+      if (actions.prefix_vars) {
         new_value = uDark.edit_prefix_vars(new_value, actions);
       }
       new_value = uDark.edit_with_regex(key, new_value, usedColorRegex, actions);
@@ -1601,14 +1611,13 @@ class uDarkC extends uDarkExtended {
         } // Do background regex match
         
       }
-      let disableNamespaceVars = false; // seems promising but not ready yet.
-
+      let disableNamespaceVars = true; // seems promising but not ready yet.
+      
       wordingActions.length && uDark.css_properties_wording_action(cssRule.style, wordingActions, details, cssRule, options);
       
       backgroundItems.length && uDark.edit_all_cssRule_colors(cssRule, backgroundItems, options, 
         uDark.overrideBGColorActions || {
-          prefix_vars: "bg",
-          disableNamespaceVars: disableNamespaceVars, // Disable namespace vars for background colors
+          prefix_vars: "bg", // in 2025 i tied to get rid of bg prefixed vars by disabling namespace vars, but it's impossible since a variable can be used in a shorthand property like background: var(--ud-bg-color) var(--ud-bg-image), we have to look at the exact value of the var and edit colors where colors realy are
           raw_text_prefix: "--",
           l_var:"--uDark_transform_darken",
           js_static_transform: uDark.rgba,
@@ -1621,7 +1630,7 @@ class uDarkC extends uDarkExtended {
           js_static_transform: uDark.revert_rgba,
         })
         
-        !disableNamespaceVars && variablesItems.length && uDark.edit_all_cssRule_colors(cssRule, variablesItems, options,
+        variablesItems.length && uDark.edit_all_cssRule_colors(cssRule, variablesItems, options,
           {
             prefix_vars: "bg",
             raw_text: true,

@@ -55,7 +55,6 @@ class uDarkExtended extends uDarkExtendedContentScript {
         options.chunk = options.chunk.str;
       }
     }
-    
     filter.write(uDarkEncode(details.charset,options.chunk));
   }
   getInjectCSS(resourcesPaths, actions = {}) {
