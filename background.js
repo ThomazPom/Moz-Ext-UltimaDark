@@ -806,19 +806,6 @@ class uDarkC extends uDarkExtended {
     documentElement.querySelectorAll("link[rel*='icon' i][href]").forEach(link => {
       link.setAttribute("href", link.getAttribute("href") + "#ud_favicon");
     });
-    // add ud_edit=1 to href of sylesheets :
-    documentElement.querySelectorAll("link[rel=stylesheet]").forEach(link => {
-      if (!link.hasAttribute("href")) {
-        return;
-      }
-      let href = link.getAttribute("href");
-      if (href.includes("?")) {
-        href += "&ud_edit=1";
-      } else {
-        href += "?ud_edit=1";
-      }
-      link.setAttribute("href", href);
-    });
   }
   decodeBase64DataURIifIsDataURI(maybeBase64DataURI) {
     maybeBase64DataURI = maybeBase64DataURI.trim();

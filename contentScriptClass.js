@@ -37,10 +37,10 @@ class uDarkExtendedContentScript  {
     browser.runtime.connect({ // Connect to the background script to register the edition of subresources
       name: "port-from-cs"
     });
-    setTimeout(() => {
-      
-    this.fixUnprocessedCSSinterval();
-    }, 1000);
+    let debugUnprocessedCSS = false;
+    if (debugUnprocessedCSS) {
+      uDark.fixUnprocessedCSSinterval();
+    }
   }
   toFixCSS=new Set();
   fixedCSS= new Set();
@@ -58,6 +58,9 @@ class uDarkExtendedContentScript  {
     setTimeout(() => {
       clearInterval(CSSFixInterval);
       console.log("Stopping unprocessed CSS fix interval", this.toFixCSS.size, "unprocessed CSS left");
+      if(this.fixedCSS.size > 0) {
+        alert(`⚠️ ${this.fixedCSS.size} CSS files were fixed, but ${this.toFixCSS.size} remain unprocessed. Please report this issue.`);
+      }
     }, 5000);
   }
   fixUnprocessedCSS() {   

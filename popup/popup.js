@@ -76,17 +76,6 @@ alpineStore.addHook("update", "exclusionMatches", async function(hookData) {
     }
 });
 
-setTimeout(() => {
-    
-// Hook to auto-refresh tab if badge status changes
-// alpineStore.addHook("badge_change", "refreshOnBadgeChange", async function(hookData) {
-//     const { prevBadge, newBadge } = hookData;
-//     if (prevBadge !== newBadge) {
-//         await alpineStore.autoRefreshIfEnabled();
-//     }
-// });
-
-}, 1000);
 // Main popup initialization
 async function loadPopup() {
     try {
@@ -115,8 +104,6 @@ async function loadPopup() {
         // Update current site
         alpineStore.updateUrl(url, "main", {tab});
         
-        // Setup watchers for settings changes
-        setupSettingsWatchers();
 
         // Enable tab change listeners for real-time updates
         alpineStore.enableTabChangeListeners();
@@ -138,31 +125,13 @@ async function loadPopup() {
             }
         });
         
+        // Setup watchers for settings changes
         console.log('Popup loaded successfully');
     } catch (error) {
         console.error('Failed to load popup:', error);
     }
 }
 
-// Setup watchers for automatic saving
-function setupSettingsWatchers() {
-    // Watch for changes in settings and auto-save with debounce
-    Alpine.effect(() => {
-        // These properties will trigger the watcher when they change
-        
-        
-        console.log('Settings changed, scheduling save...');
-        
-        // Debounce the save operation using store state
-        if (alpineStore.settingsSaveTimeout) {
-            clearTimeout(alpineStore.settingsSaveTimeout);
-        }
-        alpineStore.settingsSaveTimeout = setTimeout(() => {
-            console.log('Auto-saving settings...');
-            alpineStore.saveSettings();
-        }, 500);
-    });
-}
 
 // Initialize popup when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {

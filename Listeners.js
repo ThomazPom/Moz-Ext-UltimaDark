@@ -179,6 +179,15 @@ class Listeners {
       return to_return;
     }
   }
+  static editOnHeadersReceivedStyleSheet(details) {
+    uDark.extractCharsetFromHeaders(details, "text/css")
+    uDark.general_cache.set(`request_${details.requestId}_more_details`, details);
+    
+    let {is_enforced_nobody} = uDark.getNoBodyStatus(details);
+    details.already_edited_or_empty = is_enforced_nobody // We cannot edit this request: either it has no body, or it's empty because unmodified, so the webRequestFilter will receive an already edited content from the cache
+
+  }
+  static TopCSSFlag = `@import "${browser.runtime.getURL("ultimaDark.css")}";\n`
   static editBeforeRequestStyleSheet_sync(details) {
     let options = {};
     
@@ -193,33 +202,43 @@ class Listeners {
     }
     // now in 2025 we can exclude all res or css res
     if( details.url.match(uDark.userSettings.exclude_regexRes) || details.url.match(uDark.userSettings.exclude_regexCss)) {
-      console.log("CSS", "This CSS is excluded by the user settings", details.url, "loaded by webpage:", details.originUrl, "Assuming it is not an eligible webpage, or even blocked by another extension");
-      console.log("It matches :", details.url.match(uDark.userSettings.exclude_regexRes) ? uDark.userSettings.exclude_regexRes : uDark.userSettings.exclude_regexCss);
-      console.log("basic exclude_regex",uDark.userSettings.exclude_regex);
+      // console.log("CSS", "This CSS is excluded by the user settings", details.url, "loaded by webpage:", details.originUrl, "Assuming it is not an eligible webpage, or even blocked by another extension");
+      // console.log("It matches :", details.url.match(uDark.userSettings.exclude_regexRes) ? uDark.userSettings.exclude_regexRes : uDark.userSettings.exclude_regexCss);
+      // console.log("basic exclude_regex",uDark.userSettings.exclude_regex);
       return {}
     }
 
     
-    uDark.extractCharsetFromHeaders(details, "text/css");
     
-    let {is_enforced_nobody} = uDark.getNoBodyStatus(details);
-    if (is_enforced_nobody) {
-      return {}; // We cannot edit this request: either it has no body, or it's empty because unmodified, so the webRequestFilter will receive an already edited content from the cache
-    }
 
     let filter = globalThis.browser.webRequest.filterResponseData(details.requestId); // After this instruction, browser espect us to write data to the filter and close it
     
-    details.dataCount = 0;
-    details.rejectedValues = "";
     
     
     filter.onstart = event => {
       // console.log("CSS filter started",details.url,details.requestId,details.fromCache)
-      filter.write(uDarkEncode("UTF-8", `@import "${browser.runtime.getURL("ultimaDark.css")}";\n`));
+      filter.write(uDarkEncode("UTF-8", Listeners.TopCSSFlag)); // Write the top CSS flag to be able to check if the CSS is already edited 
+      if( uDark.general_cache.has(`request_${details.requestId}_more_details`)) {
+        let moreDetails = uDark.general_cache.get(`request_${details.requestId}_more_details`);
+        Object.assign(details, moreDetails);
+        // uDark.log("Success : More details found for",details.requestId,details);
+      }
+      else {
+        uDark.warn("onHeaderReceived was not called for",details.requestId,details.url,"not a big deal, but now defaulting to utf 8 & text/css");
+        uDark.extractCharsetFromHeaders(details, "text/css");
+      }
+
+      details.dataCount = 0;
+      details.rejectedValues = "";
     }
 
     // // ondata event handler
     filter.ondata = event => {
+      if(details.already_edited_or_empty) {
+        // console.log("Already edited or empty",details.url,details.requestId,details.fromCache);
+        filter.write(event.data);
+        return;
+      }
       details.dataCount++;
       uDark.handleCSSChunk_sync(event.data, true, details, filter);
     };
@@ -230,10 +249,12 @@ class Listeners {
         uDark.handleCSSChunk_sync(null, false, details, filter);
       }
       filter.disconnect();  // Ensure disconnection after completion
+      uDark.general_cache.delete(`request_${details.requestId}_more_details`); // Clean up the cache
+      // console.log("CSS filter stopped",details.url,details.requestId,details.fromCache)
     };
     // return {redirectUrl:details.url};
     // return {responseHeaders:[{name:"Vary",value:"*"},{name:"Location",value:details.url}]};
-    return {};
+    // return {};
     // must not return this closes filter//
   }
   

@@ -55,6 +55,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
         options.chunk = options.chunk.str;
       }
     }
+    
     filter.write(uDarkEncode(details.charset,options.chunk));
   }
   getInjectCSS(resourcesPaths, actions = {}) {
@@ -182,7 +183,8 @@ class uDarkExtended extends uDarkExtendedContentScript {
       
       browser.webRequest.onSendHeaders.removeListener(Listeners.setEligibleRequestBeforeData);
       browser.webRequest.onHeadersReceived.removeListener(Listeners.editBeforeData);
-      browser.webRequest.onHeadersReceived.removeListener(Listeners.editBeforeRequestStyleSheet_sync);
+      browser.webRequest.onBeforeRequest.removeListener(Listeners.editBeforeRequestStyleSheet_sync);
+      browser.webRequest.onHeadersReceived.removeListener(Listeners.editOnHeadersReceivedStyleSheet);
       browser.webRequest.onBeforeRequest.removeListener(Listeners.editBeforeRequestImage);
       browser.webRequest.onHeadersReceived.removeListener(Listeners.editOnHeadersImage);
       
@@ -215,12 +217,24 @@ class uDarkExtended extends uDarkExtendedContentScript {
         },
         ["blocking", "responseHeaders"]);
         
-        browser.webRequest.onHeadersReceived.addListener(Listeners.editBeforeRequestStyleSheet_sync, {
-          // urls: uDark.userSettings.properWhiteList, // We can't assume the css is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
-          urls: ["<all_urls>"],
-          types: ["stylesheet"]
-        },
-        ["blocking", "responseHeaders"]);
+
+        {
+          
+          browser.webRequest.onBeforeRequest.addListener(Listeners.editBeforeRequestStyleSheet_sync, {
+            // urls: uDark.userSettings.properWhiteList, // We can't assume the css is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
+            urls: ["<all_urls>"],
+            types: ["stylesheet"]
+          },
+          ["blocking"]);
+          browser.webRequest.onHeadersReceived.addListener(Listeners.editOnHeadersReceivedStyleSheet, {
+            // urls: uDark.userSettings.properWhiteList, // We can't assume the css is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
+            urls: ["<all_urls>"],
+            types: ["stylesheet"]
+          },
+          ["blocking", "responseHeaders"]);
+        }
+
+        
         
         if (!uDark.userSettings.disable_image_edition) {
           browser.webRequest.onBeforeRequest.addListener(Listeners.editBeforeRequestImage, {
@@ -379,6 +393,11 @@ class uDarkExtended extends uDarkExtendedContentScript {
       }
       
       installToggleSiteCommand(resolve) { // This is a command that will be available in the browser shortcuts, it will trigger the toggle action, it's a way to toggle the site without opening the popup
+        if(!browser.commands) {
+          uDark.warn("Browser does not support commands, toggle site command will not be available");
+          resolve();
+          return;
+        }
         browser.commands.onCommand.addListener((command) => {
           if (command === "toggle-site") {
             console.log("Shortcut triggered: toggle-site");
@@ -459,7 +478,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
         // We have seen cases where the charset was not specified in the content-type header, and the browser document.characterSet was defaulting to <meta> tag charset.
         // This is why we need to extract the charset from the headers, to knwo if we are in this kind of cases.
         
-        let contentTypeHeader = details.responseHeaders.find(x => x.name.toLowerCase() == "content-type");
+        let contentTypeHeader = details.responseHeaders?.find(x => x.name.toLowerCase() == "content-type");
         if(!contentTypeHeader){
           details.noContentTypeHeader=true;
           contentTypeHeader={value:defaultCT};

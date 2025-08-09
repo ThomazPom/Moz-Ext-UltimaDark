@@ -8427,7 +8427,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
   async function isSiteProtected2(tab) {
     if (!tab || typeof tab.id === "undefined") return false;
     try {
-      await browser.tabs.executeScript(tab.id, { code: "1+1", runAt: "document_start" });
+      await browser.scripting.executeScript(tab.id, { code: "1+1", runAt: "document_start" });
       return false;
     } catch (e) {
       return true;
@@ -9443,8 +9443,6 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       return [];
     }
   });
-  setTimeout(() => {
-  }, 1e3);
   async function loadPopup() {
     try {
       await alpineStore.loadVersionInfo();
@@ -9461,7 +9459,6 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       alpineStore.sites.main.isProtected = protectedStatus;
       console.log("Current tab :", tab);
       alpineStore.updateUrl(url, "main", { tab });
-      setupSettingsWatchers();
       alpineStore.enableTabChangeListeners();
       setTimeout(() => {
         alpineStore.updateExcludeButtonText();
@@ -9478,18 +9475,6 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
     } catch (error2) {
       console.error("Failed to load popup:", error2);
     }
-  }
-  function setupSettingsWatchers() {
-    module_default.effect(() => {
-      console.log("Settings changed, scheduling save...");
-      if (alpineStore.settingsSaveTimeout) {
-        clearTimeout(alpineStore.settingsSaveTimeout);
-      }
-      alpineStore.settingsSaveTimeout = setTimeout(() => {
-        console.log("Auto-saving settings...");
-        alpineStore.saveSettings();
-      }, 500);
-    });
   }
   document.addEventListener("DOMContentLoaded", () => {
     loadPopup();
