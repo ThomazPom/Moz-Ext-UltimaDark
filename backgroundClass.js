@@ -332,7 +332,8 @@ class uDarkExtended extends uDarkExtendedContentScript {
       
       install() {
         this.logPrefix = "UD";
-        fetch("manifest.json").then(x => x.json()).then(x => {
+        fetch("manifest.json").then(x => x.text()).then(x=>JSON.parse(x.replace(/\s+\/\/.+/g, ""))).then(x => {
+          console.log("Manifest loaded", x);
           uDark.production = x.browser_specific_settings.gecko.id;
           
           if (uDark.production) {

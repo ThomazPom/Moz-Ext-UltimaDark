@@ -831,7 +831,8 @@ document.addEventListener("alpine:init", () => {
         async loadVersionInfo() {
             try {
                 const response = await fetch("../manifest.json");
-                const manifest = await response.json();
+                let manifest = await response.text();
+                manifest = JSON.parse(manifest.replace(/\s+\/\/.+/g, ""));
                 this.version = manifest.version;
                 
                 const production = manifest.browser_specific_settings?.gecko?.id;

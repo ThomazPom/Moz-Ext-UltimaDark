@@ -1,16 +1,16 @@
 {
   "manifest_version": 2,
   "name": "UltimaDark",
-  "version": "1.6.16",
+  "version": "1.6.17",
   "description": "The extension uses agressive techniques to get a dark mode everywhere on internet\nThis is still highly experimental so it can also ruin your internet experience",
   "homepage_url": "https://github.com/ThomazPom/Moz-Ext-UltimaDark",
   "icons": {
     "48": "icons/48.png",
     "96": "icons/2x.png"
   },
-  "web_accessible_resources": [
-    "ultimaDark.css"
-  ],
+  // "web_accessible_resources": [
+  //  // "ultimaDark.css"
+  // ],
   "content_security_policy": "script-src 'self' 'unsafe-eval'; ",
   "commands": {
     "toggle-site": {

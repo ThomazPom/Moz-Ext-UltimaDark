@@ -8427,7 +8427,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
   async function isSiteProtected2(tab) {
     if (!tab || typeof tab.id === "undefined") return false;
     try {
-      await browser.scripting.executeScript(tab.id, { code: "1+1", runAt: "document_start" });
+      await browser.tabs.executeScript(tab.id, { code: "1+1", runAt: "document_start" });
       return false;
     } catch (e) {
       return true;
@@ -9183,7 +9183,8 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       async loadVersionInfo() {
         try {
           const response = await fetch("../manifest.json");
-          const manifest = await response.json();
+          let manifest = await response.text();
+          manifest = JSON.parse(manifest.replace(/\s+\/\/.+/g, ""));
           this.version = manifest.version;
           const production = manifest.browser_specific_settings?.gecko?.id;
           this.productionMode = production ? "Production mode" : "Development mode";

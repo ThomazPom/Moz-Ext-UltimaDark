@@ -217,7 +217,7 @@ class Listeners {
     
     filter.onstart = event => {
       // console.log("CSS filter started",details.url,details.requestId,details.fromCache)
-      filter.write(uDarkEncode("UTF-8", Listeners.TopCSSFlag)); // Write the top CSS flag to be able to check if the CSS is already edited 
+      // filter.write(uDarkEncode("UTF-8", Listeners.TopCSSFlag)); // Write the top CSS flag to be able to check if the CSS is already edited 
       if( uDark.general_cache.has(`request_${details.requestId}_more_details`)) {
         let moreDetails = uDark.general_cache.get(`request_${details.requestId}_more_details`);
         Object.assign(details, moreDetails);
