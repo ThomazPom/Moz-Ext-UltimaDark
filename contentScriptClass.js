@@ -119,7 +119,13 @@ class uDarkExtendedContentScript  {
       let start = performance.now();
       
       uDark.info( "Content script override website", window);
-      
+      linkIntegrityErrorEvent = function(elem) {
+      // This fix is needed for some websites that use link integrity, i don't know why but sometime even removing the integrity earlier in the code does not work
+        uDark.info("Link integrity error", elem,  "lead to a reload of this script");
+        let href = elem.getAttribute("href");
+        href && elem.setAttribute("href",uDark.addNocacheToStrLink(href) );
+        elem.removeAttribute("onerror");
+    }
       
       
       uDark.website_context = true; // Tell ultimadark we are in a website context and is_color_var is available
