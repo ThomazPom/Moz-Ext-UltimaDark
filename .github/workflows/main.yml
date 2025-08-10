@@ -58,6 +58,7 @@ jobs:
       - name: Read version from manifest.json
         id: read_version
         run: |
+          sed -i 's/^[ \t]*\/\/.*//g' manifest.json
           VERSION=$(jq -r '.version' < manifest.json)
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
       # Create a new tag for the release (will wait for the previous step)
