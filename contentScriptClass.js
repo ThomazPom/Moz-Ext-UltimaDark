@@ -37,7 +37,7 @@ class uDarkExtendedContentScript  {
     browser.runtime.connect({ // Connect to the background script to register the edition of subresources
       name: "port-from-cs"
     });
-    let debugUnprocessedCSS = false;
+    let debugUnprocessedCSS = false; // Note the @import and web_accessible_resources are currently commented out.
     if (debugUnprocessedCSS) {
       uDark.fixUnprocessedCSSinterval();
     }
@@ -45,7 +45,7 @@ class uDarkExtendedContentScript  {
   toFixCSS=new Set();
   fixedCSS= new Set();
 
-  fixUnprocessedCSSinterval() {  
+  fixUnprocessedCSSinterval() {  // I was able to debug some CSS not being loaded by injecting a custom TopCSSRRule at top of processed CSSes; it ended that some requests don't go to onHeaderReceived
     console.log(this.toFixCSS, "Unprocessed CSS", this.toFixCSS.size);
     let launch = z=>{
       [...document.styleSheets].filter(x=>x.href && x.ownerNode && !this.fixedCSS.has(x) && !this.toFixCSS.has(x)).forEach(css=>{
