@@ -83,7 +83,6 @@ class uDarkExtendedContentScript  {
        
       });
     }    
-    
     override_website = function() {
       // Note : We dont support document.write() yet. Shoudl we find a way to monitor document.close?
       /*
