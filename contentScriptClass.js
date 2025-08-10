@@ -83,14 +83,6 @@ class uDarkExtendedContentScript  {
        
       });
     }    
-    linkIntegrityErrorEvent = function(elem) {
-      // This fix is needed for some websites that use link integrity, i don't know why but sometime even removing the integrity earlier in the code does not work
-      uDark.info("Link integrity error", elem,  "lead to a reload of this script");
-      let href = elem.getAttribute("href");
-      href && elem.setAttribute("href",uDark.addNocacheToStrLink(href) );
-      elem.removeAttribute("onerror");
-      
-    }
     override_website = function() {
       // Note : We dont support document.write() yet. Shoudl we find a way to monitor document.close?
       /*

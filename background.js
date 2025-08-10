@@ -986,6 +986,14 @@ class uDarkC extends uDarkExtended {
     });
   }
   
+  linkIntegrityErrorEvent (elem) {
+    // This fix is needed for some websites that use link integrity, i don't know why but sometime even removing the integrity earlier in the code does not work
+    uDark.info("Link integrity error", elem,  "lead to a reload of this script");
+    let href = elem.getAttribute("href");
+    href && elem.setAttribute("href",uDark.addNocacheToStrLink(href) );
+    elem.removeAttribute("onerror");
+    
+  }
   str_protect_simple(str, regex, protectWith, condition = true) {
     if (condition) {
       str = str.replaceAll(regex, protectWith)
