@@ -57,3 +57,11 @@ export async function getEmbedsOfTab(tab,filterfunction) {
     console.log("Embeds of tab:", hrefResponse);
     return hrefResponse;
 }
+
+export async function getFramesOfTab(tab,filerFunction) {
+    if (!tab || typeof tab.id === 'undefined') return [];
+    let frames = await browser.webNavigation.getAllFrames({tabId:tab.id});
+    for(let frameElement of frames) {
+        // Process each frame element as needed
+    }
+}

@@ -23,6 +23,17 @@ document.addEventListener("alpine:init", () => {
             this.saveSettings();
             this.recomputeCurrentSiteMatches();
         },
+            // Returns array of invalid patterns for a given list (exclusion or inclusion)
+            async filterValidPatterns(type = "exclusion") {
+                const patterns = (type === "exclusion" ? this.exclusionPatterns : this.inclusionPatterns)
+                    .split('\n').filter(p => p.trim());
+                const invalids = [];
+                for (const pattern of patterns) {
+                    const valid = await this.isValidPattern(pattern.split('#ud_')[0]);
+                    if (!valid) invalids.push(pattern);
+                }
+                return invalids;
+            },
         // Embeds for current tab
         embeds: [],
         embedsLoading: false,
@@ -34,7 +45,28 @@ document.addEventListener("alpine:init", () => {
         precisionNumber: 2,
         lastTargetHost: "",
         excludeButtonText: "Exclude",
-        
+
+    // Color settings
+        min_bright_fg: 0.2,
+        max_bright_fg: 1,
+        min_bright_bg_trigger: 0.2,
+        min_bright_bg: 0.1,
+        max_bright_bg: 0.4,
+        bg_negative_modifier: 0,
+        fg_negative_modifier: 0,
+lcdColorSettings: {
+        min_bright_fg: 0.2,
+        max_bright_fg: 1,
+        min_bright_bg_trigger: 0.2,
+        min_bright_bg: 0.1,
+        max_bright_bg: 0.4,
+        bg_negative_modifier: 0,
+        fg_negative_modifier: 0,
+    },
+    oledColorSettings: {
+        bg_negative_modifier: 0.1,
+        fg_negative_modifier: 0.15,
+    },
         // Internal state
         settingsSaveTimeout: null,
         tabChangeListenersEnabled: false,
@@ -43,7 +75,7 @@ document.addEventListener("alpine:init", () => {
         cacheEnabled: true,
         imageEditionEnabled: true,
         serviceWorkersEnabled: true,
-        autoRefreshOnSetting: false,
+        autoRefreshOnToggle: false,
         
         
         // Pattern lists
@@ -101,8 +133,10 @@ document.addEventListener("alpine:init", () => {
             } else if (exclusionMatches.length === 0 && inclusionMatches.length > 0) {
                 processedBageValue = { text: 'INCLUDED', class: 'bg-success', title: 'This site is included.' };
             }
-
+            
             if (this._lastSiteBadge != processedBageValue.text) {
+                console.log('Site badge changed:', this._lastSiteBadge, '->', processedBageValue.text,inclusionMatches,exclusionMatches);
+            
                 this.activate_hooks('badge_change', { prevBadge: this._lastSiteBadge, newBadge: processedBageValue.text, site: this.sites[this.activeSite] });
             }
             this._lastSiteBadge = processedBageValue.text; // Store last badge state
@@ -155,7 +189,17 @@ document.addEventListener("alpine:init", () => {
         },
         
         // Pattern management methods
-        editExclusionPattern(idx, newValue) {
+        async editExclusionPattern(idx, newValue) {
+            let isValid = await this.isValidPattern(newValue);
+            if (!isValid) {
+                showBS5Modal({
+                    title: 'Invalid Pattern',
+                    body: 'Invalid pattern format. Please use match patterns like: <code>*://example.com/*</code>',
+                    okText: 'OK',
+                    showCancel: false
+                });
+                return;
+            }
             let patterns = this.exclusionPatterns.split('\n');
             const base = newValue.split('#ud_')[0];
             // Remove any pattern with the same base except the one being edited
@@ -174,7 +218,17 @@ document.addEventListener("alpine:init", () => {
             this.saveSettings();
             this.recomputeCurrentSiteMatches();
         },
-        editInclusionPattern(idx, newValue) {
+        async editInclusionPattern(idx, newValue) {
+            let isValid = await this.isValidPattern(newValue);
+            if (!isValid) {
+                showBS5Modal({
+                    title: 'Invalid Pattern',
+                    body: 'Invalid pattern format. Please use match patterns like: <code>*://example.com/*</code>',
+                    okText: 'OK',
+                    showCancel: false
+                });
+                return;
+            }
             let patterns = this.inclusionPatterns.split('\n');
             patterns[idx] = newValue;
             this.inclusionPatterns = patterns.join('\n');
@@ -191,8 +245,8 @@ document.addEventListener("alpine:init", () => {
         async addExclusionPattern(pattern, checkAlreadyCovered = true) {
             if (!pattern || !pattern.trim()) return;
             const trimmedPattern = pattern.trim();
-            // Validate pattern format
-            let isValid = await this.isValidPattern(trimmedPattern);
+                // Validate pattern format
+                let isValid = await this.isValidPattern(trimmedPattern);
             console.log("Adding exclusion pattern:", trimmedPattern, "Valid:", isValid);
             if (!isValid) {
                 showBS5Modal({
@@ -379,10 +433,10 @@ document.addEventListener("alpine:init", () => {
             console.log('Removed exclusion pattern:', pattern);
         },
         
-        addInclusionPattern(pattern) {
+        async addInclusionPattern(pattern) {
             if (!pattern || !pattern.trim()) return;
             // Validate pattern format
-            if (!this.isValidPattern(pattern.trim())) {
+            if (! (await this.isValidPattern(pattern.trim()))) {
                 showBS5Modal({
                     title: 'Invalid Pattern',
                     body: 'Invalid pattern format. Please use match patterns like: <code>*://example.com/*</code>',
@@ -435,7 +489,7 @@ document.addEventListener("alpine:init", () => {
             });
             if(this._lastSiteBadge != prevBadge)
             {
-                await this.autoRefreshIfEnabled();
+                await this.autoRefreshIfEnabled("toggle");
             }
             this._lastSite=site;
             if (window.Alpine) {
@@ -459,15 +513,12 @@ document.addEventListener("alpine:init", () => {
         },
         
         // Pattern validation helper
+        
         async isValidPattern(pattern) {
-            // Basic validation for match patterns
-            if (!pattern) return false;
-            try{
-                await browser.tabs.query({url: pattern})
-                return true;
-            }catch(e){
-                console.warn("Invalid pattern:", pattern, e);
-                return false;
+            try {
+                await browser.contentScripts.register({ matches:[pattern],runAt:"#<udark>"})
+            } catch (e) {
+                return e.message.includes("#<udark>");
             }
         },
         
@@ -662,8 +713,9 @@ document.addEventListener("alpine:init", () => {
         },
         
         // Auto-refresh functionality
-        async autoRefreshIfEnabled() {
-            if (!this.autoRefreshOnSetting) return;
+        async autoRefreshIfEnabled(from="toggle") {
+            if (from=="toggle" && !this.autoRefreshOnToggle) return;
+            if (from == "anysetting" && !this.autoRefreshOnAnySettingChange) return;
             let tab = this.sites[this.activeSite].tab;
             if (!tab || typeof tab.id === 'undefined') return;
             console.log("Auto-refreshing tab:", tab.id);
@@ -678,53 +730,49 @@ document.addEventListener("alpine:init", () => {
             }
         },
         
-        // Settings management
-        async saveSettings() {
-            const settings = {
-                white_list: this.inclusionPatterns,
-                black_list: this.exclusionPatterns,
-                precision_number: this.precisionNumber,
-                disable_webext: !this.isEnabled,
-                disable_cache: !this.cacheEnabled,
-                disable_image_edition: !this.imageEditionEnabled,
-                keep_service_workers: this.serviceWorkersEnabled,
-                autoRefreshOnSetting: this.autoRefreshOnSetting
-            }
+        async debouncedSaveSettings(){
+            
+            for (const key of Object.keys(uDark.userSettings)) {
+                uDark.userSettings[key] = this[key];
+            };
             try {
-                await browser.storage.local.set(settings);
+                await browser.storage.local.set(uDark.userSettings);
                 console.log('Settings saved');
             } catch (error) {
                 console.error('Failed to save settings:', error);
             }
+            
         },
-        
+        // Settings management
+        async saveSettings(waitTime=100) {
+          window.clearTimeout(this.settingsSaveTimeout);
+          this.settingsSaveTimeout = window.setTimeout(async () => {
+              await this.debouncedSaveSettings();
+              this.activate_hooks("savedSettings");
+          }, waitTime);
+        },
         async loadSettings() {
+            
             try {
-                const result = await browser.storage.local.get(null);
-                
-                // Load patterns
-                this.inclusionPatterns = result.white_list || "<all_urls>\n*://*/*\nhttps://*.w3schools.com/*";
-                this.exclusionPatterns = result.black_list || "*://example.com/*";
-                this.precisionNumber = result.precision_number || 2;
-                
-                // Load feature toggles - Note: storage uses disable_ prefixes, so we invert
-                this.isEnabled = !result.disable_webext;
-                this.cacheEnabled = !result.disable_cache;
-                this.imageEditionEnabled = !result.disable_image_edition;
-                this.serviceWorkersEnabled = result.keep_service_workers;
-                this.autoRefreshOnSetting = result.autoRefreshOnSetting;
-                
+                if(typeof uDark === 'undefined') {
+                    console.warn('uDark is not defined, cannot load settings');
+                    setTimeout(() => {
+                        console.warn('Retrying to load settings...', typeof uDark);
+                    }, 1000);
+                }
+                let settings = await new Promise(uDark.getSettings);
+                for (const key in settings) {
+                    if (settings.hasOwnProperty(key) && this.hasOwnProperty(key)) {
+                        this[key] = settings[key];
+                    }
+                }
                 console.log('Settings loaded');
-                console.log('Current state:', {
-                    isEnabled: this.isEnabled,
-                    cacheEnabled: this.cacheEnabled,
-                    imageEditionEnabled: this.imageEditionEnabled,
-                    serviceWorkersEnabled: this.serviceWorkersEnabled
-                });
+                console.log('Current state:', uDark.userSettings);
                 
             } catch (error) {
                 console.error('Failed to load settings:', error);
             }
+            globalThis.stop = true;
         },
         
         
@@ -737,42 +785,23 @@ document.addEventListener("alpine:init", () => {
                 okClass: 'btn-danger',
                 cancelText: 'Cancel',
                 showCancel: true,
-                onOk: () => {
-                    browser.storage.local.clear().then(() => {
-                        this.inclusionPatterns = "<all_urls>\n*://*/*\nhttps://*.w3schools.com/*";
-                        this.exclusionPatterns = "*://example.com/*";
-                        this.precisionNumber = 2;
-                        this.isEnabled = true;
-                        this.cacheEnabled = true;
-                        this.imageEditionEnabled = true;
-                        this.serviceWorkersEnabled = true;
-                        this.autoRefreshOnSetting = false;
-                        this.saveSettings();
-                        showBS5Modal({
-                            title: 'Settings Cleared',
-                            body: 'All settings have been cleared and reset to defaults.',
-                            okText: 'OK',
-                            showCancel: false
-                        });
+                onOk: async () => {
+                    await browser.storage.local.clear();
+                    await browser.storage.local.set(uDark.defaultSettings);
+                    this.loadSettings();
+                    showBS5Modal({
+                        title: 'Settings Cleared',
+                        body: 'All settings have been reset to defaults.',
+                        okText: 'OK',
+                        showCancel: false
                     });
                 }
             });
         },
         
-        exportSettings() {
-            const settings = {
-                inclusionPatterns: this.inclusionPatterns,
-                exclusionPatterns: this.exclusionPatterns,
-                precisionNumber: this.precisionNumber,
-                isEnabled: this.isEnabled,
-                cacheEnabled: this.cacheEnabled,
-                imageEditionEnabled: this.imageEditionEnabled,
-                serviceWorkersEnabled: this.serviceWorkersEnabled,
-                autoRefreshOnSetting: this.autoRefreshOnSetting,
-                exportDate: new Date().toISOString(),
-                version: this.version
-            };
-            
+        async exportSettings() {
+            const settings = await browser.storage.local.get(null);
+
             const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -794,16 +823,14 @@ document.addEventListener("alpine:init", () => {
                 reader.onload = (e) => {
                     try {
                         const settings = JSON.parse(e.target.result);
-                        
-                        // Validate and import settings
-                        if (settings.inclusionPatterns !== undefined) this.inclusionPatterns = settings.inclusionPatterns;
-                        if (settings.exclusionPatterns !== undefined) this.exclusionPatterns = settings.exclusionPatterns;
-                        if (settings.precisionNumber !== undefined) this.precisionNumber = settings.precisionNumber;
-                        if (settings.isEnabled !== undefined) this.isEnabled = settings.isEnabled;
-                        if (settings.cacheEnabled !== undefined) this.cacheEnabled = settings.cacheEnabled;
-                        if (settings.imageEditionEnabled !== undefined) this.imageEditionEnabled = settings.imageEditionEnabled;
-                        if (settings.serviceWorkersEnabled !== undefined) this.serviceWorkersEnabled = settings.serviceWorkersEnabled;
-                        if (settings.autoRefreshOnSetting !== undefined) this.autoRefreshOnSetting = settings.autoRefreshOnSetting;
+                        for (const key in settings) {
+                            if (settings.hasOwnProperty(key) && this.hasOwnProperty(key) && uDark.defaultSettings.hasOwnProperty(key)) {
+                                if(typeof uDark.defaultSettings[key] === typeof settings[key]) {
+                                    this[key] = settings[key];
+                                }
+                            }
+                        }
+
                         
                         this.saveSettings();
                         showBS5Modal({

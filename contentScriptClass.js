@@ -24,12 +24,20 @@ class uDarkExtendedContentScript  {
       });
       
     }
-    
+
     window.wrappedJSObject.uDark.userSettings = cloneInto({  // Preserve user privacy by not exporting sensible settings to the page
-      disable_cache: window.userSettings.disable_cache,
-      keep_service_workers:window.userSettings.keep_service_workers,
-      disable_image_edition: window.userSettings.disable_image_edition,
+      cacheEnabled: window.userSettings.cacheEnabled,
+      serviceWorkersEnabled:window.userSettings.serviceWorkersEnabled,
+      imageEditionEnabled: window.userSettings.imageEditionEnabled,
+      min_bright_fg: window.userSettings.min_bright_fg,
+      max_bright_fg: window.userSettings.max_bright_fg,
+      min_bright_bg_trigger: window.userSettings.min_bright_bg_trigger,
+      max_bright_bg: window.userSettings.max_bright_bg,
+      min_bright_bg: window.userSettings.min_bright_bg,
+      bg_negative_modifier: window.userSettings.bg_negative_modifier,
+      fg_negative_modifier: window.userSettings.fg_negative_modifier,
     }, window);
+
     window.wrappedJSObject.userSettingsReadyAction()
     
     
@@ -131,7 +139,8 @@ class uDarkExtendedContentScript  {
       uDark.website_context = true; // Tell ultimadark we are in a website context and is_color_var is available
       window.userSettingsReadyAction = function() {
         uDark.success("User settings ready", window.userSettings);
-        if (!uDark.userSettings.keep_service_workers && window.navigator.serviceWorker) {
+        uDark.ensureBestRGBAFuncRef();
+        if (!uDark.userSettings.serviceWorkersEnabled && window.navigator.serviceWorker) {
           if (uDark.localStorageAvailable) {
             // Insecure operations have in common a non available localStorage
             window.navigator.serviceWorker.getRegistrations().then(rs => rs.map(x => x.unregister()))

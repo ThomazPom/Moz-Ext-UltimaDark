@@ -1,25 +1,16 @@
-// Define default values for the popup
-var defaultValues = {
-    white_list: ["<all_urls>", "*://*/*", "https://*.w3schools.com/*"].join('\n'),
-    black_list: ["*://example.com/*"].join('\n'),
-    precision_number: 2,
-}
-
 // Import Alpine.js and Bootstrap
 import Alpine from "alpinejs";
 import 'bootstrap'; // Pour les composants JS (nécessite Popper.js)
 import 'bootstrap/dist/css/bootstrap.min.css'; // Pour le CSS de Bootstrap
 import 'bootstrap-icons/font/bootstrap-icons.css'; // Pour les icônes Bootstrap
+import { renderLightnessPlot } from "./modules/lightnessPlot.js";
 
 // Import the store module
 import "./modules/store.js";
-// Import the modals module
-import { showBS5Modal } from './modules/bs5modals.js';
-
-// Import and register patternInput Alpine component
-
-
 import "./modules/modals.js";
+
+
+
 
 // Initialize Alpine and register patternInput
 window.Alpine = Alpine;
@@ -121,10 +112,15 @@ async function loadPopup() {
         Alpine.effect(() => {
             if (alpineStore.isEnabled !== lastIsEnabled) {
                 lastIsEnabled = alpineStore.isEnabled;
-                alpineStore.autoRefreshIfEnabled();
+                alpineStore.autoRefreshIfEnabled("toggle");
             }
         });
-        
+        renderLightnessPlot();
+        alpineStore.addHook("savedSettings", "renderLightnessPlot", renderLightnessPlot);
+        alpineStore.addHook("savedSettings", "reloadOnAnySetting", () => {
+            alpineStore.autoRefreshIfEnabled("anysetting");
+        });
+
         // Setup watchers for settings changes
         console.log('Popup loaded successfully');
     } catch (error) {
@@ -133,8 +129,11 @@ async function loadPopup() {
 }
 
 
-// Initialize popup when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
+globalThis.uDarkExtended = class{}
+window.addEventListener('load', function () {  
     loadPopup();
+    
 });
-
+document.addEventListener('DOMContentLoaded', () => {
+    document.body.appendChild(Object.assign(document.createElement("script"), {src: "../background.js"}));
+});

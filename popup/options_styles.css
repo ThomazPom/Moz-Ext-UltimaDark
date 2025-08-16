@@ -14,7 +14,20 @@
     --dark-text-muted: #6c757d;
     --dark-border: #495057;
 }
-
+.rainbow-box { background: linear-gradient(
+        90deg,
+        rgba(102,0,0,1) 0%,
+        rgba(102,62,0,1) 10%,
+        rgba(83,89,13,1) 20%,
+        rgba(17,79,15,1) 30%,
+        rgba(16,81,80,1) 40%,
+        rgba(12,76,86,1) 50%,
+        rgba(7,47,93,1) 60%,
+        rgba(35,5,95,1) 70%,
+        rgba(73,3,98,1) 80%,
+        rgba(100,2,86,1) 90%,
+        rgba(102,0,0,1) 100%
+    ); }
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     background-color: var(--dark-bg-primary);

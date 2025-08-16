@@ -5,6 +5,9 @@
     --uDark_darken_B: 0.1;
     --uDark_treshold: 0.2;
     
+    --uDark_darken_O1: 0.15;
+    --uDark_darken_O2: 0.05;
+    
     --uDark_transform_darken: var(--uDark_transform_darken_treshold);
     --uDark_transform_darken_standard: calc(min( var(--uDark_darken_calc_low) , var(--uDark_darken_calc_high) ));
     --uDark_transform_darken_treshold:calc(min(var(--uDark_darken_calc_low) , var(--uDark_darken_calc_high) ) * var(--uDark_isOverTreshold) + l * (1 - var(--uDark_isOverTreshold)))  ;
@@ -20,6 +23,13 @@
     --uDark_transform_darken_treshold_sign: calc(min(var(--uDark_darken_calc_low) , var(--uDark_darken_calc_high) ) * var(--uDark_isOverTreshold_sign) + l * (1 - var(--uDark_isOverTreshold_sign)))  ;
    
 }
+O1O2MModifiers_disabled:root
+{
+    --uDark_darken_calc_low: 2 * var(--uDark_darken_A) + var(--uDark_darken_O1) * l - var(--uDark_darken_O1);
+    --uDark_darken_calc_high: ( 2 * (var(--uDark_darken_B) - var(--uDark_darken_O2) - var(--uDark_darken_A)) * l + 100 * (2 * var(--uDark_darken_A) - var(--uDark_darken_B)));
+    
+}
+
 :root{
     --uDark_comp1:clamp( 0, ( var(--uDark_comp1-a) - var(--uDark_comp1-b) + 0.00001 ) * infinity  ,1);
     --uDark_comp2:clamp( 0, ( var(--uDark_comp2-a) - var(--uDark_comp2-b) + 0.00001 ) * infinity  ,1);

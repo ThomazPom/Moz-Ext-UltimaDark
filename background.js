@@ -22,7 +22,7 @@ class Common {
   static appCompat(res) {
     
     if (uDark.browserInfo.version < 105 && uDark.browserInfo.name == "Firefox") {
-      res.disable_image_edition = true;
+      res.imageEditionEnabled = false;
       console.warn("UltimaDark", "Image edition is disabled on Firefox versions below 105, as it is not supported");
       globalThis.browser.storage.local.set(res);
     }
@@ -53,7 +53,6 @@ class uDarkC extends uDarkExtended {
   keypoint(...args) {
     console.info("%c"+this.logPrefix,  "color:lime;font-weight:bolder;font-size:14px",...args);
   }
-  
   static CSS_COLOR_NAMES = [
     //"currentcolor",
      "AliceBlue", "AntiqueWhite", "Aqua", "Aquamarine", "Azure", "Beige", "Bisque", "Black", "BlanchedAlmond", "Blue", "BlueViolet", "Brown", "BurlyWood", "CadetBlue", "Chartreuse", "Chocolate", "Coral", "CornflowerBlue", "Cornsilk", "Crimson", "Cyan", "DarkBlue", "DarkCyan", "DarkGoldenRod", "DarkGray", "DarkGrey", "DarkGreen", "DarkKhaki", "DarkMagenta", "DarkOliveGreen", "DarkOrange", "DarkOrchid", "DarkRed", "DarkSalmon", "DarkSeaGreen", "DarkSlateBlue", "DarkSlateGray", "DarkSlateGrey", "DarkTurquoise", "DarkViolet", "DeepPink", "DeepSkyBlue", "DimGray", "DimGrey", "DodgerBlue", "FireBrick", "FloralWhite", "ForestGreen", "Fuchsia", "Gainsboro", "GhostWhite", "Gold", "GoldenRod", "Gray", "Grey", "Green", "GreenYellow", "HoneyDew", "HotPink", "IndianRed", "Indigo", "Ivory", "Khaki", "Lavender", "LavenderBlush", "LawnGreen", "LemonChiffon", "LightBlue", "LightCoral", "LightCyan", "LightGoldenRodYellow", "LightGray", "LightGrey", "LightGreen", "LightPink", "LightSalmon", "LightSeaGreen", "LightSkyBlue", "LightSlateGray", "LightSlateGrey", "LightSteelBlue", "LightYellow", "Lime", "LimeGreen", "Linen", "Magenta", "Maroon", "MediumAquaMarine", "MediumBlue", "MediumOrchid", "MediumPurple", "MediumSeaGreen", "MediumSlateBlue", "MediumSpringGreen", "MediumTurquoise", "MediumVioletRed", "MidnightBlue", "MintCream", "MistyRose", "Moccasin", "NavajoWhite", "Navy", "OldLace", "Olive", "OliveDrab", "Orange", "OrangeRed", "Orchid", "PaleGoldenRod", "PaleGreen", "PaleTurquoise", "PaleVioletRed", "PapayaWhip", "PeachPuff", "Peru", "Pink", "Plum", "PowderBlue", "Purple", "RebeccaPurple", "Red", "RosyBrown", "RoyalBlue", "SaddleBrown", "Salmon", "SandyBrown", "SeaGreen", "SeaShell", "Sienna", "Silver", "SkyBlue", "SlateBlue", "SlateGray", "SlateGrey", "Snow", "SpringGreen", "SteelBlue", "Tan", "Teal", "Thistle", "Tomato", "Turquoise", "Violet", "Wheat", "White", "WhiteSmoke", "Yellow", "YellowGreen"]
@@ -119,16 +118,37 @@ class uDarkC extends uDarkExtended {
   
   direct_window_export = true
   general_cache = new Map()
-  userSettings = {}
+    
+  userSettings = { // Default user settings
+      isEnabled: true,
+      inclusionPatterns: ["<all_urls>", "*://*/*", "https://*.w3schools.com/*"].join('\n'),
+      exclusionPatterns: ["*://example.com/*"].join('\n'),
+      min_bright_fg : 0.65, // Text with luminance  under this value will be brightened
+      max_bright_fg : 1, // Text over this value will be darkened
+      min_bright_bg_trigger : 0.2, // backgrounds with luminace under this value will remain as is
+      min_bright_bg : 0.1, // background with value over min_bright_bg_trigger will be darkened from this value up to max_bright_bg
+      max_bright_bg : 0.4, // background with value over min_bright_bg_trigger will be darkened from min_bright_bg up to this value
+      bg_negative_modifier:0, // handy transformer for OLED displays : modifier for background colors
+      fg_negative_modifier:0, // Handy transformer for OLED displays : modifier for foreground colors
+      precisionNumber: 2,
+      cacheEnabled: true, // Enable or disable caching
+      inject_css_suggestedimageEditionEnabled:true, // Enable or disable image edition
+      serviceWorkersEnabled: true, // Enable or disable service workers
+      imageEditionEnabled: true, // Enable or disable image edition
+      autoRefreshOnToggle: false,
+      autoRefreshOnAnySettingChange: false
+  }
+  defaultSettings = {...this.userSettings}
+
+  getSettings(resolve) {
+    browser.storage.local.get(null, function(res) {
+      Object.assign(uDark.userSettings, res);
+      resolve(res);
+    })
+  }
   imageSrcInfoMarker = "_uDark"
   imageWorkerJsFile = "imageWorker.js"
-  min_bright_fg = 0.65 // Text with luminance  under this value will be brightened
-  max_bright_fg = 1 // Text over this value will be darkened
-  brightness_peak_editor_fg = 0.5 // Reduce the brightness of texts with intermediate luminace, tying to achieve better saturation
-  hueShiftfg = 0 // Hue shift for text, 0 is fno shift, 360 is full shift
-  min_bright_bg_trigger = 0.2 // backgrounds with luminace under this value will remain as is
-  min_bright_bg = 0.1 // background with value over min_bright_bg_trigger will be darkened from this value up to max_bright_bg
-  max_bright_bg = 0.4 // background with value over min_bright_bg_trigger will be darkened from min_bright_bg up to this value
+    
   foreground_color_css_properties = ["color","caret-color"] // css properties that are foreground colors;, putting caret-color or any other property will edit the caret color with lightening and preventing the caret from being darkened
   // Gradients can be set in background-image
   
@@ -170,13 +190,13 @@ class uDarkC extends uDarkExtended {
         
       }]
     },
-    "mask-image": {
-      stickConcatToPropery: {
-        sValue: "url(",
-        rKey: "filter",
-        stick: "brightness(10)"
-      }
-    },
+    // "mask-image": {
+    //   stickConcatToPropery: {
+    //     sValue: "url(",
+    //     rKey: "filter",
+    //     stick: "brightness(10)"
+    //   }
+    // },
     "background-image": {
       callBacks: [this.edit_css_urls]
     },
@@ -308,7 +328,7 @@ class uDarkC extends uDarkExtended {
     // Do not parse url preventing adding context to it or interpreting it as a relative url or correcting its content by any way
     let imageTrueSrc = src_override || image.getAttribute("src")
     
-    if (uDark.userSettings.disable_image_edition || !imageTrueSrc) {
+    if (!uDark.userSettings.imageEditionEnabled || !imageTrueSrc) {
       
       return imageTrueSrc;
     }
@@ -450,7 +470,7 @@ class uDarkC extends uDarkExtended {
   send_data_image_to_parser(str, details, options) {
     
     // uDark.disable_data_image_edition=true;
-    if (str.trim().toLowerCase().startsWith('data:') && !uDark.userSettings.disable_image_edition && !uDark.disable_data_image_edition) {
+    if (str.trim().toLowerCase().startsWith('data:') && uDark.userSettings.imageEditionEnabled && !uDark.disable_data_image_edition) {
       let {
         b64,
         dataHeader,
@@ -551,7 +571,7 @@ class uDarkC extends uDarkExtended {
     return "Not implemented";
   }
   frontEditSVG(svg, documentElement, details, options = {}) {
-    if (uDark.userSettings.disable_image_edition) {
+    if (!uDark.userSettings.imageEditionEnabled) {
       return;
     }
     uDark.edit_styles_attributes(svg, details, options);
@@ -1265,7 +1285,7 @@ class uDarkC extends uDarkExtended {
   }
   is_color(possiblecolor, as_float = true, fill = false, cssRule, spanp = false) {
     let cache_key = `${possiblecolor}${as_float}${fill}`
-    if (!uDark.userSettings.disable_cache && !spanp && uDark.general_cache.has(cache_key)) { // See https://jsben.ch/aXxCT for cache effect on performance
+    if (uDark.userSettings.cacheEnabled && !spanp && uDark.general_cache.has(cache_key)) { // See https://jsben.ch/aXxCT for cache effect on performance
       return uDark.general_cache.get(cache_key);
     }
     if (!possiblecolor || possiblecolor === "none") { // none is not a color, and it not usefull to create a style element for it
@@ -1296,7 +1316,7 @@ class uDarkC extends uDarkExtended {
         result = result.concat(Array(4 - result.length).fill(1))
       }
       
-      if (!uDark.userSettings.disable_cache) {
+      if (uDark.userSettings.cacheEnabled) {
         uDark.general_cache.set(cache_key, result);
       }
       return result;
@@ -1314,7 +1334,7 @@ class uDarkC extends uDarkExtended {
     }
     
     let cache_key = `${possiblecolor}${as_float}${fill}`
-    if (!uDark.userSettings.disable_cache && !spanp && use_cache && uDark.general_cache.has(cache_key)) { // See https://jsben.ch/aXxCT for cache effect on performance
+    if (uDark.userSettings.cacheEnabled && !spanp && use_cache && uDark.general_cache.has(cache_key)) { // See https://jsben.ch/aXxCT for cache effect on performance
       return uDark.general_cache.get(cache_key);
     }
     possiblecolor = possiblecolor.trim().toLowerCase();
@@ -1368,7 +1388,7 @@ class uDarkC extends uDarkExtended {
         }
       }
       
-      if (!uDark.userSettings.disable_cache && use_cache) {
+      if (uDark.userSettings.cacheEnabled && use_cache) {
         uDark.general_cache.set(cache_key, result);
       }
     }
@@ -1414,17 +1434,26 @@ class uDarkC extends uDarkExtended {
       
       return render(...[r, g, b], a);
     }
+    
+    ensureBestRGBAFuncRef()
+    { // Ensure the best rgba function is used, depending on user settings
+      // this is thefasterst, once its set, it will not change, no need for test each time
+      uDark.simple_rgba = uDark.simple_rgba || uDark.rgba;
+      let use_oled = uDark.userSettings.fg_negative_modifier !== 0 || uDark.userSettings.bg_negative_modifier != 0
+      uDark.rgba = use_oled ? uDark.rgba_oled : uDark.simple_rgba;
+    }
     rgba(r, g, b, a, render = false) {
+        // return uDark.rgba_oled(r, g, b, a, render);
       // Lets remove any brightness from the color
       render = (render || uDark.rgba_val)
       a = typeof a == "number" ? a : 1
       
       let [h, s, l] = uDark.rgbToHsl(r, g, b);
       // This whole function could be combined in one line
-      if (l > uDark.min_bright_bg_trigger) {
+        if (l > uDark.userSettings.min_bright_bg_trigger) {
         
-        let B = uDark.min_bright_bg;
-        let A = uDark.max_bright_bg
+          let A = uDark.userSettings.max_bright_bg;
+          let B = uDark.userSettings.min_bright_bg;
         
         // // https://www.desmos.com/calculator/2prydrxwbf
         // l=Math.min(2*A*l,A+2*(B-A)*(l-0.5));
@@ -1441,19 +1470,54 @@ class uDarkC extends uDarkExtended {
         //   l = 1 - l; // Invert the lightness for bightest colors
         // }
         // l = Math.min(2 * l, -2 * l + 2) * (A - B) + B;
-        
         [r, g, b] = uDark.hslToRgb(h, s, l);
       }
       
       return render(...[r, g, b], a);
     }
+      rgba_oled(r, g, b, a, render = false) {
+        // Lets remove any brightness from the color
+        render = (render || uDark.rgba_val)
+        a = typeof a == "number" ? a : 1
+        
+        let [h, s, l] = uDark.rgbToHsl(r, g, b);
+        // This whole function could be combined in one line
+        if (l > uDark.userSettings.min_bright_bg_trigger) {
+
+          const O2 = uDark.userSettings.fg_negative_modifier;
+          const B = uDark.userSettings.min_bright_bg - O2;
+          const A = uDark.userSettings.max_bright_bg;
+          const O1 = uDark.userSettings.bg_negative_modifier;
+          
+          
+          // // https://www.desmos.com/calculator/2prydrxwbf
+          // l=Math.min(2*(A+O1)*l-O1,A+2*(B-A)*(l-0.5));
+          // Same; Use a ternary operator to avoid calc twice the value of l line in min for comparison
+          l = (l < 0.5) ? (2 * (A + O1) * l - O1) : (A + 2 * (B - O2 - A) * (l - 0.5));
+          
+          // with l on a scale of 100 : in CSS relative colors
+          // l = l<50? (2*A*l): ( 2 * (B - A) * l + 100 * (2 * A - B));
+          
+          // 2 * (B - A) * l + 100 * (2 * A - B)
+          // Old way to do it, but accuracy is not as good as the above one
+          // https://www.desmos.com/calculator/oqqi9nzonh
+          // if (l > 0.5) {
+          //   l = 1 - l; // Invert the lightness for bightest colors
+          // }
+          // l = Math.min(2 * l, -2 * l + 2) * (A - B) + B;
+          
+          [r, g, b] = uDark.hslToRgb(h, s, l);
+        }
+        
+        return render(...[r, g, b], a);
+      }
     revert_rgba(r, g, b, a, render) {
       render = (render || uDark.rgba_val)
       a = typeof a == "number" ? a : 1
       
       let [h, s, l] = uDark.rgbToHsl(r, g, b);
-      let A = uDark.min_bright_fg
-      let B = uDark.max_bright_fg
+        let A = uDark.userSettings.min_bright_fg
+        let B = uDark.userSettings.max_bright_fg
       
       //  l=l<0.5 // It would be nice to check if precalulating parts of ternary operator would be faster
       //   ?-0.7*l+1
@@ -1665,7 +1729,7 @@ class uDarkC extends uDarkExtended {
           
         }
         edit_css_urls(cssStyle, cssRule, details, options, vars) {
-          if (uDark.userSettings.disable_image_edition) {
+          if (!uDark.userSettings.imageEditionEnabled) {
             return;
           }
           vars = vars || {};
@@ -1795,7 +1859,6 @@ class uDarkC extends uDarkExtended {
         
       }
       
-      let uDark = new uDarkC();
       class AllLevels {
         
         static install=function() {
@@ -1843,8 +1906,19 @@ class uDarkC extends uDarkExtended {
       
       
       
-      AllLevels.install();
-      Common.install();
+      let uDark = new uDarkC();
       
-      uDark.install();
-      uDark.keypoint("Installed");
+      if(document.title != "UltimaDark Settings") // We might load the classes to retrieve default settings in popup
+      {
+        
+        AllLevels.install();
+        Common.install();
+        uDark.install();
+        uDark.keypoint("Installed");
+      }
+      else {
+        console.log("Page is UltimaDark Settings, not installing uDark","Loading a lightweight version");
+        uDark.getSettings(z=>{
+          console.log("Loaded settings:", z);
+        });
+      }

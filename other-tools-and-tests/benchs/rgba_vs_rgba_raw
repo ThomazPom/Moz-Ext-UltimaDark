@@ -1,0 +1,61 @@
+(function bench_rgba_vs_rgba_rgb_raw_diff_gt_100(N = 10000) {
+  // Patch: always run the transformation part of rgba
+  const orig_rgba = uDark.rgba;
+  uDark.rgba = function(r, g, b, a, render = false) {
+    render = (render || uDark.rgba_val)
+    a = typeof a == "number" ? a : 1
+    let [h, s, l] = uDark.rgbToHsl(r, g, b);
+    let B = uDark.userSettings.min_bright_bg;
+    let A = uDark.userSettings.max_bright_bg;
+    l = (l < 0.5) ? (2 * A * l) : (A + 2 * (B - A) * (l - 0.5));
+    [r, g, b] = uDark.hslToRgb(h, s, l);
+    return [r, g, b, a];
+  };
+
+  // Patch: always run the transformation part of rgba_rgb_raw
+  const orig_rgba_rgb_raw = uDark.rgba_rgb_raw;
+  uDark.rgba_rgb_raw = function(r, g, b, a, render = false) {
+    render = (render || uDark.rgba_val)
+    a = typeof a == "number" ? a : 1
+    let lightness = uDark.RGBToLightness(r, g, b);
+    let darkenAbove = 127;
+    [r, g, b] = [r, g, b].map((x) => {
+      x = x * Math.pow(
+        255 / (lightness + darkenAbove),
+        lightness / darkenAbove * 2.8
+      );
+      return x;
+    });
+    return [r, g, b, a];
+  };
+
+  function randomColor() {
+    return [
+      Math.floor(Math.random() * 256),
+      Math.floor(Math.random() * 256),
+      Math.random()
+    ];
+  }
+  const colors = Array.from({length: N}, randomColor);
+
+  let count = 0;
+  for (let i = 0; i < N; i++) {
+    let ref = uDark.rgba(...colors[i]);
+    let test = uDark.rgba_rgb_raw(...colors[i]);
+    let err = Math.sqrt(
+      Math.pow(ref[0] - test[0], 2) +
+      Math.pow(ref[1] - test[1], 2) +
+      Math.pow(ref[2] - test[2], 2)
+    );
+    if (err > 100) {
+      count++;
+      console.log(`DIFF>100: rgb(${colors[i][0]},${colors[i][1]},${colors[i][2]}) a=} | rgba: [${ref.map(x=>x.toFixed(1)).join(', ')}] | raw: [${test.map(x=>x.toFixed(1)).join(', ')}] | err: ${err.toFixed(2)}`);
+    }
+  }
+  console.log(`Total samples with diff > 100: ${count}`);
+
+  // Restore originals
+  uDark.rgba = orig_rgba;
+  uDark.rgba_rgb_raw = orig_rgba_rgb_raw;
+})();
+// No file path: run in your console or as a snippet

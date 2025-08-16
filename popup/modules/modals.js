@@ -222,10 +222,50 @@ function showExclusionPriorityInfo() {
   });
 }
 // Register $modals as an Alpine magic property and also on window for global access
+// --- ASCII Color Grid Modal Logic ---
+function showAsciiColorModal(type) {
+  // Settings
+  const rows = 24;
+  const cols = 96;
+  const $modal = document.getElementById('asciiColorModal');
+  const $container = document.getElementById('asciiColorGridContainer');
+  const $legend = document.getElementById('asciiColorLegend');
+  let char = type === 'bg' ? '█' : 'A';
+  let legendText = type === 'bg'
+    ? 'Hues → (0°→360°) • Saturation ↓ (0%→100%) — OLED background preview'
+    : 'Hues → (0°→360°) • Saturation ↓ (0%→100%) — Text color preview';
+
+  let out = '';
+  for (let r = 0; r < rows; r++) {
+    const s = (r / (rows - 1)) * 100;
+    const lightness = (r / (rows - 1)) * 100;
+    for (let c = 0; c < cols; c++) {
+      const h = (c / cols) * 360;
+      const rgb = uDark.hslToRgb(h / 360, s / 100, lightness / 100);
+            let colorStr = type === 'bg'
+              ? uDark.rgba_oled(rgb[0], rgb[1], rgb[2], 1)
+              : uDark.revert_rgba(rgb[0], rgb[1], rgb[2], 1);
+      out += `<span style="color:${colorStr};">${char}</span>`;
+    }
+    out += "\n";
+  }
+  $container.innerHTML = `<pre style='white-space:pre;padding-bottom:20px; font:16px/0.9 monospace;'>${out}</pre>`;
+  $legend.textContent = legendText;
+
+  // Show modal (Bootstrap 5)
+  if (window.bootstrap && window.bootstrap.Modal) {
+    const bsModal = window.bootstrap.Modal.getOrCreateInstance($modal);
+    bsModal.show();
+  } else {
+    $modal.style.display = 'block';
+  }
+}
+
 document.addEventListener("alpine:init", () => {
   Alpine.magic("modals", () => ({
     confirmExcludeSite,
     confirmIncludeSite,
-    showExclusionPriorityInfo
+    showExclusionPriorityInfo,
+    showAsciiColorModal
   }));
 });

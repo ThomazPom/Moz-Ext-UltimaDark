@@ -58,6 +58,25 @@ class uDarkExtended extends uDarkExtendedContentScript {
     
     filter.write(uDarkEncode(details.charset,options.chunk));
   }
+  settingsInContentScriptCSS(){
+    let editedCSS = this.inject_css_override;
+    let settingsToInject = {
+      uDark_darken_A: this.userSettings.max_bright_bg,
+      uDark_darken_B: this.userSettings.min_bright_bg,
+      uDark_lighten_A: this.userSettings.min_bright_fg,
+      uDark_lighten_B: this.userSettings.max_bright_fg,
+      uDark_treshold: this.userSettings.min_bright_bg_trigger,
+      uDark_darken_O1: this.userSettings.bg_negative_modifier,
+      uDark_darken_O2: this.userSettings.fg_negative_modifier
+    }
+    Object.entries(settingsToInject).forEach(([key, value]) => {
+      editedCSS = editedCSS.replace(new RegExp(`--${key}:\\s*[^;]+;`), `--${key}: ${value};`);
+    });
+    if(this.userSettings.bg_negative_modifier>0 || this.userSettings.fg_negative_modifier>0) {
+      editedCSS = editedCSS.replace(/O1O2MModifiers_disabled:root/g, ":root");
+    }
+    return editedCSS;
+  }
   getInjectCSS(resourcesPaths, actions = {}) {
     if (typeof resourcesPaths == "string") resourcesPaths = [resourcesPaths]
     return Promise.all(resourcesPaths.map(resourcePath =>
@@ -84,7 +103,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
                 return is_color ? uDark.rgba(...is_color, uDark.rgba_val) : match
               })
               if (actions.unsetMode == "fill_minimum" && value == "unset" && ["color", "background-color"].includes(key)) {
-                value = uDark.hsla_val(0, 0, uDark.max_bright_bg, 1)
+                value = uDark.hsla_val(0, 0, uDark.userSettings.max_bright_bg, 1)
               }
               let priority = rule.style.getPropertyPriority(key);
               rule.style.setProperty(key, value, priority);
@@ -101,10 +120,13 @@ class uDarkExtended extends uDarkExtendedContentScript {
         actions.edit_css && uDark.edit_css(aCSS)
         return aCSS
       }).then(aCSS => [...aCSS.cssRules].map(rule => rule.cssText).join("\n")).then(text => {
-        for (let [key, item] of Object.entries(actions.append || {})) {
-          item[key] = (item[key] || "") + text
-          
+        for (let [key, item] of Object.entries(actions.set || {})) {
+          item[key] = text
         }
+        for (let [key, item] of Object.entries(actions.append || {})) {
+          item[key] = (item[key] || "") + text 
+        }
+        
       })));
     }
     registerCS(contentScriptRegister) {
@@ -125,7 +147,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
         ...contentScriptRegister
       }
       
-      browser.contentScripts.register(contentScript).then(x => uDark.regiteredCS.push(x));
+      browser.contentScripts.register(contentScript).then(x => uDark.registeredCS.push(x));
       
     }
     properBlackListToExcludeRegex(list) {
@@ -140,43 +162,49 @@ class uDarkExtended extends uDarkExtendedContentScript {
     async setListener(initial) {
       let userSettings = uDark.userSettings;
       initial && Common.appCompat(userSettings);
-      uDark.userSettings.properWhiteList = (userSettings.white_list || uDark.defaultRegexes.white_list).split("\n").filter(uDark.filterValidExpression)
+
+
+      uDark.ensureBestRGBAFuncRef(); // Ensure the best rgba function is used, depending on user settings
+      await uDark.getInjectAllCSS();
+      uDark.userSettings.properWhiteList = (userSettings.inclusionPatterns).split("\n");
+      
+      uDark.userSettings.properWhiteList = await uDark.asyncFilter(uDark.userSettings.properWhiteList,uDark.filterValidExpression);
 
       // Process all exclusion patterns
-      const allBlacklistPatterns = (userSettings.black_list || uDark.defaultRegexes.black_list).split("\n");
-
+      const allBlacklistPatterns = (userSettings.exclusionPatterns).split("\n");
+      
       // Helper to filter by flag
       function filterByFlag(flagArr) {
         return allBlacklistPatterns
-          .map(x => uDark.mapRegexAndRemoveUdFlag(x, flagArr, "erased"))
-          .filter(x => x !== "erased" && x !== null && x !== undefined);
+        .map(x => uDark.mapRegexAndRemoveUdFlag(x, flagArr, "erased"))
+        .filter(x => x !== "erased" && x !== null && x !== undefined);
       }
-
+      
       // Full exclusion (no flag or #ud_all)
       uDark.userSettings.properBlackList = filterByFlag(["", "all"]);
       uDark.userSettings.properBlackList = await uDark.asyncFilter(uDark.userSettings.properBlackList, uDark.filterValidExpression);
       uDark.userSettings.exclude_regex = uDark.properBlackListToExcludeRegex(uDark.userSettings.properBlackList);
-
+      
       // Images only
       uDark.userSettings.properBlackListImg = filterByFlag(["img"]);
       uDark.userSettings.properBlackListImg = await uDark.asyncFilter(uDark.userSettings.properBlackListImg, uDark.filterValidExpression);
       uDark.userSettings.exclude_regexImg = uDark.properBlackListToExcludeRegex(uDark.userSettings.properBlackListImg);
-
+      
       // CSS only
       uDark.userSettings.properBlackListCss = filterByFlag(["css"]);
       uDark.userSettings.properBlackListCss = await uDark.asyncFilter(uDark.userSettings.properBlackListCss, uDark.filterValidExpression);
       uDark.userSettings.exclude_regexCss = uDark.properBlackListToExcludeRegex(uDark.userSettings.properBlackListCss);
-
+      
       // Image resource only (#ud_imgr)
       uDark.userSettings.properBlackListImgr = filterByFlag(["imgr"]);
       uDark.userSettings.properBlackListImgr = await uDark.asyncFilter(uDark.userSettings.properBlackListImgr, uDark.filterValidExpression);
       uDark.userSettings.exclude_regexImgr = uDark.properBlackListToExcludeRegex(uDark.userSettings.properBlackListImgr);
-
+      
       // Resources only (CSS, JS, images)
       uDark.userSettings.properBlackListRes = filterByFlag(["res"]);
       uDark.userSettings.properBlackListRes = await uDark.asyncFilter(uDark.userSettings.properBlackListRes, uDark.filterValidExpression);
       uDark.userSettings.exclude_regexRes = uDark.properBlackListToExcludeRegex(uDark.userSettings.properBlackListRes);
-
+      
       
       
       uDark.fixedRandom = Math.random();
@@ -187,13 +215,21 @@ class uDarkExtended extends uDarkExtendedContentScript {
       browser.webRequest.onHeadersReceived.removeListener(Listeners.editOnHeadersReceivedStyleSheet);
       browser.webRequest.onBeforeRequest.removeListener(Listeners.editBeforeRequestImage);
       browser.webRequest.onHeadersReceived.removeListener(Listeners.editOnHeadersImage);
-      
-      if (uDark.regiteredCS && uDark.regiteredCS.length) {
-        while (uDark.regiteredCS.length) {
-          uDark.regiteredCS.shift().unregister();
+
+      if (uDark.registeredCS && uDark.registeredCS.length) {
+        while (uDark.registeredCS.length) {
+          uDark.registeredCS.shift().unregister();
         }
       }
-      
+      // { // EvenOff listeners
+      //   uDark.log("EvenOff listeners removed");
+      //   browser.webRequest.onBeforeRequest.removeListener(Listeners.cancelPopupXHRCalls);
+      //   browser.webRequest.onBeforeRequest.addListener(Listeners.cancelPopupXHRCalls, {
+      //     urls: ["<all_urls>"],
+      //     types: ["xmlhttprequest"]
+      //   }, ["blocking"]);
+      //   uDark.info("EvenOff listeners added");
+      // }      
       // { // EvenOff listeners
       //   uDark.log("EvenOff listeners removed");
       //   browser.webRequest.onBeforeRequest.removeListener(Listeners.cancelPopupXHRCalls);
@@ -204,7 +240,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
       //   uDark.info("EvenOff listeners added");
       // }
       // uDark.registerCS({matches:["<all_urls>"],excludeMatches:null,js: [{file: "contentScriptEvenOff.js"}],css:[{file: "contentScriptEvenOff.css"}]});
-      if (!userSettings.disable_webext && userSettings.properWhiteList.length) {
+      if (userSettings.isEnabled && userSettings.properWhiteList.length) {
         
         browser.webRequest.onSendHeaders.addListener(Listeners.setEligibleRequestBeforeData, {
           urls: userSettings.properWhiteList,
@@ -217,7 +253,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
         },
         ["blocking", "responseHeaders"]);
         
-
+        
         {
           
           browser.webRequest.onBeforeRequest.addListener(Listeners.editBeforeRequestStyleSheet_sync, {
@@ -233,10 +269,11 @@ class uDarkExtended extends uDarkExtendedContentScript {
           },
           ["blocking", "responseHeaders"]);
         }
-
         
         
-        if (!uDark.userSettings.disable_image_edition) {
+        
+        if (uDark.userSettings.imageEditionEnabled) {
+          uDark.log("Image edition enabled","Registering handlers");
           browser.webRequest.onBeforeRequest.addListener(Listeners.editBeforeRequestImage, {
             urls: ["<all_urls>"],
             
@@ -253,6 +290,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
           ["blocking", "responseHeaders"]);
           
         }
+
         
         let contentScript = {
           js: [
@@ -270,10 +308,9 @@ class uDarkExtended extends uDarkExtendedContentScript {
             },
           ], // Forced overrides
           css: [{
-            code: uDark.inject_css_override
+            code: uDark.settingsInContentScriptCSS()
           }], // Forced overrides
         };
-        
         uDark.registerCS({
           css: [{
             code: uDark.inject_css_override_top_only
@@ -292,7 +329,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
         {
         uDark.info("UD Did not load : ",
           "White list", uDark.userSettings.properWhiteList,
-          "UltimaDark enable state :", !userSettings.disable_webext)
+          "UltimaDark enable state :", uDark.userSettings.isEnabled)
         }
         
         
@@ -305,10 +342,9 @@ class uDarkExtended extends uDarkExtendedContentScript {
       }
       async filterValidExpression(x) {
         try {
-          await browser.tabs.query({url: x,active: true});
-          return true;
+          await browser.contentScripts.register({ matches:[x],runAt:"#<udark>"})
         } catch (e) {
-          return false;
+          return e.message.includes("#<udark>");
         } 
       }
       mapRegexAndRemoveUdFlag(x, keepFlags=["","all"],notFoundValue = null) { 
@@ -318,22 +354,45 @@ class uDarkExtended extends uDarkExtendedContentScript {
         }
         return notFoundValue;
       }
-      defaultRegexes = {
-        white_list: ["<all_urls>", "*://*/*", "https://*.w3schools.com/*"].join('\n'),
-        black_list: ["*://example.com/*"].join('\n')
-      }
       
-      getSettings(resolve) {
-        browser.storage.local.get(null, function(res) {
-          uDark.userSettings = res;
-          resolve(res);
-        })
+      getInjectAllCSS(){
+        //reset suggested, override and top only:
+        return Promise.all([
+          this.getInjectCSS("/inject_css_suggested.css", {
+            set: {
+              inject_css_suggested: uDark,
+            },
+            edit_css: true
+          }),
+          this.getInjectCSS("/inject_css_suggested_no_edit.css", {
+            append: {
+              inject_css_suggested: uDark
+            }
+          }),
+          this.getInjectCSS("/inject_css_override.css", {
+            set: {
+              inject_css_override: uDark
+            },
+            edit_css: true
+          }),
+          this.getInjectCSS("/inject_css_override_top_only.css", {
+            set: {
+              inject_css_override_top_only: uDark
+            },
+            edit_css: true
+          }),
+          this.getInjectCSS("/inject_css_override_no_edit.css", {
+            append: {
+              inject_css_override: uDark
+            }
+          }),
+        ]).then(x => {
+          uDark.info("All inject CSS loaded");
+        });
       }
-      
       install() {
         this.logPrefix = "UD";
         fetch("manifest.json").then(x => x.text()).then(x=>JSON.parse(x.replace(/\s+\/\/.+/g, ""))).then(x => {
-          console.log("Manifest loaded", x);
           uDark.production = x.browser_specific_settings.gecko.id;
           
           if (uDark.production) {
@@ -347,7 +406,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
         });
         
         browser.runtime.onConnect.addListener(uDark.portConnected);
-        
+        browser.runtime.onInstalled.addListener(uDark.onInstalled);
         Promise.all([
           browser.runtime.getBrowserInfo().then(x => {
             uDark.browserInfo = x;
@@ -360,37 +419,18 @@ class uDarkExtended extends uDarkExtendedContentScript {
             },
             edit_css: true
           }),
-          uDark.getInjectCSS("/inject_css_suggested_no_edit.css", {
-            append: {
-              inject_css_suggested: uDark
-            }
-          }),
-          uDark.getInjectCSS("/inject_css_override.css", {
-            append: {
-              inject_css_override: uDark
-            },
-            edit_css: true
-          }),
-          uDark.getInjectCSS("/inject_css_override_top_only.css", {
-            append: {
-              inject_css_override_top_only: uDark
-            },
-            edit_css: true
-          }),
-          uDark.getInjectCSS("/inject_css_override_no_edit.css", {
-            append: {
-              inject_css_override: uDark
-            }
-          }),
+          uDark.getInjectAllCSS(),
           new Promise(uDark.getSettings),
           new Promise(uDark.installToggleSiteCommand)
         ]).then(x => uDark.info("CSS processed")).then(r => uDark.setListener(true));
         browser.storage.onChanged.addListener((changes, area) => {
-          uDark.success("Settings changed");
-          if (area == "local") {
+          
+          if (area == "local" && !(uDark.installOrUpdate++==true)) {
+            uDark.success("Settings changed");
             new Promise(uDark.getSettings).then(uDark.setListener);
           }
         });
+        uDark.keypoint("Installed");
       }
       
       installToggleSiteCommand(resolve) { // This is a command that will be available in the browser shortcuts, it will trigger the toggle action, it's a way to toggle the site without opening the popup
@@ -417,7 +457,57 @@ class uDarkExtended extends uDarkExtendedContentScript {
         });
         resolve();
       }
-      
+      onInstalled(details) {
+        
+        uDark.installOrUpdate = true;
+        if (details.reason === "install") {
+          uDark.info("Extension installed");
+          browser.storage.local.set(uDark.userSettings).then(() => {
+            uDark.info("Default user settings saved");
+          });
+        }
+        else if (details.reason === "update") {
+          uDark.info("Extension updated");
+          browser.storage.local.get(null).then((res) => {
+            uDark.info("Current user settings", res);
+            let mergeSettings = {};
+            Object.entries(uDark.userSettings).forEach(([key, value]) => {
+              if(res[key] === undefined) {
+                mergeSettings[key] = value;
+              }
+            });
+            uDark.info("Merging user settings", mergeSettings);
+            browser.storage.local.set(mergeSettings).then(() => {
+              uDark.info("User settings merged");
+            });
+          });
+        }
+      }
+      // popupEmbedXHRHelperOnConnect(port)
+      // {
+      //   port.listenersXHRCancel=[]
+      //   for(indexedDB, pattern of uDark.userSettings.properWhiteList) {
+          
+      //     let listenerFunc = details=>{
+      //       // find a "X-Uark header and its value";
+      //       if(details.requestHeaders) {
+      //         details.requestHeaders.forEach(header => {
+      //           if(header.name.toLowerCase() === "x-uark") {
+      //             uDark.info("X-Uark header found", header.value);
+      //             //tell port we f
+      //           }
+      //         });
+      //       }
+      //     }
+
+
+      //     browser.webRequest.addListener(Listeners.popupEmbedXHRHelper, {
+      //       urls: [pattern],
+      //       types: ["xmlhttprequest"]
+      //     }, ["blocking"]);
+      //   }
+      // }
+
       portConnected(connectedPort) {
         uDark.info("Connected", connectedPort.sender.url, connectedPort.sender.contextId, connectedPort.sender);
         if (connectedPort.name == "port-from-cs" && connectedPort.sender.tab) {
@@ -528,16 +618,16 @@ class uDarkExtended extends uDarkExtendedContentScript {
           return true; // Return true to apply the change, false to remove the header. We must keep the header since a website can send x frame options, among CSP, and removing it would give priority to the x frame options
         }),
       }
-      regiteredCS = []
+      registeredCS = []
       is_background = true // Tell ultimadark that we are in the background script and is_color_var is not available for instance
       LoggingWorker = class LoggingWorker extends Worker {
         constructor(...args) {
           super(...args);
-            this.addEventListener('message', function(e) {
-              if (e.data.logMessage) {
-                uDark.log("imageWorker:", ...e.data.logMessage);
-              }
-            });
+          this.addEventListener('message', function(e) {
+            if (e.data.logMessage) {
+              uDark.log("imageWorker:", ...e.data.logMessage);
+            }
+          });
           
         }
       }
