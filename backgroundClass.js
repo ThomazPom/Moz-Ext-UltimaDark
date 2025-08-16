@@ -476,6 +476,13 @@ class uDarkExtended extends uDarkExtendedContentScript {
                 mergeSettings[key] = value;
               }
             });
+            if(res.black_list) { // Legacy cleanup
+              mergeSettings.exclusionPatterns = res.black_list;
+              mergeSettings.inclusionPatterns = res.white_list;
+              mergeSettings.isEnabled = !res.disable_webext;
+              mergeSettings.imageEditionEnabled = !res.disable_image_edition;
+              browser.storage.local.remove(["black_list", "white_list","disable_webext","disable_image_edition", "disable_cache"]);
+            }
             uDark.info("Merging user settings", mergeSettings);
             browser.storage.local.set(mergeSettings).then(() => {
               uDark.info("User settings merged");
