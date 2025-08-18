@@ -308,8 +308,8 @@ class Listeners {
     }
     
     uDark.extractCharsetFromHeaders(details);
-    
-    if(!details.contentType.includes("text/html")){
+
+    if(!details.contentType.includes("text/html") && !details.contentType.includes("application/xhtml+xml")){
       return {responseHeaders:details.responseHeaders};
     }
     details.responseHeaders = details.responseHeaders.filter(x => {

@@ -23653,7 +23653,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
         try {
           return new Promise((resolve2, reject) => {
             setTimeout(() => {
-              resolve2(browser.tabs.reload(tab.id));
+              resolve2(browser.tabs.reload(tab.id, { bypassCache: true }));
             }, 200);
           });
         } catch (e) {

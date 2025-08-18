@@ -722,7 +722,7 @@ lcdColorSettings: {
             try { 
                 return new Promise((resolve, reject) => {
                     setTimeout(() => {
-                        resolve(browser.tabs.reload(tab.id));
+                        resolve(browser.tabs.reload(tab.id, { bypassCache: true }));
                     }, 200); // Delay to ensure any changes are applied
                 });
             } catch(e) {

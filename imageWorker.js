@@ -1,43 +1,5 @@
 let imageBuffers = [];
 let activeMessageLogging = false;
-// console.log=(...args)=>{
-  
-//         for (let i = 0; i < args.length; i++) {
-//             if(typeof args[i]=="function")
-//             {
-//                 args[i]=args[i].name;
-//             }
-            
-            
-//             if(typeof args[i]=="object")
-//             {
-//                 if(args[i].name)
-//                 {
-//                     args[i]=args[i].name;
-//                 }
-//                 // args[i]=JSON.stringify(args[i]);
-//             }
-//         }
-//     postMessage({logMessage:args})
-//     // setTimeout(() => {
-//     //     for (i = 0; i < args.length; i++) {
-//     //         if(typeof args[i]=="undefined")
-//     //         {   
-
-//     //             args[i]="undefined";
-//     //         }
-//     //         if(args[i].name)
-//     //         {
-//     //             args[i]=args[i].name;
-//     //         }
-//     //         if (typeof args[i] == "object") {
-//     //             args[i] = JSON.stringify(args[i]);
-//     //         }
-//     //         args[i] = args[i] + "";
-//     //     }
-//     //     throw new Error("MESSAGE FROM WORKER " + args.join("  --  "));
-//     // }, 0);
-// }
 if(!activeMessageLogging)
 {
   console.log =()=>undefined
@@ -538,6 +500,7 @@ var uDark={
             // Standard way 2023 // very very very slow (1.5s for a 500 x 500 img)
             // 2024 way : Go faster by finding the right caclulation for each pixel
             // [r, g, b, a] = uDark.revert_rgba(r, g, b, a, (...args) => args);
+            
             if (lightness > 127) {
               // [r,g,b]=[r,g,b].map((x)=>x/2);
               [r, g, b] = [r, g, b].map((x) => {
@@ -550,6 +513,9 @@ var uDark={
                 return x;
 
               });
+              
+              var newColor = ((a << 24)) | (b << 16) | (g << 8) | r;
+              theImageDataUint32TMP[n] = newColor;
             }
 
             let opaqueColorCounterRatio = theImageDataUint32TMP.length/editionStatus.opaqueColorCounter.size
@@ -562,8 +528,6 @@ var uDark={
               editionConfidence--;
             }
           }
-          var newColor = ((a << 24)) | (b << 16) | (g << 8) | r;
-          theImageDataUint32TMP[n] = newColor;
 
         }
         if(!editionStatus.statsComplete)
