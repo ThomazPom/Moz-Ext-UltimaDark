@@ -349,21 +349,15 @@ class uDarkExtendedContentScript  {
     
     // })
     
-    // uDark.functionPrototypeEditor(DOMParser,   DOMParser.prototype.parseFromString, (elem, args) => {
-    //   // Catching the parsing of the document, to edit it before it's inserted in the DOM, is in the philosophy of UltimaDark of doing things at key moments.
-    //   // parseFromString is a key moment, as it manipulates strings. insertBefore, used with an instanciated element for instance is not a key moment, as we could have edited the element before.
-    //   let strict_xml_val= args[1] && args[1].includes("xml")?args[1]:false;
-    //   args[0]=uDark.frontEditHTML("ANY_ELEMENT",args[0],undefined,{STRICT_HTML: strict_xml_val})
-    //   return args
-    // }, (text,type) => ["text/html","application/xhtml+xml"].includes(type))
+    uDark.functionPrototypeEditor(DOMParser,   DOMParser.prototype.parseFromString, (elem, args) => {
+      // Catching the parsing of the document, to edit it before it's inserted in the DOM, is in the philosophy of UltimaDark of doing things at key moments.
+      // parseFromString is a key moment, as it manipulates strings. insertBefore, used with an instanciated element for instance is not a key moment, as we could have edited the element before.
+      let strict_xml_val= args[1] && args[1].includes("xml")?args[1]:false;
+      args[0]=uDark.frontEditHTML("ANY_ELEMENT",args[0],undefined,{STRICT_XML: strict_xml_val})
+      // console.log(args)
+      return args
+    }, (text,type) => ["text/html","application/xhtml+xml"].includes(type))
     
-    // uDark.functionPrototypeEditor(DOMParser,   DOMParser.prototype.parseFromString, (elem, args) => {
-    //   // Catching the parsing of the document, to edit it before it's inserted in the DOM, is in the philosophy of UltimaDark of doing things at key moments.
-    //   // parseFromString is a key moment, as it manipulates strings. insertBefore, used with an instanciated element for instance is not a key moment, as we could have edited the element before.
-  
-    //   args[0]=uDark.frontEditHTML("ANY_ELEMENT",args[0])
-    //   return args
-    // }, (text,type) => ["text/html" ].includes(type))
     
     
     

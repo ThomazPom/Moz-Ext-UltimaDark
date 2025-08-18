@@ -784,8 +784,8 @@ class uDarkC extends uDarkExtended {
     let parsedDocument, aDocument;
     if (options.STRICT_XML) {
       let parser = new DOMParser();
-      parsedDocument = parser.parseFromString(str, options.STRICT_XML);
-      aDocument = parsedDocument.documentElement;
+      parsedDocument = parser.p_ud_parseFromString(str, options.STRICT_XML);
+      aDocument = parsedDocument;
     }
     else {
 
@@ -829,7 +829,7 @@ class uDarkC extends uDarkExtended {
     }
     let resultEdited;
     if (options.STRICT_XML) {
-      resultEdited = aDocument.outerHTML.trim();
+      resultEdited = aDocument.documentElement.outerHTML.trim();
     }
     else {
       resultEdited = aDocument.innerHTML.unprotect_simple("ud-tag-ptd-");
