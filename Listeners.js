@@ -11,10 +11,14 @@ class Listeners {
       return {cancel: true};
     }
   }
+  static isEligibleResource(details) {
+    // Check if the resource is eligible for uDark
+    return uDark.getPort(details) || details.tabId == -1 && !details.documentUrl.match(uDark.userSettings.exclude_regex);
+  }
   static editOnHeadersImage(details) {
     // Util 2024 jan 02 we were checking details.documentUrl, or details.url to know if a stylesheet was loaded in a excluded page
     // Since only CS ports that matches blaclist and whitelist are connected, we can simply check if this resource has a corresponding CS port
-    if (!uDark.getPort(details)) {
+    if (!Listeners.isEligibleResource(details)) {
       // uDark.log("Image","No port found for",details.url,"loaded by webpage:",details.originUrl,"Assuming it is not an eligible webpage, or even blocked by another extension");
       return {}
     }
@@ -27,7 +31,7 @@ class Listeners {
     if (details.documentUrl.match(uDark.userSettings.exclude_regexImg)) {
       return {}
     }
-
+    
     let imageURLObject = new URL(details.url);
     details.headersLow = {}
     
@@ -143,7 +147,7 @@ class Listeners {
     if (details.url.startsWith("https://data-image/?base64IMG=")) {
       const dataUrl = details.url.slice(30);
       
-    // now in 2025 we can exclude all res or image res
+      // now in 2025 we can exclude all res or image res
       if( details.documentUrl.match(uDark.userSettings.exclude_regexImg) || details.url.match(uDark.userSettings.exclude_regexRes) || details.url.match(uDark.userSettings.exclude_regexImgr)) {
         // uDark.log("Image","This image is excluded by the user settings",details.url,"loaded by webpage:",details.originUrl,"Assuming it is not an eligible webpage, or even blocked by another extension");
         return {
@@ -185,7 +189,7 @@ class Listeners {
     
     let {is_enforced_nobody} = uDark.getNoBodyStatus(details);
     details.already_edited_or_empty = is_enforced_nobody // We cannot edit this request: either it has no body, or it's empty because unmodified, so the webRequestFilter will receive an already edited content from the cache
-
+    
   }
   static TopCSSFlag = `@import "${browser.runtime.getURL("ultimaDark.css")}";\n`
   static editBeforeRequestStyleSheet_sync(details) {
@@ -195,7 +199,7 @@ class Listeners {
     
     // Util 2024 jan 02 we were checking details.documentUrl, or details.url to know if a stylesheet was loaded in a excluded page
     // Since only CS ports that matches blaclist and whitelist are connected, we can simply check if this resource has a corresponding CS port
-    if (!uDark.getPort(details)) {
+    if (!Listeners.isEligibleResource(details)) {
       // console.log("CSS", "No port found for", details.url, "loaded by webpage:", details.originUrl, "Assuming it is not an eligible webpage, or even blocked by another extension");
       // console.log("If i'm lacking of knowledge, here is what i know about this request", details.tabId, details.frameId);
       return {}
@@ -207,10 +211,10 @@ class Listeners {
       // console.log("basic exclude_regex",uDark.userSettings.exclude_regex);
       return {}
     }
-
     
     
-
+    
+    
     let filter = globalThis.browser.webRequest.filterResponseData(details.requestId); // After this instruction, browser espect us to write data to the filter and close it
     
     
@@ -227,11 +231,11 @@ class Listeners {
         uDark.warn("onHeaderReceived was not called for",details.requestId,details.url,"not a big deal, but now defaulting to utf 8 & text/css");
         uDark.extractCharsetFromHeaders(details, "text/css");
       }
-
+      
       details.dataCount = 0;
       details.rejectedValues = "";
     }
-
+    
     // // ondata event handler
     filter.ondata = event => {
       if(details.already_edited_or_empty) {
@@ -271,6 +275,7 @@ class Listeners {
     
     // console.log("Will check",details.url,"made by",details.documentUrl || details.url,0)
     // console.log("Is eligible for uDark",details.eligibleRequest)
+    
     if (details.unEligibleRequest) {
       
       uDark.deletePort(details)
@@ -285,15 +290,13 @@ class Listeners {
       return;
       
     }
-    if (details.tabId != -1) {
-      // Lets be the MVP here, sometimes the content script is not connected yet, and the CSS will arrive in few milliseconds.
-      // This page is eligible for uDark
-      // console.log("I'm telling the world that",details.url,"is eligible for uDark", "on", details.tabId,details.frameId)
-      // This code must absolutely eb executed before the parsing of headers of the page since the page can have  link header wich will be considered as a <link> tag
-      // See https://developer.mozilla.org/fr/docs/Web/HTTP/Headers/Link for details
-      uDark.setPort(details,{arrivingSoon:true},0);
-      
-    }
+    // Lets be the MVP here, sometimes the content script is not connected yet, and the CSS will arrive in few milliseconds.
+    // This page is eligible for uDark
+    // console.log("I'm telling the world that",details.url,"is eligible for uDark", "on", details.tabId,details.frameId)
+    // This code must absolutely eb executed before the parsing of headers of the page since the page can have  link header wich will be considered as a <link> tag
+    // See https://developer.mozilla.org/fr/docs/Web/HTTP/Headers/Link for details
+    uDark.setPort(details,{arrivingSoon:true},0);
+    
     
   }
   static editBeforeData(details) {
@@ -308,7 +311,7 @@ class Listeners {
     }
     
     uDark.extractCharsetFromHeaders(details);
-
+    
     if(!details.contentType.includes("text/html") && !details.contentType.includes("application/xhtml+xml")){
       return {responseHeaders:details.responseHeaders};
     }
@@ -318,8 +321,8 @@ class Listeners {
     })
     
    
-
-
+    
+    
     let {is_enforced_nobody} = uDark.getNoBodyStatus(details);
     if (is_enforced_nobody) {
       return {responseHeaders:details.responseHeaders}; // We cannot edit this request: either it has no body, or it's empty because unmodified, so the webRequestFilter will receive an already edited content from the cache
@@ -346,7 +349,7 @@ class Listeners {
         details.writeEnd = decodedValue
       }
       else
-      {
+        {
         details.writeEnd = uDark.parseAndEditHtmlContentBackend4(decodedValue, details)
       }
       

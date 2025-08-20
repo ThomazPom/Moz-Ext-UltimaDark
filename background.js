@@ -136,7 +136,7 @@ class uDarkC extends uDarkExtended {
       precisionNumber: 2,
       cacheEnabled: true, // Enable or disable caching
       inject_css_suggestedimageEditionEnabled:true, // Enable or disable image edition
-      serviceWorkersEnabled: true, // Enable or disable service workers
+      serviceWorkersEnabled: false, // Enable or disable service workers
       imageEditionEnabled: true, // Enable or disable image edition
       autoRefreshOnToggle: false,
       autoRefreshOnAnySettingChange: false

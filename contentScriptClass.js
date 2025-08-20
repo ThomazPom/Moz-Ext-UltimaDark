@@ -10,7 +10,7 @@ class uDarkExtendedContentScript  {
   
   install() {
     uDark.exportFunction = globalThis.exportFunction; // Don't override the exportFunction function, but make it available to ultimadark
-    console.info("UltimaDark", "Content script install", window);     
+    console.info("UltimaDark", "Content script install", window); 
     try{
       window.wrappedJSObject.eval("")
     }
@@ -367,9 +367,77 @@ class uDarkExtendedContentScript  {
     ], (elem, args) => {
       (args[0].o_ud_textContent = uDark.edit_str(args[0].textContent));
       return args
-    }, function(){ return this instanceof HTMLStyleElement})
+    }, function(){ return this instanceof HTMLStyleElement});
+    // Canvas 2D full tracer (methods + properties) — ES2020
     
-    
+    {
+      let darken_canvas = (elem, args) => {
+        elem.currentFillStyle = elem.fillStyle;
+        elem.fillStyle = uDark.eget_color(elem.fillStyle, uDark.rgba);
+        // elem.fillStyle = "lime";
+        return args
+      } 
+      let lighten_canvas = (elem, args) => {
+        elem.currentFillStyle = elem.fillStyle;
+        elem.fillStyle = uDark.eget_color(elem.fillStyle, uDark.revert_rgba);
+        return args
+      }
+      let darken_canvas_stroke = (elem, args) => {
+        elem.currentStrokeStyle = elem.strokeStyle ;
+        elem.strokeStyle = uDark.eget_color(elem.strokeStyle, uDark.rgba);
+        return args
+      } 
+      let lighten_canvas_stroke = (elem, args) => {
+        elem.currentStrokeStyle = elem.strokeStyle ;
+        elem.strokeStyle = uDark.eget_color(elem.strokeStyle, uDark.revert_rgba);
+        return args
+      }
+      // uDark.valuePrototypeEditor(CanvasRenderingContext2D, "fillStyle", (elem, value) => {
+        //   elem.refilled=true
+      //   return value; // uDark.edit_str(value)
+      // })
+      //  uDark.valuePrototypeEditor(CanvasRenderingContext2D, "strokeStyle", (elem, value) => {
+        //   elem.restroked=true
+      //     // return "lime"
+      //   if(value == "#c0c0c0" || value == "rgba(192,192,192,1)")
+      //     {
+      //       console.warn("Stroke style set to silver, changing to lime");
+      //     return "lime"
+      //   }
+      //   if(value == "rgba(196,199,197,1)")
+      //   {
+      //     //red
+      //     console.warn("Stroke style set to red, changing to red");
+      //     return "red";
+      //   }
+      //   if(value == "rgba(31,31,31,0.133)")
+      //   {
+      //     console.warn("Stroke style set to dark gray, changing to blue");
+      //     return "blue";
+      //   }
+      //   console.log("Stroke style set to", value);
+      //   return value; // uDark.edit_str(value)
+      
+      // })
+      // uDark.functionPrototypeEditor(HTMLCanvasElement , HTMLCanvasElement.prototype.getContext, (elem, args) => {
+        //   elem.fillStyle = "red";
+      //   elem.strokeStyle = "red";
+      //   return args;
+      // })
+      
+      // uDark.functionPrototypeEditor(CanvasRenderingContext2D, CanvasRenderingContext2D.prototype.stroke, (elem, args  ) => {
+        //   console.log("CanvasRenderingContext2D.prototype.stroke", elem, args,elem.strokeStyle);
+      //   // elem.o_ud_strokeStyle = "yellow";
+      //   elem.o_ud_strokeStyle = uDark.eget_color(elem.strokeStyle, uDark.revert_rgba);
+      //   return args;
+      // })
+      uDark.functionPrototypeEditor(CanvasRenderingContext2D, CanvasRenderingContext2D.prototype.fillRect, darken_canvas)
+      uDark.functionPrototypeEditor(CanvasRenderingContext2D, CanvasRenderingContext2D.prototype.fill, darken_canvas)
+      uDark.functionPrototypeEditor(CanvasRenderingContext2D, CanvasRenderingContext2D.prototype.fillText, lighten_canvas)
+      uDark.functionPrototypeEditor(CanvasRenderingContext2D, CanvasRenderingContext2D.prototype.stroke, lighten_canvas_stroke)
+      uDark.functionPrototypeEditor(CanvasRenderingContext2D, CanvasRenderingContext2D.prototype.strokeText , darken_canvas)
+      uDark.functionPrototypeEditor(CanvasRenderingContext2D, CanvasRenderingContext2D.prototype.strokeRect, darken_canvas)
+    }
     /******************** BUT ********************** */
     // Here are all the cases when editing a style element can affect the page style, and there is a lot of them
     // I encountered innerHTML  appendChild and insertBefore so far, but there are all these cases in the wild
@@ -465,8 +533,9 @@ class uDarkExtendedContentScript  {
         l_var:"--uDark_transform_darken",
         prefix_vars: "bg",
         raw_text: true,
-        no_edit: true
-      }) 
+        no_edit: true,
+        js_static_transform: uDark.rgba
+      });
       return edited;
       
       
@@ -487,10 +556,15 @@ class uDarkExtendedContentScript  {
         l_var: "--uDark_transform_lighten",
         h_var: "--uDark_transform_text_hue",
         fastValue0:true,
-        no_edit: true
-      }) 
-      return edited;
-    })
+        no_edit: true,
+        js_static_transform: uDark.revert_rgba
+      }) ;
+      elem.columnRuleColor = value;
+      elem.o_ud_setProperty("--stealthColor",elem.columnRuleColor)
+      return edited; 
+    },false,false,
+      elem=>elem.getPropertyValue("--stealthColor") || elem.o_ud_color // Bein steath sometime is mandatory, like for https://www.startpage.com/
+  );
     uDark.valuePrototypeEditor([HTMLElement, SVGElement], "style", (elem, value) => uDark.edit_str_nochunk(value)) // Care with "style and eget, this cause recursions"
     // TODO: Support CSS url(data-image) in all image relevant CSS properties like background-image etc
     

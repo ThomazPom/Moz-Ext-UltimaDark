@@ -221,6 +221,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
           uDark.registeredCS.shift().unregister();
         }
       }
+   
       // { // EvenOff listeners
       //   uDark.log("EvenOff listeners removed");
       //   browser.webRequest.onBeforeRequest.removeListener(Listeners.cancelPopupXHRCalls);
