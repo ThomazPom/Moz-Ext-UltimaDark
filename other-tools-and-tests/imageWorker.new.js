@@ -275,11 +275,12 @@ class ImageNormalizerOld {
         this.trigger_ratio_size_number_lightness_photo = 9835
         
     }
-    RGBToLightness(r, g, b) {
-        
-        return 0.299 * r + 0.587 * g + 0.114 * b;
+    RGBToLinearLightness(r, g, b) {
+        return (Math.max(r, g, b) + Math.min(r, g, b)) / 2;
     }
-    
+    getPerceivedLightness_approx(r, g, b) {
+        return (0.299 * r + 0.587 * g + 0.114 * b);
+    }
     // lazy drawImage function
     drawImage() {
         
@@ -434,7 +435,7 @@ class ImageNormalizerOld {
                 g = Math.ceil(g/options.removeNoiseValue)*options.removeNoiseValue;
                 b = Math.ceil(b/options.removeNoiseValue)*options.removeNoiseValue;
             }
-            const lightness = this.RGBToLightness(r, g, b);
+            const lightness = this.getPerceivedLightness_approx(r, g, b);
             const lightnessWithAlpha = Math.min(lightness, a); // Alpha reduces lightness
             
             //Update min and max lightness
@@ -598,12 +599,12 @@ class ImageNormalizerOld {
             // Helper function to check if a line is a gradient
             const isLineGradient = (line) => {
                 let gradientDetected = true;
-                let previousLightness = this.RGBToLightness(data[line[0]], data[line[1]], data[line[2]]);
+                let previousLightness = this.getPerceivedLightness_approx(data[line[0]], data[line[1]], data[line[2]]);
                 for (let i = 4; i < line.length; i += 4) {
                     const r = data[line[i]];
                     const g = data[line[i + 1]];
                     const b = data[line[i + 2]];
-                    const lightness = this.RGBToLightness(r, g, b);
+                    const lightness = this.getPerceivedLightness_approx(r, g, b);
                     if (Math.abs(lightness - previousLightness) > tolerance) {
                         gradientDetected = false;
                         break;
@@ -734,8 +735,12 @@ class ImageNormalizerOld {
         },
         background_match: /background|sprite|(?<![a-z])(bg|box|panel|fond|fundo|bck)(?![a-z])/i,
         logo_match: /nav|avatar|logo|icon|alert|notif|cart|menu|tooltip|dropdown|control/i,
-        RGBToLightness: (r, g, b) => {
+        RGBToLinearLightness: (r, g, b) => {
             return (Math.max(r, g, b) + Math.min(r, g, b)) / 2;
+        },
+        
+        getPerceivedLightness_approx(r, g, b) {
+            return (0.299 * r + 0.587 * g + 0.114 * b);
         },
         trigger_ratio_size_number_colors: 393,
         trigger_ratio_size_number_lightness_photo: 9835,
@@ -947,7 +952,7 @@ class ImageNormalizerOld {
             // Pro tip Reset the image at any time : theImageDataClamped8TMP.set(imageData.data);
             if (!editionStatus.edited) {
                 uDark.transformImage(theImageDataClamped8TMP, function(r, g, b, a) {
-                    let lightness = uDark.RGBToLightness(r, g, b);
+                    let lightness = uDark.getPerceivedLightness_approx(r, g, b);
                     let lightenUnder = 127;
                     let edit_under_lightness = 100;
                     if (lightness < lightenUnder && lightness < edit_under_lightness) {
@@ -1005,7 +1010,7 @@ class ImageNormalizerOld {
             
             const photoScore = photoProbaObject.analyzeImage(theImageDataClamped8TMP, function(r, g, b, a) {
                 
-                let lightness = uDark.RGBToLightness(r, g, b);
+                let lightness = uDark.getPerceivedLightness_approx(r, g, b);
                 
                 // Standard way 2023 // very very very slow (1.5s for a 500 x 500 img)
                 // 2024 way : Go faster by finding the right caclulation for each pixel

@@ -369,25 +369,193 @@ class uDarkExtendedContentScript  {
       return args
     }, function(){ return this instanceof HTMLStyleElement});
     // Canvas 2D full tracer (methods + properties) — ES2020
-    
+    if(0){
+      (() => {
+  const P = CanvasRenderingContext2D.prototype;
+
+  // Sauvegardes pour un unpatch propre
+  const Originals = new Map(); // key: name, value: { type: 'method'|'prop', desc|fn }
+
+  // 1) Wrap des méthodes
+  for (const name of Object.getOwnPropertyNames(P)) {
+    const desc = Object.getOwnPropertyDescriptor(P, name);
+    if (!desc) continue;
+
+    if (typeof desc.value === "function") {
+      const origFn = desc.value;
+      // Évite de re-wrapper si déjà fait
+      if (Originals.has(name)) continue;
+
+      function wrapped(...args) {
+        try { console.log("[Canvas2D call]", name, args); } catch {}
+        // Important : conserver le this natif
+        return origFn.apply(this, args);
+      }
+
+      // Préserver toString pour éviter les détections grossières
+      try {
+        Object.defineProperty(wrapped, "toString", {
+          configurable: true,
+          value: Function.prototype.toString.bind(origFn)
+        });
+      } catch {}
+
+      Originals.set(name, { type: "method", fn: origFn });
+
+      // Redéfinir en conservant les attributs
+      Object.defineProperty(P, name, {
+        ...desc,
+        value: wrapped
+      });
+    }
+  }
+
+  // 2) Wrap des propriétés (get/set) — ex: fillStyle, font, globalAlpha…
+  const protoDescs = Object.getOwnPropertyDescriptors(P);
+  for (const [name, desc] of Object.entries(protoDescs)) {
+    const hasGetter = typeof desc.get === "function";
+    const hasSetter = typeof desc.set === "function";
+    if (!hasGetter && !hasSetter) continue;
+
+    // Sauvegarder une seule fois
+    if (!Originals.has(name)) Originals.set(name, { type: "prop", desc });
+
+    // Créer des wrappers qui délèguent aux accesseurs d’origine
+    const wrappedDesc = { ...desc };
+    if (hasGetter) {
+      const g = desc.get;
+      wrappedDesc.get = function() {
+        const v = g.call(this);
+        // Optionnel: log lecture (verbeux)
+        // try { console.log("[Canvas2D get]", name, v); } catch {}
+        return v;
+      };
+      try {
+        Object.defineProperty(wrappedDesc.get, "toString", {
+          configurable: true,
+          value: Function.prototype.toString.bind(g)
+        });
+      } catch {}
+    }
+    if (hasSetter) {
+      const s = desc.set;
+      wrappedDesc.set = function(v) {
+        const before = hasGetter ? desc.get.call(this) : undefined;
+        try { console.log("[Canvas2D set]", name, { from: before, to: v }); } catch {}
+        if(name=="fillStyle")
+        {
+          v = `hsl(${360*Math.random()}deg,100%,75%)`; 
+        }
+        if(name=="strokeStyle")
+        {
+          v = `hsl(${360*Math.random()}deg,100%,75%)`; 
+        }
+        return s.call(this, v);
+      };
+      try {
+        Object.defineProperty(wrappedDesc.set, "toString", {
+          configurable: true,
+          value: Function.prototype.toString.bind(s)
+        });
+      } catch {}
+    }
+
+    try {
+      Object.defineProperty(P, name, wrappedDesc);
+    } catch {
+      // Certains moteurs refusent la redéfinition : ignorer proprement
+    }
+  }
+
+  // 3) Unpatch optionnel
+  window.__unpatchCanvas2DPrototypeTracer = function() {
+    for (const [name, rec] of Originals.entries()) {
+      if (rec.type === "method") {
+        const desc = Object.getOwnPropertyDescriptor(P, name);
+        if (desc && typeof desc.value === "function") {
+          Object.defineProperty(P, name, { ...desc, value: rec.fn });
+        }
+      } else if (rec.type === "prop") {
+        try { Object.defineProperty(P, name, rec.desc); } catch {}
+      }
+    }
+    Originals.clear();
+  };
+})();
+
+    }
+    else if(1)
     {
+      {
+        uDark.functionPrototypeEditor(CanvasRenderingContext2D, [
+          CanvasRenderingContext2D.prototype.createLinearGradient,
+          CanvasRenderingContext2D.prototype.createRadialGradient,
+          CanvasRenderingContext2D.prototype.createConicGradient
+        ], (elem,args)=>args,true,
+          (result,context2D, watcher_result,args,originalFunction) => {
+            console.log("Gradient created",result,context2D, args,originalFunction);
+            result.lightGradient = originalFunction.apply(context2D, args);
+            return result;
+          }
+        );
+        uDark.functionPrototypeEditor(CanvasGradient, CanvasGradient.prototype.addColorStop, (elem, args) => {
+          let light = uDark.eget_color(args[1], uDark.revert_rgba);
+          let dark = uDark.eget_color(args[1], uDark.rgba);
+          console.log("Gradient color stop", elem, args, light, dark);
+          elem.lightGradient.o_ud_addColorStop(args[0], light);
+          args[1] = dark;
+          return args;
+        });
+      }
+
+      let gradientCompat = (light,elem) => {
+        if(elem.fillStyle.lightGradient) {
+          if(light) {
+            elem.fillStyle = elem.fillStyle.lightGradient;
+          }
+          return true;
+        }
+
+      }
+      let patternCompat = (elem) => {
+        return elem.fillStyle instanceof CanvasPattern;
+      }
+
+
       let darken_canvas = (elem, args) => {
+
+        if(gradientCompat(false, elem) || patternCompat(elem)) {
+          return args;
+        }
+
         elem.currentFillStyle = elem.fillStyle;
         elem.fillStyle = uDark.eget_color(elem.fillStyle, uDark.rgba);
-        // elem.fillStyle = "lime";
+        // // elem.fillStyle = "lime";
         return args
       } 
       let lighten_canvas = (elem, args) => {
+        
+        if(gradientCompat(true, elem) || patternCompat(elem)) {
+          return args;
+        }
         elem.currentFillStyle = elem.fillStyle;
         elem.fillStyle = uDark.eget_color(elem.fillStyle, uDark.revert_rgba);
         return args
       }
       let darken_canvas_stroke = (elem, args) => {
+        
+        if(gradientCompat(false, elem) || patternCompat(elem)) {
+          return args;
+        }
         elem.currentStrokeStyle = elem.strokeStyle ;
         elem.strokeStyle = uDark.eget_color(elem.strokeStyle, uDark.rgba);
         return args
       } 
       let lighten_canvas_stroke = (elem, args) => {
+
+        if(gradientCompat(true, elem) || patternCompat(elem)) {
+          return args;
+        }
         elem.currentStrokeStyle = elem.strokeStyle ;
         elem.strokeStyle = uDark.eget_color(elem.strokeStyle, uDark.revert_rgba);
         return args
@@ -435,8 +603,8 @@ class uDarkExtendedContentScript  {
       uDark.functionPrototypeEditor(CanvasRenderingContext2D, CanvasRenderingContext2D.prototype.fill, darken_canvas)
       uDark.functionPrototypeEditor(CanvasRenderingContext2D, CanvasRenderingContext2D.prototype.fillText, lighten_canvas)
       uDark.functionPrototypeEditor(CanvasRenderingContext2D, CanvasRenderingContext2D.prototype.stroke, lighten_canvas_stroke)
-      uDark.functionPrototypeEditor(CanvasRenderingContext2D, CanvasRenderingContext2D.prototype.strokeText , darken_canvas)
-      uDark.functionPrototypeEditor(CanvasRenderingContext2D, CanvasRenderingContext2D.prototype.strokeRect, darken_canvas)
+      uDark.functionPrototypeEditor(CanvasRenderingContext2D, CanvasRenderingContext2D.prototype.strokeText , darken_canvas_stroke)
+      uDark.functionPrototypeEditor(CanvasRenderingContext2D, CanvasRenderingContext2D.prototype.strokeRect, darken_canvas_stroke)
     }
     /******************** BUT ********************** */
     // Here are all the cases when editing a style element can affect the page style, and there is a lot of them

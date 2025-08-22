@@ -33,28 +33,25 @@
     
     <!-- Promoted Links -->
     <div class="d-flex flex-wrap gap-2 mb-3 justify-content-center">
-      <a href="https://github.com/ThomazPom/Moz-Ext-UltimaDark" target="_blank" class="btn btn-outline-primary btn-sm px-3 fw-semibold">
-        <i class="bi bi-github me-1"></i> Sources & Updates
+      <a href="https://github.com/ThomazPom/Moz-Ext-UltimaDark" target="_blank" class="btn btn-outline-info btn-sm px-3 fw-semibold">
+        <i class="bi bi-github me-1"></i> Sources
       </a>
+      <a href="https://github.com/ThomazPom/Moz-Ext-UltimaDark/issues" target="_blank" class="btn btn-outline-danger btn-sm px-3 fw-semibold">
+        <i class="bi bi-bug-fill me-1"></i> Bug report
+      </a>
+      
       <a href="https://www.paypal.me/ThomazPom" target="_blank" class="btn btn-warning btn-sm px-3 fw-semibold">
         <i class="bi bi-heart-fill me-1"></i> Donate
       </a>
       <a href="https://addons.mozilla.org/fr/firefox/addon/UltimaDark/" 
       target="_blank"
-      class="btn btn-outline-secondary btn-sm px-3 fw-semibold">
+      class="btn btn-outline-warning btn-sm px-3 fw-semibold">
       <i class="bi bi-star me-1"></i> Rate & About
     </a>
   </div>
   
   <!-- Current Site Section -->
   <div class="mb-4">
-    <!-- Info Modal Trigger -->
-    <div class="d-flex align-items-center gap-2 mb-2">
-      <button type="button" class="btn btn-outline-info btn-sm d-flex align-items-center fs-6" @click="$modals.showExclusionPriorityInfo()">
-        <i class="bi bi-info-circle me-1"></i> Info
-      </button>
-      <span class="fs-6 text-info">Exclusion takes priority over inclusion <i class="bi bi-arrow-up-right"></i></span>
-    </div>
     <h3 class="text-light mb-2">Current Site Control</h3>
     <!-- Merged Site Info & Status Card -->
     <div class="card bg-dark border border-success mb-3">
@@ -162,6 +159,13 @@
             <div class="form-text mt-1">Higher values = more specific pattern matching for both exclusions and inclusions</div>
           </div>
         </div>
+        
+    <!-- Info Modal Trigger -->
+    <div class="d-flex align-items-center gap-2 mb-2">
+      <button type="button" class="btn btn-outline-info btn-sm d-flex align-items-center fs-6" @click="$modals.showExclusionPriorityInfo()">
+        <i class="bi bi-info-circle me-1"></i>Exclusion takes priority over inclusion  
+      </button>
+    </div>
       </div>
     </div>
   </div>
@@ -190,7 +194,7 @@
 <div class="tab-content" id="udark-main-tab-content">
   <!-- Exclusions Tab -->
   <div class="tab-pane fade show active" id="tab-pane-exclusions" role="tabpanel" aria-labelledby="tab-exclusions">
-  <h4 class="text-light mb-3">Excluded sites</h4>
+    <h4 class="text-light mb-3">Excluded sites</h4>
     <p class="text-secondary small mb-3">These sites will not be darkened by UltimaDark</p>
     <!-- Current Exclusions List -->
     <!-- New Add Exclusion Pattern Form -->
@@ -531,7 +535,7 @@
   </div>
   <!-- Settings Tab -->
   <div class="tab-pane fade" id="tab-pane-settings" role="tabpanel" aria-labelledby="tab-settings">
-  <h4 style="color: #ffffff; margin-bottom: 15px;">Extension settings</h4>
+    <h4 style="color: #ffffff; margin-bottom: 15px;">Extension settings</h4>
     
     <!-- Feature Toggles -->
     <div class="mb-4">
@@ -615,7 +619,7 @@
   </div>
   <!-- Advanced Tab -->
   <div class="tab-pane fade" id="tab-pane-advanced" role="tabpanel" aria-labelledby="tab-advanced">
-  <h4 style="color: #ffffff; margin-bottom: 15px;">Advanced options</h4>
+    <h4 style="color: #ffffff; margin-bottom: 15px;">Advanced options</h4>
     <!-- Advanced Settings Link -->
     <div class="mb-4">
       <a href="../popup.html" target="_blank" class="btn btn-dark d-flex justify-content-between align-items-center">
@@ -645,7 +649,7 @@
     
     <!-- Color Settings Tab (moved out of Advanced) -->
     <div class="tab-pane fade" id="tab-pane-color-settings" role="tabpanel" aria-labelledby="tab-color-settings">
-  <h4 class="text-light mb-3">Color settings</h4>
+      <h4 class="text-light mb-3">Color settings</h4>
       <div x-data="{ shown: null }" class="mb-3">
         <div class="d-flex gap-2 mb-3">
           <button class="btn btn-outline-info btn-sm" @click="$modals.showAsciiColorModal('text')">Show Text Color Grid (A)</button>
@@ -654,191 +658,191 @@
         <!-- Move reset and OLED buttons above sliders -->
         <div class="mb-4 d-flex flex-column gap-2">
           <button class="btn btn-outline-danger w-100" @click="
-            $store.app.min_bright_fg = uDark.defaultSettings.min_bright_fg;
-            $store.app.max_bright_fg = uDark.defaultSettings.max_bright_fg;
-            $store.app.min_bright_bg_trigger = uDark.defaultSettings.min_bright_bg_trigger;
-            $store.app.min_bright_bg = uDark.defaultSettings.min_bright_bg;
-            $store.app.max_bright_bg = uDark.defaultSettings.max_bright_bg;
-            $store.app.bg_negative_modifier = uDark.defaultSettings.bg_negative_modifier;
-            $store.app.fg_negative_modifier = uDark.defaultSettings.fg_negative_modifier;
-            $store.app.saveSettings();
-          ">
-            Revert All Color Settings to Default (Recommended for LCD)
-          </button>
-          <button class="btn btn-outline-warning w-100" @click="
           $store.app.min_bright_fg = uDark.defaultSettings.min_bright_fg;
-            $store.app.max_bright_fg = uDark.defaultSettings.max_bright_fg;
-            $store.app.min_bright_bg_trigger = uDark.defaultSettings.min_bright_bg_trigger;
-            $store.app.min_bright_bg = uDark.defaultSettings.min_bright_bg;
-            $store.app.max_bright_bg = uDark.defaultSettings.max_bright_bg;
-            $store.app.min_bright_bg_trigger = 0;
-            $store.app.bg_negative_modifier = 0.15;
-            $store.app.fg_negative_modifier = 0.04;
-            $store.app.saveSettings();
+          $store.app.max_bright_fg = uDark.defaultSettings.max_bright_fg;
+          $store.app.min_bright_bg_trigger = uDark.defaultSettings.min_bright_bg_trigger;
+          $store.app.min_bright_bg = uDark.defaultSettings.min_bright_bg;
+          $store.app.max_bright_bg = uDark.defaultSettings.max_bright_bg;
+          $store.app.bg_negative_modifier = uDark.defaultSettings.bg_negative_modifier;
+          $store.app.fg_negative_modifier = uDark.defaultSettings.fg_negative_modifier;
+          $store.app.saveSettings();
           ">
-            Load Recommended OLED Settings
+          Revert All Color Settings to Default (Recommended for LCD)
+        </button>
+        <button class="btn btn-outline-warning w-100" @click="
+        $store.app.min_bright_fg = uDark.defaultSettings.min_bright_fg;
+        $store.app.max_bright_fg = uDark.defaultSettings.max_bright_fg;
+        $store.app.min_bright_bg_trigger = uDark.defaultSettings.min_bright_bg_trigger;
+        $store.app.min_bright_bg = uDark.defaultSettings.min_bright_bg;
+        $store.app.max_bright_bg = uDark.defaultSettings.max_bright_bg;
+        $store.app.min_bright_bg_trigger = 0;
+        $store.app.bg_negative_modifier = 0.15;
+        $store.app.fg_negative_modifier = 0.04;
+        $store.app.saveSettings();
+        ">
+        Load Recommended OLED Settings
+      </button>
+    </div>
+    <!-- Modal containers for ASCII color grids -->
+    <div id="asciiColorModal" class="modal fade" tabindex="-1" aria-labelledby="asciiColorModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="asciiColorModalLabel">Color Grid Preview</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body" style="overflow-x:auto;">
+            <div id="asciiColorGridContainer" style="width:100%;padding: 5px;;"></div>
+            <div class="legend text-center mt-2" id="asciiColorLegend"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="text-secondary mb-3">
+      Adjust the color transformation parameters for backgrounds and foregrounds.
+      <br>
+      <span class="text-info">
+        The parameters below directly affect how colors are transformed. You can experiment with these values in the graphical calculator to visualize their impact.
+      </span>
+      <br>
+      <span class="text-warning">
+        Or you can just adjust each parameter as you like ... no need to overthink it!
+      </span>
+    </p>
+    <!-- Lightness transformation plot -->
+    <div class="mb-4">
+      <div x-data="{ showPlot: false }">
+        <div class="d-flex align-items-center mb-2 gap-2">
+          <h5 class="text-info mb-0">Your current lightness transformation plot</h5>
+          <button class="btn btn-outline-info btn-sm px-2 py-1" @click="showPlot = !showPlot">
+            <span x-text="showPlot ? 'Hide plot' : 'Show plot'"></span>
           </button>
         </div>
-<!-- Modal containers for ASCII color grids -->
-<div id="asciiColorModal" class="modal fade" tabindex="-1" aria-labelledby="asciiColorModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="asciiColorModalLabel">Color Grid Preview</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <div :class="showPlot ? 'd-block' : 'd-none'">
+          <canvas id="lightnessPlotChart" style="width:100%;max-width:600px;height:320px;background:#222;border-radius:8px;"></canvas>
+          <div class="form-text text-secondary">Shows how your color settings affect the transformation of grayscale colors (black to white) for both LCD and OLED modes. The X axis is input lightness, Y axis is output lightness.</div>
+        </div>
       </div>
-      <div class="modal-body" style="overflow-x:auto;">
-        <div id="asciiColorGridContainer" style="width:100%;padding: 5px;;"></div>
-        <div class="legend text-center mt-2" id="asciiColorLegend"></div>
+    </div>
+    <div class="d-flex gap-2 mb-2">
+      <div class="d-flex flex-row gap-1 mb-2 justify-content-start flex-wrap">
+        <button class="btn btn-warning btn-xs px-2 py-1" style="font-size:0.85rem;" @click="window.open('https://www.desmos.com/calculator/iy2xuec1jl?lang=en', '_blank')">Open background calculator in a new tab (Desmos)</button>
+        <button class="btn btn-info btn-xs px-2 py-1" style="font-size:0.85rem;" @click="window.open('https://www.desmos.com/calculator/37yi1rirw9?lang=en', '_blank')">Open foreground calculator in a new tab (Desmos)</button>
+      </div>
+    </div>
+    
+    <template x-if="shown === 'bg'">
+      <!-- Inline background calculator removed -->
+    </template>
+    <template x-if="shown === 'fg'">
+      <!-- Inline foreground calculator removed -->
+    </template>
+  </div>
+  <div class="card bg-dark border-info mb-4">
+    <div class="card-body">
+      <h5 class="text-info mb-3">Text settings</h5>
+      <div class="mb-4">
+        <div class="fw-bold">Text: minimum allowed brightness</div>
+        <div class="form-text mb-1">Sets how dark text is allowed to get. Raise it to keep text from fading into the background, or lower it if you allow dimmer text.</div>
+        <div class="d-flex align-items-center gap-2">
+          <input type="range" class="form-range flex-grow-1" min="0" max="1" step="0.01" id="min_bright_fg"
+          x-model.number="$store.app.min_bright_fg"
+          @input="if ($store.app.min_bright_fg > $store.app.max_bright_fg) { $store.app.max_bright_fg = $store.app.min_bright_fg }; $store.app.saveSettings()">
+          <span class="badge bg-info ms-2">Value: <span x-text="$store.app.min_bright_fg.toFixed(2)"></span></span>
+          <button class="btn btn-outline-secondary btn-sm ms-2" title="Revert to Default" style="height:32px;width:32px;padding:0;display:flex;align-items:center;justify-content:center;" @click="$store.app.min_bright_fg = uDark.defaultSettings.min_bright_fg; $store.app.saveSettings()">
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
+        </div>
+      </div>
+      <div class="mb-4">
+        <div class="fw-bold">Text: maximum allowed brightness</div>
+        <div class="form-text mb-1">Sets how bright text is allowed to get. Raise it to allow bright text on dark backgrounds, or lower it for a softer, dimmer look.</div>
+        <div class="form-text mb-1">Benefit: Keeps text from being glaring against dark backgrounds, making reading more comfortable.</div>
+        <div class="d-flex align-items-center gap-2">
+          <input type="range" class="form-range flex-grow-1" min="0" max="1" step="0.01" id="max_bright_fg"
+          x-model.number="$store.app.max_bright_fg"
+          @input="if ($store.app.max_bright_fg < $store.app.min_bright_fg) { $store.app.min_bright_fg = $store.app.max_bright_fg }; $store.app.saveSettings()">
+          <span class="badge bg-info ms-2">Value: <span x-text="$store.app.max_bright_fg.toFixed(2)"></span></span>
+          <button class="btn btn-outline-secondary btn-sm ms-2" title="Revert to Default" style="height:32px;width:32px;padding:0;display:flex;align-items:center;justify-content:center;" @click="$store.app.max_bright_fg = uDark.defaultSettings.max_bright_fg; $store.app.saveSettings()">
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
+        </div>
       </div>
     </div>
   </div>
-</div>
-        <p class="text-secondary mb-3">
-          Adjust the color transformation parameters for backgrounds and foregrounds.
-          <br>
-          <span class="text-info">
-            The parameters below directly affect how colors are transformed. You can experiment with these values in the graphical calculator to visualize their impact.
-          </span>
-          <br>
-          <span class="text-warning">
-            Or you can just adjust each parameter as you like ... no need to overthink it!
-          </span>
-        </p>
-        <!-- Lightness transformation plot -->
-        <div class="mb-4">
-          <div x-data="{ showPlot: false }">
-            <div class="d-flex align-items-center mb-2 gap-2">
-              <h5 class="text-info mb-0">Your current lightness transformation plot</h5>
-              <button class="btn btn-outline-info btn-sm px-2 py-1" @click="showPlot = !showPlot">
-                <span x-text="showPlot ? 'Hide plot' : 'Show plot'"></span>
-              </button>
-            </div>
-            <div :class="showPlot ? 'd-block' : 'd-none'">
-              <canvas id="lightnessPlotChart" style="width:100%;max-width:600px;height:320px;background:#222;border-radius:8px;"></canvas>
-              <div class="form-text text-secondary">Shows how your color settings affect the transformation of grayscale colors (black to white) for both LCD and OLED modes. The X axis is input lightness, Y axis is output lightness.</div>
-            </div>
-          </div>
-        </div>
-        <div class="d-flex gap-2 mb-2">
-          <div class="d-flex flex-row gap-1 mb-2 justify-content-start flex-wrap">
-            <button class="btn btn-warning btn-xs px-2 py-1" style="font-size:0.85rem;" @click="window.open('https://www.desmos.com/calculator/iy2xuec1jl?lang=en', '_blank')">Open background calculator in a new tab (Desmos)</button>
-            <button class="btn btn-info btn-xs px-2 py-1" style="font-size:0.85rem;" @click="window.open('https://www.desmos.com/calculator/37yi1rirw9?lang=en', '_blank')">Open foreground calculator in a new tab (Desmos)</button>
-          </div>
-        </div>
-
-        <template x-if="shown === 'bg'">
-          <!-- Inline background calculator removed -->
-        </template>
-        <template x-if="shown === 'fg'">
-          <!-- Inline foreground calculator removed -->
-        </template>
+  <div class="card bg-dark border-warning mb-4">
+    <div class="card-body">
+      <div class="alert alert-info mb-3 p-2" style="font-size:0.98rem;">
+        Curious about how your background color transforms look in practice? <br>
+        <a href="https://superguigui.github.io/simple-color-picker/" target="_blank" class="link-info">Try them live on this color picker site</a> to see the real effect on colors!
       </div>
-      <div class="card bg-dark border-info mb-4">
-        <div class="card-body">
-          <h5 class="text-info mb-3">Text settings</h5>
-          <div class="mb-4">
-            <div class="fw-bold">Text: minimum allowed brightness</div>
-            <div class="form-text mb-1">Sets how dark text is allowed to get. Raise it to keep text from fading into the background, or lower it if you allow dimmer text.</div>
-            <div class="d-flex align-items-center gap-2">
-              <input type="range" class="form-range flex-grow-1" min="0" max="1" step="0.01" id="min_bright_fg"
-                x-model.number="$store.app.min_bright_fg"
-                @input="if ($store.app.min_bright_fg > $store.app.max_bright_fg) { $store.app.max_bright_fg = $store.app.min_bright_fg }; $store.app.saveSettings()">
-              <span class="badge bg-info ms-2">Value: <span x-text="$store.app.min_bright_fg.toFixed(2)"></span></span>
-              <button class="btn btn-outline-secondary btn-sm ms-2" title="Revert to Default" style="height:32px;width:32px;padding:0;display:flex;align-items:center;justify-content:center;" @click="$store.app.min_bright_fg = uDark.defaultSettings.min_bright_fg; $store.app.saveSettings()">
-                <i class="bi bi-arrow-clockwise"></i>
-              </button>
-            </div>
-          </div>
-          <div class="mb-4">
-            <div class="fw-bold">Text: maximum allowed brightness</div>
-            <div class="form-text mb-1">Sets how bright text is allowed to get. Raise it to allow bright text on dark backgrounds, or lower it for a softer, dimmer look.</div>
-            <div class="form-text mb-1">Benefit: Keeps text from being glaring against dark backgrounds, making reading more comfortable.</div>
-            <div class="d-flex align-items-center gap-2">
-              <input type="range" class="form-range flex-grow-1" min="0" max="1" step="0.01" id="max_bright_fg"
-                x-model.number="$store.app.max_bright_fg"
-                @input="if ($store.app.max_bright_fg < $store.app.min_bright_fg) { $store.app.min_bright_fg = $store.app.max_bright_fg }; $store.app.saveSettings()">
-              <span class="badge bg-info ms-2">Value: <span x-text="$store.app.max_bright_fg.toFixed(2)"></span></span>
-              <button class="btn btn-outline-secondary btn-sm ms-2" title="Revert to Default" style="height:32px;width:32px;padding:0;display:flex;align-items:center;justify-content:center;" @click="$store.app.max_bright_fg = uDark.defaultSettings.max_bright_fg; $store.app.saveSettings()">
-                <i class="bi bi-arrow-clockwise"></i>
-              </button>
-            </div>
-          </div>
+      <h5 class="text-warning mb-3">Background settings</h5>
+      <div class="mb-4">
+        <div class="fw-bold">Threshold for untouched dark backgrounds</div>
+        <div class="form-text mb-1">If a background's lightness falls below this threshold, it's deemed "dark enough" and left untouched. Raise the value to keep more backgrounds as they are, or lower it to darken more of your page.</div>
+        <div class="d-flex align-items-center gap-2">
+          <input type="range" class="form-range flex-grow-1" min="0" max="1" step="0.01" id="min_bright_bg_trigger" x-model.number="$store.app.min_bright_bg_trigger" @input="$store.app.saveSettings()">
+          <span class="badge bg-info ms-2">Value: <span x-text="$store.app.min_bright_bg_trigger.toFixed(2)"></span></span>
+          <button class="btn btn-outline-secondary btn-sm ms-2" title="Revert to Default" style="height:32px;width:32px;padding:0;display:flex;align-items:center;justify-content:center;" @click="$store.app.min_bright_bg_trigger = uDark.defaultSettings.min_bright_bg_trigger; $store.app.saveSettings()">
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
         </div>
       </div>
-      <div class="card bg-dark border-warning mb-4">
-        <div class="card-body">
-          <div class="alert alert-info mb-3 p-2" style="font-size:0.98rem;">
-            Curious about how your background color transforms look in practice? <br>
-            <a href="https://superguigui.github.io/simple-color-picker/" target="_blank" class="link-info">Try them live on this color picker site</a> to see the real effect on colors!
-          </div>
-          <h5 class="text-warning mb-3">Background settings</h5>
-          <div class="mb-4">
-            <div class="fw-bold">Threshold for untouched dark backgrounds</div>
-            <div class="form-text mb-1">If a background's lightness falls below this threshold, it's deemed "dark enough" and left untouched. Raise the value to keep more backgrounds as they are, or lower it to darken more of your page.</div>
-            <div class="d-flex align-items-center gap-2">
-              <input type="range" class="form-range flex-grow-1" min="0" max="1" step="0.01" id="min_bright_bg_trigger" x-model.number="$store.app.min_bright_bg_trigger" @input="$store.app.saveSettings()">
-              <span class="badge bg-info ms-2">Value: <span x-text="$store.app.min_bright_bg_trigger.toFixed(2)"></span></span>
-              <button class="btn btn-outline-secondary btn-sm ms-2" title="Revert to Default" style="height:32px;width:32px;padding:0;display:flex;align-items:center;justify-content:center;" @click="$store.app.min_bright_bg_trigger = uDark.defaultSettings.min_bright_bg_trigger; $store.app.saveSettings()">
-                <i class="bi bi-arrow-clockwise"></i>
-              </button>
-            </div>
-          </div>
-          <div class="mb-4">
-            <div class="fw-bold">Bright backgrounds: minimum allowed brightness</div>
-            <div class="form-text mb-1">Sets the lowest brightness allowed for backgrounds that were originally very bright. Keeping this above 0.05 keeps contrast if the website used bright backgrounds for some foreground items on dark pages.</div>
-            <div class="d-flex align-items-center gap-2">
-              <input type="range" class="form-range flex-grow-1" min="0" max="1" step="0.01" id="min_bright_bg"
-                x-model.number="$store.app.min_bright_bg"
-                @input="if ($store.app.min_bright_bg > $store.app.max_bright_bg) { $store.app.max_bright_bg = $store.app.min_bright_bg }; $store.app.saveSettings()">
-              <span class="badge bg-info ms-2">Value: <span x-text="$store.app.min_bright_bg.toFixed(2)"></span></span>
-              <button class="btn btn-outline-secondary btn-sm ms-2" title="Revert to Default" style="height:32px;width:32px;padding:0;display:flex;align-items:center;justify-content:center;" @click="$store.app.min_bright_bg = uDark.defaultSettings.min_bright_bg; $store.app.saveSettings()">
-                <i class="bi bi-arrow-clockwise"></i>
-              </button>
-            </div>
-          </div>
-          <div class="mb-4">
-            <div class="fw-bold">Backgrounds after darkening: maximum brightness</div>
-            <div class="form-text mb-1">Controls how bright backgrounds are allowed to get after darkening. Raise it for lighter backgrounds, or lower it to keep things darker.</div>
-            <div class="d-flex align-items-center gap-2">
-              <input type="range" class="form-range flex-grow-1" min="0" max="1" step="0.01" id="max_bright_bg"
-                x-model.number="$store.app.max_bright_bg"
-                @input="if ($store.app.max_bright_bg < $store.app.min_bright_bg) { $store.app.min_bright_bg = $store.app.max_bright_bg }; $store.app.saveSettings()">
-              <span class="badge bg-info ms-2">Value: <span x-text="$store.app.max_bright_bg.toFixed(2)"></span></span>
-              <button class="btn btn-outline-secondary btn-sm ms-2" title="Revert to Default" style="height:32px;width:32px;padding:0;display:flex;align-items:center;justify-content:center;" @click="$store.app.max_bright_bg = uDark.defaultSettings.max_bright_bg; $store.app.saveSettings()">
-                <i class="bi bi-arrow-clockwise"></i>
-              </button>
-            </div>
-          </div>
-          <div class="mb-4">
-            <div class="fw-bold">Backgrounds: push originally dark backgrounds to pure black</div>
-            <div class="form-text mb-1">Steepens the transformation slope to push the darkest NN% transformed but originally dark backgrounds all the way to pure black. Useful on OLED screens.</div>
-            <div class="form-text mb-1">⚠️ Ensure this value is compatible with your treshold above</div>
-            <div class="d-flex align-items-center gap-2">
-              <input type="range" class="form-range flex-grow-1" min="0" max="4" step="0.01" id="bg_negative_modifier" x-model.number="$store.app.bg_negative_modifier" @input="$store.app.saveSettings()">
-              <span class="badge bg-info ms-2">Value: <span x-text="$store.app.bg_negative_modifier.toFixed(2)"></span></span>
-              <button class="btn btn-outline-secondary btn-sm ms-2" title="Revert to Default" style="height:32px;width:32px;padding:0;display:flex;align-items:center;justify-content:center;" @click="$store.app.bg_negative_modifier = uDark.defaultSettings.bg_negative_modifier; $store.app.saveSettings()">
-                <i class="bi bi-arrow-clockwise"></i>
-              </button>
-            </div>
-          </div>
-          <div class="mb-4">
-            <div class="fw-bold">Backgrounds: extra contrast for originally bright backgrounds</div>
-            <div class="form-text mb-1">Adjusts the minimum background brightness for bright backgrounds by steepening the transformation slope. Can even push the minimum below zero.</div>
-            <div class="d-flex align-items-center gap-2">
-              <input type="range" class="form-range flex-grow-1" min="0" max="4" step="0.01" id="fg_negative_modifier" x-model.number="$store.app.fg_negative_modifier" @input="$store.app.saveSettings()">
-              <span class="badge bg-info ms-2">Value: <span x-text="$store.app.fg_negative_modifier.toFixed(2)"></span></span>
-              <button class="btn btn-outline-secondary btn-sm ms-2" title="Revert to Default" style="height:32px;width:32px;padding:0;display:flex;align-items:center;justify-content:center;" @click="$store.app.fg_negative_modifier = uDark.defaultSettings.fg_negative_modifier; $store.app.saveSettings()">
-                <i class="bi bi-arrow-clockwise"></i>
-              </button>
-            </div>
-          </div>
+      <div class="mb-4">
+        <div class="fw-bold">Bright backgrounds: minimum allowed brightness</div>
+        <div class="form-text mb-1">Sets the lowest brightness allowed for backgrounds that were originally very bright. Keeping this above 0.05 keeps contrast if the website used bright backgrounds for some foreground items on dark pages.</div>
+        <div class="d-flex align-items-center gap-2">
+          <input type="range" class="form-range flex-grow-1" min="0" max="1" step="0.01" id="min_bright_bg"
+          x-model.number="$store.app.min_bright_bg"
+          @input="if ($store.app.min_bright_bg > $store.app.max_bright_bg) { $store.app.max_bright_bg = $store.app.min_bright_bg }; $store.app.saveSettings()">
+          <span class="badge bg-info ms-2">Value: <span x-text="$store.app.min_bright_bg.toFixed(2)"></span></span>
+          <button class="btn btn-outline-secondary btn-sm ms-2" title="Revert to Default" style="height:32px;width:32px;padding:0;display:flex;align-items:center;justify-content:center;" @click="$store.app.min_bright_bg = uDark.defaultSettings.min_bright_bg; $store.app.saveSettings()">
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
         </div>
       </div>
+      <div class="mb-4">
+        <div class="fw-bold">Backgrounds after darkening: maximum brightness</div>
+        <div class="form-text mb-1">Controls how bright backgrounds are allowed to get after darkening. Raise it for lighter backgrounds, or lower it to keep things darker.</div>
+        <div class="d-flex align-items-center gap-2">
+          <input type="range" class="form-range flex-grow-1" min="0" max="1" step="0.01" id="max_bright_bg"
+          x-model.number="$store.app.max_bright_bg"
+          @input="if ($store.app.max_bright_bg < $store.app.min_bright_bg) { $store.app.min_bright_bg = $store.app.max_bright_bg }; $store.app.saveSettings()">
+          <span class="badge bg-info ms-2">Value: <span x-text="$store.app.max_bright_bg.toFixed(2)"></span></span>
+          <button class="btn btn-outline-secondary btn-sm ms-2" title="Revert to Default" style="height:32px;width:32px;padding:0;display:flex;align-items:center;justify-content:center;" @click="$store.app.max_bright_bg = uDark.defaultSettings.max_bright_bg; $store.app.saveSettings()">
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
+        </div>
+      </div>
+      <div class="mb-4">
+        <div class="fw-bold">Backgrounds: push originally dark backgrounds to pure black</div>
+        <div class="form-text mb-1">Steepens the transformation slope to push the darkest NN% transformed but originally dark backgrounds all the way to pure black. Useful on OLED screens.</div>
+        <div class="form-text mb-1">⚠️ Ensure this value is compatible with your treshold above</div>
+        <div class="d-flex align-items-center gap-2">
+          <input type="range" class="form-range flex-grow-1" min="0" max="4" step="0.01" id="bg_negative_modifier" x-model.number="$store.app.bg_negative_modifier" @input="$store.app.saveSettings()">
+          <span class="badge bg-info ms-2">Value: <span x-text="$store.app.bg_negative_modifier.toFixed(2)"></span></span>
+          <button class="btn btn-outline-secondary btn-sm ms-2" title="Revert to Default" style="height:32px;width:32px;padding:0;display:flex;align-items:center;justify-content:center;" @click="$store.app.bg_negative_modifier = uDark.defaultSettings.bg_negative_modifier; $store.app.saveSettings()">
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
+        </div>
+      </div>
+      <div class="mb-4">
+        <div class="fw-bold">Backgrounds: extra contrast for originally bright backgrounds</div>
+        <div class="form-text mb-1">Adjusts the minimum background brightness for bright backgrounds by steepening the transformation slope. Can even push the minimum below zero.</div>
+        <div class="d-flex align-items-center gap-2">
+          <input type="range" class="form-range flex-grow-1" min="0" max="4" step="0.01" id="fg_negative_modifier" x-model.number="$store.app.fg_negative_modifier" @input="$store.app.saveSettings()">
+          <span class="badge bg-info ms-2">Value: <span x-text="$store.app.fg_negative_modifier.toFixed(2)"></span></span>
+          <button class="btn btn-outline-secondary btn-sm ms-2" title="Revert to Default" style="height:32px;width:32px;padding:0;display:flex;align-items:center;justify-content:center;" @click="$store.app.fg_negative_modifier = uDark.defaultSettings.fg_negative_modifier; $store.app.saveSettings()">
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
   <!-- ...existing code... -->
-  </div>
-  <div>
-  </div>
+</div>
+<div>
+</div>
 </div>
 
 <!-- Footer with Keyboard Shortcut Info -->

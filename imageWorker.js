@@ -11,8 +11,11 @@ console.log("Image Service worker started")
 var uDark={
   background_match:/background|sprite|(?<![a-z])(bg|box|panel|fond|fundo|bck)(?![a-z])/i,
   logo_match: /nav|avatar|logo|icon|alert|notif|cart|menu|tooltip|dropdown|control/i,
-  RGBToLightness: (r, g, b) => {
+  RGBToLinearLightness: (r, g, b) => {
     return (Math.max(r, g, b) + Math.min(r, g, b)) / 2;
+  },
+  getPerceivedLightness_approx(r, g, b) {
+    return (0.299 * r + 0.587 * g + 0.114 * b);
   },
   trigger_ratio_size_number_colors: 393,
   trigger_ratio_size_number_lightness_photo: 9835,
@@ -156,7 +159,7 @@ var uDark={
         }
       }
       let isGradient = true;
-      let currentLightness=Math.max(uDark.RGBToLightness(r, g, b),a);
+      let currentLightness=Math.max(uDark.getPerceivedLightness_approx(r, g, b),a);
       for (let n = 1; n < theImageDataUint32TMP.length; n++) {
         // Start to 1 as we already checked the first pixel
         number = theImageDataUint32TMP[n];
@@ -164,7 +167,7 @@ var uDark={
         g = (number >> 8) & 0xff;
         b = (number >> 16) & 0xff;
         a = (number >> 24) & 0xff;
-        let lightness=Math.max(uDark.RGBToLightness(r, g, b),a);
+        let lightness=Math.max(uDark.getPerceivedLightness_approx(r, g, b),a);
         if (lightness>currentLightness+5||lightness<currentLightness-5) {
           isGradient = false;
           break;
@@ -191,7 +194,7 @@ var uDark={
   logo_image_edit_hook: function(editionStatus, canvas, ctx, img, blob, details, imageURLObject, complement) {
     
     let start_date = new Date();
-    console.log("Logos","Entering edition",details.url,details.requestId,uDark.logo_image_edit_hook)
+    console.log("Logos","Entering edition",details.url,details.requestId)
     
     let editionConfidence = 0 +(editionStatus.editionConfidenceLogo);
     // Draw the image onto the canvas
@@ -242,7 +245,7 @@ var uDark={
       var b = (number >> 16) & 0xff;
       var a = (number >> 24) & 0xff;
       {
-        let lightness = uDark.RGBToLightness(r, g, b);
+        let lightness = uDark.getPerceivedLightness_approx(r, g, b);
         
         if (!editionStatus.statsComplete) {
           editionStatus.colorCounter.add(number);
@@ -405,7 +408,7 @@ var uDark={
     background_image_edit_hook: function(editionStatus, canvas, ctx, img, blob, details, imageURLObject, complement) {
       let editionConfidence = 0 +(editionStatus.editionConfidenceBackground);
       let start_date = new Date();
-      console.log("Background","Entering edition",details.url,details.requestId,uDark.background_image_edit_hook)
+      console.log("Background","Entering edition",details.url,details.requestId)
       
       // Refuse bacground images on certain conditions
       
@@ -482,7 +485,7 @@ var uDark={
       var b = (number >> 16) & 0xff;
       var a = (number >> 24) & 0xff;
       {
-        let lightness = uDark.RGBToLightness(r, g, b);
+        let lightness = uDark.getPerceivedLightness_approx(r, g, b);
         
         editionStatus.colorCounter.add(number);
         let lightnessWithAlpha = Math.min(lightness, a); // Alpha kills lightness
@@ -691,7 +694,7 @@ var uDark={
       for (let imageEditionHook of edition_order_hooks) {
         if (editionStatus.edited === false) {
           
-          console.log("Image edition hook",imageEditionHook, new Date() / 1 - start_date ,details.url,details.requestId)
+          console.log("Image edition hook",imageEditionHook.name, new Date() / 1 - start_date ,details.url,details.requestId)
           imageEditionHook(editionStatus, canvas, ctx, imageBitmap, blob, details, imageURLObject, complement);
           console.log("Image acceptance",editionStatus.edited,editionStatus.rejected, new Date() / 1 - start_date ,details.url,details.requestId)
         }

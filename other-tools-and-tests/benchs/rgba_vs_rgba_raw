@@ -17,11 +17,11 @@
   uDark.rgba_rgb_raw = function(r, g, b, a, render = false) {
     render = (render || uDark.rgba_val)
     a = typeof a == "number" ? a : 1
-    let lightness = uDark.RGBToLightness(r, g, b);
-    let darkenAbove = 127;
+    let lightness = uDark.getPerceivedLightness_approx(r, g, b);
+    let darkenAbove = 50;
     [r, g, b] = [r, g, b].map((x) => {
       x = x * Math.pow(
-        255 / (lightness + darkenAbove),
+        100 / (lightness + darkenAbove),
         lightness / darkenAbove * 2.8
       );
       return x;
