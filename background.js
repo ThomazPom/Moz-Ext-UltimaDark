@@ -935,11 +935,20 @@ class uDarkC extends uDarkExtended {
     processImages(documentElement) {
       // Process image sources to prepare them for custom modifications
       documentElement.querySelectorAll("img[src]").forEach(image => {
-        
         image.setAttribute("src", uDark.image_element_prepare_href(image, documentElement));
       });
-      
+      documentElement.querySelectorAll("img[srcset],picture source[srcset]").forEach(image => {
+        let srcSourceArray = image.getAttribute("srcset").split(",");
+        srcSourceArray = srcSourceArray.map(srcSource => {
+          let parts = srcSource.trim().split(" ");
+          let url = parts[0];
+          let descriptor = parts[1] || "";
+          return uDark.image_element_prepare_href(image, documentElement, url) + " " + descriptor;
+        });
+        image.setAttribute("srcset", srcSourceArray.join(", "));
+      });
     }
+    
     frontEditHTMLPossibleDataURL(elem, value, details, options, documentElement) {
       
       let {

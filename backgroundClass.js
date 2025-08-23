@@ -280,13 +280,13 @@ class uDarkExtended extends uDarkExtendedContentScript {
             
             
             // urls: uDark.userSettings.properWhiteList, // We can't assume the image is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
-            types: ["image"]
+            types: ["image","imageset"]
           },
           ["blocking"]);
           browser.webRequest.onHeadersReceived.addListener(Listeners.editOnHeadersImage, {
             urls: ["<all_urls>"],
             // urls: uDark.userSettings.properWhiteList, // We can't assume the image is on a whitelisted domain, we do it either via finding a registered content script or via checking later the documentURL
-            types: ["image"]
+            types: ["image","imageset"]
           },
           ["blocking", "responseHeaders"]);
           

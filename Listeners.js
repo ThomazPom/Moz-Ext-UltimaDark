@@ -327,11 +327,14 @@ class Listeners {
     if (is_enforced_nobody) {
       return {responseHeaders:details.responseHeaders}; // We cannot edit this request: either it has no body, or it's empty because unmodified, so the webRequestFilter will receive an already edited content from the cache
     }
+  
+
+    
     // console.log("Editing", details.url, details.requestId, details.fromCache)
     let filter = globalThis.browser.webRequest.filterResponseData(details.requestId);
     
     details.dataCount = 0;
-    details.writeEnd = [];     
+    details.writeEnd = [];   
     filter.ondata = event => {
       details.dataCount++
       details.writeEnd.push(event.data);

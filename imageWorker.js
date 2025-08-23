@@ -1,5 +1,5 @@
 let imageBuffers = [];
-let activeMessageLogging = false;
+let activeMessageLogging = true;
 if(!activeMessageLogging)
   {
   console.log =()=>undefined
@@ -320,7 +320,7 @@ var uDark={
             if (editionStatus.min_lightness > max_bright_trigger) {
               return false; // This is a bright image with which does not need lightening, because even the darkest pixel is bright enough
             }
-            if (editionStatus.contrast_percent > .70) {
+            if (editionStatus.contrast_percent > .70 ) {
               // ADD SHADOW TO IMAGE PARTS WITH LIGHTNESS < 25
               // Note 25 is < 100-70 there is no conflict with the previous condition
               theImageDataClamped8TMP.set(imageData.data);
