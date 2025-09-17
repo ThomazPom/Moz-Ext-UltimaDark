@@ -22,11 +22,9 @@ jobs:
         inject_css_suggested.css
         inject_css_suggested_no_edit.css
         imageWorker.js
-        bg.jpg
         background.js
         entities.json
         uDarkEncoder.js
-        resolveIDKVars.js
         icons/
         Listeners.js
         contentScriptClass.js
