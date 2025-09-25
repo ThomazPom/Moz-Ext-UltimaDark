@@ -664,7 +664,7 @@ class uDarkExtendedContentScript  {
     }, (elem, value) => elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement)
     
     
-    uDark.valuePrototypeEditor(CSS2Properties, "fill", (elem, value) => {
+    uDark.valuePrototypeEditor(CSSStyleProperties, "fill", (elem, value) => {
       if(!console.warn("Fill not reimplented", elem, value))
         {return value};
       let randIdentifier = Math.random().toString().slice(2)
@@ -709,14 +709,14 @@ class uDarkExtendedContentScript  {
       
     }
     
-    uDark.valuePrototypeEditor(CSS2Properties, "background", bg_websiteEditFn)
+    uDark.valuePrototypeEditor(CSSStyleProperties, "background", bg_websiteEditFn)
     
-    uDark.valuePrototypeEditor(CSS2Properties, "backgroundColor",  bg_websiteEditFn   )
-    uDark.valuePrototypeEditor(CSS2Properties, "background-color",  bg_websiteEditFn  )
+    uDark.valuePrototypeEditor(CSSStyleProperties, "backgroundColor",  bg_websiteEditFn   )
+    uDark.valuePrototypeEditor(CSSStyleProperties, "background-color",  bg_websiteEditFn  )
     
     
     
-    uDark.valuePrototypeEditor(CSS2Properties, "color", (elem, value) => {
+    uDark.valuePrototypeEditor(CSSStyleProperties, "color", (elem, value) => {
       
       let edited =   uDark.edit_all_cssRule_colors_cb({
         style:elem

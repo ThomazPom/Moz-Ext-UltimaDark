@@ -1935,7 +1935,7 @@ class uDarkC extends uDarkExtended {
             {
               
               // Any level protected proptotypes for safe intenal use without ternaries or worries.
-              CSS2Properties.prototype.p_ud_setProperty = CSS2Properties.prototype.setProperty;
+              CSSStyleProperties.prototype.p_ud_setProperty = CSSStyleProperties.prototype.setProperty;
               CSSStyleSheet.prototype.p_ud_replaceSync = CSSStyleSheet.prototype.replaceSync;
               CSSStyleSheet.prototype.p_ud_insertRule = CSSStyleSheet.prototype.insertRule;
               
@@ -1943,7 +1943,7 @@ class uDarkC extends uDarkExtended {
               
               uDark.createInternalProperty(Element, "innerHTML");
               uDark.createInternalProperty(ShadowRoot, "innerHTML");
-              uDark.createInternalProperty(CSS2Properties, "backgroundColor");
+              uDark.createInternalProperty(CSSStyleProperties, "backgroundColor");
               uDark.createInternalProperty(Navigator, "serviceWorker", navigator.serviceWorker != undefined);
               
             }
