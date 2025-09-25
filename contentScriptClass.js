@@ -1,4 +1,5 @@
-
+// For backwards compatibility
+CSSStyleProperties = globalThis.CSS2Properties || globalThis.CSSStyleProperties;
 
 class uDarkExtendedContentScript  {
   

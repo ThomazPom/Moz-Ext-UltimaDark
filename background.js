@@ -1,3 +1,6 @@
+// For backwards compatibility
+CSSStyleProperties = globalThis.CSS2Properties || globalThis.CSSStyleProperties;
+
 // Listen for keyboard shortcut commands (e.g., Ctrl+Shift+U)
 if (typeof browser !== 'undefined' && browser.commands && browser.commands.onCommand) {
   browser.commands.onCommand.addListener(async function(command) {
