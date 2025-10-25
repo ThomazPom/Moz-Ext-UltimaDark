@@ -1,0 +1,39 @@
+<script type="module">
+// --- Config ---
+const IMG_URL = "https://img.freepik.com/vecteurs-libre/vecteur-degrade-logo-colore-oiseau_343694-1365.jpg?semt=ais_hybrid&w=740&q=80#_uDark";
+const TARGET_W = 64, TARGET_H = 64;
+const ITERS = 10; // nb de répétitions par test
+const BACKENDS = ["webgl", "wasm"]; // ajoutez "webgpu" si supporté
+// --------------
+
+// Charge TFJS si besoin (noop si déjà chargé via <script>)
+import * as tf from "https://cdn.jsdelivr.net/npm/@tensorflow/tfjs/dist/tf.min.js";
+// Optionnel: backend WASM (nécessaire si vous voulez tester 'wasm')
+import "https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-wasm/dist/tf-backend-wasm.js";
+
+async function loadBitmap(url) {
+  const blob = await fetch(url, { cache: "no-store" }).then(r => r.blob());
+  const bmp = await createImageBitmap(blob, {
+    resizeWidth: TARGET_W, resizeHeight: TARGET_H,
+    resizeQuality: "high",
+    colorSpaceConversion: "none",
+    premultiplyAlpha: "none",
+  });
+  return bmp;
+}
+
+// Outils de mesure
+function now() { return performance.now(); }
+function dur(ms) { return ms.toFixed(2); }
+
+function mkDOMCanvas(w, h) {
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  // c.style.border = "1px solid #ccc"; document.body.appendChild(c); // utile si vous voulez voir
+  return c;
+}
+setTimeout(() => {
+  console.log("Timeout reached");
+  
+}, 1000);
+</script>

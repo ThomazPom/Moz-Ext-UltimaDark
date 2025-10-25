@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Image Classification Prototype — EfficientNet + SAFE policy</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.21.0/dist/tf.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/cropperjs@1.5.13/dist/cropper.min.css" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.5.13/dist/cropper.min.js"></script>
+  <style>
+    body { background: #181818; color: #eee; font-family: 'Segoe UI', Arial, sans-serif; }
+    .container { max-width: 1000px; margin: 0 auto; padding: 32px 24px; }
+    h2 { margin-bottom: 8px; }
+    .sub { color:#bbb; margin-bottom: 24px; }
+    .row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .row label { margin-right: 4px; }
+    .row input[type="number"], .row input[type="text"] { width: 120px; padding: 6px; border-radius: 6px; border: 1px solid #444; background: #222; color: #eee; }
+    .row input[type="file"] { background: #222; color: #eee; border-radius: 6px; border: 1px solid #444; }
+    .row button { padding: 8px 16px; border-radius: 6px; border: none; background: #444; color: #eee; cursor: pointer; font-size: 15px; transition: background 0.2s; }
+    .row button:hover { background: #666; }
+    .row select { padding: 6px; border-radius: 6px; border:1px solid #444; background:#222; color:#eee; }
+    #datasetCount { font-weight: bold; margin-left: 8px; }
+    #modelStatus { margin-left: 12px; color: #8f8; font-weight: bold; }
+    .prediction-block { border:2px solid #444; padding:12px; margin-bottom:16px; border-radius:10px; background:#222; color:#eee; display:flex; align-items:flex-start; gap:16px; }
+    .prediction-img { max-width:128px; max-height:128px; vertical-align:middle; margin-right:12px; border:2px solid #888; border-radius:6px; }
+    .pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; margin-right:6px; border:1px solid #555; background:#1f1f1f;}
+    .pill.safe { border-color:#1b7; }
+    .pill.warn { border-color:#b71; }
+    .download-btn { position:absolute; bottom:8px; left:8px; font-size:13px; padding:3px 10px; border-radius:4px; border:none; background:#444; color:#eee; cursor:pointer; }
+    .download-btn:hover { background:#666; }
+    .img-wrap { position:relative; }
+    #output { margin-top:24px; font-size:16px; white-space:pre-wrap; }
+    #cropModal { display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.8); z-index:1000; align-items:center; justify-content:center; }
+    #cropModalContent { background:#222; padding:24px; border-radius:12px; box-shadow:0 0 24px #000; }
+    #cropImagePreview { max-width:420px; max-height:420px; }
+    #cropModalBtns { margin-top:16px; display:flex; gap:12px; justify-content:center; }
+    details { border:1px solid #333; border-radius:8px; padding:8px 12px; background:#202020; }
+    details summary { cursor:pointer; font-weight:600; }
+    @media (max-width: 600px) {
+      .container { padding: 8px; }
+      .row { flex-direction: column; align-items: flex-start; gap: 8px; }
+      .prediction-block { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h2>Mini classifieur — EfficientNet + SAFE policy</h2>
+  <div class="sub">Sorties: <span class="pill safe">to_lighten</span> (logo/icon/sprite), <span class="pill safe">to_darken</span> (abstract/bgrepeat/background), <span class="pill warn">not_safe</span> (le reste)</div>
+
+  <!-- Backbone loader -->
+  <div class="row">
+    <label for="backboneUrl">Backbone URL:</label>
+    <input type="text" id="backboneUrl" value="/models/tfjs_backbone_efnetb0_keras/model.json" style="width:360px"/>
+    <button id="loadBackboneBtn">Load Backbone</button>
+    <span id="backboneStatus"></span>
+  </div>
+
+  <!-- Dataset -->
+  <div class="row">
+    <input type="file" id="trainImages" multiple accept="image/*"/>
+    <button id="addImagesBtn">Add to dataset</button>
+    <span id="datasetCount">0 images in dataset</span>
+  </div>
+
+  <!-- Training params -->
+  <div class="row">
+    <label for="splitInput">Train split (%):</label>
+    <input type="number" id="splitInput" min="1" max="99" value="80"/>
+    <label for="capInput">Max per category:</label>
+    <input type="number" id="capInput" min="1" value="1500"/>
+    <button id="trainBtn">Train</button>
+    <span id="modelStatus"></span>
+  </div>
+
+  <!-- Prediction -->
+  <div class="row">
+    <input type="file" id="testImage" accept="image/*"/>
+    <button id="predictBtn">Predict (crop)</button>
+    <input type="file" id="batchPredictImages" multiple accept="image/*"/>
+    <button id="batchPredictBtn">Batch Predict</button>
+  </div>
+
+  <!-- Save/Load full classifier -->
+  <div class="row">
+    <button id="saveModelBtn">Save Classifier</button>
+    <input type="file" id="loadModelFiles" multiple style="display:none"/>
+    <button id="loadModelBtn">Load Classifier</button>
+  </div>
+
+  <!-- Downloads -->
+  <div class="row">
+    <label for="prefixInput">Filename prefix:</label>
+    <input type="text" id="prefixInput" placeholder="prefix"/>
+    <label for="downloadType">Download all of decision:</label>
+    <select id="downloadType"></select>
+    <button id="downloadAllBtn">Download All</button>
+  </div>
+
+  <details style="margin-top:12px;">
+    <summary>Seuils & mapping (cliquer pour voir)</summary>
+    <div style="margin-top:8px">
+      <div><b>LIGHTEN_SET</b>: logo, icon, sprite</div>
+      <div><b>DARKEN_SET</b>: abstract, bgrepeat, background</div>
+      <div><b>RISK_SET</b>: photo, maps, painting, infographie, drawing</div>
+      <div style="margin-top:8px">Seuils initiaux: <code>TAU_SAFE=0.85</code>, <code>TAU_CLS_SAFE=0.50</code>, <code>TAU_CLS_BLOCK=0.55</code></div>
+    </div>
+  </details>
+
+  <pre id="output"></pre>
+</div>
+
+<!-- Cropper Modal -->
+<div id="cropModal">
+  <div id="cropModalContent">
+    <img id="cropImagePreview" src="" alt="Crop preview" />
+    <div id="cropModalBtns">
+      <button id="cropConfirmBtn">Crop & Predict</button>
+      <button id="cropCancelBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/** =================== Config générale =================== **/
+const SIZE = 224;
+let CLASSES = [
+  'logo','photo','icon','maps','abstract','painting',
+  'bgrepeat','background','sprite','infographie','drawing'
+];
+// Décisions pour le téléchargement groupé
+const DECISIONS = ['to_lighten','to_darken','not_safe'];
+
+const LIGHTEN_SET = new Set(['logo','icon','sprite']);
+const DARKEN_SET  = new Set(['abstract','bgrepeat','background']);
+const RISK_SET    = new Set(['photo','maps','painting','infographie','drawing']);
+
+// Seuils (à calibrer après entraînement)
+let TAU_SAFE = 0.85;      // seuil sur p_safe (tête binaire)
+let TAU_CLS_SAFE = 0.50;  // min proba top-1 classe pour autoriser édition
+let TAU_CLS_BLOCK = 0.55; // blocage dur si classe risquée et proba élevée
+
+let trainFiles = [];
+let model = null;          // Classifier (backbone + têtes)
+let backbone = null;       // EfficientNet Lite0 (pré-entraîné)
+let cropper = null;
+
+const SAFE_SET = new Set([...LIGHTEN_SET, ...DARKEN_SET]);
+
+/** =================== Utilitaires UI =================== **/
+const $ = id => document.getElementById(id);
+const log = (msg) => { $('output').textContent = msg + "\n" + $('output').textContent; };
+const updateDatasetCount = () => { $('datasetCount').textContent = `${trainFiles.length} images in dataset`; };
+const updateDecisionDropdown = () => {
+  const select = $('downloadType');
+  select.innerHTML = "";
+  for (const t of DECISIONS) {
+    const opt = document.createElement("option");
+    opt.value = t;
+    opt.textContent = t;
+    select.appendChild(opt);
+  }
+};
+updateDecisionDropdown();
+
+// Par défaut: WebGL si dispo
+tf.setBackend('webgl');
+
+/** =================== Chargement images -> Tensors =================== **/
+const imageToTensorRGBA = async (file) => {
+  const bitmap = await createImageBitmap(file);
+  const canvas = new OffscreenCanvas(SIZE, SIZE);
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(bitmap, 0, 0, SIZE, SIZE);
+  const imgData = ctx.getImageData(0, 0, SIZE, SIZE);
+  return tf.browser.fromPixels(imgData, 4).toFloat().div(255.0); // [H,W,4] 0..1
+};
+
+const canvasToTensorRGBA = (canvas) => {
+  const ctx = canvas.getContext('2d');
+  const imgData = ctx.getImageData(0, 0, SIZE, SIZE);
+  return tf.browser.fromPixels(imgData, 4).toFloat().div(255.0); // [H,W,4]
+};
+
+/** =================== Modèle: EfficientNet + 2 têtes =================== **/
+// Projection 4->3 avant le backbone (pour PNG RGBA)
+function buildClassifier(backboneModel) {
+  const input = tf.input({shape: [SIZE, SIZE, 4]});
+  let x = tf.layers.conv2d({filters: 3, kernelSize: 1, padding: 'same', useBias: false}).apply(input);
+  x = tf.layers.batchNormalization().apply(x);
+
+  const feats = backboneModel.apply(x); // ex: [B,7,7,C] ou [B,C] selon le modèle
+  // Si le backbone finit déjà en GAP, feats peut être [B,C]. On gère les deux cas :
+  let g = Array.isArray(feats.shape) && feats.shape.length === 2
+          ? feats
+          : tf.layers.globalAveragePooling2d().apply(feats);
+
+  g = tf.layers.dropout({rate: 0.2}).apply(g);
+
+  const head10   = tf.layers.dense({units: CLASSES.length, activation: 'softmax',  name: 'head10'}).apply(g);
+  const headSafe = tf.layers.dense({units: 1,               activation: 'sigmoid', name: 'headSafe'}).apply(g);
+
+  const m = tf.model({inputs: input, outputs: [head10, headSafe]});
+  m.compile({
+    optimizer: tf.train.adam(1e-3),
+    loss: { head10: 'categoricalCrossentropy', headSafe: 'binaryCrossentropy' },
+    lossWeights: { head10: 1.0, headSafe: 1.0 },
+    metrics: { head10: ['accuracy'], headSafe: [tf.metrics.binaryAccuracy] },
+  });
+  return m;
+}
+
+/** =================== Données d'entraînement =================== **/
+function groupFilesByClass(files) {
+  const buckets = {};
+  for (const c of CLASSES) buckets[c] = [];
+  for (const f of files) {
+    const fname = f.name.toLowerCase();
+    let matched = false;
+    for (const c of CLASSES) {
+      if (fname.includes(c.toLowerCase())) { buckets[c].push(f); matched = true; break; }
+    }
+    if (!matched) {
+      // Non annoté par nom de fichier -> ignoré dans ce proto
+    }
+  }
+  return buckets;
+}
+
+async function prepareTrainingData(files, maxPerClass, splitTrain) {
+  // shuffle
+  const shuffled = Array.from(files);
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  const classFiles = groupFilesByClass(shuffled);
+  // cap per class
+  for (const c of CLASSES) {
+    if (classFiles[c].length > maxPerClass) classFiles[c] = classFiles[c].slice(0, maxPerClass);
+  }
+
+  const xTrain = [], y10Train = [], ySafeTrain = [];
+  const xVal   = [], y10Val   = [], ySafeVal   = [];
+
+  for (let i = 0; i < CLASSES.length; i++) {
+    const c = CLASSES[i];
+    const arr = classFiles[c];
+    if (!arr.length) continue;
+    const splitIdx = Math.floor(arr.length * splitTrain);
+    for (let j = 0; j < arr.length; j++) {
+      const t = await imageToTensorRGBA(arr[j]); // [H,W,4]
+      const oneHot = tf.tidy(() => tf.oneHot(tf.tensor1d([i], 'int32'), CLASSES.length).squeeze()); // [classes]
+      const safeVal = SAFE_SET.has(c) ? 1 : 0;
+      const ySafe = tf.tensor1d([safeVal], 'float32'); // [1]
+
+      if (j < splitIdx) {
+        xTrain.push(t); y10Train.push(oneHot); ySafeTrain.push(ySafe);
+      } else {
+        xVal.push(t);   y10Val.push(oneHot);   ySafeVal.push(ySafe);
+      }
+    }
+  }
+
+  const ds = {
+    xTrain: xTrain.length ? tf.stack(xTrain) : null,
+    y10Train: y10Train.length ? tf.stack(y10Train) : null,
+    ySafeTrain: ySafeTrain.length ? tf.stack(ySafeTrain) : null,
+    xVal: xVal.length ? tf.stack(xVal) : null,
+    y10Val: y10Val.length ? tf.stack(y10Val) : null,
+    ySafeVal: ySafeVal.length ? tf.stack(ySafeVal) : null,
+  };
+  return ds;
+}
+
+/** =================== Politique de décision =================== **/
+function decideAction({topClass, topProb, pSafe}) {
+  // Blocage dur si classe risquée avec proba élevée
+  if (RISK_SET.has(topClass) && topProb >= TAU_CLS_BLOCK) return 'not_safe';
+
+  // Autorisation si classe dans LIGHTEN/DARKEN + confiances suffisantes
+  if (pSafe >= TAU_SAFE && topProb >= TAU_CLS_SAFE) {
+    if (LIGHTEN_SET.has(topClass)) return 'to_lighten';
+    if (DARKEN_SET.has(topClass))  return 'to_darken';
+  }
+  // Tout le reste -> not_safe (politique conservatrice, pas d'abstention)
+  return 'not_safe';
+}
+
+/** =================== Entraînement =================== **/
+async function train(files, cap=1500, split=0.8) {
+  if (!backbone) { alert("Backbone non chargé. Clique d’abord sur 'Load Backbone'."); return; }
+  if (model) { model.dispose(); model = null; }
+
+  // Retirer classes sans données (optionnel)
+  const counts = {};
+  for (const c of CLASSES) counts[c] = 0;
+  for (const f of files) {
+    const name = f.name.toLowerCase();
+    for (const c of CLASSES) if (name.includes(c)) { counts[c]++; break; }
+  }
+  const unused = CLASSES.filter(c => counts[c] === 0);
+  if (unused.length) log(`Removed unused classes: ${unused.join(', ')}`);
+  CLASSES = CLASSES.filter(c => counts[c] > 0);
+
+  const {xTrain, y10Train, ySafeTrain, xVal, y10Val, ySafeVal} = await prepareTrainingData(files, cap, split);
+  if (!xTrain) { log("No training data available!"); return; }
+
+  model = buildClassifier(backbone);
+
+  const vb = xVal ? { validationData: [xVal, {head10: y10Val, headSafe: ySafeVal}] } : {};
+
+  await model.fit(xTrain, {head10: y10Train, headSafe: ySafeTrain}, {
+    epochs: 10,
+    batchSize: 8,
+    shuffle: true,
+    ...vb,
+    callbacks: {
+      onEpochEnd: (e, logs) => {
+        const msg =
+          `Epoch ${e+1} | loss=${logs.loss.toFixed(3)} | ` +
+          `head10_acc=${(logs['head10_accuracy']*100).toFixed(1)}% | ` +
+          `headSafe_binAcc=${(logs['headSafe_binaryAccuracy']*100).toFixed(1)}%`;
+        log(msg);
+      }
+    }
+  });
+
+  // Libère mémoire
+  xTrain.dispose(); y10Train.dispose(); ySafeTrain.dispose();
+  if (xVal) { xVal.dispose(); y10Val.dispose(); ySafeVal.dispose(); }
+
+  $('modelStatus').textContent = "Training done!";
+  setTimeout(()=> $('modelStatus').textContent="", 2000);
+}
+
+
+// Pour EfficientNetB0, preprocess_input = (x / 255.0 - 0.5) * 2.0
+const preprocessInput = imgTensor => imgTensor.div(255.0).sub(0.5).mul(2.0);
+
+/** =================== Prédiction =================== **/
+async function predictTensor(batchRGBA4) {
+  // batchRGBA4: [B,H,W,4], 0..1
+  if (!model) { alert("Charge un classifieur (train ou load)."); return null; }
+  // Applique le prétraitement EfficientNetB0
+  const batchPreprocessed = preprocessInput(batchRGBA4);
+  const [pClassT, pSafeT] = model.predict(batchPreprocessed);
+  const pClass = await pClassT.array();  // [B, numClasses]
+  const pSafe  = await pSafeT.array();   // [B,1]
+  const outputs = [];
+  for (let b=0; b<pClass.length; b++) {
+    const arr = pClass[b];
+    let topIdx = 0, topProb = -1;
+    for (let i=0; i<arr.length; i++) if (arr[i] > topProb) { topProb = arr[i]; topIdx = i; }
+    const topClass = CLASSES[topIdx];
+    const ps = pSafe[b][0];
+    const action = decideAction({topClass, topProb, pSafe: ps});
+    outputs.push({topClass, topProb, pSafe: ps, action, dist: arr});
+  }
+  tf.dispose([pClassT, pSafeT, batchPreprocessed]);
+  return outputs;
+}
+
+function renderPredictionCard({imgUrl, fileName, result}) {
+  const {topClass, topProb, pSafe, action} = result;
+  const pillClass = (action === 'not_safe') ? 'pill warn' : 'pill safe';
+  const html = `
+  <div class='prediction-block' data-action='${action}'>
+    <div class='img-wrap'>
+      <img src='${imgUrl}' class='prediction-img' title='${fileName}'/>
+      <button class='download-btn' data-img='${imgUrl}' data-filename='${fileName}'>Download</button>
+    </div>
+    <div>
+      <div><span class='${pillClass}'>${action}</span></div>
+      <div><b>Top class:</b> ${topClass} (${(topProb*100).toFixed(1)}%)</div>
+      <div><b>p_safe:</b> ${(pSafe*100).toFixed(1)}%</div>
+      <div style="color:#aaa;font-size:90%">file: ${fileName}</div>
+    </div>
+  </div>`;
+  $('output').innerHTML = html + $('output').innerHTML;
+}
+
+// Single (avec cropper)
+function showCropperModal(file) {
+  const modal = $('cropModal');
+  const img = $('cropImagePreview');
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    img.src = e.target.result;
+    modal.style.display = 'flex';
+    if (cropper) cropper.destroy();
+    cropper = new Cropper(img, {
+      viewMode: 1, autoCropArea: 1, movable: true, zoomable: true, scalable: true, rotatable: true
+    });
+  };
+  reader.readAsDataURL(file);
+}
+
+async function predictCropped() {
+  if (!cropper) return;
+  const canvas = cropper.getCroppedCanvas({ width: SIZE, height: SIZE });
+  if (!canvas) return;
+  const t = canvasToTensorRGBA(canvas).expandDims(0); // [1,H,W,4]
+  const [result] = await predictTensor(t);
+  renderPredictionCard({ imgUrl: canvas.toDataURL(), fileName: 'cropped.png', result });
+  $('cropModal').style.display = 'none';
+  cropper.destroy(); cropper = null;
+  t.dispose();
+}
+
+// Batch
+async function batchPredict(files) {
+  for (let i=0;i<files.length;i++) {
+    const f = files[i];
+    const t = (await imageToTensorRGBA(f)).expandDims(0);
+    const [result] = await predictTensor(t);
+    const reader = new FileReader();
+    reader.onload = (e) => renderPredictionCard({ imgUrl: e.target.result, fileName: f.name, result });
+    reader.readAsDataURL(f);
+    t.dispose();
+  }
+}
+
+/** =================== Events =================== **/
+// Add images to dataset
+$('addImagesBtn').onclick = () => {
+  const files = $('trainImages').files;
+  for (let i = 0; i < files.length; i++) trainFiles.push(files[i]);
+  updateDatasetCount();
+  $('trainImages').value = "";
+};
+
+// Load backbone
+$('loadBackboneBtn').onclick = async () => {
+  try {
+    $('backboneStatus').textContent = "Loading...";
+    const url = $('backboneUrl').value.trim();
+    backbone = await tf.loadLayersModel(url);
+    backbone.trainable = false;
+    $('backboneStatus').textContent = "Backbone loaded!";
+    setTimeout(()=> $('backboneStatus').textContent="", 2000);
+  } catch (e) {
+    $('backboneStatus').textContent = "Failed to load backbone";
+    console.error(e);
+  }
+};
+
+// Train
+$('trainBtn').onclick = async () => {
+  if (!trainFiles.length) return alert("Ajoute d'abord des images d'entraînement !");
+  const splitVal = Math.max(1, Math.min(99, parseInt($('splitInput').value,10))) / 100;
+  const capVal   = Math.max(1, parseInt($('capInput').value,10));
+  log(`Training... (split=${Math.round(splitVal*100)}%, cap=${capVal})`);
+  await train(trainFiles, capVal, splitVal);
+};
+
+// Predict (show cropper)
+$('predictBtn').onclick = () => {
+  const f = $('testImage').files[0];
+  if (!f) return alert("Ajoute une image à prédire !");
+  showCropperModal(f);
+};
+
+// Batch predict
+$('batchPredictBtn').onclick = async () => {
+  const files = $('batchPredictImages').files;
+  if (!files.length) return alert("Select images for batch prediction!");
+  await batchPredict(files);
+};
+
+// Save/Load classifier
+$('saveModelBtn').onclick = async () => {
+  if (!model) return alert("No model to save. Train or load a classifier first.");
+  await model.save('downloads://efficientnet_safe_classifier');
+  $('modelStatus').textContent = "Classifier saved!";
+  setTimeout(()=> $('modelStatus').textContent = "", 2000);
+};
+
+$('loadModelBtn').onclick = () => $('loadModelFiles').click();
+$('loadModelFiles').onchange = async (evt) => {
+  const files = Array.from(evt.target.files);
+  if (!files.length) return;
+  model = await tf.loadLayersModel(tf.io.browserFiles(files));
+  $('modelStatus').textContent = "Classifier loaded!";
+  setTimeout(()=> $('modelStatus').textContent = "", 2000);
+};
+
+// Download All (by decision)
+$('downloadAllBtn').onclick = () => {
+  const type = $('downloadType').value; // decision
+  const prefix = $('prefixInput').value || "";
+  const blocks = document.querySelectorAll('.prediction-block');
+  let count = 0;
+  blocks.forEach(block => {
+    const action = block.getAttribute('data-action');
+    if (action === type) {
+      const img = block.querySelector('img');
+      const filename = img?.getAttribute('title') || "image.png";
+      const url = img?.getAttribute('src');
+      if (url) {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = prefix + filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        count++;
+      }
+    }
+  });
+  if (!count) alert("No predictions of this decision found.");
+};
+
+// Cropper buttons
+$('cropConfirmBtn').onclick = predictCropped;
+$('cropCancelBtn').onclick = () => {
+  $('cropModal').style.display = 'none';
+  if (cropper) cropper.destroy();
+  cropper = null;
+};
+</script>
+</body>
+</html>

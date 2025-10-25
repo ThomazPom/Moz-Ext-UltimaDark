@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["mainImageWorkerSrc.js"],
+  "sourcesContent": ["import 'tf.min.js';\r\nimport 'imageWorkerAI.js';\r\nimport 'imageWorkerAIBench.js';"],
+  "mappings": ";AAAA,sBAAO;AACP,6BAAO;AACP,kCAAO;",
+  "names": []
+}

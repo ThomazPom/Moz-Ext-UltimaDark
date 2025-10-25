@@ -1,0 +1,14 @@
+{
+  "name": "imageworker-bundle",
+  "version": "1.0.0",
+  "description": "Bundle pour imageWorker (tf.min.js, imageWorkerAI.js, imageWorkerAIBench.js)",
+  "scripts": {
+    "build": "npx esbuild  --format=iife  --sourcemap mainImageWorkerSrc.js --outfile=imageWorkerBundle.js",
+    "watch": "npx esbuild  --format=iife  --sourcemap mainImageWorkerSrc.js --outfile=imageWorkerBundle.js --watch",
+    "concat": "node concat.js",
+    "concat:watch": "node concat.js --watch"
+  },
+  "devDependencies": {
+    "esbuild": "^0.20.2"
+  }
+}

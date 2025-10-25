@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Image Classification Prototype</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.21.0/dist/tf.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/cropperjs@1.5.13/dist/cropper.min.css" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.5.13/dist/cropper.min.js"></script>
+  <style>
+    body { background: #181818; color: #eee; font-family: 'Segoe UI', Arial, sans-serif; }
+    .container { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
+    h2 { margin-bottom: 24px; }
+    .row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .row label { margin-right: 4px; }
+    .row input[type="number"] { width: 70px; padding: 4px; border-radius: 4px; border: 1px solid #444; background: #222; color: #eee; }
+    .row input[type="file"] { background: #222; color: #eee; border-radius: 4px; border: 1px solid #444; }
+    .row button { padding: 6px 16px; border-radius: 4px; border: none; background: #444; color: #eee; cursor: pointer; font-size: 15px; transition: background 0.2s; }
+    .row button:hover { background: #666; }
+    #datasetCount { font-weight: bold; margin-left: 8px; }
+    #modelStatus { margin-left: 12px; color: #8f8; font-weight: bold; }
+    .prediction-block { border:2px solid #444; padding:12px; margin-bottom:16px; border-radius:10px; background:#222; color:#eee; display:flex; align-items:center; gap:16px; }
+    .prediction-img { max-width:128px; max-height:128px; vertical-align:middle; margin-right:12px; border:2px solid #888; border-radius:4px; }
+    .download-btn { position:absolute; bottom:8px; left:8px; font-size:13px; padding:3px 10px; border-radius:4px; border:none; background:#444; color:#eee; cursor:pointer; }
+    .download-btn:hover { background:#666; }
+    .img-wrap { position:relative; }
+    #output { margin-top:32px; font-size:16px; }
+    #cropModal { display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.8); z-index:1000; align-items:center; justify-content:center; }
+    #cropModalContent { background:#222; padding:24px; border-radius:12px; box-shadow:0 0 24px #000; }
+    #cropImagePreview { max-width:400px; max-height:400px; }
+    #cropModalBtns { margin-top:16px; display:flex; gap:12px; justify-content:center; }
+    @media (max-width: 600px) {
+      .container { padding: 8px; }
+      .row { flex-direction: column; align-items: flex-start; gap: 8px; }
+      .prediction-block { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h2>Mini classifieur (Logo / Icône / Fond)</h2>
+
+  <div class="row">
+    <input type="file" id="trainImages" multiple accept="image/*"/>
+    <button id="addImagesBtn">Add to dataset</button>
+    <span id="datasetCount">0 images in dataset</span>
+  </div>
+  <div class="row">
+    <label for="splitInput">Train/Test split (% train):</label>
+    <input type="number" id="splitInput" min="1" max="99" value="80"/>
+    <label for="capInput">Max per category:</label>
+    <input type="number" id="capInput" min="1" value="1500"/>
+    <button id="trainBtn">Train</button>
+  </div>
+  <div class="row">
+    <input type="file" id="testImage" accept="image/*"/>
+    <button id="predictBtn">Predict</button>
+    <input type="file" id="batchPredictImages" multiple accept="image/*"/>
+    <button id="batchPredictBtn">Batch Predict</button>
+  </div>
+  <div class="row">
+    <button id="saveModelBtn">Save Model</button>
+    <input type="file" id="loadModelFiles" multiple style="display:none"/>
+    <button id="loadModelBtn">Load Model</button>
+    <span id="modelStatus"></span>
+  </div>
+  <div class="row">
+    <label for="prefixInput">Filename prefix:</label>
+    <input type="text" id="prefixInput" placeholder="Enter prefix" style="width:120px;"/>
+    <label for="downloadType">Download all of type:</label>
+    <select id="downloadType"></select>
+    <button id="downloadAllBtn">Download All</button>
+  </div>
+  <pre id="output"></pre>
+</div>
+<!-- Cropper Modal -->
+<div id="cropModal">
+  <div id="cropModalContent">
+    <img id="cropImagePreview" src="" alt="Crop preview" />
+    <div id="cropModalBtns">
+      <button id="cropConfirmBtn">Crop & Predict</button>
+      <button id="cropCancelBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+<script>
+const SIZE = 64;
+let CLASSES = ["logo", "icon", "background", "photo", "abstract"];
+let trainFiles = [];
+let model = null;
+let cropper = null;
+
+// Utility: update dataset count
+const updateDatasetCount = () => {
+  document.getElementById("datasetCount").textContent = `${trainFiles.length} images in dataset`;
+};
+
+tf.setBackend('cpu');
+// Utility: image to tensor
+const imageToTensor = async file => {
+  const bitmap = await createImageBitmap(file);
+  const canvas = new OffscreenCanvas(SIZE, SIZE);
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(bitmap, 0, 0, SIZE, SIZE);
+  const imgData = ctx.getImageData(0, 0, SIZE, SIZE);
+  return tf.browser.fromPixels(imgData, 4).div(255.0);
+};
+
+// Model creation
+const createModel = () => {
+  const m = tf.sequential();
+  m.add(tf.layers.conv2d({inputShape: [SIZE, SIZE, 4], filters: 16, kernelSize: 3, activation: 'relu'}));
+  m.add(tf.layers.maxPooling2d({poolSize: 2}));
+  m.add(tf.layers.flatten());
+  m.add(tf.layers.dense({units: 32, activation: 'relu'}));
+  m.add(tf.layers.dense({units: CLASSES.length, activation: 'softmax'}));
+  m.compile({ optimizer: 'adam', loss: 'categoricalCrossentropy', metrics: ['accuracy'] });
+  return m;
+};
+
+// Prepare train/test data
+const prepareTrainingData = async (files, maxPerClass, split) => {
+  // Shuffle
+  let shuffled = Array.from(files);
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  // Group by class
+  let classFiles = {};
+  for (let c of CLASSES) classFiles[c] = [];
+  for (const file of shuffled) {
+    const fname = file.name.toLowerCase();
+    for (let i = 0; i < CLASSES.length; i++) {
+      if (fname.includes(CLASSES[i].toLowerCase())) {
+        classFiles[CLASSES[i]].push(file);
+        break;
+      }
+    }
+  }
+  // Cap per class
+  for (let c of CLASSES) {
+    if (classFiles[c].length > maxPerClass) {
+      classFiles[c] = classFiles[c].slice(0, maxPerClass);
+    }
+  }
+  // Split train/test
+  let trainFilesArr = [], testFilesArr = [], trainLabels = [], testLabels = [];
+  for (let i = 0; i < CLASSES.length; i++) {
+    let filesArr = classFiles[CLASSES[i]];
+    let splitIdx = Math.floor(filesArr.length * split);
+    for (let j = 0; j < filesArr.length; j++) {
+      const tensor = await imageToTensor(filesArr[j]);
+      const label = tf.oneHot(tf.tensor1d([i], "int32"), CLASSES.length);
+      if (j < splitIdx) {
+        trainFilesArr.push(tensor);
+        trainLabels.push(label);
+      } else {
+        testFilesArr.push(tensor);
+        testLabels.push(label);
+      }
+    }
+  }
+  return {
+    xTrain: trainFilesArr.length ? tf.stack(trainFilesArr) : null,
+    yTrain: trainLabels.length ? tf.concat(trainLabels) : null,
+    xTest: testFilesArr.length ? tf.stack(testFilesArr) : null,
+    yTest: testLabels.length ? tf.concat(testLabels) : null
+  };
+};
+
+// Train function
+let train = async (files, cap=1500, split=0.8) => {
+  // Remove unused classes
+  let classCounts = Array(CLASSES.length).fill(0);
+  for (const file of files) {
+    const fname = file.name.toLowerCase();
+    for (let i = 0; i < CLASSES.length; i++) {
+      if (fname.includes(CLASSES[i].toLowerCase())) {
+        classCounts[i]++;
+        break;
+      }
+    }
+  }
+  let filtered = [];
+  for (let i = 0; i < CLASSES.length; i++) {
+    if (classCounts[i] > 0) filtered.push(CLASSES[i]);
+  }
+  if (filtered.length !== CLASSES.length) {
+    document.getElementById("output").textContent += `Removed unused classes: ${CLASSES.filter((c,i)=>classCounts[i]==0).join(", ")}.\n`;
+    CLASSES = filtered;
+  }
+  // Prepare data
+  const {xTrain, yTrain, xTest, yTest} = await prepareTrainingData(files, cap, split);
+  if (!xTrain || !yTrain) {
+    document.getElementById("output").textContent += "No training data available!\n";
+    return;
+  }
+  model = createModel();
+  await model.fit(xTrain, yTrain, {
+    epochs: 10,
+    batchSize: 4,
+    shuffle: true,
+    callbacks: { onEpochEnd: (e, logs) => {
+      document.getElementById("output").textContent =
+        `Epoch ${e+1}: loss=${logs.loss.toFixed(3)}, acc=${(logs.acc*100).toFixed(1)}%\n` + document.getElementById("output").textContent;
+    }}
+  });
+  xTrain.dispose();
+  yTrain.dispose();
+  // Evaluate
+  if (xTest && yTest) {
+    const evalResult = model.evaluate(xTest, yTest);
+    let testLoss = await evalResult[0].data();
+    let testAcc = await evalResult[1].data();
+    document.getElementById("output").textContent =
+      `Test set: loss=${testLoss[0].toFixed(3)}, acc=${(testAcc[0]*100).toFixed(1)}%\n` + document.getElementById("output").textContent;
+    xTest.dispose();
+    yTest.dispose();
+  }
+  updateDownloadTypeDropdown();
+};
+
+// Predict single image
+const predict = async file => {
+  let t0 = performance.now();
+  const tensorRaw = await imageToTensor(file);
+  let t2 = performance.now();
+  const tensor = tensorRaw.expandDims(0);
+  let t3 = performance.now();
+  const pred = model.predict(tensor);
+  let t4 = performance.now();
+  const idx = pred.argMax(1).dataSync()[0];
+  let t5 = performance.now();
+  // Show image and result
+  const output = document.getElementById("output");
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const imgId = 'img_' + Math.random().toString(36).substr(2, 9);
+    const downloadBtnId = 'dl_' + Math.random().toString(36).substr(2, 9);
+    const containerHtml = `<div class='prediction-block'>
+      <div class='img-wrap'>
+        <img id='${imgId}' src='${e.target.result}' class='prediction-img' title='${file.name}'/>
+        <button class='download-btn' data-img='${e.target.result}' data-filename='${file.name}'>Download</button>
+      </div>
+      <div><strong>Prediction:</strong> ${CLASSES[idx]}<br/><span style='color:#aaa;font-size:90%'>(file: ${file.name})</span></div>
+    </div>`;
+    output.innerHTML = containerHtml + output.innerHTML;
+  };
+  reader.readAsDataURL(file);
+  // Timing logs
+  console.log(`Timing for ${file.name}: imageToTensor: ${(t2-t0).toFixed(2)} ms, expandDims: ${(t3-t2).toFixed(2)} ms, model.predict: ${(t4-t3).toFixed(2)} ms, argMax/dataSync: ${(t5-t4).toFixed(2)} ms, total: ${(t5-t0).toFixed(2)} ms`);
+};
+
+// Batch predict
+const batchPredict = async files => {
+  for (let i = 0; i < files.length; i++) {
+    await predict(files[i]);
+  }
+};
+
+// Show cropper modal for prediction
+const showCropperModal = file => {
+  const modal = document.getElementById('cropModal');
+  const img = document.getElementById('cropImagePreview');
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    img.src = e.target.result;
+    modal.style.display = 'flex';
+    if (cropper) cropper.destroy();
+    cropper = new Cropper(img, {
+      viewMode: 1,
+      autoCropArea: 1,
+      movable: true,
+      zoomable: true,
+      scalable: true,
+      rotatable: true
+    });
+  };
+  reader.readAsDataURL(file);
+};
+
+// Predict on cropped image
+const predictCropped = async () => {
+  if (!cropper) return;
+  const canvas = cropper.getCroppedCanvas({ width: SIZE, height: SIZE });
+  if (!canvas) return;
+  // Convert canvas to tensor
+  const imgData = canvas.getContext('2d').getImageData(0, 0, SIZE, SIZE);
+  const tensor = tf.browser.fromPixels(imgData, 4).toFloat().div(255.0).expandDims(0);
+  const pred = model.predict(tensor);
+  const idx = pred.argMax(1).dataSync()[0];
+  // Show result
+  const output = document.getElementById("output");
+  const containerHtml = `<div class='prediction-block'>
+    <div class='img-wrap'>
+      <img src='${canvas.toDataURL()}' class='prediction-img' title='cropped'/>
+      <button class='download-btn' data-img='${canvas.toDataURL()}' data-filename='cropped.png'>Download</button>
+    </div>
+    <div><strong>Prediction:</strong> ${CLASSES[idx]}<br/><span style='color:#aaa;font-size:90%'>(file: cropped)</span></div>
+  </div>`;
+  output.innerHTML = containerHtml + output.innerHTML;
+  document.getElementById('cropModal').style.display = 'none';
+  cropper.destroy();
+  cropper = null;
+};
+
+// Event listeners
+// Add images to dataset
+  document.getElementById("addImagesBtn").onclick = () => {
+    const files = document.getElementById("trainImages").files;
+    for (let i = 0; i < files.length; i++) trainFiles.push(files[i]);
+    updateDatasetCount();
+    document.getElementById("trainImages").value = "";
+  };
+// Train
+  document.getElementById("trainBtn").onclick = async () => {
+    if (!trainFiles.length) return alert("Ajoute d'abord des images d'entraînement !");
+    const splitVal = parseInt(document.getElementById("splitInput").value, 10);
+    const capVal = parseInt(document.getElementById("capInput").value, 10);
+    const split = Math.max(1, Math.min(99, splitVal)) / 100;
+    const cap = Math.max(1, capVal);
+    document.getElementById("output").textContent = `Training... (split=${Math.round(split*100)}%, cap=${cap})\n`;
+    await train(trainFiles, cap, split);
+    document.getElementById("output").textContent = "Training done!\n" + document.getElementById("output").textContent;
+  };
+// Predict single
+  document.getElementById("predictBtn").onclick = async () => {
+    const file = document.getElementById("testImage").files[0];
+    if (!file) return alert("Ajoute une image à prédire !");
+    showCropperModal(file);
+  };
+// Batch predict
+  document.getElementById("batchPredictBtn").onclick = async () => {
+    const files = document.getElementById("batchPredictImages").files;
+    if (!files.length) return alert("Select images for batch prediction!");
+    await batchPredict(files);
+  };
+// Save model
+  document.getElementById("saveModelBtn").onclick = async () => {
+    if (!model) return alert("No model to save. Train or load a model first.");
+    await model.save('downloads://imageClassifierModel');
+    document.getElementById("modelStatus").textContent = "Model saved!";
+    setTimeout(()=>document.getElementById("modelStatus").textContent = "", 2000);
+  };
+// Load model
+  document.getElementById("loadModelBtn").onclick = () => {
+    document.getElementById("loadModelFiles").click();
+  };
+  document.getElementById("loadModelFiles").onchange = async (evt) => {
+    const files = Array.from(evt.target.files);
+    if (!files.length) return;
+    model = await tf.loadLayersModel(tf.io.browserFiles(files));
+    document.getElementById("modelStatus").textContent = "Model loaded!";
+    setTimeout(()=>document.getElementById("modelStatus").textContent = "", 2000);
+  };
+// Populate dropdown with CLASSES
+const updateDownloadTypeDropdown = () => {
+  const select = document.getElementById("downloadType");
+  select.innerHTML = "";
+  for (const c of CLASSES) {
+    const opt = document.createElement("option");
+    opt.value = c;
+    opt.textContent = c;
+    select.appendChild(opt);
+  }
+};
+updateDownloadTypeDropdown();
+// Update dropdown if CLASSES change
+const originalTrain = train;
+train = async (...args) => {
+  await originalTrain(...args);
+  updateDownloadTypeDropdown();
+};
+// Download all predictions of selected type
+  document.getElementById("downloadAllBtn").onclick = () => {
+    const type = document.getElementById("downloadType").value;
+    const prefix = document.getElementById("prefixInput").value || "";
+    const blocks = document.querySelectorAll('.prediction-block');
+    let count = 0;
+    blocks.forEach(block => {
+      // Extract type from prediction text using textContent
+      const predDiv = block.querySelector('div:nth-child(2)');
+      let predType = "";
+      if (predDiv) {
+        const match = predDiv.textContent.match(/Prediction:\s*(\w+)/);
+        if (match) predType = match[1].trim();
+      }
+      if (predType === type) {
+        const img = block.querySelector('img');
+        const filename = img?.getAttribute('title') || "image.png";
+        const url = img?.getAttribute('src');
+        if (url) {
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = prefix + filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          count++;
+        }
+      }
+    });
+    if (!count) alert("No predictions of this type found.");
+  };
+// Download button event delegation
+  document.getElementById("output").addEventListener("click", function(e) {
+    if (e.target.classList.contains("download-btn")) {
+      const url = e.target.getAttribute("data-img");
+      const filename = e.target.getAttribute("data-filename") || "image.png";
+      const prefix = document.getElementById("prefixInput").value || "";
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = prefix + filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  });
+// Cropper modal buttons
+  document.getElementById('cropConfirmBtn').onclick = predictCropped;
+  document.getElementById('cropCancelBtn').onclick = () => {
+    document.getElementById('cropModal').style.display = 'none';
+    if (cropper) cropper.destroy();
+    cropper = null;
+  };
+</script>
+</body>
+</html>
