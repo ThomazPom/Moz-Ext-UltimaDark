@@ -23,17 +23,22 @@ document.addEventListener("alpine:init", () => {
             this.saveSettings();
             this.recomputeCurrentSiteMatches();
         },
-            // Returns array of invalid patterns for a given list (exclusion or inclusion)
-            async filterValidPatterns(type = "exclusion") {
-                const patterns = (type === "exclusion" ? this.exclusionPatterns : this.inclusionPatterns)
-                    .split('\n').filter(p => p.trim());
-                const invalids = [];
-                for (const pattern of patterns) {
-                    const valid = await this.isValidPattern(pattern.split('#ud_')[0]);
-                    if (!valid) invalids.push(pattern);
-                }
-                return invalids;
-            },
+        // Returns array of invalid patterns for a given list (exclusion or inclusion)
+        async filterValidPatterns(type = "exclusion") {
+            const patterns = (type === "exclusion" ? this.exclusionPatterns : this.inclusionPatterns)
+                .split('\n').filter(p => p.trim());
+            const invalids = [];
+            for (const pattern of patterns) {
+                const valid = await this.isValidPattern(pattern.split('#ud_')[0]);
+                if (!valid) invalids.push(pattern);
+            }
+            return invalids;
+        },
+        //Image working model
+        imageDecisionLogic: "heuristic", // "heuristic" or "ai"
+        pooledWorkersEnabled: true, // Use pooled workers by default
+
+
         // Embeds for current tab
         embeds: [],
         embedsLoading: false,
@@ -46,7 +51,7 @@ document.addEventListener("alpine:init", () => {
         lastTargetHost: "",
         excludeButtonText: "Exclude",
 
-    // Color settings
+        // Color settings
         min_bright_fg: 0.2,
         max_bright_fg: 1,
         min_bright_bg_trigger: 0.2,
@@ -54,51 +59,51 @@ document.addEventListener("alpine:init", () => {
         max_bright_bg: 0.4,
         bg_negative_modifier: 0,
         fg_negative_modifier: 0,
-lcdColorSettings: {
-        min_bright_fg: 0.2,
-        max_bright_fg: 1,
-        min_bright_bg_trigger: 0.2,
-        min_bright_bg: 0.1,
-        max_bright_bg: 0.4,
-        bg_negative_modifier: 0,
-        fg_negative_modifier: 0,
-    },
-    oledColorSettings: {
-        bg_negative_modifier: 0.1,
-        fg_negative_modifier: 0.15,
-    },
+        lcdColorSettings: {
+            min_bright_fg: 0.2,
+            max_bright_fg: 1,
+            min_bright_bg_trigger: 0.2,
+            min_bright_bg: 0.1,
+            max_bright_bg: 0.4,
+            bg_negative_modifier: 0,
+            fg_negative_modifier: 0,
+        },
+        oledColorSettings: {
+            bg_negative_modifier: 0.1,
+            fg_negative_modifier: 0.15,
+        },
         // Internal state
         settingsSaveTimeout: null,
         tabChangeListenersEnabled: false,
-        
+
         // Feature toggles
         cacheEnabled: true,
         imageEditionEnabled: true,
         serviceWorkersEnabled: true,
         autoRefreshOnToggle: false,
-        
-        
+
+
         // Pattern lists
         inclusionPatterns: "",
         exclusionPatterns: "",
-        
+
         // Hooks system
         hooks: {},
-        
+
         // Sites data
         sites: {
             main: {
                 url: "https://www.google.com",
-                host: "www.google.com", 
+                host: "www.google.com",
                 path: "/",
                 exclusionMatches: [],
                 inclusionMatches: [],
                 tab: null
             },
         },
-        
-        
-        getSiteBadge: function() {
+
+
+        getSiteBadge: function () {
             const site = this.sites[this.activeSite];
             const exclusionMatches = site.exclusionMatches;
             const inclusionMatches = site.inclusionMatches;
@@ -133,16 +138,16 @@ lcdColorSettings: {
             } else if (exclusionMatches.length === 0 && inclusionMatches.length > 0) {
                 processedBageValue = { text: 'INCLUDED', class: 'bg-success', title: 'This site is included.' };
             }
-            
+
             if (this._lastSiteBadge != processedBageValue.text) {
-                console.log('Site badge changed:', this._lastSiteBadge, '->', processedBageValue.text,inclusionMatches,exclusionMatches);
-            
+                console.log('Site badge changed:', this._lastSiteBadge, '->', processedBageValue.text, inclusionMatches, exclusionMatches);
+
                 this.activate_hooks('badge_change', { prevBadge: this._lastSiteBadge, newBadge: processedBageValue.text, site: this.sites[this.activeSite] });
             }
             this._lastSiteBadge = processedBageValue.text; // Store last badge state
             return processedBageValue;
         },
-        
+
         // Hook system methods
         // Add a hook to a named hook group
         addHook(hookGroup, key, hook) {
@@ -151,11 +156,11 @@ lcdColorSettings: {
             }
             this.hooks[hookGroup][key] = hook;
         },
-        
+
         // Activate all hooks in a named group
         async activate_hooks(hookGroup, context = {}) {
             if (!this.hooks[hookGroup]) return;
-            if(context.do) {
+            if (context.do) {
                 context.do(context);
             }
             for (const [key, hook] of Object.entries(this.hooks[hookGroup])) {
@@ -169,7 +174,7 @@ lcdColorSettings: {
                 }
             }
         },
-        
+
         // Site management
         updateUrl(url, site, extra = {}) {
             this.sites[site].url = url;
@@ -183,11 +188,11 @@ lcdColorSettings: {
             this.activate_hooks('update', { ...extra, url, site, tab: this.sites[site].tab });
             this.loadEmbedsInStore();
         },
-        
+
         currentSite() {
             return this.sites[this.activeSite];
         },
-        
+
         // Pattern management methods
         async editExclusionPattern(idx, newValue) {
             let isValid = await this.isValidPattern(newValue);
@@ -245,8 +250,8 @@ lcdColorSettings: {
         async addExclusionPattern(pattern, checkAlreadyCovered = true) {
             if (!pattern || !pattern.trim()) return;
             const trimmedPattern = pattern.trim();
-                // Validate pattern format
-                let isValid = await this.isValidPattern(trimmedPattern);
+            // Validate pattern format
+            let isValid = await this.isValidPattern(trimmedPattern);
             console.log("Adding exclusion pattern:", trimmedPattern, "Valid:", isValid);
             if (!isValid) {
                 showBS5Modal({
@@ -288,7 +293,7 @@ lcdColorSettings: {
             }
             await doAdd();
         },
-        loadEmbedsInStore: async function() {
+        loadEmbedsInStore: async function () {
             let tab = this.currentSite().tab;
             if (!tab || typeof tab.id === 'undefined') {
                 this.embeds = [];
@@ -307,7 +312,7 @@ lcdColorSettings: {
                 this.embedsLoading = false;
             }
         },
-        getEmbedsOfTab: async function(tabId) {
+        getEmbedsOfTab: async function (tabId) {
             try {
                 let tab = this.currentSite().tab;
                 if (!tab || typeof tab.id === 'undefined') return [];
@@ -318,7 +323,7 @@ lcdColorSettings: {
                 return [];
             }
         },
-        getEmbedsOfCurrentSite: async function() {
+        getEmbedsOfCurrentSite: async function () {
             let tab = this.currentSite().tab;
             if (!tab || typeof tab.id === 'undefined') return [];
             try {
@@ -328,11 +333,11 @@ lcdColorSettings: {
                 return [];
             }
         },
-        
+
         // Embed helper methods
         async excludeAllEmbedDomains() {
             if (this.embeds.length === 0) return;
-            
+
             const domains = [...new Set(this.embeds.map(embed => {
                 try {
                     return (new URL(embed.href)).host;
@@ -340,24 +345,24 @@ lcdColorSettings: {
                     return null;
                 }
             }).filter(Boolean))];
-            
+
             if (domains.length === 0) return;
-            
+
             const patterns = domains.map(domain => `*://${domain}/*`);
-            
+
             // Add all patterns
             for (const pattern of patterns) {
                 await this.addExclusionPattern(pattern, false); // Don't check for already covered
             }
-            
+
             console.log('Excluded all embed domains:', domains);
         },
-        
+
         copyEmbedUrls() {
             if (this.embeds.length === 0) return;
-            
+
             const urls = this.embeds.map(embed => embed.href).join('\n');
-            
+
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(urls).then(() => {
                     showBS5Modal({
@@ -374,7 +379,7 @@ lcdColorSettings: {
                 this.fallbackCopyToClipboard(urls);
             }
         },
-        
+
         fallbackCopyToClipboard(text) {
             // Fallback for older browsers
             const textArea = document.createElement('textarea');
@@ -383,7 +388,7 @@ lcdColorSettings: {
             textArea.style.top = '-9999px';
             document.body.appendChild(textArea);
             textArea.select();
-            
+
             try {
                 document.execCommand('copy');
                 showBS5Modal({
@@ -405,7 +410,7 @@ lcdColorSettings: {
                 document.body.removeChild(textArea);
             }
         },
-        
+
         // Convert a match pattern to a RegExp (simple version)
         patternToRegex(pattern) {
             if (!pattern) return null;
@@ -422,7 +427,7 @@ lcdColorSettings: {
                 return null;
             }
         },
-        
+
         removeExclusionPattern(pattern) {
             // Remove any pattern with the same base (with or without flag)
             const base = pattern.split('#ud_')[0];
@@ -432,11 +437,11 @@ lcdColorSettings: {
             this.recomputeCurrentSiteMatches();
             console.log('Removed exclusion pattern:', pattern);
         },
-        
+
         async addInclusionPattern(pattern) {
             if (!pattern || !pattern.trim()) return;
             // Validate pattern format
-            if (! (await this.isValidPattern(pattern.trim()))) {
+            if (!(await this.isValidPattern(pattern.trim()))) {
                 showBS5Modal({
                     title: 'Invalid Pattern',
                     body: 'Invalid pattern format. Please use match patterns like: <code>*://example.com/*</code>',
@@ -456,7 +461,7 @@ lcdColorSettings: {
                 console.log('Pattern already exists:', pattern.trim());
             }
         },
-        
+
         removeInclusionPattern(pattern) {
             showBS5Modal({
                 title: 'Remove Inclusion Pattern',
@@ -475,23 +480,23 @@ lcdColorSettings: {
             });
         },
         // Force recalc of matches for current site after any pattern change
-        async   recomputeCurrentSiteMatches() {
+        async recomputeCurrentSiteMatches() {
             const site = this.currentSite();
             if (!site || !site.url) return;
             // Store previous badge state
             const prevBadge = this._lastSiteBadge;
             // Activate hooks for 'update' group, passing prevBadge and newBadge
-            await this.activate_hooks('update', { url: site.url,
+            await this.activate_hooks('update', {
+                url: site.url,
                 site: this.activeSite,
                 tab: site.tab,
                 prevBadge,
-                newBadge:this.getSiteBadge().text
+                newBadge: this.getSiteBadge().text
             });
-            if(this._lastSiteBadge != prevBadge)
-            {
+            if (this._lastSiteBadge != prevBadge) {
                 await this.autoRefreshIfEnabled("toggle");
             }
-            this._lastSite=site;
+            this._lastSite = site;
             if (window.Alpine) {
                 window.Alpine.nextTick(() => {
                     this.sites = { ...this.sites };
@@ -500,53 +505,53 @@ lcdColorSettings: {
                 });
             }
         },
-        
+
         toggleSiteExclusion(pattern) {
             const patterns = this.exclusionPatterns.split('\n').filter(p => p.trim());
             const fullPattern = `*://${pattern}`;
-            
+
             if (patterns.includes(fullPattern)) {
                 this.removeExclusionPattern(fullPattern);
             } else {
                 this.addExclusionPattern(fullPattern);
             }
         },
-        
+
         // Pattern validation helper
-        
+
         async isValidPattern(pattern) {
             try {
-                await browser.contentScripts.register({ matches:[pattern],runAt:"#<udark>"})
+                await browser.contentScripts.register({ matches: [pattern], runAt: "#<udark>" })
             } catch (e) {
                 return e.message.includes("#<udark>");
             }
         },
-        
+
         // Get suggested patterns for current site
         getSuggestedPatterns() {
             const site = this.currentSite();
             if (!site.host) return [];
-            
+
             const hostParts = site.host.split('.');
             const suggestions = [];
-            
+
             // Add exact host
             suggestions.push(`*://${site.host}/*`);
-            
+
             // Add with wildcard subdomain
             if (hostParts.length > 2) {
                 const rootDomain = hostParts.slice(-2).join('.');
                 suggestions.push(`*://*.${rootDomain}/*`);
             }
-            
+
             // Add specific page pattern if not root
             if (site.path && site.path !== '/') {
                 suggestions.push(`*://${site.host}${site.path}*`);
             }
-            
+
             return suggestions;
         },
-        
+
         // Current site actions
         async excludeCurrentSite() {
             const site = this.currentSite();
@@ -611,7 +616,7 @@ lcdColorSettings: {
             }
             await doAdd();
         },
-        
+
         includeCurrentSite() {
             const site = this.currentSite();
             if (!site.host) return;
@@ -623,12 +628,12 @@ lcdColorSettings: {
             this.addInclusionPattern(`*://${targetHost}/*`);
             this.addInclusionPattern(`*://*.${targetHost}/*`);
         },
-        
+
         updatePrecision() {
             this.updateExcludeButtonText();
             this.saveSettings();
         },
-        
+
         updateExcludeButtonText() {
             const site = this.currentSite();
             if (!site.host) return;
@@ -639,39 +644,39 @@ lcdColorSettings: {
             // Remove direct DOM manipulation - use reactive data instead
             this.excludeButtonText = `Exclude ${targetHost}`;
         },
-        
+
         // Tab change detection functionality
         enableTabChangeListeners() {
             if (this.tabChangeListenersEnabled) return;
             this.tabChangeListenersEnabled = true;
-            
+
             // Listen for tab activation changes
             browser.tabs.onActivated.addListener(this.handleTabActivated.bind(this));
-            
+
             // Listen for tab updates (URL changes, etc.)
             browser.tabs.onUpdated.addListener(this.handleTabUpdated.bind(this));
-            
+
             console.log('Tab change listeners enabled');
         },
-        
+
         disableTabChangeListeners() {
             if (!this.tabChangeListenersEnabled) return;
             this.tabChangeListenersEnabled = false;
-            
+
             // Remove listeners
             browser.tabs.onActivated.removeListener(this.handleTabActivated.bind(this));
             browser.tabs.onUpdated.removeListener(this.handleTabUpdated.bind(this));
-            
+
             console.log('Tab change listeners disabled');
         },
-        
+
         async handleTabActivated(activeInfo) {
             console.log('Active tab changed to:', activeInfo.tabId);
-            
+
             try {
                 const tab = await browser.tabs.get(activeInfo.tabId);
                 console.log('New active tab:', tab);
-                
+
                 if (tab.url) {
                     await this.updateToNewTab(tab);
                 }
@@ -679,12 +684,12 @@ lcdColorSettings: {
                 console.error('Failed to handle tab activation:', error);
             }
         },
-        
+
         async handleTabUpdated(tabId, changeInfo, tab) {
             // Only process if this is the active tab and URL changed
             if (changeInfo.url && tab.active) {
                 console.log('Active tab URL updated:', changeInfo.url);
-                
+
                 try {
                     await this.updateToNewTab(tab);
                 } catch (error) {
@@ -692,7 +697,7 @@ lcdColorSettings: {
                 }
             }
         },
-        
+
         async updateToNewTab(tab) {
             // Check if site is protected
             let protectedStatus = false;
@@ -702,36 +707,36 @@ lcdColorSettings: {
                 protectedStatus = false;
             }
             this.sites.main.isProtected = protectedStatus;
-            
+
             // Update the current site in the store
-            this.updateUrl(tab.url, "main", {tab});
-            
+            this.updateUrl(tab.url, "main", { tab });
+
             // Update button text
             this.updateExcludeButtonText();
-            
+
             console.log('Store updated for new tab:', tab.url);
         },
-        
+
         // Auto-refresh functionality
-        async autoRefreshIfEnabled(from="toggle") {
-            if (from=="toggle" && !this.autoRefreshOnToggle) return;
+        async autoRefreshIfEnabled(from = "toggle") {
+            if (from == "toggle" && !this.autoRefreshOnToggle) return;
             if (from == "anysetting" && !this.autoRefreshOnAnySettingChange) return;
             let tab = this.sites[this.activeSite].tab;
             if (!tab || typeof tab.id === 'undefined') return;
             console.log("Auto-refreshing tab:", tab.id);
-            try { 
+            try {
                 return new Promise((resolve, reject) => {
                     setTimeout(() => {
                         resolve(browser.tabs.reload(tab.id, { bypassCache: true }));
                     }, 200); // Delay to ensure any changes are applied
                 });
-            } catch(e) {
+            } catch (e) {
                 console.error("Failed to refresh tab:", e);
             }
         },
-        
-        async debouncedSaveSettings(){
-            
+
+        async debouncedSaveSettings() {
+
             for (const key of Object.keys(uDark.userSettings)) {
                 uDark.userSettings[key] = this[key];
             };
@@ -741,20 +746,20 @@ lcdColorSettings: {
             } catch (error) {
                 console.error('Failed to save settings:', error);
             }
-            
+
         },
         // Settings management
-        async saveSettings(waitTime=100) {
-          window.clearTimeout(this.settingsSaveTimeout);
-          this.settingsSaveTimeout = window.setTimeout(async () => {
-              await this.debouncedSaveSettings();
-              this.activate_hooks("savedSettings");
-          }, waitTime);
+        async saveSettings(waitTime = 100) {
+            window.clearTimeout(this.settingsSaveTimeout);
+            this.settingsSaveTimeout = window.setTimeout(async () => {
+                await this.debouncedSaveSettings();
+                this.activate_hooks("savedSettings");
+            }, waitTime);
         },
         async loadSettings() {
-            
+
             try {
-                if(typeof uDark === 'undefined') {
+                if (typeof uDark === 'undefined') {
                     console.warn('uDark is not defined, cannot load settings');
                     setTimeout(() => {
                         console.warn('Retrying to load settings...', typeof uDark);
@@ -768,14 +773,14 @@ lcdColorSettings: {
                 }
                 console.log('Settings loaded');
                 console.log('Current state:', uDark.userSettings);
-                
+
             } catch (error) {
                 console.error('Failed to load settings:', error);
             }
             globalThis.stop = true;
         },
-        
-        
+
+
         // Advanced actions
         clearAllData() {
             showBS5Modal({
@@ -798,7 +803,7 @@ lcdColorSettings: {
                 }
             });
         },
-        
+
         async exportSettings() {
             const settings = await browser.storage.local.get(null);
 
@@ -810,7 +815,7 @@ lcdColorSettings: {
             a.click();
             URL.revokeObjectURL(url);
         },
-        
+
         importSettings() {
             const input = document.createElement('input');
             input.type = 'file';
@@ -818,20 +823,20 @@ lcdColorSettings: {
             input.onchange = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
-                
+
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     try {
                         const settings = JSON.parse(e.target.result);
                         for (const key in settings) {
                             if (settings.hasOwnProperty(key) && this.hasOwnProperty(key) && uDark.defaultSettings.hasOwnProperty(key)) {
-                                if(typeof uDark.defaultSettings[key] === typeof settings[key]) {
+                                if (typeof uDark.defaultSettings[key] === typeof settings[key]) {
                                     this[key] = settings[key];
                                 }
                             }
                         }
 
-                        
+
                         this.saveSettings();
                         showBS5Modal({
                             title: 'Import Complete',
@@ -853,7 +858,7 @@ lcdColorSettings: {
             };
             input.click();
         },
-        
+
         // Initialize version and production mode
         async loadVersionInfo() {
             try {
@@ -861,7 +866,7 @@ lcdColorSettings: {
                 let manifest = await response.text();
                 manifest = JSON.parse(manifest.replace(/\s+\/\/.+/g, ""));
                 this.version = manifest.version;
-                
+
                 const production = manifest.browser_specific_settings?.gecko?.id;
                 this.productionMode = production ? "Production mode" : "Development mode";
             } catch (error) {
@@ -869,7 +874,7 @@ lcdColorSettings: {
                 this.productionMode = "Unknown mode";
             }
         },
-        
+
         // Debug method to check current state
         debugState() {
             console.log('=== Current Store State ===');

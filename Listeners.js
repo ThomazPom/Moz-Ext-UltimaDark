@@ -1,21 +1,26 @@
 
 class Listeners {
   static cancelPopupXHRCalls(details) {
-    if(details.tabId == uDark.popupTabId ) {
-      console.log("Canceling popup XHR call",details.url,details);
+    if (details.tabId == uDark.popupTabId) {
+      console.log("Canceling popup XHR call", details.url, details);
       // message to popup, we fund his friend
       uDark.connected_cs_ports["port-from-popup-" + details.tabId].postMessage({
         cancelPopupXHRCalls: true,
-        url:details.url
+        url: details.url
       });
-      return {cancel: true};
+      return { cancel: true };
     }
+  }
+  static moreInfoOnImageResult(details, obuffer, event) {
+
+    // uDark.warn("Image editing complete",details.url.split("#"),event.data.is_photo?"photo": event.data.heuristic);
   }
   static isEligibleResource(details) {
     // Check if the resource is eligible for uDark
     return uDark.getPort(details) || details.tabId == -1 && !details.documentUrl.match(uDark.userSettings.exclude_regex);
   }
   static editOnHeadersImage(details) {
+
     // Util 2024 jan 02 we were checking details.documentUrl, or details.url to know if a stylesheet was loaded in a excluded page
     // Since only CS ports that matches blaclist and whitelist are connected, we can simply check if this resource has a corresponding CS port
     if (!Listeners.isEligibleResource(details)) {
@@ -23,26 +28,26 @@ class Listeners {
       return {}
     }
     // now in 2025 we can exclude all res or image res
-    if( details.url.match(uDark.userSettings.exclude_regexRes) || details.url.match(uDark.userSettings.exclude_regexImgr)) {
+    if (details.url.match(uDark.userSettings.exclude_regexRes) || details.url.match(uDark.userSettings.exclude_regexImgr)) {
       // uDark.log("Image","This image is excluded by the user settings",details.url,"loaded by webpage:",details.originUrl,"Assuming it is not an eligible webpage, or even blocked by another extension");
       return {}
     }
-    // now in 2025 we van exclude all image from site
-    if (details.documentUrl.match(uDark.userSettings.exclude_regexImg)) {
+    // now in 2025 we can exclude all image from site
+    if (details.documentUrl?.match(uDark.userSettings.exclude_regexImg)) {
       return {}
     }
-    
+
     let imageURLObject = new URL(details.url);
     details.headersLow = {}
-    
+
     uDark.extractCharsetFromHeaders(details, "image/png",);
     details.isSVGImage = details.contentType.includes("image/svg");
-    
+
     // Determine if the image deserves to be edited
     if (imageURLObject.pathname.startsWith("/favicon.ico") || imageURLObject.hash.endsWith("#ud_favicon")) {
       return {};
     }
-    let {is_enforced_nobody} = uDark.getNoBodyStatus(details);
+    let { is_enforced_nobody } = uDark.getNoBodyStatus(details);
     if (is_enforced_nobody) {
       return {}; // We cannot edit this request: either it has no body, or it's empty because unmodified, so the webRequestFilter will receive an already edited content from the cache
     }
@@ -51,8 +56,8 @@ class Listeners {
     let secureTimeout = setTimeout(() => {
       try {
         filter.disconnect();
-        imageWorker && imageWorker.terminate();
-      } catch (e) {}
+        imageWorker && imageWorker.terminate("security termination " + details.url);
+      } catch (e) { }
     }, 30000) // Take care of very big images 
     details.buffers = details.buffers || [];
     if (details.isSVGImage) {
@@ -69,53 +74,110 @@ class Listeners {
       notableInfos.remoteSVG = true;
       filter.onstop = event => {
         new Blob(details.buffers).arrayBuffer().then((buffer) => {
-          let svgString = uDarkDecode(details.charset,buffer, {
+          let svgString = uDarkDecode(details.charset, buffer, {
             stream: true
           })
-          
+
           let svgStringEdited = uDark.frontEditHTML(false, svgString, details, {
             notableInfos,
             svgImage: true,
             remoteSVG: true,
             remoteSVGURL: svgURLObject.href,
           });
-          filter.write(uDarkEncode(details.charset,svgStringEdited));
+          filter.write(uDarkEncode(details.charset, svgStringEdited));
           filter.disconnect();
           clearInterval(secureTimeout);
         });
       }
     } else {
-      imageWorker = new uDark.LoggingWorker(uDark.imageWorkerJsFile);
-      imageWorker.addEventListener("message", event => {
-        if (event.data.editionComplete) {
-          for (let buffer of event.data.buffers) {
-            try {
-              filter.write(buffer);
-            } catch (e) {
-              uDark.error(e.message)
-            }
-          }
-          filter.disconnect();
-          imageWorker.terminate();
-          clearInterval(secureTimeout);
+
+      if (uDark.userSettings.pooledWorkersEnabled) {
+        let allBuffers = [];
+
+
+
+        filter.ondata = event => {
+          allBuffers.push(event.data);
         }
-      })
-      filter.ondata = event => {
-        imageWorker.postMessage({
-          oneImageBuffer: event.data
-        }, [event.data]) // Explicityly transfer the ArrayBuffer to the worker
-        
+
+        filter.onstop = event => {
+
+          // console.log("Image", "Filter stopped, sending to worker", performance.now(), details.url);
+          let t0_perf = performance.now();
+          let blob = new Blob(allBuffers);
+          Promise.all([
+            blob.arrayBuffer(),
+            uDark.imageWorkerPool.getIdleWorker()
+          ]).then(([arrayBuffer, h]) => {
+            h.process(arrayBuffer, details).then(out => {
+              filter.write(out);
+              filter.disconnect();
+              let t1_perf = performance.now();
+              // console.log("Image", "Filter disconnected after worker t1_perf:", t1_perf, "t0_perf:", t0_perf, "total:", t1_perf - t0_perf, details.url, details.requestId);
+            });
+          })
+        }
       }
-      filter.onstop = event => {
-        imageWorker.postMessage({
-          filterStopped: 1,
-          details
-        });
+
+
+      else {
+        imageWorker = new uDark.LoggingWorker(uDark.imageWorkerJsFile.native);
+        imageWorker.addEventListener("message", event => {
+          if (event.data.editionComplete) {
+            Listeners.moreInfoOnImageResult(details, details.buffers, event);
+
+
+            for (let buffer of event.data.buffers) {
+              try {
+                filter.write(buffer);
+              } catch (e) {
+                uDark.error("Error during write", e, e.message, buffer, details, event.data.buffers.indexOf(buffer));
+              }
+
+            }
+
+            filter.disconnect();
+            imageWorker.terminate("normal use " + details.url);
+            clearInterval(secureTimeout);
+          }
+        })
+
+        let firstChunk = true;
+        filter.ondata = event => {
+
+          let onDataMessage = {
+            oneImageBuffer: event.data
+          };
+          let onDataTransfer = [event.data];
+          // onDataTransfer = [];
+          // if (firstChunk && !uDark.disableModelTransfer) {
+          //   firstChunk = false;
+          //   onDataMessage.iaModelJsonBuffer = uDark.iaModelJsonBuffer;
+          //   onDataMessage.iaModelWeightsBuffer = uDark.iaModelWeightsBuffer;
+          //   onDataMessage.details = details;
+          //   onDataMessage.hasIA = true;
+          //   onDataMessage.transferStart = Date.now() / 1;
+          //   // DISABLED : WE PREFER COPY FOR THESE BUFFERS onDataTransfer.push(onDataMessage.iaModelJsonBuffer,onDataMessage.iaModelWeightsBuffer ); // 
+          // }
+
+          imageWorker.postMessage(onDataMessage, onDataTransfer) // Explicityly transfer the ArrayBuffer to the worker
+
+        }
+
+
+
+        filter.onstop = event => {
+          imageWorker.postMessage({
+            filterStopped: 1,
+            details
+          });
+        }
       }
+
     }
     // Here we catch any image, including data:images <3 ( in the form of https://data-image/data:image/png;base64,....)
     let resultEdit = {}
-    
+
     // If resultEdit is a promise, image will be edited (foreground or background), otherwise it may be a big background image to include under text
     // Lets inform the content script about it
     if (uDark.enable_registering_background_images && (!resultEdit.then || !resultEdit.edited)) {
@@ -141,62 +203,88 @@ class Listeners {
       }
     }
     return resultEdit;
-    
+
   }
-  static async editBeforeRequestImage(details) {
+  static editBeforeRequestImage(details) {
     if (details.url.startsWith("https://data-image/?base64IMG=")) {
       const dataUrl = details.url.slice(30);
-      
+
+
       // now in 2025 we can exclude all res or image res
-      if( details.documentUrl.match(uDark.userSettings.exclude_regexImg) || details.url.match(uDark.userSettings.exclude_regexRes) || details.url.match(uDark.userSettings.exclude_regexImgr)) {
+      if (details.documentUrl?.match(uDark.userSettings.exclude_regexImg) || details.url.match(uDark.userSettings.exclude_regexRes) || details.url.match(uDark.userSettings.exclude_regexImgr)) {
         // uDark.log("Image","This image is excluded by the user settings",details.url,"loaded by webpage:",details.originUrl,"Assuming it is not an eligible webpage, or even blocked by another extension");
         return {
           redirectUrl: dataUrl
         }
       }
-      const arrayBuffer = await (await fetch(dataUrl)).arrayBuffer();
       const reader = new FileReader() // Faster but ad what cost later ? 
-      
-      const imageWorker = new uDark.LoggingWorker(uDark.imageWorkerJsFile);
-      
-      imageWorker.addEventListener("message", event => {
-        if (event.data.editionComplete) {
-          
-          reader.readAsDataURL(new Blob(event.data.buffers));
-        }
-      })
-      
-      imageWorker.postMessage({
-        oneImageBuffer: arrayBuffer,
-        filterStopped: 1,
-        details: details
-      }, [arrayBuffer]) // Explicityly transfer the ArrayBuffer to the worker
-      
-      let to_return = new Promise(resolve => reader.onload = (e) => resolve({
-        redirectUrl: reader.result
-      }));
-      
-      to_return.then(x => imageWorker.terminate()); // Very needed : non terminated workers will avoid new workers to reveive messages
-      
-      // console.log("PASSING",(globalThis["passing"+details.url+details.requestId]=(globalThis["passing"+details.url+details.requestId]||0)+1),details);
-      
-      return to_return;
+
+
+
+      if (uDark.userSettings.pooledWorkersEnabled) {
+
+        return Promise.all([
+          fetch(dataUrl).then(r => r.arrayBuffer()).then(arrayBuffer => arrayBuffer),
+          uDark.imageWorkerPool.getIdleWorker()])
+          .then(([arrayBuffer, h]) => {
+            return h.process(arrayBuffer, details);
+          }).then(out => {
+            reader.readAsDataURL(new Blob([out]));
+            return new Promise(resolve => reader.onload = (e) => resolve({ redirectUrl: reader.result }));
+          });
+      }
+      else {
+
+        const imageWorker = new uDark.LoggingWorker(uDark.imageWorkerJsFile.native);
+        imageWorker.addEventListener("message", event => {
+          if (event.data.editionComplete) {
+
+            reader.readAsDataURL(new Blob(event.data.buffers));
+
+            Listeners.moreInfoOnImageResult(Object.assign(details, { url: dataUrl }), undefined, event);
+          }
+        })
+
+
+        fetch(dataUrl).then(r => r.arrayBuffer()).then(arrayBuffer => { // Does not block the main thread with await. Cant tell if it is faster or not
+
+          imageWorker.postMessage({
+            oneImageBuffer: arrayBuffer,
+            iaModelJsonBuffer: uDark.iaModelJsonBuffer,
+            iaModelWeightsBuffer: uDark.iaModelWeightsBuffer,
+            hasIA: true,
+            transferStart: Date.now() / 1,
+            filterStopped: 1,
+            details: details
+          }, [arrayBuffer]) // Explicitly transfer the ArrayBuffer to the worker
+        })
+
+        let to_return = new Promise(resolve => reader.onload = (e) => resolve({
+          redirectUrl: reader.result
+        }));
+
+        to_return.then(x => imageWorker.terminate("normal use b64")); // Very needed : non terminated workers will avoid new workers to reveive messages
+
+        // console.log("PASSING",(globalThis["passing"+details.url+details.requestId]=(globalThis["passing"+details.url+details.requestId]||0)+1),details);
+
+        return to_return;
+      }
     }
   }
   static editOnHeadersReceivedStyleSheet(details) {
     uDark.extractCharsetFromHeaders(details, "text/css")
     uDark.general_cache.set(`request_${details.requestId}_more_details`, details);
-    
-    let {is_enforced_nobody} = uDark.getNoBodyStatus(details);
+
+    let { is_enforced_nobody } = uDark.getNoBodyStatus(details);
     details.already_edited_or_empty = is_enforced_nobody // We cannot edit this request: either it has no body, or it's empty because unmodified, so the webRequestFilter will receive an already edited content from the cache
-    
+
   }
   static TopCSSFlag = `@import "${browser.runtime.getURL("ultimaDark.css")}";\n`
   static editBeforeRequestStyleSheet_sync(details) {
     let options = {};
-    
+
     // console.log("Loading CSS", details.url, details.requestId, details.fromCache)
-    
+
     // Util 2024 jan 02 we were checking details.documentUrl, or details.url to know if a stylesheet was loaded in a excluded page
     // Since only CS ports that matches blaclist and whitelist are connected, we can simply check if this resource has a corresponding CS port
     if (!Listeners.isEligibleResource(details)) {
@@ -205,40 +293,40 @@ class Listeners {
       return {}
     }
     // now in 2025 we can exclude all res or css res
-    if( details.url.match(uDark.userSettings.exclude_regexRes) || details.url.match(uDark.userSettings.exclude_regexCss)) {
+    if (details.url.match(uDark.userSettings.exclude_regexRes) || details.url.match(uDark.userSettings.exclude_regexCss)) {
       // console.log("CSS", "This CSS is excluded by the user settings", details.url, "loaded by webpage:", details.originUrl, "Assuming it is not an eligible webpage, or even blocked by another extension");
       // console.log("It matches :", details.url.match(uDark.userSettings.exclude_regexRes) ? uDark.userSettings.exclude_regexRes : uDark.userSettings.exclude_regexCss);
       // console.log("basic exclude_regex",uDark.userSettings.exclude_regex);
       return {}
     }
-    
-    
-    
-    
+
+
+
+
     let filter = globalThis.browser.webRequest.filterResponseData(details.requestId); // After this instruction, browser espect us to write data to the filter and close it
-    
-    
-    
+
+
+
     filter.onstart = event => {
       // console.log("CSS filter started",details.url,details.requestId,details.fromCache)
       // filter.write(uDarkEncode("UTF-8", Listeners.TopCSSFlag)); // Write the top CSS flag to be able to check if the CSS is already edited 
-      if( uDark.general_cache.has(`request_${details.requestId}_more_details`)) {
+      if (uDark.general_cache.has(`request_${details.requestId}_more_details`)) {
         let moreDetails = uDark.general_cache.get(`request_${details.requestId}_more_details`);
         Object.assign(details, moreDetails);
         // uDark.log("Success : More details found for",details.requestId,details);
       }
       else {
-        uDark.warn("onHeaderReceived was not called for",details.requestId,details.url,"not a big deal, but now defaulting to utf 8 & text/css");
+        uDark.warn("onHeaderReceived was not called for", details.requestId, details.url, "not a big deal, but now defaulting to utf 8 & text/css");
         uDark.extractCharsetFromHeaders(details, "text/css");
       }
-      
+
       details.dataCount = 0;
       details.rejectedValues = "";
     }
-    
+
     // // ondata event handler
     filter.ondata = event => {
-      if(details.already_edited_or_empty) {
+      if (details.already_edited_or_empty) {
         // console.log("Already edited or empty",details.url,details.requestId,details.fromCache);
         filter.write(event.data);
         return;
@@ -246,7 +334,7 @@ class Listeners {
       details.dataCount++;
       uDark.handleCSSChunk_sync(event.data, true, details, filter);
     };
-    
+
     // onstop event handler
     filter.onstop = event => {
       if (details.rejectedValues.length > 0) {
@@ -261,10 +349,10 @@ class Listeners {
     // return {};
     // must not return this closes filter//
   }
-  
-  static setEligibleRequestBeforeData(details){
-    details.unEligibleRequest=(details.documentUrl || details.url).match(uDark.userSettings.exclude_regex);
-    details.eligibleRequest=!details.unEligibleRequest;
+
+  static setEligibleRequestBeforeData(details) {
+    details.unEligibleRequest = (details.documentUrl || details.url).match(uDark.userSettings.exclude_regex);
+    details.eligibleRequest = !details.unEligibleRequest;
     // Here we have to check the url or the documentUrl to know if this webpage is excluded
     // It already has passed the whitelist check, this is why we only check the blacklist
     // However this code executes before the content script is connected, so we can't check if it will connect or not
@@ -272,12 +360,12 @@ class Listeners {
     // and it would be not so musch costly in terms of time, some pages as YouTube as the time i write this, somehow manages
     // to send in this very first request tabID -1 and frameID 0, which is not a valid combination, and the content script will never be found
     // stackoverflow says it might be related to worker threads. It's probably true with serviceWorkers
-    
+
     // console.log("Will check",details.url,"made by",details.documentUrl || details.url,0)
     // console.log("Is eligible for uDark",details.eligibleRequest)
-    
+
     if (details.unEligibleRequest) {
-      
+
       uDark.deletePort(details)
       // As bellow is marking as arriving soon
       // It is possible to have a page that starts loading, we mark it as arriving soon
@@ -288,78 +376,77 @@ class Listeners {
       // A simple delete when the page is not eligible is enough and very low cost.
       // In the end we need to be in this if to avoid darkening the page, we wont be lazy and delete the port.
       return;
-      
+
     }
     // Lets be the MVP here, sometimes the content script is not connected yet, and the CSS will arrive in few milliseconds.
     // This page is eligible for uDark
     // console.log("I'm telling the world that",details.url,"is eligible for uDark", "on", details.tabId,details.frameId)
     // This code must absolutely eb executed before the parsing of headers of the page since the page can have  link header wich will be considered as a <link> tag
     // See https://developer.mozilla.org/fr/docs/Web/HTTP/Headers/Link for details
-    uDark.setPort(details,{arrivingSoon:true},0);
-    
-    
+    uDark.setPort(details, { arrivingSoon: true }, 0);
+
+
   }
   static editBeforeData(details) {
     if (details.tabId == -1 && uDark.connected_options_ports_count || uDark.connected_cs_ports["port-from-popup-" + details.tabId]) { // -1 Happens sometimes, like on https://www.youtube.com/ at the time i write this, stackoverflow talks about worker threads
-      
+
       // Here we are covering the needs of the option page: Be able to frame any page
       let removeHeaders = ["content-security-policy", "x-frame-options", "content-security-policy-report-only"]
       details.responseHeaders = details.responseHeaders.filter(x => !removeHeaders.includes(x.name.toLowerCase()))
     }
-    if(!uDark.getPort(details)){ // If setEligibleRequestBeforeData removed the port, we don't want to darken the page
-      return {responseHeaders:details.responseHeaders};
+    if (!uDark.getPort(details)) { // If setEligibleRequestBeforeData removed the port, we don't want to darken the page
+      return { responseHeaders: details.responseHeaders };
     }
-    
+
     uDark.extractCharsetFromHeaders(details);
-    
-    if(!details.contentType.includes("text/html") && !details.contentType.includes("application/xhtml+xml")){
-      return {responseHeaders:details.responseHeaders};
+
+    if (!details.contentType.includes("text/html") && !details.contentType.includes("application/xhtml+xml")) {
+      return { responseHeaders: details.responseHeaders };
     }
     details.responseHeaders = details.responseHeaders.filter(x => {
       var a_filter = uDark.headersDo[x.name.toLowerCase()];
       return a_filter ? a_filter(x) : true;
     })
-    
-   
-    
-    
-    let {is_enforced_nobody} = uDark.getNoBodyStatus(details);
-    if (is_enforced_nobody) {
-      return {responseHeaders:details.responseHeaders}; // We cannot edit this request: either it has no body, or it's empty because unmodified, so the webRequestFilter will receive an already edited content from the cache
-    }
-  
 
-    
+
+
+
+    let { is_enforced_nobody } = uDark.getNoBodyStatus(details);
+    if (is_enforced_nobody) {
+      return { responseHeaders: details.responseHeaders }; // We cannot edit this request: either it has no body, or it's empty because unmodified, so the webRequestFilter will receive an already edited content from the cache
+    }
+
+
+
     // console.log("Editing", details.url, details.requestId, details.fromCache)
     let filter = globalThis.browser.webRequest.filterResponseData(details.requestId);
-    
+
     details.dataCount = 0;
-    details.writeEnd = [];   
+    details.writeEnd = [];
     filter.ondata = event => {
       details.dataCount++
       details.writeEnd.push(event.data);
-      
+
     }
     filter.onstop = async event => {
-      
+
       // Note the headers are already returned since a long time, so we can't edit them here. Fortunately we don't need to, and if we realy need.. use http equiv.
       details.dataCount = 1;
       details.writeEnd = await new Blob(details.writeEnd).arrayBuffer();
-      
-      
-      let decodedValue= uDarkDecode(details.charset,details.writeEnd,{stream:true});
-      if(details.debugParsing){ // debug
+
+
+      let decodedValue = uDarkDecode(details.charset, details.writeEnd, { stream: true });
+      if (details.debugParsing) { // debug
         details.writeEnd = decodedValue
       }
-      else
-        {
+      else {
         details.writeEnd = uDark.parseAndEditHtmlContentBackend4(decodedValue, details)
       }
-      
-      filter.write(uDarkEncode(details.charset,details.writeEnd));
-      
+
+      filter.write(uDarkEncode(details.charset, details.writeEnd));
+
       filter.disconnect(); // Low perf if not disconnected !
     }
-    return {responseHeaders:details.responseHeaders}
+    return { responseHeaders: details.responseHeaders }
   }
 }

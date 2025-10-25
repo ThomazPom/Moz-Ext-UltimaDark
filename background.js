@@ -62,6 +62,8 @@ class uDarkC extends uDarkExtended {
       "table", // Protecting inner elements of <table> creates the situation where we need to protect table too, logically
       "tr", "thead", "th", "tfoot", "td", "tbody", "col", "colgroup", "caption"
     ]
+    
+    nonConnectedImagesAndSources = new Set();
     static CSS_COLOR_FUNCTIONS = ["rgb", "rgba", "hsl", "hsla", "hwb", "lab", "lch", "color", "color-mix", "oklch", "oklab"]
     shortHandRegex = new RegExp(`(?<![\\w-])(${uDarkC.SHORTHANDS.join("|")})([\s\t]*:)`, "gi") // The \t is probably not needed, as \s includes it
     tagsToProtectRegex = new RegExp(`(?<![\\w-])(${uDarkC.TAGS_TO_PROTECT.join("|")})(?![\\w-])`, "gi")
@@ -139,7 +141,11 @@ class uDarkC extends uDarkExtended {
       serviceWorkersEnabled: false, // Enable or disable service workers
       imageEditionEnabled: true, // Enable or disable image edition
       autoRefreshOnToggle: false,
-      autoRefreshOnAnySettingChange: false
+      autoRefreshOnAnySettingChange: false,
+      
+      //Image working model
+      imageDecisionLogic: "pooledHeuristic", // from concat.js : pooledAI, pooledHeuristic, native, nativeOldSlow, bench ..
+      pooledWorkersEnabled: true, // Use pooled workers by default
     }
     defaultSettings = {...this.userSettings}
     
@@ -150,8 +156,14 @@ class uDarkC extends uDarkExtended {
       })
     }
     imageSrcInfoMarker = "_uDark"
-    imageWorkerJsFile = "imageWorker.js"
-    
+    imageWorkerJsFile = {
+      pooledAI: "imageWorker/imageWorkerBundle-pooledAI.js",
+      pooledBench: "imageWorker/imageWorkerBundle-pooledBench.js",
+      pooledHeuristic: "imageWorker/imageWorkerBundle-pooledHeuristic.js",
+      native: "imageWorker/imageWorkerBundle-native.js",
+      native_old: "imageWorker/imageWorker-old.js",
+      // native: "imageWorker/imageWorkerBundle-nativeOldSlow.js",
+    }
     foreground_color_css_properties = ["color","caret-color"] // css properties that are foreground colors;, putting caret-color or any other property will edit the caret color with lightening and preventing the caret from being darkened
     // Gradients can be set in background-image
     
@@ -329,6 +341,19 @@ class uDarkC extends uDarkExtended {
     search_clickable_parent(documentElement, selectorText) {
       return documentElement.querySelector(`a ${selectorText},button ${selectorText}`);
     }
+    elements_or_ancestor_parents_is_tagNames(tagNames, elements) {
+      return elements.some(element => {
+        let parent = element;
+        console.log(parent);
+        while (parent) {
+          console.log(parent.tagName.toLowerCase(), tagNames,tagNames.has(parent.tagName.toLowerCase()));
+          if (tagNames.has(parent.tagName.toLowerCase())) {
+            return true;
+          }
+          parent = parent.parentNode;
+        }
+      })
+    }
     image_element_prepare_href(image, documentElement, src_override, options = {}) // Adds notable infos to the image element href, used by the image edition feature
     {
       // Do not parse url preventing adding context to it or interpreting it as a relative url or correcting its content by any way
@@ -343,7 +368,9 @@ class uDarkC extends uDarkExtended {
         image.setAttribute("data-ud-selector", Math.random());
       }
       let selectorText = image.tagName + `[data-ud-selector='${image.getAttribute("data-ud-selector")}']`;
-      let notableInfos = {};
+      
+      
+      let notableInfos = options.notableInfos || {};
       for (const attribute of image.attributes) {
         if (attribute.value.length > 0 && !(/[.\/]/i).test(attribute.value) && !(["src", "data", "data-ud-selector"]).includes(attribute.name)) {
           notableInfos[attribute.name] = attribute.value;
@@ -577,7 +604,7 @@ class uDarkC extends uDarkExtended {
       
       if (transform) {
         // Wont work with new mthod, will need to be updated
-        let edit_result = uDark.eget_color(fillValue, is_text ? uDark.revert_rgba_rgb_raw : uDark.rgba_rgb_raw,false,true)
+        let edit_result = uDark.eget_color(fillValue, is_text ? uDark.revert_rgba : uDark.rgba,false,true)
         return edit_result;
       }
       return "Not implemented";
@@ -591,12 +618,12 @@ class uDarkC extends uDarkExtended {
       options = {
         ...options, // Do not edit the original object, it may be used by other functions by reference
         notableInfos: options.notableInfos || {},
-        lighten: uDark.revert_rgba_rgb_raw,
-        darken: uDark.rgba_rgb_raw,
+        lighten: uDark.rgba,
+        darken: uDark.revert_rgba,
       }
       svg.setAttribute("udark-fill", true);
       svg.setAttribute("udark-id", Math.random());
-      let svgUdarkId = svg.getAttribute("udark-id");
+      let svgUdarkId = svg.getAttribute("udark-id"); // Toto use XPATH istead of CSS to search parent elements and stuff
       if (!options.notableInfos.inside_clickable) {
         if (uDark.search_clickable_parent(documentElement, `svg[udark-id='${svgUdarkId}']`)) {
           options.notableInfos.inside_clickable = true;
@@ -642,7 +669,7 @@ class uDarkC extends uDarkExtended {
     }
     edit_styles_elements(parentElement, details, add_class = "ud-edited-background", options = {}) {
       parentElement.querySelectorAll(`style:not(.${add_class})`).forEach(astyle => {
-        astyle.p_ud_innerHTML = uDark.edit_str(astyle.innerHTML, false, false, details, false, options);
+        astyle.p_ud_innerHTML = uDark.edit_str(astyle.innerHTML.unprotect_simple("ud-tag-ptd-" /*display:table is a thing*/), false, false, details, false, options);
         // astyle.innerHTML='*{fill:red!important;}'
         // According to https://stackoverflow.com/questions/55895361/how-do-i-change-the-innerhtml-of-a-global-style-element-with-cssrule ,
         // it is not possible to edit a style element innerHTML with its cssStyleSheet alone
@@ -871,7 +898,7 @@ class uDarkC extends uDarkExtended {
     
     edit_styles_attributes(parentElement, details, options = {}) {
       parentElement.querySelectorAll("[style]").forEach(astyle => {
-        astyle.setAttribute("style", uDark.edit_str(astyle.getAttribute("style"), false, false, details, false, {
+        astyle.setAttribute("style", uDark.edit_str(astyle.getAttribute("style").unprotect_simple("ud-tag-ptd-" /*display:table is a thing*/), false, false, details, false, {
           ...options,
           nochunk: true
         }));
@@ -932,19 +959,50 @@ class uDarkC extends uDarkExtended {
       }
       return dataHeader + data;
     }
+    processSRCset(sourceSRCSET){
+      sourceSRCSET = sourceSRCSET.trim().replaceAll("\n"," ");
+      sourceSRCSET = sourceSRCSET.replace(/\s+/g, " ");
+      
+      const srcSourceArray = sourceSRCSET.split(/ ,|, /);
+      const arrayResult = [];
+      
+      srcSourceArray.forEach(srcSource => {
+        let breaker1 = " ", breaker2 = ",";
+        let link = "", desc = "";
+        srcSource = srcSource.trim();
+        
+        for (let i = 0, n = srcSource.length; i < n; i++) {
+          const ch = srcSource.charAt(i);
+          
+          if ((ch === breaker1 || i === n - 1)) {
+            if (i === n - 1 && ch !== breaker1)
+              breaker1 === " " ? (link += ch) : (desc += ch);
+            
+            if (breaker1 === "," || i === n - 1) {
+              arrayResult.push([link.trim(), desc.trim()]);
+              link = ""; desc = "";
+            }
+            
+            [breaker1, breaker2] = [breaker2, breaker1];
+          } else if (breaker1 === " ")
+            link += ch;
+          else
+            desc += ch;
+        }
+      });
+      
+      return arrayResult;
+    }
+    
     processImages(documentElement) {
       // Process image sources to prepare them for custom modifications
       documentElement.querySelectorAll("img[src]").forEach(image => {
         image.setAttribute("src", uDark.image_element_prepare_href(image, documentElement));
       });
       documentElement.querySelectorAll("img[srcset],picture source[srcset]").forEach(image => {
-        let srcSourceArray = image.getAttribute("srcset").split(",");
-        srcSourceArray = srcSourceArray.map(srcSource => {
-          let parts = srcSource.trim().split(" ");
-          let url = parts[0];
-          let descriptor = parts[1] || "";
-          return uDark.image_element_prepare_href(image, documentElement, url) + " " + descriptor;
-        });
+        let srcSourceArray = uDark.processSRCset(image.getAttribute("srcset")).map(
+          ([srcSource,descriptor]) => uDark.image_element_prepare_href(image, documentElement, srcSource) + " " + descriptor
+        );
         image.setAttribute("srcset", srcSourceArray.join(", "));
       });
     }
@@ -1301,6 +1359,7 @@ class uDarkC extends uDarkExtended {
       
       return [h, s, l];
     }
+    
     rgbToHsl(r, g, b) {
       
       let l = uDark.getPerceivedLightness(r, g, b);
@@ -1469,8 +1528,8 @@ class uDarkC extends uDarkExtended {
     }
     revert_rgba_rgb_raw(r, g, b, a, render = false) {
       render = (render || uDark.rgba_val)
-      let lightenUnder = 50;
-      let edit_under = 40;
+      let lightenUnder = 0.196;
+      let edit_under = 15.6;
       let plightness = uDark.getPerceivedLightness(r, g, b); // Adding perceived lightness for svg:
       let edit_under_perceived = 35;
       if (plightness < edit_under_perceived && plightness < lightenUnder && plightness < edit_under) {
@@ -1486,24 +1545,19 @@ class uDarkC extends uDarkExtended {
         
         return render(...[r, g, b], a);
       }
-      rgba_rgb_raw(r, g, b, a, render = false) {
+      rgba_rgb_raw = function(r, g, b, a, render = false) {
         render = (render || uDark.rgba_val)
         a = typeof a == "number" ? a : 1
         let lightness = uDark.getPerceivedLightness(r, g, b);
-        let darkenAbove = 50;
-        if (lightness > darkenAbove) {
-          // [r,g,b]=[r,g,b].map((x)=>x/2);
-          [r, g, b] = [r, g, b].map((x) => {
-            x = x * Math.pow(
-              100 / (lightness + darkenAbove), // The more the lightness is high, the more the color is darkened
-              lightness / darkenAbove * 2.8 // The more the lightness is high, the more the darkeing is strong
-            );
-            return x;
-          });
+        let factor=Math.pow(100/(lightness+50),lightness/50*2.8)
+        if(lightness>50)
+          {
+          r=r*factor;
+          g=g*factor;
+          b=b*factor;
         }
-        
-        return render(...[r, g, b], a);
-      }
+        return [r, g, b, a];
+      };
       
       ensureBestRGBAFuncRef()
       { // Ensure the best rgba function is used, depending on user settings
@@ -1933,7 +1987,7 @@ class uDarkC extends uDarkExtended {
           
           static install=function() {
             {
-              
+              globalThis.CSS2Properties= CSSStyleProperties;
               // Any level protected proptotypes for safe intenal use without ternaries or worries.
               CSS2Properties.prototype.p_ud_setProperty = CSS2Properties.prototype.setProperty;
               CSSStyleSheet.prototype.p_ud_replaceSync = CSSStyleSheet.prototype.replaceSync;

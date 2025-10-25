@@ -23066,6 +23066,11 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
         }
         return invalids;
       },
+      //Image working model
+      imageDecisionLogic: "heuristic",
+      // "heuristic" or "ai"
+      pooledWorkersEnabled: true,
+      // Use pooled workers by default
       // Embeds for current tab
       embeds: [],
       embedsLoading: false,

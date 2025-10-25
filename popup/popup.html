@@ -566,6 +566,33 @@
           </div>
         </div>
       </div>
+        <!-- Pooled Worker Toggle -->
+        <div class="mb-3">
+          <div class="d-flex align-items-center justify-content-between p-3 rounded border" :class="$store.app.pooledWorkersEnabled ? 'border-success bg-success bg-opacity-10' : 'border-danger bg-danger bg-opacity-10'" :style="$store.app.pooledWorkersEnabled ? '' : 'opacity: 0.7;'">
+            <span class="fw-medium">Pooled Image Workers</span>
+            <div class="btn-group" role="group" aria-label="Pooled Workers Toggle">
+              <button type="button" class="btn btn-sm" :class="$store.app.pooledWorkersEnabled ? 'btn-success' : 'btn-outline-secondary'" @click="$store.app.pooledWorkersEnabled = true; $store.app.saveSettings();">ENABLED</button>
+              <button type="button" class="btn btn-sm" :class="!$store.app.pooledWorkersEnabled ? 'btn-danger' : 'btn-outline-secondary'" @click="$store.app.pooledWorkersEnabled = false; $store.app.saveSettings();">DISABLED</button>
+            </div>
+          </div>
+          <div class="form-text mt-1" style="margin-left: 8px; color: #b5d6f8; font-size: 13px;">
+            Enable pooled workers for image processing. If disabled, images use native messaging logic.
+          </div>
+        </div>
+        <!-- Image Decision Logic -->
+        <div class="mb-3" x-show="$store.app.pooledWorkersEnabled">
+          <div class="d-flex align-items-center justify-content-between p-3 rounded border border-info bg-info bg-opacity-10">
+            <span class="fw-medium">Image Decision Logic</span>
+            <div class="btn-group" role="group" aria-label="Image Decision Logic">
+              <button type="button" class="btn btn-sm" :class="$store.app.imageDecisionLogic === 'pooledHeuristic' ? 'btn-info' : 'btn-outline-secondary'" @click="$store.app.imageDecisionLogic = 'pooledHeuristic'; $store.app.saveSettings();">Heuristic</button>
+              <button type="button" class="btn btn-sm" :class="$store.app.imageDecisionLogic === 'pooledAI' ? 'btn-info' : 'btn-outline-secondary'" @click="$store.app.imageDecisionLogic = 'pooledAI'; $store.app.saveSettings();">IA</button>
+              <button type="button" class="btn btn-sm" :class="$store.app.imageDecisionLogic === 'pooledBench' ? 'btn-info' : 'btn-outline-secondary'" @click="$store.app.imageDecisionLogic = 'pooledBench'; $store.app.saveSettings();">Bench</button>
+            </div>
+          </div>
+          <div class="form-text mt-1" style="margin-left: 8px; color: #b5d6f8; font-size: 13px;">
+            Choose how images are processed when pooled workers are enabled: Heuristic (fast, rule-based) or IA (AI-based decision).
+          </div>
+        </div>
       <div class="mb-3">
         <div class="d-flex align-items-center justify-content-between p-3 rounded border" :class="$store.app.autoRefreshOnToggle ? 'border-success bg-success bg-opacity-10' : 'border-danger bg-danger bg-opacity-10'" :style="$store.app.autoRefreshOnToggle ? '' : 'opacity: 0.7;'">
           <span class="fw-medium">Auto-Refresh Tab on Toggle</span>
