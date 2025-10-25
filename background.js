@@ -1987,7 +1987,7 @@ class uDarkC extends uDarkExtended {
           
           static install=function() {
             {
-              globalThis.CSS2Properties= CSSStyleProperties;
+              globalThis.CSS2Properties= globalThis.CSSStyleProperties || globalThis.CSS2Properties;
               // Any level protected proptotypes for safe intenal use without ternaries or worries.
               CSS2Properties.prototype.p_ud_setProperty = CSS2Properties.prototype.setProperty;
               CSSStyleSheet.prototype.p_ud_replaceSync = CSSStyleSheet.prototype.replaceSync;
