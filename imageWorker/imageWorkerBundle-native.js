@@ -755,20 +755,22 @@ var uDark = {
         if (uDark.ignore_match.test(imageURLObject.search + complement.get("class") + complement.get("uDark_cssClass"))) {
             return {}
         }
-        if (complement.has("uDark_backgroundRepeat") && /repeat|round|space/i.test(complement.get("uDark_backgroundRepeat")) ||
+        let hasBGRepeat = complement.has("uDark_backgroundRepeat") && /repeat|round|space/i.test(complement.get("uDark_backgroundRepeat"));
+        if (hasBGRepeat ||
             uDark.background_match.test(imageURLObject.pathname + imageURLObject.search + complement.get("class") + complement.get("uDark_cssClass"))) {
             editionStatus.editionConfidenceBackground = 100;
             edition_order_hooks = [uDark.background_image_edit_hook];
         }
-        else if (
-            complement.has("inside_clickable"),
-
-            complement.has("logo_match")
-            || uDark.logo_match.test(
-                imageURLObject.pathname
-                + imageURLObject.search 
-                + complement.get("class") 
-                + complement.get("uDark_cssClass")
+        if (!hasBGRepeat &&
+            (
+                complement.has("inside_clickable")
+                || complement.has("logo_match")
+                || uDark.logo_match.test(
+                    imageURLObject.pathname
+                    + imageURLObject.search
+                    + complement.get("class")
+                    + complement.get("uDark_cssClass")
+                )
             )
         ) {
 
