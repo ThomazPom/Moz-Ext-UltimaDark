@@ -806,8 +806,7 @@ document.addEventListener("alpine:init", () => {
 
         async exportSettings() {
             const settings = await browser.storage.local.get(null);
-
-            const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' });
+            const blob = new Blob([JSON.stringify(settings, null, 4)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;

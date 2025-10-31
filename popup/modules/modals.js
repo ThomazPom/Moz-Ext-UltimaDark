@@ -261,11 +261,30 @@ function showAsciiColorModal(type) {
   }
 }
 
+// Inform user about Import Settings flow (requires opening full mode in separate window)
+function showImportSettingsInfo() {
+  const url = '?fullmode';
+  const bodyHtml = `To import settings, a separate popup window must be opened in <strong>full mode</strong> so the hidden input can be activated.<br><br>
+  1. Click the button below to open the full-mode view.<br>
+  2. In that window, click "Import Settings" again to choose your exported JSON file.<br><br>
+  <div class="d-flex justify-content-center mb-3">
+     <a href="?fullmode" target="_blank" class="btn btn-secondary">Open Full Import Window</a>
+  </div>
+  <small class="text-muted">(File input cannot be triggered reliably in the constrained popup size due to browser security / UX restrictions.)</small>`;
+  showBS5Modal({
+    title: 'Import Settings',
+    body: bodyHtml,
+    okText: 'Close',
+    showCancel: false
+  });
+}
+
 document.addEventListener("alpine:init", () => {
   Alpine.magic("modals", () => ({
     confirmExcludeSite,
     confirmIncludeSite,
     showExclusionPriorityInfo,
-    showAsciiColorModal
+    showAsciiColorModal,
+    showImportSettingsInfo
   }));
 });

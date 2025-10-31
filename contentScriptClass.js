@@ -105,7 +105,7 @@ class uDarkExtendedContentScript {
     });
   }
   override_website = function () {
-     
+
     // Note : We dont support document.write() yet. Shoudl we find a way to monitor document.close?
     /*
     I need to check if i can catch the automatic or explicit document.close
@@ -143,7 +143,7 @@ class uDarkExtendedContentScript {
     uDark.info("Content script override website", window);
 
 
-    
+
     linkIntegrityErrorEvent = function (elem) {
       // This fix is needed for some websites that use link integrity, i don't know why but sometime even removing the integrity earlier in the code does not work
       uDark.info("Link integrity error", elem, "lead to a reload of this script");
@@ -174,8 +174,6 @@ class uDarkExtendedContentScript {
       } else {
         uDark.installed = true;
       }
-
-
       // Zone for revoking property edition by the website : // no true=no trust
       // https://developer.mozilla.org/fr/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty
       // Some functions are replaced by good or less polyfills, i prefer native functions when possible
@@ -188,10 +186,9 @@ class uDarkExtendedContentScript {
 
       // End of zone for revoking property edition by the website
     }
-
     uDark.checkDomEdit = false;
     if (uDark.checkDomEdit) {
-     
+
 
       uDark.functionPrototypeEditor(HTMLSourceElement, HTMLSourceElement.prototype.setAttribute, (elem, args) => {
         console.log("Debug Node mutation (setAttribute)", elem, args);
@@ -219,10 +216,12 @@ class uDarkExtendedContentScript {
 
 
 
+
     uDark.info("Websites overrides install", window);
-    uDark.functionPrototypeEditor(HTMLObjectElement, HTMLObjectElement.prototype.checkValidity, (elem, args) => {
-      return args;
-    })
+    // uDark.functionPrototypeEditor(HTMLObjectElement, HTMLObjectElement.prototype.checkValidity, (elem, args) => {
+    //   return args;
+    // })
+
 
     uDark.functionPrototypeEditor(CSSStyleDeclaration, CSSStyleDeclaration.prototype.setProperty, (elem, args) => {
       let edited = uDark.edit_str_nochunk(args[0] + ":" + args[1])
@@ -240,8 +239,7 @@ class uDarkExtendedContentScript {
       }
 
       return args
-    })
-
+    });
     uDark.functionPrototypeEditor(CSSStyleSheet,
       [
         CSSStyleSheet.prototype.replace,
@@ -279,8 +277,17 @@ class uDarkExtendedContentScript {
     }, (attribute, value) => attribute.toLowerCase() == "style")
 
     uDark.valuePrototypeEditor(HTMLImageElement, "src", (image, value) => {
-      let res = uDark.image_element_prepare_href(image, document, value);
-
+      // return value;
+      let res = uDark.image_element_prepare_href(image, value);
+      if (value.startsWith("data:")) {
+        // image.o_ud_src = value;
+        setTimeout(() => {
+          image.o_ud_src = res;
+        }, 1);  // IDK how but web.whatsapp.com managed to go error when image.src is a data: URL and i edited it for a http url
+        //So : return value; && wait a bit before setting the edited src. Not a clean solution but works for now.
+        // Not a big deal since data: URLs set by JS are usually small does not impact performance significantly (No network request)
+        return value; 
+      }
       return res;
     },
       false, // Condition: Inconditional
@@ -295,10 +302,30 @@ class uDarkExtendedContentScript {
       }
 
     );
-    uDark.valuePrototypeEditor([HTMLSourceElement,HTMLImageElement], "srcset", (image, value) => {
+    // (function () {
+    //   const orig = HTMLImageElement.prototype.getAttribute;
 
-      let srcSourceArray = uDark.processSRCset(image.getAttribute("srcset")).map(
-        ([srcSource, descriptor]) => uDark.image_element_prepare_href(image, document, srcSource) + " " + descriptor
+    //   HTMLImageElement.prototype.getAttribute = function (name) {
+        
+    //     let res =   orig.call(this, name);
+        
+    //     if(name.toLowerCase()==="src")
+    //     {
+    //       console.log("Intercepted getAttribute src on",this);
+    //       return this.src; // Use the edited src getter
+    //     }
+    //     else
+    //     {
+    //       console.log("getAttribute",name,"on",this,"returning",res);
+    //     }
+    //     // comportement original
+    //     return res
+    //   };
+    // })();
+    uDark.valuePrototypeEditor([HTMLSourceElement, HTMLImageElement], "srcset", (image, value) => {
+      console.log("Editing srcset", image, value);
+      let srcSourceArray = uDark.processSRCset(value).map(
+        ([srcSource, descriptor]) => uDark.image_element_prepare_href(image, srcSource) + " " + descriptor
       );
       return srcSourceArray.join(", ");
 
@@ -322,9 +349,29 @@ class uDarkExtendedContentScript {
 
     );
 
+    // function makeSmartElement(tag) {
+    //   const el = document.createElement(tag);
+    //   return new Proxy(el, {
+    //     get(target, prop) {
+
+    //       console.log(`[${tag}] Getting ${prop}`);
+    //       const value = Reflect.get(target, prop, target);
+    //       return typeof value === "function" ? value.bind(target) : value;
+    //     },
+    //     set(target, prop, value) {
+    //       console.log(`[${tag}] Setting ${prop} =`, value);
+    //       return Reflect.set(target, prop, value, target);
+    //     }
+    //   });
+    // }
+
+    // // Exemple
+    // const source = makeSmartElement("source");
+    // source.src = "bar.mp4"; // log OK
+    // source.src
 
     uDark.valuePrototypeEditor(SVGImageElement, "href", (image, value) => { // the <image> tag inside an SVG, no an <img> tag !
-      return uDark.image_element_prepare_href(image, document, value);
+      return uDark.image_element_prepare_href(image, value);
     });
 
     uDark.valuePrototypeEditor(HTMLLinkElement, "href", (elem, value) => {
@@ -348,14 +395,14 @@ class uDarkExtendedContentScript {
     // })
 
     uDark.functionWrapper(SVGSVGElement, SVGSVGElement.prototype.setAttribute, "setAttribute", function (elem, args) {
-      elem.addEventListener("js_svg_loaded", z => uDark.frontEditSVG(elem, document));
+      elem.addEventListener("js_svg_loaded", z => uDark.frontEditSVG(elem));
       setTimeout(() => elem.dispatchEvent(new Event("js_svg_loaded")), 50);
       return [elem, args]
     },
       (elem, args) => args[0] == "viewBox")
 
     uDark.functionWrapper(HTMLUnknownElement, HTMLUnknownElement.prototype.setAttribute, "setAttribute", function (elem, args) {
-      elem.addEventListener("js_svg_loaded", z => uDark.frontEditSVG(elem, document));
+      elem.addEventListener("js_svg_loaded", z => uDark.frontEditSVG(elem));
       setTimeout(() => elem.dispatchEvent(new Event("js_svg_loaded")), 50);
       return [elem, args]
     },
@@ -699,7 +746,7 @@ class uDarkExtendedContentScript {
       if (!console.warn("Fill not reimplented", elem, value)) { return value };
       let randIdentifier = Math.random().toString().slice(2)
       elem.floodColor = `var(--${randIdentifier})`
-      return uDark.get_fill_for_svg_elem(document.querySelector(`[style*='${randIdentifier}]`) ||
+      return uDark.get_fill_for_svg_elem(elem.getRootNode().querySelector(`[style*='${randIdentifier}]`) ||
         document.createElement('zz'), value || "currentColor", {
         notableInfos: {}
       });

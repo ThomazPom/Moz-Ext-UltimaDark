@@ -9,7 +9,7 @@
   <link rel="stylesheet" type="text/css" href="options_styles.css">
   <!-- Bootstrap Icons for info button -->
 </head>
-<body x-data class="dark" data-bs-theme="dark" style="width: 600px;padding:10px;">
+<body x-data x-init="if (window.location.search.includes('fullmode')) { $nextTick(() => { const btn = document.getElementById('tab-settings'); if (btn) { if (window.bootstrap && window.bootstrap.Tab) { window.bootstrap.Tab.getOrCreateInstance(btn).show(); } else { btn.click(); } setTimeout(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' }), 120); } }); }" class="dark" data-bs-theme="dark" style="width: 600px;padding:10px;">
   
   <div class="container py-3 mx-auto"  >
     <!-- Header -->
@@ -550,11 +550,15 @@
       </div>
       <div class="mb-3">
         <div class="d-flex align-items-center justify-content-between p-3 rounded border" :class="$store.app.imageEditionEnabled ? 'border-success bg-success bg-opacity-10' : 'border-danger bg-danger bg-opacity-10'" :style="$store.app.imageEditionEnabled ? '' : 'opacity: 0.7;'">
-          <span class="fw-medium">Image Edition</span>
+          <span class="fw-medium">Image processing</span>
           <div class="btn-group" role="group" aria-label="Image Edition Toggle">
             <button type="button" class="btn btn-sm" :class="$store.app.imageEditionEnabled ? 'btn-success' : 'btn-outline-secondary'" @click="$store.app.imageEditionEnabled = true; $store.app.saveSettings();">ENABLED</button>
             <button type="button" class="btn btn-sm" :class="!$store.app.imageEditionEnabled ? 'btn-danger' : 'btn-outline-secondary'" @click="$store.app.imageEditionEnabled = false; $store.app.saveSettings();">DISABLED</button>
           </div>
+        </div>
+        <div class="form-text mt-1" style="margin-left: 8px; color: #b5d6f8; font-size: 13px;">
+             
+          Image processing: tries to darken backgrounds, keep photos and artwork unchanged, and lighten logos or icons. The aim is better readability and comfort, but image classification is always an approximation—never exact. Some images may be misclassified due to the complexity of web content and the limits of automated detection.
         </div>
       </div>
       <div class="mb-3">
@@ -626,8 +630,14 @@
       <h5 class="text-light mb-2">Quick Actions:</h5>
       <div class="d-grid gap-2">
         <button @click="$store.app.clearAllData()" class="btn btn-danger">Clear All Settings</button>
-        <button @click="$store.app.exportSettings()" class="btn btn-secondary">Export Settings</button>
-        <button @click="$store.app.importSettings()" class="btn btn-secondary">Import Settings</button>
+    <button @click="$store.app.exportSettings()" class="btn btn-secondary">Export Settings</button>
+    <!-- Import Settings uses modal explanation instead of direct link -->
+    <button x-show="!window.location.search.includes('fullmode')" type="button" class="btn btn-secondary" @click="$modals.showImportSettingsInfo()">Import Settings</button>
+
+    <!-- Actual import trigger only in fullmode (file input accessible) -->
+    <button type="button" x-show="window.location.search.includes('fullmode')" @click.prevent="$store.app.importSettings()" class="btn btn-primary">Choose File & Import</button>
+   <!-- Persistent hidden file input for settings import (referenced in store.importSettings) -->
+  <input id="udark-import-file" type="file" accept=".json,application/json" style="display:none" />
         <button @click="$store.app.debugState()" class="btn btn-warning text-dark">Debug State (Check Console)</button>
       </div>
     </div>
