@@ -704,14 +704,16 @@ var uDark = {
             return {}
         }
         let hasBGRepeat = complement.has("uDark_backgroundRepeat") && /repeat|round|space/i.test(complement.get("uDark_backgroundRepeat"));
+        let isCSSClickableGuess = complement.has("uDark_logo_toggle");
         if (hasBGRepeat ||
             uDark.background_match.test(imageURLObject.pathname + imageURLObject.search + complement.get("class") + complement.get("uDark_cssClass"))) {
             editionStatus.editionConfidenceBackground = 100;
             edition_order_hooks = [uDark.background_image_edit_hook];
         }
-        if (!hasBGRepeat &&
+        if ((!hasBGRepeat || isCSSClickableGuess) &&
             (
                 complement.has("inside_clickable")
+                // || isCSSClickableGuess
                 || complement.has("logo_match")
                 || uDark.logo_match.test(
                     imageURLObject.pathname

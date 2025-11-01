@@ -95,6 +95,7 @@ class uDarkC extends uDarkExtended {
 
   colorRegex = new RegExp(`(?<![\\w-])(?:${uDarkC.CSS_COLOR_FUNCTIONS.join("|")})` + uDarkC.generateNestedParenthesisRegexNC(10), "gi")
   variableRegex = new RegExp(`(?<![\\w-])(?:${["var"].join("|")})` + uDarkC.generateNestedParenthesisRegexNC(10), "gi")
+  imageSetRegex = new RegExp(`(?<![\\w-])(?:${["image-set"].join("|")})` + uDarkC.generateNestedParenthesisRegexNC(10), "gi")
   hexadecimalColorsRegex = /#[0-9a-f]{3,4}(?:[0-9a-f]{2})?(?:[0-9a-f]{2})?/gi // hexadecimal colors
 
   // Cant't use \b because of the possibility of a - next to the identifier, it's a word character
@@ -390,9 +391,9 @@ class uDarkC extends uDarkExtended {
             console.log("Reprocessing late connected image src", node.getAttribute("src"), node);
             node.setAttribute("src", uDark.image_element_prepare_href(node, image.getAttribute("src").replace(modifer, ""), options));
           }
-          if(node.hasAttribute("srcset")){
+          if (node.hasAttribute("srcset")) {
             node.setAttribute("srcset", uDark.image_element_prepare_href(node, node.getAttribute("srcset").replaceAll(modifer, ""), options));
-            
+
             console.log("Reprocessing late connected image srcset", node.getAttribute("srcset"));
           }
         });
@@ -1692,7 +1693,7 @@ class uDarkC extends uDarkExtended {
     if (!value.includes("var(")) {
       return value; // No variables to edit;
     }
-    return value.replace(/(?<![\w-])--([\w-])/gi, "--ud-" + actions.prefix_vars + "--$1")
+    return value.replace(/(?<![\w-])--(?!ud-[bf]g--)([\w-])/gi, "--ud-" + actions.prefix_vars + "--$1")
   }
   restore_vars(value) {
     return value.replaceAll("..1..", "var(").replaceAll("..2..", ")").replaceAll("..3..", "calc(");
@@ -1870,7 +1871,114 @@ class uDarkC extends uDarkExtended {
     return linkP1 + "?uDnCcK=" + Math.random() + linkP2;
 
   }
+  edit_css_urls_logo_ternary(cssStyle, cssRule, details, options, vars) {
+    if (!uDark.userSettings.imageEditionEnabled) {
+      return;
+    }
+    vars = vars || {};
+    vars.property = vars.property || "background-image";
+    let oValue = cssStyle.getPropertyValue(vars.property);
+    let value = oValue;
+
+    // Its very neccessary to not edit property if they dont contain a url, as it changes a lot the CSS if there are shorthand properties involved : setting bacground image removes bacground property
+
+    // Instead of registering the image as a background, we will encode the selector in the URL 
+    // and register the image as a background image only when it is downloaded, in the filter script
+    options = {
+      ...options,
+      changed: false,
+      hasImageSet: value.includes("image-set(")
+    }; // Do not edit the options object, it is shared between all calls
+    let used_regex = vars.regex || uDark.regex_search_for_url_raw;
+    // We dont need to capture type("image/png") here, only the Nx part bothered us;
+    used_regex = new RegExp(used_regex.source + '(\\s+\\d+x)?', used_regex.flags);
+    if (vars.use_other_property) {
+      let transientCSSStylesheet = new CSSStyleSheet();
+      vars.transientCSSStylesheet = transientCSSStylesheet;
+      transientCSSStylesheet.p_ud_insertRule(["z{", cssStyle.cssText, "}"].join(""));
+      transientCSSStylesheet.cssRules[0].style.p_ud_setProperty(vars.originalProperty, value);
+      vars.originalBackgroundRepeat = transientCSSStylesheet.cssRules[0].style.backgroundRepeat;
+    }
+    let alSeenCSSImageUrls = details.transientCache.get("CSSImageUrls");
+    if (!alSeenCSSImageUrls) {
+      alSeenCSSImageUrls = new Set();
+      details.transientCache.set("CSSImageUrls", alSeenCSSImageUrls);
+    }
+    let valuesToEncapsulate = new Set();
+    value = value.replace(used_regex, (match, g1, g2, g3, g4) => {
+
+      let ret = ["", "bg-toggle"].map(toggle => {
+        console.log({ used_regex, match, g1, g2, g3, g4, toggle })
+
+        if (vars.use_other_property) {
+          vars.transientCSSStylesheet.cssRules[0].style.p_ud_setProperty(vars.use_other_property, match);
+          let newMatch = vars.transientCSSStylesheet.cssRules[0].style.getPropertyValue(vars.use_other_property);
+          if (newMatch.startsWith("url(")) {
+            g1 = newMatch.slice(5, -2);
+          }
+        }
+        let link1 = g1.trim();
+        let usedQuote = link1.length > 2 && [`'`, `"`].includes(link1[0]) ? link1[0] : "";
+        let link = usedQuote ? link1.slice(1, -1) : link1;
+        options.changed = true;
+        let notableInfos = {
+          "uDark_cssClass": encodeURI(cssRule.selectorText),
+          "uDark_backgroundRepeat": cssStyle.backgroundRepeat || vars.originalBackgroundRepeat, // Curently broken, we need to fix it
+        };
+        if (!toggle) {
+          notableInfos["uDark_logo_toggle"] = "1";
+        }
+        options.notableInfos = notableInfos;
+        link = uDark.send_data_image_to_parser(link, false, options);
+        if (!options.svgImage) {
+          let oLink = link;
+          if (!options.is_data_image && alSeenCSSImageUrls.has(link)) {
+            // On the same request (same details), the browser will not request the same image twice, and therefore use one it fetched without sending it to imageWorker.
+            link = uDark.addNocacheToStrLink(link);
+          }
+          alSeenCSSImageUrls.add(oLink);
+
+          let usedChar = (link.includes("#") ? "" : "#") + uDark.imageSrcInfoMarker
+          link += usedChar + new URLSearchParams(notableInfos).toString();
+
+        }
+        return (`url(${usedQuote}${link}${usedQuote})` + (toggle ? " var(--ud-bg--logo-toggle)" : g4 || ""));
+      }).join(",")
+      
+      if(!options.hasImageSet )
+      {
+        ret = "image-set(" + ret + ")";
+      }
+      else{
+        valuesToEncapsulate.add(ret);
+      }
+      return ret;
+    }
+
+    )
+
+    if (options.changed) {
+      if(options.hasImageSet )
+      {
+        let protectWith = uDark.str_protect(value, uDark.imageSetRegex, "image_set_protect");
+        value = protectWith.str;
+        valuesToEncapsulate.forEach(v=>{
+          value = value.replace(v,elem=>{
+            return "image-set(" + v + ")"
+          });
+        })
+        value = uDark.str_unprotect(value, protectWith);
+      }
+
+      cssStyle.p_ud_setProperty(vars.property, value);
+    }
+
+  }
   edit_css_urls(cssStyle, cssRule, details, options, vars) {
+    if(!uDark.userSettings.diAdvancedCSSLogoHandling)
+    {
+      return uDark.edit_css_urls_logo_ternary(cssStyle, cssRule, details, options, vars);
+    }
     if (!uDark.userSettings.imageEditionEnabled) {
       return;
     }
