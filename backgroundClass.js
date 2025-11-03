@@ -247,7 +247,10 @@ class uDarkExtended extends uDarkExtendedContentScript {
     //   uDark.info("EvenOff listeners added");
     // }
     // uDark.registerCS({matches:["<all_urls>"],excludeMatches:null,js: [{file: "contentScriptEvenOff.js"}],css:[{file: "contentScriptEvenOff.css"}]});
-    if (userSettings.isEnabled && userSettings.properWhiteList.length) {
+    let isLightMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+    let isAutoAndLight = (userSettings.isEnabled === 'auto' && isLightMode);
+    
+    if (userSettings.isEnabled && userSettings.properWhiteList.length && !isAutoAndLight) {
 
       browser.webRequest.onSendHeaders.addListener(Listeners.setEligibleRequestBeforeData, {
         urls: userSettings.properWhiteList,
@@ -485,6 +488,14 @@ class uDarkExtended extends uDarkExtendedContentScript {
         new Promise(uDark.getSettings).then(uDark.preparePool).then(uDark.setListener);
       }
     });
+    {
+        const mediaWatch =  window.matchMedia('(prefers-color-scheme: light)');
+        mediaWatch.addEventListener('change', e => {
+          uDark.info("Color scheme changed, updating listeners");
+          uDark.setListener();
+        });
+    }
+
     uDark.keypoint("Installed");
   }
 

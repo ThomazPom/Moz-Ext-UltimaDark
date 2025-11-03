@@ -25,10 +25,15 @@
       <label for="isEnabled" class="d-flex align-items-center justify-content-between gap-3 p-3 rounded border" :class="$store.app.isEnabled ? 'border-success bg-success bg-opacity-10' : 'border-danger bg-danger bg-opacity-10'" :style="$store.app.isEnabled ? '' : 'opacity: 0.7;'">
         <span class="fw-medium">UltimaDark Extension</span>
         <div class="btn-group" role="group" aria-label="Enable/Disable">
-          <button type="button" class="btn btn-sm" :class="$store.app.isEnabled ? 'btn-success' : 'btn-outline-secondary'" @click="$store.app.isEnabled = true; $store.app.saveSettings();">ENABLED</button>
-          <button type="button" class="btn btn-sm" :class="!$store.app.isEnabled ? 'btn-danger' : 'btn-outline-secondary'" @click="$store.app.isEnabled = false; $store.app.saveSettings();">DISABLED</button>
+          <button type="button" class="btn btn-sm" :class="$store.app.isEnabled === true ? 'btn-success' : 'btn-outline-secondary'" @click="$store.app.isEnabled = true; $store.app.saveSettings();">ENABLED</button>
+          <button type="button" class="btn btn-sm" :class="$store.app.isEnabled === false ? 'btn-danger' : 'btn-outline-secondary'" @click="$store.app.isEnabled = false; $store.app.saveSettings();">DISABLED</button>
+          <button type="button" class="btn btn-sm" :class="$store.app.isEnabled === 'auto' ? 'btn-info' : 'btn-outline-secondary'" @click="$store.app.isEnabled = 'auto'; $store.app.saveSettings();">AUTO</button>
         </div>
       </label>
+      <div class="form-text">
+        <i class="fas fa-info-circle me-1 text-info"></i>
+        Using <strong>AUTO</strong>, UltimaDark will only be active when your browser is in dark mode.
+      </div>
     </div>
     
     <!-- Promoted Links -->

@@ -96,11 +96,12 @@ class uDarkC extends uDarkExtended {
   colorRegex = new RegExp(`(?<![\\w-])(?:${uDarkC.CSS_COLOR_FUNCTIONS.join("|")})` + uDarkC.generateNestedParenthesisRegexNC(10), "gi")
   variableRegex = new RegExp(`(?<![\\w-])(?:${["var"].join("|")})` + uDarkC.generateNestedParenthesisRegexNC(10), "gi")
   imageSetRegex = new RegExp(`(?<![\\w-])(?:${["image-set"].join("|")})` + uDarkC.generateNestedParenthesisRegexNC(10), "gi")
+  parenthesisRegex = new RegExp(uDarkC.generateNestedParenthesisRegexNC(10), "gi")
   hexadecimalColorsRegex = /#[0-9a-f]{3,4}(?:[0-9a-f]{2})?(?:[0-9a-f]{2})?/gi // hexadecimal colors
 
   // Cant't use \b because of the possibility of a - next to the identifier, it's a word character
   namedColorsRegex = (new RegExp(`(?<![\\w-])(${uDarkC.CSS_COLOR_NAMES.join("|")})(?![\\w-])`, "gi"))
-
+  quotedContentRegex = /'.+?(?<!\\)'|(".+?(?<!\\)")/g
   regex_search_for_url = /url\("(.+?)(?<!\\)("\))/g
   regex_search_for_url_raw = /url\(\s*?(('.+?(?<!\\)'|(".+?(?<!\\)")|[^\)'"]*)\s*?)\)/gsi
   background_match = /background|sprite|(?<![a-z])(bg|box|panel|fond|fundo|bck)(?![a-z])/i
@@ -380,21 +381,23 @@ class uDarkC extends uDarkExtended {
     if (imageTrueSrc.includes(uDark.imageSrcInfoMarker)) {
       return imageTrueSrc;
     }
-    if (!image.isConnected && imageTrueSrc.includes("Car")) {
+    if (!image.isConnected && !options.dontEditNonConnected) {
+      options.dontEditNonConnected = true; // Prevent infinite loop if image error without being connected ( Like image preloaders using Image())
       let modifer = "data:text/ud-late-connection;"
       image.setAttribute("ud-non-connected", "1");
       image.addEventListener("error", function listener() {
         image.removeEventListener("error", listener);
         image.removeAttribute("ud-non-connected");
-        image.parentNode.childNodes.forEach(node => {
+       
+        (image.parentNode?.childNodes||[image]).forEach(node => {
+          
           if (node.hasAttribute("src")) {
-            console.log("Reprocessing late connected image src", node.getAttribute("src"), node);
             node.setAttribute("src", uDark.image_element_prepare_href(node, image.getAttribute("src").replace(modifer, ""), options));
+            
           }
           if (node.hasAttribute("srcset")) {
             node.setAttribute("srcset", uDark.image_element_prepare_href(node, node.getAttribute("srcset").replaceAll(modifer, ""), options));
 
-            console.log("Reprocessing late connected image srcset", node.getAttribute("srcset"));
           }
         });
       });
@@ -1871,7 +1874,7 @@ class uDarkC extends uDarkExtended {
     return linkP1 + "?uDnCcK=" + Math.random() + linkP2;
 
   }
-  edit_css_urls_logo_ternary(cssStyle, cssRule, details, options, vars) {
+  edit_css_urls_ternary(cssStyle, cssRule, details, options, vars) {
     if (!uDark.userSettings.imageEditionEnabled) {
       return;
     }
@@ -1884,12 +1887,40 @@ class uDarkC extends uDarkExtended {
 
     // Instead of registering the image as a background, we will encode the selector in the URL 
     // and register the image as a background image only when it is downloaded, in the filter script
+
+    let used_regex = vars.regex || uDark.regex_search_for_url_raw;
+
+    // Do not edit the options object, it is shared between all calls
     options = {
       ...options,
       changed: false,
       hasImageSet: value.includes("image-set(")
-    }; // Do not edit the options object, it is shared between all calls
-    let used_regex = vars.regex || uDark.regex_search_for_url_raw;
+    };
+    if (options.hasImageSet) // First ensure we treat image set quoted urls (not using url()) like other urls
+    {
+
+      let protectedImageSet = uDark.str_protect(value, uDark.imageSetRegex, "image_set_protect"); // Isolate image-set(...) content to avoid issues quoted content outside the image-set
+      value = protectedImageSet.str;
+
+      protectedImageSet.values = protectedImageSet.values.map(v => {
+        let localV = v;
+        let parenthesisProtected = uDark.str_protect(localV, uDark.parenthesisRegex, "parenthesis_content_protect"); // In image set only quoted content outside parenthesis can be isolated urls
+        localV = parenthesisProtected.str;
+        localV = localV.replace(uDark.quotedContentRegex, (match) => `url(${match})`); // Transform quoted urls into url(...) to be treated like other urls
+        localV = uDark.str_unprotect(localV, parenthesisProtected); // Restore parenthesis content
+        return localV;
+      });
+
+
+      value = value.replace(used_regex, (match, g1, g2, g3, g4) => "image-set(" + match + ")"); // Encapsulate each remaining url(...) into image-set(...) to be treated like other urls
+
+
+      value = uDark.str_unprotect(value, protectedImageSet); // Restore image-set content but with quoted urls transformed into url(...)
+
+    }
+
+
+
     // We dont need to capture type("image/png") here, only the Nx part bothered us;
     used_regex = new RegExp(used_regex.source + '(\\s+\\d+x)?', used_regex.flags);
     if (vars.use_other_property) {
@@ -1907,9 +1938,7 @@ class uDarkC extends uDarkExtended {
     let valuesToEncapsulate = new Set();
     value = value.replace(used_regex, (match, g1, g2, g3, g4) => {
 
-      let ret = ["", "bg-toggle"].map(toggle => {
-        console.log({ used_regex, match, g1, g2, g3, g4, toggle })
-
+      let ret = ["logo-toggle", "bg-toggle", "original"].map(toggle => {
         if (vars.use_other_property) {
           vars.transientCSSStylesheet.cssRules[0].style.p_ud_setProperty(vars.use_other_property, match);
           let newMatch = vars.transientCSSStylesheet.cssRules[0].style.getPropertyValue(vars.use_other_property);
@@ -1924,10 +1953,14 @@ class uDarkC extends uDarkExtended {
         let notableInfos = {
           "uDark_cssClass": encodeURI(cssRule.selectorText),
           "uDark_backgroundRepeat": cssStyle.backgroundRepeat || vars.originalBackgroundRepeat, // Curently broken, we need to fix it
+          "css-guess": toggle
         };
-        if (!toggle) {
-          notableInfos["uDark_logo_toggle"] = "1";
+        
+        let hasFontRelatedItem = ["font", "font-family", "font-size", "color"].some(x => cssRule.style.getPropertyValue(x));
+        if (hasFontRelatedItem) {
+          notableInfos["uDark_directCssFont"] = "true";
         }
+
         options.notableInfos = notableInfos;
         link = uDark.send_data_image_to_parser(link, false, options);
         if (!options.svgImage) {
@@ -1942,14 +1975,14 @@ class uDarkC extends uDarkExtended {
           link += usedChar + new URLSearchParams(notableInfos).toString();
 
         }
-        return (`url(${usedQuote}${link}${usedQuote})` + (toggle ? " var(--ud-bg--logo-toggle)" : g4 || ""));
+        g4 = g4 || "1x";
+        return (`url(${usedQuote}${link}${usedQuote})` + (` var(--ud-bg--${toggle}-css-toggle,${g4 || "1x"})`));
       }).join(",")
-      
-      if(!options.hasImageSet )
-      {
+
+      if (!options.hasImageSet) {
         ret = "image-set(" + ret + ")";
       }
-      else{
+      else {
         valuesToEncapsulate.add(ret);
       }
       return ret;
@@ -1958,12 +1991,11 @@ class uDarkC extends uDarkExtended {
     )
 
     if (options.changed) {
-      if(options.hasImageSet )
-      {
+      if (options.hasImageSet) {
         let protectWith = uDark.str_protect(value, uDark.imageSetRegex, "image_set_protect");
         value = protectWith.str;
-        valuesToEncapsulate.forEach(v=>{
-          value = value.replace(v,elem=>{
+        valuesToEncapsulate.forEach(v => {
+          value = value.replace(v, elem => {
             return "image-set(" + v + ")"
           });
         })
@@ -1975,9 +2007,8 @@ class uDarkC extends uDarkExtended {
 
   }
   edit_css_urls(cssStyle, cssRule, details, options, vars) {
-    if(!uDark.userSettings.diAdvancedCSSLogoHandling)
-    {
-      return uDark.edit_css_urls_logo_ternary(cssStyle, cssRule, details, options, vars);
+    if (!uDark.userSettings.diAdvancedCSSLogoHandling) {
+      return uDark.edit_css_urls_ternary(cssStyle, cssRule, details, options, vars);
     }
     if (!uDark.userSettings.imageEditionEnabled) {
       return;
@@ -2027,6 +2058,10 @@ class uDarkC extends uDarkExtended {
         "uDark_cssClass": encodeURI(cssRule.selectorText),
         "uDark_backgroundRepeat": cssStyle.backgroundRepeat || vars.originalBackgroundRepeat, // Curently broken, we need to fix it
       };
+      let hasFontRelatedItem = ["font", "font-family", "font-size", "color"].some(x => cssRule.style.getPropertyValue(x));
+      if (hasFontRelatedItem) {
+        notableInfos["uDark_directCssFont"] = "true";
+      }
       options.notableInfos = notableInfos;
       link = uDark.send_data_image_to_parser(link, false, options);
       if (!options.svgImage) {

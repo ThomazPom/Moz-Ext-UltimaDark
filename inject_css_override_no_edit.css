@@ -101,17 +101,56 @@ video {
 
 }
 
+
+/* 
+/* 
+  Logo and Background Image Detection via CSS Logic
+  -------------------------------------------------
+
+  This mechanism is one of the key innovations of UltimaDark 2025.
+  It leverages a CSS-only detection technique for identifying contextual
+  elements such as logos, buttons, icons, and backgrounds — without any JavaScript.
+
+  Concept:
+  --------
+  Logos and icons are often contained in interactive elements 
+  (like links, buttons, or elements whose class names include “logo” or “icon”).
+  CSS selectors can identify these relationships directly within the DOM.
+
+  Implementation:
+  ---------------
+  Each background image is wrapped inside a single `image-set()` declaration.
+  Every URL corresponds to a specific logical role: 
+  - "logo"
+  - "bg" (background)
+  - "original" (default state)
+
+  Instead of using DPI descriptors (e.g., 1x, 2x) for device pixel ratio,
+  we repurpose them as logical toggles:
+    • 1x = enabled
+    • 0x = disabled
+
+  The active image is selected automatically by the browser:
+  only candidates with a valid, non-zero density are applied.
+
+  We could also during processing of the CSS, set some variables for elems having font-related properties like one using font-size, font-family, font-weight, font-style, text-decoration, text-transform, letter-spacing, word-spacing, line-height, text-shadow
+  and we would set --ud-bg-text-detected: 1x; for these elems and 0x for the others.
+  And this would be a background.
+  But there is variable inheritance so it would be complex to manage.
+*/
 :root {
-    --ud-bg--logo-toggle: 0x
-        /*Define the fill color used for svg logos */
+    --ud-bg--bg-toggle-css-toggle: 0x;
+    --ud-bg--logo-toggle-css-toggle: 0x;
 }
 
 a,
-a*,
-[class*="logo"],[class*="logo"] * 
-[class*="icon"],[class*="icon"] * 
-{
-    --ud-bg--logo-toggle: 1x
+a *,
+[class*="logo"],
+[class*="logo"] * [class*="icon"],
+[class*="icon"] * {
+    --ud-bg--logo-toggle-css-toggle: 1x;
+    --ud-bg--original-toggle-css-toggle: 0x;
+    /*Disable original toggle when logo toggle is detected to avoid it being  selected via DPI*/
 }
 
 svg text:not([fill]),

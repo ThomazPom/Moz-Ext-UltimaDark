@@ -37,7 +37,7 @@
 
   "browser_action": {
     "default_icon": "icons/38.png",
-    "default_title": "UltimaDark is active",
+    "default_title": "UltimaDark is living its best life trying to darken your web experience, if you kept it enabled",
   
     "default_popup": "popup/popup.html?mode=uDark-popup"
   },

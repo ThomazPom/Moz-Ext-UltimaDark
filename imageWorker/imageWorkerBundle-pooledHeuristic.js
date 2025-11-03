@@ -67,8 +67,9 @@ function uDarkColorBitsetSetIfNew(kind, r, g, b) {
 
 var uDark = {
 
-    background_match: /background|sprite|(?<![a-z])(bg|box|panel|fond|fundo|bck)(?![a-z])/i,
+    background_match: /background|sprite|widget|theme|(?<![a-z])(bg|box|panel|fond|fundo|bck)(?![a-z])/i,
     logo_match: /nav|avatar|logo|icon|alert|notif|cart|menu|tooltip|dropdown|control/i,
+    non_logo_match:/widget|theme|(?<![a-z])(box|panel|fond|fundo|bck)(?![a-z])/i,
     ignore_match: /maps_/i,
     RGBToLinearLightness: (r, g, b) => {
         return (Math.max(r, g, b) + Math.min(r, g, b)) / 2;
@@ -400,6 +401,9 @@ var uDark = {
         let perf_start = performance.now();
         console.log("Background", "Entering edition", details.url, details.requestId)
 
+        if(complement.has("inside_clickable")){
+            editionConfidence -= 50;
+        }
         // Refuse bacground images on certain conditions
 
         if (!uDark.disableBackgroundPostCheck) {
@@ -434,6 +438,10 @@ var uDark = {
             if (editionStatus.alpha_percent > 0.1 && !(editionStatus.alpha_qty * 2 > editionStatus.pixelCount)) {
                 editionStatus.heuristic = "too_much_alpha_for_background"
                 return false; // Not a background : Too much pure alpha pixels
+            }
+            if(editionStatus.avg_ligtness<20){
+                editionStatus.heuristic = "too_dark_background_already"
+                return false; // If its already a very dark background, no need to darken it more
             }
             let min_bright_trigger = 255 * 0.4;
             if (editionStatus.avg_ligtness < min_bright_trigger && editionStatus.max_lightness < min_bright_trigger) {
@@ -703,26 +711,30 @@ var uDark = {
         if (uDark.ignore_match.test(imageURLObject.search + complement.get("class") + complement.get("uDark_cssClass"))) {
             return {}
         }
-        let hasBGRepeat = complement.has("uDark_backgroundRepeat") && /repeat|round|space/i.test(complement.get("uDark_backgroundRepeat"));
-        let isCSSClickableGuess = complement.has("uDark_logo_toggle");
-        if (hasBGRepeat ||
-            uDark.background_match.test(imageURLObject.pathname + imageURLObject.search + complement.get("class") + complement.get("uDark_cssClass"))) {
-            editionStatus.editionConfidenceBackground = 100;
-            edition_order_hooks = [uDark.background_image_edit_hook];
-        }
-        if ((!hasBGRepeat || isCSSClickableGuess) &&
-            (
-                complement.has("inside_clickable")
-                // || isCSSClickableGuess
-                || complement.has("logo_match")
-                || uDark.logo_match.test(
-                    imageURLObject.pathname
+        let hasBGRepeat = complement.has("uDark_backgroundRepeat") && /(?<!no-)repeat|round|space/i.test(complement.get("uDark_backgroundRepeat"));
+        let cssGuess = complement.get("css-guess");
+        let hasDirectCSSFont = complement.has("uDark_directCssFont");
+        
+        let imageStrToCheck = imageURLObject.pathname
                     + imageURLObject.search
                     + complement.get("class")
                     + complement.get("uDark_cssClass")
+
+        if (hasDirectCSSFont || hasBGRepeat ||
+            uDark.background_match.test(imageStrToCheck)) {
+            editionStatus.editionConfidenceBackground = 100;
+            edition_order_hooks = [uDark.background_image_edit_hook];
+        }
+
+
+        if ((!hasBGRepeat || cssGuess == "logo-toggle") &&
+            (
+                complement.has("inside_clickable")
+                || complement.has("logo_match")
+                || uDark.logo_match.test(
+                    imageStrToCheck
                 )
-            )
-        ) {
+            ) && !uDark.non_logo_match.test(imageStrToCheck) ){
 
             edition_order_hooks = [uDark.logo_image_edit_hook];
         }
