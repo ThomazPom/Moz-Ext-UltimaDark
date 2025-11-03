@@ -382,25 +382,26 @@ class uDarkC extends uDarkExtended {
       return imageTrueSrc;
     }
     if (!image.isConnected && !options.dontEditNonConnected) {
-      options.dontEditNonConnected = true; // Prevent infinite loop if image error without being connected ( Like image preloaders using Image())
       let modifer = "data:text/ud-late-connection;"
+      console.warn("UltimaDark: Image is not connected to DOM, delaying its processing until it is connected", image);
       image.setAttribute("ud-non-connected", "1");
-      image.addEventListener("error", function listener() {
-        image.removeEventListener("error", listener);
+      image.addEventListener("error", function listener(event) {
+        event.stopPropagation();
         image.removeAttribute("ud-non-connected");
+        console.warn("UltimaDark: Image is now connected to DOM, processing it", image);
        
         (image.parentNode?.childNodes||[image]).forEach(node => {
           
           if (node.hasAttribute("src")) {
-            node.setAttribute("src", uDark.image_element_prepare_href(node, image.getAttribute("src").replace(modifer, ""), options));
+            node.setAttribute("src", uDark.image_element_prepare_href(node, image.getAttribute("src").replace(modifer, ""), { ...options, dontEditNonConnected: true }));
             
           }
           if (node.hasAttribute("srcset")) {
-            node.setAttribute("srcset", uDark.image_element_prepare_href(node, node.getAttribute("srcset").replaceAll(modifer, ""), options));
+            node.setAttribute("srcset", uDark.image_element_prepare_href(node, node.getAttribute("srcset").replaceAll(modifer, ""), { ...options, dontEditNonConnected: true }));
 
           }
         });
-      });
+      }, { once: true, capture: true });
       return `${modifer}${imageTrueSrc}`; // Wait for the image to be connected to process it and know its context, using error listener
     }
     if (uDark.search_clickable_parent(image.getRootNode(), selectorText)) {
