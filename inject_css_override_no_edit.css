@@ -74,10 +74,10 @@ O1O2MModifiers_disabled:root {
 }
 
 
-iframe,
+/* iframe,
 embed,
 object,
-video {
+video { */
     /*Iframe get light background in dark color schemes and vice versa*/
     /* color-scheme: light!important;  */
     /*This is not needed anymore since we discovered how to have the color-scheme directly inside the frame */
@@ -86,8 +86,9 @@ video {
             matchOriginAsFallback:true,
             allFrames: true
             */
-    /*Fortunately all css can be overriden unconditoonally in this file*/
-}
+    /*Fortunately all css can be overriden unconditionally in this file*/
+
+/* } */
 
 
 
