@@ -389,10 +389,19 @@ class uDarkExtendedContentScript {
         elem.addEventListener("load", uDark.do_idk_mode);
       }
     })
-    // uDark.valuePrototypeEditor([HTMLLinkElement,HTMLScriptElement], "integrity", (elem, value) => {
-    //     console.log("CSS integrity set", elem, value);
-    //   return value;
-    // })
+    uDark.valuePrototypeEditor([HTMLLinkElement,HTMLScriptElement], "integrity", (elem, value) => {
+        console.log("CSS integrity set", elem, value);
+        elem.addEventListener("error", z => linkIntegrityErrorEvent(elem),{ once: true , capture: true});
+        elem.origIntegrity = value;
+      return value;
+    },false,(elem, value) => {
+      elem.removeAttribute("integrity");
+    },
+    (elem, value) => { // Edited getter, to trick websites that are checking integrity after setting it
+      console.log("CSS integrity get", elem, value);
+      return elem.origIntegrity ;
+    }
+    )
 
     uDark.functionWrapper(SVGSVGElement, SVGSVGElement.prototype.setAttribute, "setAttribute", function (elem, args) {
       elem.addEventListener("js_svg_loaded", z => uDark.frontEditSVG(elem));

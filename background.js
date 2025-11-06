@@ -62,7 +62,7 @@ class uDarkC extends uDarkExtended {
     "table", // Protecting inner elements of <table> creates the situation where we need to protect table too, logically
     "tr", "thead", "th", "tfoot", "td", "tbody", "col", "colgroup", "caption"
   ]
-
+  tagsToExcludeRegex = /<(noscript).*?(<!--.*?-->|.)*?<\/\1/gis // Tags to exclude from processing entirely : They can include strangy stuff like json containing backslashed quotes that will be htmlencoded, and stuff. Thatsa nightmare
   nonConnectedImagesAndSources = new Set();
   static CSS_COLOR_FUNCTIONS = ["rgb", "rgba", "hsl", "hsla", "hwb", "lab", "lch", "color", "color-mix", "oklch", "oklab"]
   shortHandRegex = new RegExp(`(?<![\\w-])(${uDarkC.SHORTHANDS.join("|")})([\s\t]*:)`, "gi") // The \t is probably not needed, as \s includes it
@@ -176,7 +176,8 @@ class uDarkC extends uDarkExtended {
     return `\\((${uDarkC.generateNestedParenthesisRegex(depth - 1)}|.)*?\\)`;
   }
   static generateNestedParenthesisRegexNC(depth) { // Generates a regex that matches nested parenthesis, non-capturing
-    if (depth === 1) {
+    // It's broken by (((')')). If someday we encounter this we'll consider fixing it
+    if (depth === 1) { 
       return "\\(.*?\\)";
     }
     return `\\((?:${uDarkC.generateNestedParenthesisRegexNC(depth - 1)}|.)*?\\)`;
@@ -343,6 +344,9 @@ class uDarkC extends uDarkExtended {
   search_clickable_parent(documentElement, selectorText) {
     return documentElement.querySelector(`a ${selectorText},button ${selectorText}`);
   }
+  search_logo_match(documentElement, selectorText) {
+    return documentElement.querySelector(`a[href*=index] ${selectorText},a[href*=logo] ${selectorText}, a[href*=icon] ${selectorText},a[href='/'] ${selectorText}`);
+  }
   elements_or_ancestor_parents_is_tagNames(tagNames, elements) {
     return elements.some(element => {
       let parent = element;
@@ -389,12 +393,12 @@ class uDarkC extends uDarkExtended {
         event.stopPropagation();
         image.removeAttribute("ud-non-connected");
         console.warn("UltimaDark: Image is now connected to DOM, processing it", image);
-       
-        (image.parentNode?.childNodes||[image]).forEach(node => {
-          
+
+        (image.parentNode?.childNodes || [image]).forEach(node => {
+
           if (node.hasAttribute("src")) {
             node.setAttribute("src", uDark.image_element_prepare_href(node, image.getAttribute("src").replace(modifer, ""), { ...options, dontEditNonConnected: true }));
-            
+
           }
           if (node.hasAttribute("srcset")) {
             node.setAttribute("srcset", uDark.image_element_prepare_href(node, node.getAttribute("srcset").replaceAll(modifer, ""), { ...options, dontEditNonConnected: true }));
@@ -406,6 +410,10 @@ class uDarkC extends uDarkExtended {
     }
     if (uDark.search_clickable_parent(image.getRootNode(), selectorText)) {
       notableInfos.inside_clickable = true;
+    }
+    console.log("Searching logo for ", image, selectorText);
+    if (uDark.search_logo_match(image.getRootNode(), selectorText)) {
+      notableInfos.logo_match = true;
     }
     if (uDark.search_container_logo(image, notableInfos)) {
       notableInfos.logo_match = true;
@@ -774,10 +782,19 @@ class uDarkC extends uDarkExtended {
 
   }
   parseAndEditHtmlContentBackend4(strO, details) {
+    // return strO;
     let str = strO;
     if (!str || !str.trim().length) {
       return str;
     }
+
+    let protectionExcluded = str.protect_numbered(this.tagsToExcludeRegex, `<noscript data-ud-id="{index}"></noscript`, true);
+    str = protectionExcluded.str;
+
+    str = str.protect_simple(uDark.tagsToProtectRegex, "ud-tag-ptd-$1"
+      // use word boundaries to avoid matching tags like "headings" or tbody or texts like innerHTML
+      // Frame and frameset are obsolete, but there were meant to be in head, and will be removed from body, they need to be protected too 
+    );
 
     details.XHTML = details.contentType.includes("application/xhtml+xml");
 
@@ -788,10 +805,6 @@ class uDarkC extends uDarkExtended {
       aDocument = parsedDocument.documentElement;
     }
     else {
-      str = str.protect_simple(uDark.tagsToProtectRegex, "ud-tag-ptd-$1"
-        // use word boundaries to avoid matching tags like "headings" or tbody or texts like innerHTML
-        // Frame and frameset are obsolete, but there were meant to be in head, and will be removed from body, they need to be 
-      );
 
       parsedDocument = uDark.createDocumentFromHtml("<body>" + str + "</body>"
         /* Re encapsulate str into a <body> is not an overkill : Exists something called unsafeHTML clid binding. I did not understood what it is, but it needs a body tag for proper parsing*/
@@ -812,12 +825,16 @@ class uDarkC extends uDarkExtended {
 
     uDark.transformADocumentBackend(aDocument, details);
     // 16. Return the final edited HTML
+    let will_return;
     if (details.XHTML) {
-      return parsedDocument.ud_doctype + aDocument.outerHTML.trim();
+      will_return = parsedDocument.ud_doctype + aDocument.outerHTML
     }
     else {
-      return parsedDocument.ud_doctype + aDocument.innerHTML.trim().unprotect_simple("ud-tag-ptd-");
+
+      will_return = parsedDocument.ud_doctype + aDocument.innerHTML
     }
+    will_return = will_return.trim().unprotect_simple("ud-tag-ptd-").unprotect_numbered(protectionExcluded);
+    return will_return;
 
   }
 
@@ -893,10 +910,10 @@ class uDarkC extends uDarkExtended {
 
   }
 
-  createDocumentFromHtml(html) {
+  createDocumentFromHtml(html, type = "text/html") {
     // Use DOMParser to convert the HTML string into a DOM document
     const parser = new DOMParser();
-    return parser.p_ud_parseFromString(html, "text/html");
+    return parser.p_ud_parseFromString(html, type);
   }
 
   processSvgElements(documentElement, details) {
@@ -1170,9 +1187,9 @@ class uDarkC extends uDarkExtended {
     }
     return str;
   }
-  str_unprotect_simple(str, protectedWith, condition = true) {
+  str_unprotect_simple(str, protectedWith, condition = true, $repl = "") {
     if (condition) {
-      str = str.replaceAll(protectedWith, "")
+      str = str.replaceAll(protectedWith, $repl)
     }
     return str;
   }
@@ -1956,7 +1973,7 @@ class uDarkC extends uDarkExtended {
           "uDark_backgroundRepeat": cssStyle.backgroundRepeat || vars.originalBackgroundRepeat, // Curently broken, we need to fix it
           "css-guess": toggle
         };
-        
+
         let hasFontRelatedItem = ["font", "font-family", "font-size", "color"].some(x => cssRule.style.getPropertyValue(x));
         if (hasFontRelatedItem) {
           notableInfos["uDark_directCssFont"] = "true";

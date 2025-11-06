@@ -408,7 +408,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
       uDark.imageWorkerPool = null;
       uDark.workerPoolReady = false;
     }
-    if (uDark.userSettings.pooledWorkersEnabled) {
+    if (uDark.userSettings.pooledWorkersEnabled && uDark.userSettings.isEnabled && uDark.userSettings.imageEditionEnabled) {
 
       console.log("Preparing image worker pool", uDark.userSettings);
       let usedPoolWorker = uDark.imageWorkerJsFile[uDark.userSettings.imageDecisionLogic];
