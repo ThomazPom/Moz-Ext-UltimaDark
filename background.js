@@ -1,3 +1,5 @@
+
+
 // Listen for keyboard shortcut commands (e.g., Ctrl+Shift+U)
 if (typeof browser !== 'undefined' && browser.commands && browser.commands.onCommand) {
   browser.commands.onCommand.addListener(async function (command) {
@@ -167,7 +169,7 @@ class uDarkC extends uDarkExtended {
     // native: "imageWorker/imageWorkerBundle-nativeOldSlow.js",
   }
   foreground_color_css_properties = ["color", "caret-color"] // css properties that are foreground colors;, putting caret-color or any other property will edit the caret color with lightening and preventing the caret from being darkened
-  // Gradients can be set in background-image
+  
 
   static generateNestedParenthesisRegex(depth) { // Generates a regex that matches nested parenthesis
     if (depth === 1) {
@@ -387,12 +389,17 @@ class uDarkC extends uDarkExtended {
     }
     if (!image.isConnected && !options.dontEditNonConnected) {
       let modifer = "data:text/ud-late-connection;"
-      console.warn("UltimaDark: Image is not connected to DOM, delaying its processing until it is connected", image);
+      // console.warn("UltimaDark: Image is not connected to DOM, delaying its processing until it is connected", image,`${modifer}${imageTrueSrc}`,new Error());
       image.setAttribute("ud-non-connected", "1");
+      let resolverOnerror = null;
+      image.decode = x=>new Promise((resolve) => {
+        resolverOnerror = resolve;
+      }); // Override decode to be able to resolve when the image is connected and processed
       image.addEventListener("error", function listener(event) {
         event.stopPropagation();
+        event.stopImmediatePropagation();
         image.removeAttribute("ud-non-connected");
-        console.warn("UltimaDark: Image is now connected to DOM, processing it", image);
+        // console.warn("UltimaDark: Image is now connected to DOM, processing it", image,imageTrueSrc,image.isConnected,image.parentNode);
 
         (image.parentNode?.childNodes || [image]).forEach(node => {
 
@@ -405,13 +412,18 @@ class uDarkC extends uDarkExtended {
 
           }
         });
+        if(resolverOnerror)
+        {
+          resolverOnerror(HTMLImageElement.prototype.decode.call(image));
+        }
+
       }, { once: true, capture: true });
       return `${modifer}${imageTrueSrc}`; // Wait for the image to be connected to process it and know its context, using error listener
     }
     if (uDark.search_clickable_parent(image.getRootNode(), selectorText)) {
       notableInfos.inside_clickable = true;
     }
-    console.log("Searching logo for ", image, selectorText);
+    // console.log("Searching logo for ", image, selectorText);
     if (uDark.search_logo_match(image.getRootNode(), selectorText)) {
       notableInfos.logo_match = true;
     }
