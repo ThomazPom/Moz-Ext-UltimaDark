@@ -367,6 +367,8 @@ class uDarkC extends uDarkExtended {
     // Do not parse url preventing adding context to it or interpreting it as a relative url or correcting its content by any way
     let imageTrueSrc = src_override || image.getAttribute("src")
 
+    imageTrueSrc = imageTrueSrc?.trim();
+
     if (!uDark.userSettings.imageEditionEnabled || !imageTrueSrc) {
 
       return imageTrueSrc;
