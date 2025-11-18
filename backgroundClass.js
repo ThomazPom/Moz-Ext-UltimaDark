@@ -211,7 +211,8 @@ class uDarkExtended extends uDarkExtendedContentScript {
 
     uDark.fixedRandom = Math.random();
 
-    browser.webRequest.onSendHeaders.removeListener(Listeners.setEligibleRequestBeforeData);
+    browser.webRequest.onSendHeaders.removeListener(Listeners.setEligibleRequestBeforeDataWL);
+    browser.webRequest.onSendHeaders.removeListener(Listeners.setEligibleRequestBeforeDataBL);
     browser.webRequest.onHeadersReceived.removeListener(Listeners.editBeforeData);
     browser.webRequest.onBeforeRequest.removeListener(Listeners.editBeforeRequestStyleSheet_sync);
     browser.webRequest.onHeadersReceived.removeListener(Listeners.editOnHeadersReceivedStyleSheet);
@@ -252,8 +253,12 @@ class uDarkExtended extends uDarkExtendedContentScript {
     
     if (userSettings.isEnabled && userSettings.properWhiteList.length && !isAutoAndLight) {
 
-      browser.webRequest.onSendHeaders.addListener(Listeners.setEligibleRequestBeforeData, {
-        urls: userSettings.properWhiteList,
+      browser.webRequest.onSendHeaders.addListener(Listeners.setEligibleRequestBeforeDataWL, {
+        urls: userSettings.properWhiteList, 
+        types: ["main_frame", "sub_frame"]
+      },);
+      browser.webRequest.onSendHeaders.addListener(Listeners.setEligibleRequestBeforeDataBL, {
+        urls: ["<all_urls>"], 
         types: ["main_frame", "sub_frame"]
       },);
 
