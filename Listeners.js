@@ -358,7 +358,7 @@ class Listeners {
     //     // https://bugzilla.mozilla.org/show_bug.cgi?id=1806476
     //     // https://bugzilla.mozilla.org/show_bug.cgi?id=1561604
     noIssuesIntetrnalPagesRegex:
-      /^about:(welcome|studies|protections|privatebrowsing|newtab|loginsimportreport|logins|home|compat|certificate|blank)$/,
+      /^about:(blank|welcome|studies|protections|privatebrowsing|newtab|loginsimportreport|logins|home|compat|certificate|blank)$/,
 
     registerOrUnregisterInternalPage(details) {
       // Firefox bug workaround:
