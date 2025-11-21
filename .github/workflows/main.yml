@@ -16,6 +16,7 @@ jobs:
     env:
       FILES_TO_PACKAGE: |
         manifest.json
+        uDarkTools.htm
         inject_css_override_no_edit.css
         inject_css_override_top_only.css
         inject_css_override.css

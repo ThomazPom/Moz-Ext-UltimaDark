@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "UltimaDark",
-  "version": "1.6.33",
+  "version": "1.6.34",
   "description": "The extension uses agressive techniques to get a dark mode everywhere on internet\nThis is still highly experimental so it can also ruin your internet experience",
   "homepage_url": "https://github.com/ThomazPom/Moz-Ext-UltimaDark",
   "icons": {
@@ -11,7 +11,9 @@
   // "web_accessible_resources": [
   //  // "ultimaDark.css"
   // ],
-  "content_security_policy": "script-src 'self' blob: 'unsafe-eval'; ",
+
+  // Sha265 is for UdarkTools.htm. It is required to allow the javascript fixing the filterHTMLResponseData to run.
+  "content_security_policy": "script-src 'self' blob: 'unsafe-eval' 'sha256-RooFZFVBc+eqIlPYtIwvNYqUBaN1qp1VnXMy2xZLRKg='; ",
   "commands": {
     "toggle-site": {
       "suggested_key": {

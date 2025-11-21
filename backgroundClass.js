@@ -1,6 +1,6 @@
 
 class uDarkExtended extends uDarkExtendedContentScript {
-  
+
   noBodyStatusCodes = {
     enforcedNoBody: {
       100: "Continue",
@@ -211,6 +211,11 @@ class uDarkExtended extends uDarkExtendedContentScript {
 
     uDark.fixedRandom = Math.random();
 
+    {
+      // Fix for Firefox filterResponseData bug:      
+      browser.webNavigation.onBeforeNavigate.removeListener(Listeners.fixForFilterResponseDataFirefoxBug.registerOrUnregisterInternalPage);
+
+    }
     browser.webRequest.onSendHeaders.removeListener(Listeners.setEligibleRequestBeforeDataWL);
     browser.webRequest.onSendHeaders.removeListener(Listeners.setEligibleRequestBeforeDataBL);
     browser.webRequest.onHeadersReceived.removeListener(Listeners.editBeforeData);
@@ -224,8 +229,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
         uDark.registeredCS.shift().unregister();
       }
     }
-    if(uDark.stopListenersNow)
-    {
+    if (uDark.stopListenersNow) {
       uDark.info("Listeners stopped by request");
       return;
     }
@@ -250,15 +254,28 @@ class uDarkExtended extends uDarkExtendedContentScript {
     // uDark.registerCS({matches:["<all_urls>"],excludeMatches:null,js: [{file: "contentScriptEvenOff.js"}],css:[{file: "contentScriptEvenOff.css"}]});
     let isLightMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
     let isAutoAndLight = (userSettings.isEnabled === 'auto' && isLightMode);
-    
+
     if (userSettings.isEnabled && userSettings.properWhiteList.length && !isAutoAndLight) {
 
+
+      {
+        // Firefox bug workaround:
+
+        //     // https://bugzilla.mozilla.org/buglist.cgi?quicksearch=filterResponseData
+
+        //     // https://bugzilla.mozilla.org/show_bug.cgi?id=1982934
+        //     // https://bugzilla.mozilla.org/show_bug.cgi?id=1806476
+        //     // https://bugzilla.mozilla.org/show_bug.cgi?id=1561604
+        browser.webNavigation.onBeforeNavigate.addListener(Listeners.fixForFilterResponseDataFirefoxBug.registerOrUnregisterInternalPage);
+
+      }
+
       browser.webRequest.onSendHeaders.addListener(Listeners.setEligibleRequestBeforeDataWL, {
-        urls: userSettings.properWhiteList, 
+        urls: userSettings.properWhiteList,
         types: ["main_frame", "sub_frame"]
       },);
       browser.webRequest.onSendHeaders.addListener(Listeners.setEligibleRequestBeforeDataBL, {
-        urls: ["<all_urls>"], 
+        urls: ["<all_urls>"],
         types: ["main_frame", "sub_frame"]
       },);
 
@@ -420,7 +437,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
 
       uDark.workerPoolReady = true;
       let workerData = {};
-      if (["pooledBench","pooledAI"].includes(uDark.userSettings.imageDecisionLogic)) {
+      if (["pooledBench", "pooledAI"].includes(uDark.userSettings.imageDecisionLogic)) {
         let iaModelJsonClonable = fetch("imageWorker/imageClassifierModel.json").then(r => r.arrayBuffer());
         let iaModelWeightsClonable = fetch("imageWorker/imageClassifierModel.weights.bin").then(r => r.arrayBuffer());
         uDark.iaModelJsonBuffer = await iaModelJsonClonable;
@@ -429,7 +446,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
         workerData.iaModelWeightsBuffer = uDark.iaModelWeightsBuffer;
         console.log("Image classification model buffers loaded");
       }
-      
+
       const pool = new uDark.workerPool({
         size: navigator.hardwareConcurrency * 2,
 
@@ -494,11 +511,11 @@ class uDarkExtended extends uDarkExtendedContentScript {
       }
     });
     {
-        const mediaWatch =  window.matchMedia('(prefers-color-scheme: light)');
-        mediaWatch.addEventListener('change', e => {
-          uDark.info("Color scheme changed, updating listeners");
-          uDark.setListener();
-        });
+      const mediaWatch = window.matchMedia('(prefers-color-scheme: light)');
+      mediaWatch.addEventListener('change', e => {
+        uDark.info("Color scheme changed, updating listeners");
+        uDark.setListener();
+      });
     }
 
     uDark.keypoint("Installed");
