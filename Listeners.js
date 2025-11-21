@@ -358,12 +358,17 @@ class Listeners {
     //     // https://bugzilla.mozilla.org/show_bug.cgi?id=1806476
     //     // https://bugzilla.mozilla.org/show_bug.cgi?id=1561604
     noIssuesIntetrnalPagesRegex:
-      /^about:(welcome|studies|protections|privatebrowsing|newtab|loginsimportreport|logins|home|compat|certificate)$/,
+      /^about:(welcome|studies|protections|privatebrowsing|newtab|loginsimportreport|logins|home|compat|certificate|blank)$/,
 
     registerOrUnregisterInternalPage(details) {
-      console.log("Checking internal page for Firefox filterResponseData bug workaround:", details.tabId, details.url);
       // Firefox bug workaround:
+      if(details.frameId!=0){
+        return; // We only care about main frames
+      }
+
+
       if (details.url.startsWith("about:")) {
+        console.log("Checking internal page for Firefox filterResponseData bug workaround:", details.tabId, details.url);
         if (!details.url.match(
           Listeners.fixForFilterResponseDataFirefoxBug.noIssuesIntetrnalPagesRegex
         )) {
