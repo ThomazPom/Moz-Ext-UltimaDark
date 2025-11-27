@@ -392,7 +392,7 @@ class Listeners {
 
   static setEligibleRequestBeforeDataWL(details) {
     // console.log("Whitelisted page detected for uDark");
-    uDark.setPort(details, { arrivingSoon: true, isWhiteList: details.requestId }, 0);
+    uDark.setPort(details, { arrivingSoon: true, isWhiteList: true }, 0);
   }
   static setEligibleRequestBeforeDataBL(details) {
 
