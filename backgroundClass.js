@@ -152,7 +152,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
     browser.contentScripts.register(contentScript).then(x => uDark.registeredCS.push(x));
 
   }
-  properBlackListToExcludeRegex(list) {
+  properListToRegex(list) {
     return list.map(x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // Sanitize regex
       .replace(/(^<all_urls>|\\\*)/g, "(.*?)") // Allow wildcards
       .replace(/^(.*)$/g, "^$1$")).join("|").replace(/^$/, "no_match") // User multi match
@@ -185,27 +185,27 @@ class uDarkExtended extends uDarkExtendedContentScript {
     // Full exclusion (no flag or #ud_all)
     uDark.userSettings.properBlackList = filterByFlag(["", "all"]);
     uDark.userSettings.properBlackList = await uDark.asyncFilter(uDark.userSettings.properBlackList, uDark.filterValidExpression);
-    uDark.userSettings.exclude_regex = uDark.properBlackListToExcludeRegex(uDark.userSettings.properBlackList);
+    uDark.userSettings.exclude_regex = uDark.properListToRegex(uDark.userSettings.properBlackList);
 
     // Images only
     uDark.userSettings.properBlackListImg = filterByFlag(["img"]);
     uDark.userSettings.properBlackListImg = await uDark.asyncFilter(uDark.userSettings.properBlackListImg, uDark.filterValidExpression);
-    uDark.userSettings.exclude_regexImg = uDark.properBlackListToExcludeRegex(uDark.userSettings.properBlackListImg);
+    uDark.userSettings.exclude_regexImg = uDark.properListToRegex(uDark.userSettings.properBlackListImg);
 
     // CSS only
     uDark.userSettings.properBlackListCss = filterByFlag(["css"]);
     uDark.userSettings.properBlackListCss = await uDark.asyncFilter(uDark.userSettings.properBlackListCss, uDark.filterValidExpression);
-    uDark.userSettings.exclude_regexCss = uDark.properBlackListToExcludeRegex(uDark.userSettings.properBlackListCss);
+    uDark.userSettings.exclude_regexCss = uDark.properListToRegex(uDark.userSettings.properBlackListCss);
 
     // Image resource only (#ud_imgr)
     uDark.userSettings.properBlackListImgr = filterByFlag(["imgr"]);
     uDark.userSettings.properBlackListImgr = await uDark.asyncFilter(uDark.userSettings.properBlackListImgr, uDark.filterValidExpression);
-    uDark.userSettings.exclude_regexImgr = uDark.properBlackListToExcludeRegex(uDark.userSettings.properBlackListImgr);
+    uDark.userSettings.exclude_regexImgr = uDark.properListToRegex(uDark.userSettings.properBlackListImgr);
 
     // Resources only (CSS, JS, images)
     uDark.userSettings.properBlackListRes = filterByFlag(["res"]);
     uDark.userSettings.properBlackListRes = await uDark.asyncFilter(uDark.userSettings.properBlackListRes, uDark.filterValidExpression);
-    uDark.userSettings.exclude_regexRes = uDark.properBlackListToExcludeRegex(uDark.userSettings.properBlackListRes);
+    uDark.userSettings.exclude_regexRes = uDark.properListToRegex(uDark.userSettings.properBlackListRes);
 
 
 
@@ -216,8 +216,8 @@ class uDarkExtended extends uDarkExtendedContentScript {
       browser.webNavigation.onBeforeNavigate.removeListener(Listeners.fixForFilterResponseDataFirefoxBug.registerOrUnregisterInternalPage);
 
     }
-    browser.webRequest.onSendHeaders.removeListener(Listeners.setEligibleRequestBeforeDataWL);
-    browser.webRequest.onSendHeaders.removeListener(Listeners.setEligibleRequestBeforeDataBL);
+    browser.webNavigation.onBeforeNavigate.removeListener(Listeners.setEligibleRequestBeforeDataWL);
+    browser.webNavigation.onBeforeNavigate.removeListener(Listeners.setEligibleRequestBeforeDataBL);
     browser.webRequest.onHeadersReceived.removeListener(Listeners.editBeforeData);
     browser.webRequest.onBeforeRequest.removeListener(Listeners.editBeforeRequestStyleSheet_sync);
     browser.webRequest.onHeadersReceived.removeListener(Listeners.editOnHeadersReceivedStyleSheet);
@@ -270,14 +270,10 @@ class uDarkExtended extends uDarkExtendedContentScript {
 
       }
 
-      browser.webRequest.onSendHeaders.addListener(Listeners.setEligibleRequestBeforeDataWL, {
-        urls: userSettings.properWhiteList,
-        types: ["main_frame", "sub_frame"]
+      browser.webNavigation.onBeforeNavigate.addListener(Listeners.setEligibleRequestBeforeDataWL, {
+        url: [{ urlMatches: uDark.properListToRegex(uDark.userSettings.properWhiteList) }],
       },);
-      browser.webRequest.onSendHeaders.addListener(Listeners.setEligibleRequestBeforeDataBL, {
-        urls: ["<all_urls>"],
-        types: ["main_frame", "sub_frame"]
-      },);
+      browser.webNavigation.onBeforeNavigate.addListener(Listeners.setEligibleRequestBeforeDataBL );
 
       browser.webRequest.onHeadersReceived.addListener(Listeners.editBeforeData, {
         urls: userSettings.properWhiteList,

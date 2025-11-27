@@ -362,7 +362,7 @@ class Listeners {
 
     registerOrUnregisterInternalPage(details) {
       // Firefox bug workaround:
-      if(details.frameId!=0){
+      if (details.frameId != 0) {
         return; // We only care about main frames
       }
 
@@ -377,12 +377,12 @@ class Listeners {
           return
         }
       }
-      if(uDark.general_cache.has(`fixing_about_tab_${details.tabId}`)){
+      if (uDark.general_cache.has(`fixing_about_tab_${details.tabId}`)) {
         console.warn("Unregistering internal page for Firefox filterResponseData bug workaround:", details.tabId, details.url);
         uDark.general_cache.delete(`fixing_about_tab_${details.tabId}`);
-        if(!details.url.startsWith("about:")){
-          browser.tabs.update(details.tabId, { url: `${browser.runtime.getURL("uDarkTools.htm")}?redirect=${details.url}`});// Reload the tab to make sure filterResponseData will work
-        } 
+        if (!details.url.startsWith("about:")) {
+          browser.tabs.update(details.tabId, { url: `${browser.runtime.getURL("uDarkTools.htm")}?redirect=${details.url}` });// Reload the tab to make sure filterResponseData will work
+        }
       }
     },
 
@@ -395,11 +395,12 @@ class Listeners {
     uDark.setPort(details, { arrivingSoon: true, isWhiteList: details.requestId }, 0);
   }
   static setEligibleRequestBeforeDataBL(details) {
+
     details.unEligibleRequest = (details.documentUrl || details.url).match(uDark.userSettings.exclude_regex);
-    details.eligibleRequest = !details.unEligibleRequest && uDark.getPort(details)?.isWhiteList == details.requestId;
+    details.eligibleRequest = !details.unEligibleRequest && uDark.getPort(details)?.isWhiteList;
     // Here we have to check the url or the documentUrl to know if this webpage is excluded
     // It already has passed the whitelist check, this is why we only check the blacklist
-    // However this code executes before the content script is connected, so we can't check if it will connect or not
+    // However this code executes before the content script is conn ected, so we can't check if it will connect or not
     // Even if we could do this, like sending some bytes and waiting for he content script to connect,
     // and it would be not so musch costly in terms of time, some pages as YouTube as the time i write this, somehow manages
     // to send in this very first request tabID -1 and frameID 0, which is not a valid combination, and the content script will never be found
@@ -464,9 +465,9 @@ class Listeners {
       return { responseHeaders: details.responseHeaders }; // We cannot edit this request: either it has no body, or it's empty because unmodified, so the webRequestFilter will receive an already edited content from the cache
     }
 
-      
-      
-      // console.log("Editing", details.url, details.requestId, details.fromCache)
+
+
+    // console.log("Editing", details.url, details.requestId, details.fromCache)
     let filter = globalThis.browser.webRequest.filterResponseData(details.requestId);
 
     details.dataCount = 0;
