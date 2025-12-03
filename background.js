@@ -169,7 +169,7 @@ class uDarkC extends uDarkExtended {
     // native: "imageWorker/imageWorkerBundle-nativeOldSlow.js",
   }
   foreground_color_css_properties = ["color", "caret-color"] // css properties that are foreground colors;, putting caret-color or any other property will edit the caret color with lightening and preventing the caret from being darkened
-  
+
 
   static generateNestedParenthesisRegex(depth) { // Generates a regex that matches nested parenthesis
     if (depth === 1) {
@@ -179,7 +179,7 @@ class uDarkC extends uDarkExtended {
   }
   static generateNestedParenthesisRegexNC(depth) { // Generates a regex that matches nested parenthesis, non-capturing
     // It's broken by (((')')). If someday we encounter this we'll consider fixing it
-    if (depth === 1) { 
+    if (depth === 1) {
       return "\\(.*?\\)";
     }
     return `\\((?:${uDarkC.generateNestedParenthesisRegexNC(depth - 1)}|.)*?\\)`;
@@ -394,7 +394,7 @@ class uDarkC extends uDarkExtended {
       // console.warn("UltimaDark: Image is not connected to DOM, delaying its processing until it is connected", image,`${modifer}${imageTrueSrc}`,new Error());
       image.setAttribute("ud-non-connected", "1");
       let resolverOnerror = null;
-      image.decode = x=>new Promise((resolve) => {
+      image.decode = x => new Promise((resolve) => {
         resolverOnerror = resolve;
       }); // Override decode to be able to resolve when the image is connected and processed
       image.addEventListener("error", function listener(event) {
@@ -414,8 +414,7 @@ class uDarkC extends uDarkExtended {
 
           }
         });
-        if(resolverOnerror)
-        {
+        if (resolverOnerror) {
           resolverOnerror(HTMLImageElement.prototype.decode.call(image));
         }
 
@@ -1969,7 +1968,9 @@ class uDarkC extends uDarkExtended {
     }
     let valuesToEncapsulate = new Set();
     value = value.replace(used_regex, (match, g1, g2, g3, g4) => {
-
+      if (match.includes(uDark.imageSrcInfoMarker)) {
+        return match;
+      }
       let ret = ["logo-toggle", "bg-toggle", "original"].map(toggle => {
         if (vars.use_other_property) {
           vars.transientCSSStylesheet.cssRules[0].style.p_ud_setProperty(vars.use_other_property, match);
