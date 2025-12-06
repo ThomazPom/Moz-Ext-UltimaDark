@@ -1208,7 +1208,7 @@ class uDarkC extends uDarkExtended {
   }
 
   edit_str_nochunk(strO) {
-    if (strO.join) {
+    if (strO?.join) {
       strO = strO.join("");
     }
     return uDark.edit_str(strO, false, false, undefined, false, {
