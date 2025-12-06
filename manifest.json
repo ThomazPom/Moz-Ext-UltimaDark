@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "UltimaDark",
-  "version": "1.6.39",
+  "version": "1.6.40",
   "description": "The extension uses agressive techniques to get a dark mode everywhere on internet\nThis is still highly experimental so it can also ruin your internet experience",
   "homepage_url": "https://github.com/ThomazPom/Moz-Ext-UltimaDark",
   "icons": {
@@ -39,7 +39,7 @@
 
   "browser_action": {
     "default_icon": "icons/38.png",
-    "default_title": "UltimaDark is living its best life trying to darken your web experience, if you kept it enabled",
+    "default_title": "Darkness wins",
   
     "default_popup": "popup/popup.html?mode=uDark-popup"
   },
