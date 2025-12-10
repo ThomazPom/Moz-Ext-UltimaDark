@@ -78,10 +78,12 @@ class uDarkC extends uDarkExtended {
   }
   colorWork = {
     canvasContext: (() => {
-      let canvas = document.createElement("canvas");
-      canvas.width = 5;
-      canvas.height = 3;
-      return canvas.getContext("2d");
+
+      let canvas = document instanceof XMLDocument ?
+        new OffscreenCanvas(5, 3) // Canvas in XMLDocuments does not have a getContext method. Using OffscreenCanvas instead.
+        //Even using a DomPArser has no advantages, Canvas & CanvasText colors are not recognized in XML documents
+        : Object.assign(document.createElement("canvas"), { width: 5, height: 3 });
+      return canvas.getContext("2d")
     })()
 
   }
@@ -725,8 +727,23 @@ class uDarkC extends uDarkExtended {
     });
   }
 
-  setDocType(html, parsedDocument) {
-    const fullmatch = html.trimLeft().match(/^\s*<!doctype\s+html[^<]+?>/i);
+  setDocType(html, parsedDocument, details) {
+    // Extract the DOCTYPE declaration from the original HTML string
+
+    let usedRegex = /^\s*<!doctype\s+html[^<]+?>/i
+    if (details.XHTML) {
+      usedRegex = /.*?<!DOCTYPE\s+html[^<]+?>/is
+
+      // In XHTML documents, the DOCTYPE declaration may be preceded by:
+      // - XML declaration (<?xml version="1.0"?>)
+      // - XML stylesheet processing instructions
+      // - Comments
+      // This regex captures everything up to and including the DOCTYPE declaration
+      // Note: We don't need to handle  DOCTYPE strings in content because
+      // any unescaped DOCTYPE in the XML body cause the document to be invalid
+    }
+    const fullmatch = html.trimLeft().match(usedRegex);
+    console.log(html, parsedDocument);
     parsedDocument.ud_doctype = fullmatch ? fullmatch[0] : "<!doctype html>";
   }
   workAroundUnspecifiedCharset(aDocument, details) {
@@ -827,7 +844,7 @@ class uDarkC extends uDarkExtended {
     }
 
 
-    uDark.setDocType(strO, parsedDocument);
+    uDark.setDocType(strO, parsedDocument, details);
 
     if (details.unspecifiedCharset) {
       let workAroundResult = uDark.workAroundUnspecifiedCharset(aDocument, details);
