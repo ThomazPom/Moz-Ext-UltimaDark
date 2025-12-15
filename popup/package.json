@@ -3,6 +3,7 @@
     "alpinejs": "^3.14.8",
     "bootstrap": "^5.3.3",
     "bootstrap-icons": "^1.13.1",
+    "chart.js": "^4.5.1",
     "esbuild": "^0.25.8"
   },
   "scripts": {

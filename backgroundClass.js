@@ -216,14 +216,25 @@ class uDarkExtended extends uDarkExtendedContentScript {
       browser.webNavigation.onBeforeNavigate.removeListener(Listeners.fixForFilterResponseDataFirefoxBug.registerOrUnregisterInternalPage);
 
     }
+    {
+      // Embeds inheritenance unregistering : 
+      browser.runtime.onMessage.removeListener(Listeners.askSynchronousBgIdHelper);
+      browser.webRequest.onBeforeRequest.removeListener(Listeners.askSynchronousBgId);
+    }
+    {
+      // eligibility listeners removal
+    browser.runtime.onConnect.removeListener(uDark.portConnected);
     browser.webNavigation.onBeforeNavigate.removeListener(Listeners.setEligibleRequestBeforeDataWL);
     browser.webNavigation.onBeforeNavigate.removeListener(Listeners.setEligibleRequestBeforeDataBL);
+    }
+    {
+      // Main listeners removals
     browser.webRequest.onHeadersReceived.removeListener(Listeners.editBeforeData);
     browser.webRequest.onBeforeRequest.removeListener(Listeners.editBeforeRequestStyleSheet_sync);
     browser.webRequest.onHeadersReceived.removeListener(Listeners.editOnHeadersReceivedStyleSheet);
     browser.webRequest.onBeforeRequest.removeListener(Listeners.editBeforeRequestImage);
     browser.webRequest.onHeadersReceived.removeListener(Listeners.editOnHeadersImage);
-
+    }
     if (uDark.registeredCS && uDark.registeredCS.length) {
       while (uDark.registeredCS.length) {
         uDark.registeredCS.shift().unregister();
@@ -258,6 +269,8 @@ class uDarkExtended extends uDarkExtendedContentScript {
     if (userSettings.isEnabled && userSettings.properWhiteList.length && !isAutoAndLight) {
 
 
+      browser.runtime.onConnect.addListener(uDark.portConnected);
+
       {
         // Firefox bug workaround:
 
@@ -269,11 +282,25 @@ class uDarkExtended extends uDarkExtendedContentScript {
         browser.webNavigation.onBeforeNavigate.addListener(Listeners.fixForFilterResponseDataFirefoxBug.registerOrUnregisterInternalPage);
 
       }
+      if (userSettings.embedsInheritanceBehavior === "inheritFromParent") {
+        uDark.info("Embeds inheritance behavior enabled, registering handlers"); 
+        browser.runtime.onMessage.addListener(Listeners.askSynchronousBgIdHelper);
+
+
+        browser.webRequest.onBeforeRequest.addListener(Listeners.askSynchronousBgId, {
+          urls: [
+            "*://isparentudark.udark/*"
+          ],
+          types: ["xmlhttprequest"]
+        },
+          ["blocking"]);
+      }
+
 
       browser.webNavigation.onBeforeNavigate.addListener(Listeners.setEligibleRequestBeforeDataWL, {
         url: [{ urlMatches: uDark.properListToRegex(uDark.userSettings.properWhiteList) }],
       },);
-      browser.webNavigation.onBeforeNavigate.addListener(Listeners.setEligibleRequestBeforeDataBL );
+      browser.webNavigation.onBeforeNavigate.addListener(Listeners.setEligibleRequestBeforeDataBL);
 
       browser.webRequest.onHeadersReceived.addListener(Listeners.editBeforeData, {
         urls: userSettings.properWhiteList,
@@ -481,7 +508,6 @@ class uDarkExtended extends uDarkExtendedContentScript {
 
     });
 
-    browser.runtime.onConnect.addListener(uDark.portConnected);
     browser.runtime.onInstalled.addListener(uDark.onInstalled);
     Promise.all([
       browser.runtime.getBrowserInfo().then(x => {
@@ -640,7 +666,12 @@ class uDarkExtended extends uDarkExtendedContentScript {
   }
 
 
-
+  switchOffCSSInFrame(tabId, frameId) {
+    browser.tabs.insertCSS(tabId, {
+      code: uDark.cssSwitchOffString,
+      frameId: frameId,
+    });
+  }
 
 
   connected_cs_ports = {}

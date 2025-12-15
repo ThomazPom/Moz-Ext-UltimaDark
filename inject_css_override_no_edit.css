@@ -94,7 +94,7 @@ video { */
 
 
 :root {
-    color-scheme: dark !important;
+    color-scheme: var(--ud-bg-css-switchoff,dark) !important;
     /*Force dark color scheme:  
     This is sensible to other elements being color-schemed in css, be we have a replace in background css editing for these cases.
     It covers lot of unthinkable cases, including caretcolor */

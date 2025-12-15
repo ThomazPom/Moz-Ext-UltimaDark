@@ -5,7 +5,7 @@
 }
 
 iframe {
-  border-color: rgb(51, 51, 51); /* The default iframe border is quite light */
+  border-color: var(--ud-bg-css-switchoff,rgb(51, 51, 51)); /* The default iframe border is quite light */
 }
 
 [ud-html4-support]{

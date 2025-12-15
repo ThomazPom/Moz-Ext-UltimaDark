@@ -11,6 +11,43 @@ class Listeners {
       return { cancel: true };
     }
   }
+  static askSynchronousBgIdHelper(message, sender, sendResponse) {
+    if (message.askSynchronousBackgroundIdentifier) {
+
+
+      let mapKey = "askSynchronousBG_" + message.askSynchronousBackgroundIdentifier;
+      uDark.general_cache.set(mapKey, {
+        frameDetails: {
+          tabId: sender.tab.id,
+          frameId: sender.frameId,
+        },
+        message: message
+
+      });
+    }
+  }
+  static askSynchronousBgId(details) {
+        let questionParts = details.url.split("/");
+        let param = questionParts.pop();
+        let identifer = questionParts.pop();
+        let mapKey = "askSynchronousBG_" + identifer;
+        let mapData = uDark.general_cache.get(mapKey);
+        
+        // switch off CSS if requested
+
+        if (mapData) {
+          return browser.webNavigation.getFrame(mapData.frameDetails).then(moreFrameDetails => {
+            let isParentUDark = !!uDark.getPort({ tabId: mapData.frameDetails.tabId, frameId: moreFrameDetails.parentFrameId });
+            if (!isParentUDark && mapData.message.switchOffCSS) {
+              uDark.switchOffCSSInFrame(mapData.frameDetails.tabId, mapData.frameDetails.frameId);
+            }
+            return { redirectUrl: `data:application/json,{"parentHasUltimaDark":${isParentUDark}}` };
+          });
+        }
+        return {};
+
+      
+  }
   static moreInfoOnImageResult(details, obuffer, event) {
 
     // uDark.warn("Image editing complete",details.url.split("#"),event.data.is_photo?"photo": event.data.heuristic);
@@ -391,6 +428,12 @@ class Listeners {
 
 
   static setEligibleRequestBeforeDataWL(details) {
+    if (details.frameId !== 0 && uDark.userSettings.embedsInheritanceBehavior === "inheritFromParent") {
+      if (!uDark.getPort({ tabId: details.tabId, frameId: details.parentFrameId })) {
+        return
+      }
+    };
+
     // console.log("Whitelisted page detected for uDark");
     uDark.setPort(details, { arrivingSoon: true, isWhiteList: true }, 0);
   }

@@ -8378,7 +8378,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
   // popup.js
   var import_bootstrap = __toESM(require_bootstrap());
 
-  // ../node_modules/@kurkle/color/dist/color.esm.js
+  // node_modules/@kurkle/color/dist/color.esm.js
   function round(v) {
     return v + 0.5 | 0;
   }
@@ -8935,7 +8935,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
     }
   };
 
-  // ../node_modules/chart.js/dist/chunks/helpers.dataset.js
+  // node_modules/chart.js/dist/chunks/helpers.dataset.js
   function noop() {
   }
   var uid2 = /* @__PURE__ */ (() => {
@@ -10901,10 +10901,10 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
   }
   function retinaScale(chart, forceRatio, forceStyle) {
     const pixelRatio = forceRatio || 1;
-    const deviceHeight = Math.floor(chart.height * pixelRatio);
-    const deviceWidth = Math.floor(chart.width * pixelRatio);
-    chart.height = Math.floor(chart.height);
-    chart.width = Math.floor(chart.width);
+    const deviceHeight = round1(chart.height * pixelRatio);
+    const deviceWidth = round1(chart.width * pixelRatio);
+    chart.height = round1(chart.height);
+    chart.width = round1(chart.width);
     const canvas = chart.canvas;
     if (canvas.style && (forceStyle || !canvas.style.height && !canvas.style.width)) {
       canvas.style.height = `${chart.height}px`;
@@ -11348,7 +11348,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
     };
   }
 
-  // ../node_modules/chart.js/dist/chart.js
+  // node_modules/chart.js/dist/chart.js
   var Animator = class {
     constructor() {
       this._request = null;
@@ -13191,19 +13191,24 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
           labels: {
             generateLabels(chart) {
               const data2 = chart.data;
+              const { labels: { pointStyle, textAlign, color: color2, useBorderRadius, borderRadius } } = chart.legend.options;
               if (data2.labels.length && data2.datasets.length) {
-                const { labels: { pointStyle, color: color2 } } = chart.legend.options;
                 return data2.labels.map((label, i) => {
                   const meta = chart.getDatasetMeta(0);
                   const style = meta.controller.getStyle(i);
                   return {
                     text: label,
                     fillStyle: style.backgroundColor,
-                    strokeStyle: style.borderColor,
                     fontColor: color2,
-                    lineWidth: style.borderWidth,
-                    pointStyle,
                     hidden: !chart.getDataVisibility(i),
+                    lineDash: style.borderDash,
+                    lineDashOffset: style.borderDashOffset,
+                    lineJoin: style.borderJoinStyle,
+                    lineWidth: style.borderWidth,
+                    strokeStyle: style.borderColor,
+                    textAlign,
+                    pointStyle,
+                    borderRadius: useBorderRadius && (borderRadius || style.borderRadius),
                     index: i
                   };
                 });
@@ -16415,18 +16420,22 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
   var registry = /* @__PURE__ */ new Registry();
   var PluginService = class {
     constructor() {
-      this._init = [];
+      this._init = void 0;
     }
     notify(chart, hook, args, filter) {
       if (hook === "beforeInit") {
         this._init = this._createDescriptors(chart, true);
         this._notify(this._init, chart, "install");
       }
+      if (this._init === void 0) {
+        return;
+      }
       const descriptors2 = filter ? this._descriptors(chart).filter(filter) : this._descriptors(chart);
       const result = this._notify(descriptors2, chart, hook, args);
       if (hook === "afterDestroy") {
         this._notify(descriptors2, chart, "stop");
         this._notify(this._init, chart, "uninstall");
+        this._init = void 0;
       }
       return result;
     }
@@ -16867,7 +16876,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
     }
     return false;
   }
-  var version = "4.5.0";
+  var version = "4.5.1";
   var KNOWN_POSITIONS = [
     "top",
     "bottom",
@@ -22838,7 +22847,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
     scales
   ];
 
-  // ../node_modules/chart.js/auto/auto.js
+  // node_modules/chart.js/auto/auto.js
   Chart.register(...registerables);
   var auto_default = Chart;
 
@@ -23111,6 +23120,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       imageEditionEnabled: true,
       serviceWorkersEnabled: true,
       autoRefreshOnToggle: false,
+      embedsInheritanceBehavior: false,
       // Pattern lists
       inclusionPatterns: "",
       exclusionPatterns: "",
@@ -24151,7 +24161,7 @@ bootstrap/dist/js/bootstrap.js:
 chart.js/dist/chunks/helpers.dataset.js:
 chart.js/dist/chart.js:
   (*!
-   * Chart.js v4.5.0
+   * Chart.js v4.5.1
    * https://www.chartjs.org
    * (c) 2025 Chart.js Contributors
    * Released under the MIT License

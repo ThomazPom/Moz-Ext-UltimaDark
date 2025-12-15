@@ -1,5 +1,3 @@
-
-
 class uDarkExtendedContentScript {
 
   is_content_script = true
@@ -8,7 +6,38 @@ class uDarkExtendedContentScript {
     name: "port-from-cs"
   });
 
+  askSynchronousBackground(question, json = false, syncData = {}, param = "param") {
+    let requestIdentifier = Math.random().toString(36).slice(2);
+    browser.runtime.sendMessage({ askSynchronousBackgroundIdentifier: requestIdentifier, ...syncData });
+    let xhr = new window.XMLHttpRequest();
+    xhr.open("GET", `https://${question}.uDark/askSynchronousBackground/${requestIdentifier}/${param}`, false); // false = synchrone
+    xhr.send(null);
+    let responseText = xhr.responseText;
+    return json ? JSON.parse(responseText) : responseText;
+  }
+
   install() {
+
+
+    if (window.parent !== window && window.userSettings.embedsInheritanceBehavior == "inheritFromParent") {
+      let useHttpSwitchOff = ["http", "https"].includes(document.location.protocol);
+      let isParentUDark = this.askSynchronousBackground("isParentUDark", true, {
+        switchOffCSS: useHttpSwitchOff,
+      }, "switchOffCSS").parentHasUltimaDark;
+      if (!isParentUDark) {
+        if (!useHttpSwitchOff) {
+
+            let sheet = new CSSStyleSheet();
+            sheet.replaceSync(uDark.cssSwitchOffString);
+            // document.adoptedStyleSheets = [sheet]
+            window.wrappedJSObject.document.adoptedStyleSheets.push(sheet);
+        }
+        return false; // Do not install uDark in this embed since the parent does not have uDark and the user requested inheritance from parent
+      }
+
+    }
+
+
     uDark.exportFunction = globalThis.exportFunction; // Don't override the exportFunction function, but make it available to ultimadark
     console.info("UltimaDark", "Content script install", window);
     try {
@@ -286,7 +315,7 @@ class uDarkExtendedContentScript {
         }, 1);  // IDK how but web.whatsapp.com managed to go error when image.src is a data: URL and i edited it for a http url
         //So : return value; && wait a bit before setting the edited src. Not a clean solution but works for now.
         // Not a big deal since data: URLs set by JS are usually small does not impact performance significantly (No network request)
-        return value; 
+        return value;
       }
       return res;
     },
@@ -306,9 +335,9 @@ class uDarkExtendedContentScript {
     //   const orig = HTMLImageElement.prototype.getAttribute;
 
     //   HTMLImageElement.prototype.getAttribute = function (name) {
-        
+
     //     let res =   orig.call(this, name);
-        
+
     //     if(name.toLowerCase()==="src")
     //     {
     //       console.log("Intercepted getAttribute src on",this);
@@ -389,18 +418,18 @@ class uDarkExtendedContentScript {
         elem.addEventListener("load", uDark.do_idk_mode);
       }
     })
-    uDark.valuePrototypeEditor([HTMLLinkElement,HTMLScriptElement], "integrity", (elem, value) => {
-        console.log("CSS integrity set", elem, value);
-        elem.addEventListener("error", z => linkIntegrityErrorEvent(elem),{ once: true , capture: true});
-        elem.origIntegrity = value;
+    uDark.valuePrototypeEditor([HTMLLinkElement, HTMLScriptElement], "integrity", (elem, value) => {
+      console.log("CSS integrity set", elem, value);
+      elem.addEventListener("error", z => linkIntegrityErrorEvent(elem), { once: true, capture: true });
+      elem.origIntegrity = value;
       return value;
-    },false,(elem, value) => {
+    }, false, (elem, value) => {
       elem.removeAttribute("integrity");
     },
-    (elem, value) => { // Edited getter, to trick websites that are checking integrity after setting it
-      console.log("CSS integrity get", elem, value);
-      return elem.origIntegrity ;
-    }
+      (elem, value) => { // Edited getter, to trick websites that are checking integrity after setting it
+        console.log("CSS integrity get", elem, value);
+        return elem.origIntegrity;
+      }
     )
 
     uDark.functionWrapper(SVGSVGElement, SVGSVGElement.prototype.setAttribute, "setAttribute", function (elem, args) {

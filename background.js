@@ -102,7 +102,7 @@ class uDarkC extends uDarkExtended {
   imageSetRegex = new RegExp(`(?<![\\w-])(?:${["image-set"].join("|")})` + uDarkC.generateNestedParenthesisRegexNC(10), "gi")
   parenthesisRegex = new RegExp(uDarkC.generateNestedParenthesisRegexNC(10), "gi")
   hexadecimalColorsRegex = /#[0-9a-f]{3,4}(?:[0-9a-f]{2})?(?:[0-9a-f]{2})?/gi // hexadecimal colors
-
+  cssSwitchOffString = ":root { --ud-bg-css-switchoff:off }"
   // Cant't use \b because of the possibility of a - next to the identifier, it's a word character
   namedColorsRegex = (new RegExp(`(?<![\\w-])(${uDarkC.CSS_COLOR_NAMES.join("|")})(?![\\w-])`, "gi"))
   quotedContentRegex = /'.+?(?<!\\)'|(".+?(?<!\\)")/g
@@ -148,6 +148,7 @@ class uDarkC extends uDarkExtended {
     imageEditionEnabled: true, // Enable or disable image edition
     autoRefreshOnToggle: false,
     autoRefreshOnAnySettingChange: false,
+    embedsInheritanceBehavior: false, // Whether to apply uDark to embeds (like iframes) based on the parent page settings
 
     //Image working model
     imageDecisionLogic: "pooledHeuristic", // from concat.js : pooledAI, pooledHeuristic, native, nativeOldSlow, bench ..
@@ -743,7 +744,6 @@ class uDarkC extends uDarkExtended {
       // any unescaped DOCTYPE in the XML body cause the document to be invalid
     }
     const fullmatch = html.trimLeft().match(usedRegex);
-    console.log(html, parsedDocument);
     parsedDocument.ud_doctype = fullmatch ? fullmatch[0] : "<!doctype html>";
   }
   workAroundUnspecifiedCharset(aDocument, details) {
@@ -2248,8 +2248,12 @@ if (document.title != "UltimaDark Settings") // We might load the classes to ret
 
   AllLevels.install();
   Common.install();
-  uDark.install();
-  uDark.keypoint("Installed");
+  new Promise(resolve => {
+    resolve(uDark.install())
+  }).then((installResult) => {
+    installResult !== false && uDark.keypoint("Installed",window.location.href);
+  });
+  
 }
 else {
   console.log("Page is UltimaDark Settings, not installing uDark", "Loading a lightweight version");
