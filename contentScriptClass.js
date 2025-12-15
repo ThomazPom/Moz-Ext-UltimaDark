@@ -2,9 +2,7 @@ class uDarkExtendedContentScript {
 
   is_content_script = true
   website_context = true // Tell ultimadark we are in a website context and is_color_var is available
-  port = browser.runtime.connect({ // Connect to the background script to register the edition of subresources
-    name: "port-from-cs"
-  });
+
 
   askSynchronousBackground(question, json = false, syncData = {}, param = "param") {
     let requestIdentifier = Math.random().toString(36).slice(2);
@@ -20,22 +18,26 @@ class uDarkExtendedContentScript {
 
 
     if (window.parent !== window && window.userSettings.embedsInheritanceBehavior == "inheritFromParent") {
-      let useHttpSwitchOff = ["http", "https"].includes(document.location.protocol);
+      let useHttpSwitchOff = ["http:", "https:"].includes(document.location.protocol);
       let isParentUDark = this.askSynchronousBackground("isParentUDark", true, {
         switchOffCSS: useHttpSwitchOff,
       }, "switchOffCSS").parentHasUltimaDark;
       if (!isParentUDark) {
         if (!useHttpSwitchOff) {
 
-            let sheet = new CSSStyleSheet();
-            sheet.replaceSync(uDark.cssSwitchOffString);
-            // document.adoptedStyleSheets = [sheet]
-            window.wrappedJSObject.document.adoptedStyleSheets.push(sheet);
+          let sheet = new CSSStyleSheet();
+          sheet.replaceSync(uDark.cssSwitchOffString);
+          // document.adoptedStyleSheets = [sheet]
+          window.wrappedJSObject.document.adoptedStyleSheets.push(sheet);
         }
         return false; // Do not install uDark in this embed since the parent does not have uDark and the user requested inheritance from parent
       }
 
     }
+    this.port = browser.runtime.connect({ // Connect to the background script to register the edition of subresources
+      // Do it after checking the parent frame to avoid registering unneeded connections && therefore whitelisting the frame
+      name: "port-from-cs"
+    });
 
 
     uDark.exportFunction = globalThis.exportFunction; // Don't override the exportFunction function, but make it available to ultimadark

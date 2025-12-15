@@ -36,8 +36,10 @@ class Listeners {
         // switch off CSS if requested
 
         if (mapData) {
+          uDark.general_cache.delete(mapKey); // One time use
           return browser.webNavigation.getFrame(mapData.frameDetails).then(moreFrameDetails => {
             let isParentUDark = !!uDark.getPort({ tabId: mapData.frameDetails.tabId, frameId: moreFrameDetails.parentFrameId });
+            
             if (!isParentUDark && mapData.message.switchOffCSS) {
               uDark.switchOffCSSInFrame(mapData.frameDetails.tabId, mapData.frameDetails.frameId);
             }
