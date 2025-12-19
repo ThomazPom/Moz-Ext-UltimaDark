@@ -60,9 +60,9 @@ class uDarkC extends uDarkExtended {
     "AliceBlue", "AntiqueWhite", "Aqua", "Aquamarine", "Azure", "Beige", "Bisque", "Black", "BlanchedAlmond", "Blue", "BlueViolet", "Brown", "BurlyWood", "CadetBlue", "Chartreuse", "Chocolate", "Coral", "CornflowerBlue", "Cornsilk", "Crimson", "Cyan", "DarkBlue", "DarkCyan", "DarkGoldenRod", "DarkGray", "DarkGrey", "DarkGreen", "DarkKhaki", "DarkMagenta", "DarkOliveGreen", "DarkOrange", "DarkOrchid", "DarkRed", "DarkSalmon", "DarkSeaGreen", "DarkSlateBlue", "DarkSlateGray", "DarkSlateGrey", "DarkTurquoise", "DarkViolet", "DeepPink", "DeepSkyBlue", "DimGray", "DimGrey", "DodgerBlue", "FireBrick", "FloralWhite", "ForestGreen", "Fuchsia", "Gainsboro", "GhostWhite", "Gold", "GoldenRod", "Gray", "Grey", "Green", "GreenYellow", "HoneyDew", "HotPink", "IndianRed", "Indigo", "Ivory", "Khaki", "Lavender", "LavenderBlush", "LawnGreen", "LemonChiffon", "LightBlue", "LightCoral", "LightCyan", "LightGoldenRodYellow", "LightGray", "LightGrey", "LightGreen", "LightPink", "LightSalmon", "LightSeaGreen", "LightSkyBlue", "LightSlateGray", "LightSlateGrey", "LightSteelBlue", "LightYellow", "Lime", "LimeGreen", "Linen", "Magenta", "Maroon", "MediumAquaMarine", "MediumBlue", "MediumOrchid", "MediumPurple", "MediumSeaGreen", "MediumSlateBlue", "MediumSpringGreen", "MediumTurquoise", "MediumVioletRed", "MidnightBlue", "MintCream", "MistyRose", "Moccasin", "NavajoWhite", "Navy", "OldLace", "Olive", "OliveDrab", "Orange", "OrangeRed", "Orchid", "PaleGoldenRod", "PaleGreen", "PaleTurquoise", "PaleVioletRed", "PapayaWhip", "PeachPuff", "Peru", "Pink", "Plum", "PowderBlue", "Purple", "RebeccaPurple", "Red", "RosyBrown", "RoyalBlue", "SaddleBrown", "Salmon", "SandyBrown", "SeaGreen", "SeaShell", "Sienna", "Silver", "SkyBlue", "SlateBlue", "SlateGray", "SlateGrey", "Snow", "SpringGreen", "SteelBlue", "Tan", "Teal", "Thistle", "Tomato", "Turquoise", "Violet", "Wheat", "White", "WhiteSmoke", "Yellow", "YellowGreen"]
   static SHORTHANDS = ["all", "animation", "animation-range", "background", "border", "border-block", "border-block-end", "border-block-start", "border-bottom", "border-color", "border-image", "border-inline", "border-inline-end", "border-inline-start", "border-left", "border-radius", "border-right", "border-style", "border-top", "border-width", "column-rule", "columns", "contain-intrinsic-size", "container", "flex", "flex-flow", "font", "font-synthesis", "font-variant", "gap", "grid", "grid-area", "grid-column", "grid-row", "grid-template", "inset", "inset-block", "inset-inline", "list-style", "margin", "margin-block", "margin-inline", "mask", "mask-border", "offset", "outline", "overflow", "overscroll-behavior", "padding", "padding-block", "padding-inline", "place-content", "place-items", "place-self", "position-try", "scroll-margin", "scroll-margin-block", "scroll-margin-inline", "scroll-padding", "scroll-padding-block", "scroll-padding-inline", "scroll-timeline", "text-decoration", "text-emphasis", "text-wrap", "transition"]
     .map(s => `(?:-moz-|-webkit-|-ms-)?${s}`); // Add vendor prefixes
-  static TAGS_TO_PROTECT = ["head", "html", "body", "frameset", "frame",
-    "table", // Protecting inner elements of <table> creates the situation where we need to protect table too, logically
-    "tr", "thead", "th", "tfoot", "td", "tbody", "col", "colgroup", "caption"
+  static TAGS_TO_PROTECT = ["head"//, "html", "body", "frameset", "frame",
+    // "table", // Protecting inner elements of <table> creates the situation where we need to protect table too, logically
+    // "tr", "thead", "th", "tfoot", "td", "tbody", "col", "colgroup", "caption"
   ]
   tagsToExcludeRegex = /<(noscript).*?(<!--.*?-->|.)*?<\/\1/gis // Tags to exclude from processing entirely : They can include strangy stuff like json containing backslashed quotes that will be htmlencoded, and stuff. Thatsa nightmare
   nonConnectedImagesAndSources = new Set();
@@ -571,7 +571,6 @@ class uDarkC extends uDarkExtended {
         if (uDark.disable_svg_data_url_edition) {
           return str;
         }
-        options.get_document = true;
 
         if (!b64) {
 
@@ -588,9 +587,7 @@ class uDarkC extends uDarkExtended {
             }
           });
         }
-
-        imageData = uDark.frontEditHTML(false, imageData, details, options).innerHTML;
-
+        imageData = uDark.frontEditHTML(false, imageData, details, options);
         let encoded = undefined;
         // uDark.disable_reencode_data_svg_to_base64=true;
         if (uDark.disable_reencode_data_svg_to_base64) {
@@ -615,7 +612,6 @@ class uDarkC extends uDarkExtended {
             encoded = uDark.rencodeToURI(imageData, dataHeader, true);
           }
           if (encoded.message) {
-            console.warn(encoded)
             encoded = encodeURIComponent(imageData);
             encoded = uDark.rencodeToURI(encoded, dataHeader.replace("base64", ""), false);
           }
@@ -731,7 +727,7 @@ class uDarkC extends uDarkExtended {
   setDocType(html, parsedDocument, details) {
     // Extract the DOCTYPE declaration from the original HTML string
 
-    let usedRegex = /^\s*<!doctype\s+html[^<]+?>/i
+    let usedRegex = /^\s*<!doctype\s+html[^<]*?>/i
     if (details.XHTML) {
       usedRegex = /.*?<!DOCTYPE\s+html[^<]+?>/is
 
@@ -744,7 +740,7 @@ class uDarkC extends uDarkExtended {
       // any unescaped DOCTYPE in the XML body cause the document to be invalid
     }
     const fullmatch = html.trimLeft().match(usedRegex);
-    parsedDocument.ud_doctype = fullmatch ? fullmatch[0] : "<!doctype html>";
+    parsedDocument.ud_doctype = fullmatch ? fullmatch[0] : ""; // Do not return doctype if not found, to avoid transforming a quirk to Standard
   }
   workAroundUnspecifiedCharset(aDocument, details) {
     // As we seen document.characterSet will default <meta http-equiv> we need to account the meta tag charset and re decode the document properly
@@ -778,7 +774,7 @@ class uDarkC extends uDarkExtended {
     }
     return false; // No workaround applied
   }
-  transformADocumentBackend(aDocument, details) {
+  transformADocumentBackend(aDocument, parsedDocument, details) {
     aDocument.querySelectorAll("meta[http-equiv=content-security-policy]").forEach(m => m.remove());
     if (!details.debugParsing) {
 
@@ -801,7 +797,7 @@ class uDarkC extends uDarkExtended {
       uDark.processColoredItems(aDocument);
 
       // 12. Inject custom CSS and dark color scheme if required (only for the first data load)
-      uDark.injectStylesIfNeeded(aDocument, details); // Only benefit of this ; avoids page being white on uDark refresh
+      uDark.injectStylesIfNeeded(parsedDocument, details); // Only benefit of this ; avoids page being white on uDark refresh
 
       // 13. Restore the original SVG elements that were temporarily replaced
       uDark.restoreSvgElements(svgElements);
@@ -817,14 +813,8 @@ class uDarkC extends uDarkExtended {
     if (!str || !str.trim().length) {
       return str;
     }
-
     let protectionExcluded = str.protect_numbered(this.tagsToExcludeRegex, `<noscript data-ud-id="{index}"></noscript`, true);
-    str = protectionExcluded.str;
 
-    str = str.protect_simple(uDark.tagsToProtectRegex, "ud-tag-ptd-$1"
-      // use word boundaries to avoid matching tags like "headings" or tbody or texts like innerHTML
-      // Frame and frameset are obsolete, but there were meant to be in head, and will be removed from body, they need to be protected too 
-    );
 
     details.XHTML = details.contentType.includes("application/xhtml+xml");
 
@@ -836,11 +826,9 @@ class uDarkC extends uDarkExtended {
     }
     else {
 
-      parsedDocument = uDark.createDocumentFromHtml("<body>" + str + "</body>"
-        /* Re encapsulate str into a <body> is not an overkill : Exists something called unsafeHTML clid binding. I did not understood what it is, but it needs a body tag for proper parsing*/
-      );
+      parsedDocument = uDark.createDocumentFromHtml(str);
+      aDocument = parsedDocument.documentElement;
 
-      aDocument = parsedDocument.body;
     }
 
 
@@ -853,7 +841,7 @@ class uDarkC extends uDarkExtended {
       }
     }
 
-    uDark.transformADocumentBackend(aDocument, details);
+    uDark.transformADocumentBackend(aDocument, parsedDocument, details);
     // 16. Return the final edited HTML
     let will_return;
     if (details.XHTML) {
@@ -861,9 +849,10 @@ class uDarkC extends uDarkExtended {
     }
     else {
 
-      will_return = parsedDocument.ud_doctype + aDocument.innerHTML
+      will_return = parsedDocument.ud_doctype + aDocument.outerHTML
     }
-    will_return = will_return.trim().unprotect_simple("ud-tag-ptd-").unprotect_numbered(protectionExcluded);
+    will_return = will_return.trim()
+      .unprotect_numbered(protectionExcluded);
     return will_return;
 
   }
@@ -893,10 +882,15 @@ class uDarkC extends uDarkExtended {
 
       // Cant use \b because of the possibility of a - next to the identifier, it's a word character
       str = str.protect_simple(uDark.tagsToProtectRegex, "ud-tag-ptd-$1");
-      parsedDocument = uDark.createDocumentFromHtml("<body>" + str + "</body>"
-        /* Re encapsulate str into a <body> is not an overkill : Exists something called unsafeHTML clid binding. I did not understood what it is, but it needs a body tag for proper parsing*/
-      );
-      aDocument = parsedDocument.body;
+      parsedDocument = uDark.createDocumentFromHtml(str);
+      options.ptd_head = parsedDocument.getElementsByTagName("ud-tag-ptd-head")[0];
+      if (options.ptd_head) {
+        let new_head = parsedDocument.createElement("head");
+        new_head.innerHTML = parsedDocument.head.innerHTML + options.ptd_head.innerHTML;
+        parsedDocument.head.replaceWith(new_head);
+        options.ptd_head.remove();
+      }
+      aDocument = parsedDocument;
     }
 
     // 4. Temporarily replace all SVG elements to avoid accidental style modifications
@@ -926,17 +920,19 @@ class uDarkC extends uDarkExtended {
 
     // 18. After all the edits, return the final HTML output
 
-    if (options.get_document) {
-      return aDocument;
-    }
     let resultEdited;
     if (options.STRICT_XML) {
       resultEdited = aDocument.documentElement.outerHTML.trim();
     }
     else {
-      resultEdited = aDocument.innerHTML.unprotect_simple("ud-tag-ptd-");
+      // if a head was found we need to return whole outerHTML
+      if (options.ptd_head) {
+        resultEdited = aDocument.documentElement.outerHTML.trim();
+      } else { // Else we just got encapsulated
+        resultEdited = aDocument.head.innerHTML + aDocument.body.innerHTML.trim();
+      }
     }
-    return resultEdited;
+    return resultEdited.unprotect_simple("ud-tag-ptd-");
 
   }
 
@@ -1155,7 +1151,7 @@ class uDarkC extends uDarkExtended {
       udMetaDark.content = "dark";
 
       // Note : looking for a head first is not a problem since aDocument, in the last iteration of parsing is a body.
-      let headElem = aDocument.head || aDocument.querySelector("ud-tag-ptd-head") || aDocument;
+      let headElem = aDocument.head;
       headElem.prepend(udMetaDark);
     }
   }
@@ -1241,17 +1237,6 @@ class uDarkC extends uDarkExtended {
 
     let str = strO;
 
-    if (false && strO.includes("/*!sc*/")) { // TODO: Fix thins in abetter way; this is a temporary and specific fix; 
-      console.warn("React incompatible css detectd", uDark.edit_str);
-      uDark.edit_str.last_debugged = {
-        strO,
-        cssStyleSheet,
-        verifyIntegrity,
-        details,
-        options
-      };
-      return strO;
-    }
 
 
     // Protection of imports
@@ -2251,9 +2236,9 @@ if (document.title != "UltimaDark Settings") // We might load the classes to ret
   new Promise(resolve => {
     resolve(uDark.install())
   }).then((installResult) => {
-    installResult !== false && uDark.keypoint("Installed",window.location.href);
+    installResult !== false && uDark.keypoint("Installed", window.location.href);
   });
-  
+
 }
 else {
   console.log("Page is UltimaDark Settings, not installing uDark", "Loading a lightweight version");
