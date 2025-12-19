@@ -10,7 +10,7 @@
   },
   // "web_accessible_resources": [
   //  // "ultimaDark.css"
-  // ],
+  // ], 
   // Sha265 is for UdarkTools.htm. It is required to allow the javascript fixing the filterHTMLResponseData to run.
   "content_security_policy": "script-src 'self' blob: 'unsafe-eval' 'sha256-RooFZFVBc+eqIlPYtIwvNYqUBaN1qp1VnXMy2xZLRKg='; ",
   "commands": {
