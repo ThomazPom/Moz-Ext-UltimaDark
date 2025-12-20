@@ -221,6 +221,7 @@ function showExclusionPriorityInfo() {
     showCancel: false
   });
 }
+
 // Register $modals as an Alpine magic property and also on window for global access
 // --- ASCII Color Grid Modal Logic ---
 function showAsciiColorModal(type) {
@@ -260,6 +261,47 @@ function showAsciiColorModal(type) {
     $modal.style.display = 'block';
   }
 }
+function showInfoModalForTimedMode() {
+  
+  showBS5Modal({
+    title: 'Timed light / dark mode',
+    body: `
+  <p>
+    If you want UltimaDark to automatically enable/disable based on time, the
+    <strong>best and most reliable solution</strong> is to use
+    UltimaDark in<strong class="btn btn-outline-info btn-sm">  Auto Mode</strong> together with
+    <a href="https://addons.mozilla.org/fr/firefox/addon/automatic-dark/" target="_blank"  class="link-info">Automatic Dark</a>.
+  </p>
+
+  <p>
+    Automatic Dark is a <strong>Mozilla-recommended</strong> extension dedicated to theme scheduling.
+    It already provides features that would be hard to replicate properly inside UltimaDark, such as:
+  </p>
+
+  <ul>
+    <li>Automatic or manual sunrise/sunset times</li>
+    <li>System theme–based switching</li>
+    <li>Separate daytime and nighttime themes</li>
+  </ul>
+
+  <p>
+    When Automatic Dark switches the browser theme, UltimaDark’s
+    <strong>Auto Mode</strong> follows instantly. The result is seamless, accurate timed activation
+    without adding extra complexity to UltimaDark.
+  </p>
+
+  <p>
+    <strong>Recommended setup:</strong> enable <em  class="btn btn-outline-info btn-sm">Auto Mode</em> in UltimaDark, and install and configure
+    <a href="https://addons.mozilla.org/fr/firefox/addon/automatic-dark/" target="_blank"  class="link-info">Automatic Dark</a>.
+  </p>
+`,
+    okText: 'View Automatic Dark',
+    onOk: () => {
+      window.open('https://addons.mozilla.org/fr/firefox/addon/automatic-dark/', '_blank');
+    },
+    showCancel: "Go back"
+  });
+}
 
 // Inform user about Import Settings flow (requires opening full mode in separate window)
 function showImportSettingsInfo() {
@@ -285,6 +327,7 @@ document.addEventListener("alpine:init", () => {
     confirmIncludeSite,
     showExclusionPriorityInfo,
     showAsciiColorModal,
-    showImportSettingsInfo
+    showImportSettingsInfo,
+    showInfoModalForTimedMode
   }));
 });

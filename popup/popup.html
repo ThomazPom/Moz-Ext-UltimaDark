@@ -41,6 +41,9 @@
           <button type="button" class="btn btn-sm"
             :class="$store.app.isEnabled === 'auto' ? 'btn-info' : 'btn-outline-secondary'"
             @click="$store.app.isEnabled = 'auto'; $store.app.saveSettings();">AUTO</button>
+          <button type="button" class="btn btn-sm"
+            :class="$store.app.isEnabled === 'pause' ? 'btn-warning' : 'btn-outline-secondary'"
+            @click="$modals.showInfoModalForTimedMode()">TIMED</button>
         </div>
       </label>
       <div class="form-text">
