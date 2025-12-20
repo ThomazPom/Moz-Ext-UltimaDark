@@ -854,11 +854,6 @@ class uDarkC extends uDarkExtended {
     will_return = will_return.trim()
       .unprotect_numbered(protectionExcluded);
 
-    if(strO.includes("JavaScript must be enabled")){
-      console.log(strO);
-      console.warn(will_return)
-      // return strO;
-    }
     return will_return;
 
   }
