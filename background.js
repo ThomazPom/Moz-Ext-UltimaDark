@@ -808,14 +808,14 @@ class uDarkC extends uDarkExtended {
 
   }
   parseAndEditHtmlContentBackend4(strO, details) {
+    
     // return strO;
     let str = strO;
     if (!str || !str.trim().length) {
       return str;
     }
     let protectionExcluded = str.protect_numbered(this.tagsToExcludeRegex, `<noscript data-ud-id="{index}"></noscript`, true);
-
-
+    str = protectionExcluded.str;
     details.XHTML = details.contentType.includes("application/xhtml+xml");
 
     let parsedDocument, aDocument;
@@ -841,7 +841,7 @@ class uDarkC extends uDarkExtended {
       }
     }
 
-    uDark.transformADocumentBackend(aDocument, parsedDocument, details);
+    // uDark.transformADocumentBackend(aDocument, parsedDocument, details);
     // 16. Return the final edited HTML
     let will_return;
     if (details.XHTML) {
@@ -853,6 +853,12 @@ class uDarkC extends uDarkExtended {
     }
     will_return = will_return.trim()
       .unprotect_numbered(protectionExcluded);
+
+    if(strO.includes("JavaScript must be enabled")){
+      console.log(strO);
+      console.warn(will_return)
+      // return strO;
+    }
     return will_return;
 
   }
