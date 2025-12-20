@@ -869,12 +869,10 @@ class uDarkC extends uDarkExtended {
 
       // Cant use \b because of the possibility of a - next to the identifier, it's a word character
       str = str.protect_simple(uDark.tagsToProtectRegex, "ud-tag-ptd-$1");
-      parsedDocument = uDark.createDocumentFromHtml(str);
+      parsedDocument= uDark.createDocumentFromHtml("<html><head>" + str); // Encapsulate in a full HTML document to be able to parse fragments properly
       options.ptd_head = parsedDocument.getElementsByTagName("ud-tag-ptd-head")[0];
-      if (options.ptd_head) {
-        let new_head = parsedDocument.createElement("head");
-        new_head.innerHTML = parsedDocument.head.innerHTML + options.ptd_head.innerHTML;
-        parsedDocument.head.replaceWith(new_head);
+      if (options.ptd_head) { // Allows to keep a head with all its forbidden tags and also to know its a full HTML document that was submited
+        parsedDocument.head.p_ud_innerHTML = parsedDocument.head.p_ud_innerHTML + options.ptd_head.innerHTML;
         options.ptd_head.remove();
       }
       aDocument = parsedDocument;
@@ -919,8 +917,8 @@ class uDarkC extends uDarkExtended {
         resultEdited = aDocument.head.innerHTML + aDocument.body.innerHTML.trim();
       }
     }
-    return resultEdited.unprotect_simple("ud-tag-ptd-");
-
+    let will_return = resultEdited.unprotect_simple("ud-tag-ptd-");
+    return will_return;
   }
 
   createDocumentFromHtml(html, type = "text/html") {
