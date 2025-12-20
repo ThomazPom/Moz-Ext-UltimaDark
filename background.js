@@ -807,8 +807,7 @@ class uDarkC extends uDarkExtended {
     uDark.restoreIntegrityAttributes(aDocument);
 
   }
-  parseAndEditHtmlContentBackend4(strO, details) {
-    
+  parseAndEditHtmlContentBackend4(strO, details) {    
     // return strO;
     let str = strO;
     if (!str || !str.trim().length) {
@@ -816,6 +815,7 @@ class uDarkC extends uDarkExtended {
     }
     let protectionExcluded = str.protect_numbered(this.tagsToExcludeRegex, `<noscript data-ud-id="{index}"></noscript`, true);
     str = protectionExcluded.str;
+
     details.XHTML = details.contentType.includes("application/xhtml+xml");
 
     let parsedDocument, aDocument;
@@ -841,7 +841,7 @@ class uDarkC extends uDarkExtended {
       }
     }
 
-    // uDark.transformADocumentBackend(aDocument, parsedDocument, details);
+    uDark.transformADocumentBackend(aDocument, parsedDocument, details);
     // 16. Return the final edited HTML
     let will_return;
     if (details.XHTML) {
