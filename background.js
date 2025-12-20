@@ -1,38 +1,3 @@
-
-
-// Listen for keyboard shortcut commands (e.g., Ctrl+Shift+U)
-if (typeof browser !== 'undefined' && browser.commands && browser.commands.onCommand) {
-  browser.commands.onCommand.addListener(async function (command) {
-    if (command === 'toggle-site') {
-      // Get the active tab
-      let tabs = await browser.tabs.query({ active: true, currentWindow: true });
-      let tab = tabs[0];
-      if (!tab || !tab.url) return;
-      // Send a message to the popup or content script to toggle exclusion for this site
-      // We'll use storage as a trigger for the popup logic
-      let url = tab.url;
-      // Use a custom event in storage to trigger popup logic
-      await browser.storage.local.set({ __udark_toggle_site: { url, time: Date.now() } });
-      // Optionally, open the popup if not already open
-      if (browser.browserAction && browser.browserAction.openPopup) {
-        try { await browser.browserAction.openPopup(); } catch (e) { }
-      }
-    }
-  });
-}
-class Common {
-  static appCompat(res) {
-
-    if (uDark.browserInfo.version < 105 && uDark.browserInfo.name == "Firefox") {
-      res.imageEditionEnabled = false;
-      console.warn("UltimaDark", "Image edition is disabled on Firefox versions below 105, as it is not supported");
-      globalThis.browser.storage.local.set(res);
-    }
-  }
-  static install() {
-
-  }
-};
 class uDarkC extends uDarkExtended {
   exportFunction = f => f; // Emulate the exportFunction function of the content script to avoid many ternary operators
   logPrefix = "UltimaDark:";
@@ -775,7 +740,17 @@ class uDarkC extends uDarkExtended {
     return false; // No workaround applied
   }
   transformADocumentBackend(aDocument, parsedDocument, details) {
-    aDocument.querySelectorAll("meta[http-equiv=content-security-policy]").forEach(m => m.remove());
+    aDocument.querySelectorAll("meta[http-equiv=content-security-policy]").forEach(meta =>
+    {
+      let item = { value: meta.getAttribute("content") };
+      if(item.value && item.value.trim().length)
+      {
+        uDark.headersDo["content-security-policy"](item);
+        meta.setAttribute("content", item.value);
+      }
+
+    }
+    );
     if (!details.debugParsing) {
 
       // 4. Temporarily replace all SVG elements to avoid accidental style modifications
@@ -869,7 +844,7 @@ class uDarkC extends uDarkExtended {
 
       // Cant use \b because of the possibility of a - next to the identifier, it's a word character
       str = str.protect_simple(uDark.tagsToProtectRegex, "ud-tag-ptd-$1");
-      parsedDocument= uDark.createDocumentFromHtml("<html><head>" + str); // Encapsulate in a full HTML document to be able to parse fragments properly
+      parsedDocument = uDark.createDocumentFromHtml("<html><head>" + str); // Encapsulate in a full HTML document to be able to parse fragments properly
       options.ptd_head = parsedDocument.getElementsByTagName("ud-tag-ptd-head")[0];
       if (options.ptd_head) { // Allows to keep a head with all its forbidden tags and also to know its a full HTML document that was submited
         parsedDocument.head.p_ud_innerHTML = parsedDocument.head.p_ud_innerHTML + options.ptd_head.innerHTML;
@@ -2207,27 +2182,27 @@ class AllLevels {
 
   }
 };
+const uDark = new uDarkC();
+window.uDark = uDark;
 
+const isExtensionPage = document.location.href.startsWith("moz-extension://");
+const isSettingsPage = document.title === "UltimaDark Settings";
 
+if (isExtensionPage && isSettingsPage) {
+  console.log(
+    "Page is UltimaDark Settings, not installing uDark",
+    "Loading a lightweight version"
+  );
 
-
-let uDark = new uDarkC();
-
-if (document.title != "UltimaDark Settings") // We might load the classes to retrieve default settings in popup
-{
-
-  AllLevels.install();
-  Common.install();
-  new Promise(resolve => {
-    resolve(uDark.install())
-  }).then((installResult) => {
-    installResult !== false && uDark.keypoint("Installed", window.location.href);
+  uDark.getSettings(settings => {
+    console.log("Loaded settings:", settings);
   });
-
-}
-else {
-  console.log("Page is UltimaDark Settings, not installing uDark", "Loading a lightweight version");
-  uDark.getSettings(z => {
-    console.log("Loaded settings:", z);
-  });
+} else {
+  
+    AllLevels.install();
+    new Promise(resolve => {
+      resolve(uDark.install())
+    }).then((installResult) => {
+      installResult !== false && uDark.keypoint("Installed", window.location.href);
+    });
 }

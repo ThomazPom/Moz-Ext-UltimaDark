@@ -1,4 +1,33 @@
+// Listen for keyboard shortcut commands (e.g., Ctrl+Shift+U)
+if (typeof browser !== 'undefined' && browser.commands && browser.commands.onCommand) {
+  browser.commands.onCommand.addListener(async function (command) {
+    if (command === 'toggle-site') {
+      // Get the active tab
+      let tabs = await browser.tabs.query({ active: true, currentWindow: true });
+      let tab = tabs[0];
+      if (!tab || !tab.url) return;
+      // Send a message to the popup or content script to toggle exclusion for this site
+      // We'll use storage as a trigger for the popup logic
+      let url = tab.url;
+      // Use a custom event in storage to trigger popup logic
+      await browser.storage.local.set({ __udark_toggle_site: { url, time: Date.now() } });
+      // Optionally, open the popup if not already open
+      if (browser.browserAction && browser.browserAction.openPopup) {
+        try { await browser.browserAction.openPopup(); } catch (e) { }
+      }
+    }
+  });
+}
+class Common {
+  static appCompat(res) {
 
+    if (uDark.browserInfo.version < 105 && uDark.browserInfo.name == "Firefox") {
+      res.imageEditionEnabled = false;
+      console.warn("UltimaDark", "Image edition is disabled on Firefox versions below 105, as it is not supported");
+      globalThis.browser.storage.local.set(res);
+    }
+  }
+};
 class uDarkExtended extends uDarkExtendedContentScript {
 
   noBodyStatusCodes = {
@@ -223,17 +252,17 @@ class uDarkExtended extends uDarkExtendedContentScript {
     }
     {
       // eligibility listeners removal
-    browser.runtime.onConnect.removeListener(uDark.portConnected);
-    browser.webNavigation.onBeforeNavigate.removeListener(Listeners.setEligibleRequestBeforeDataWL);
-    browser.webNavigation.onBeforeNavigate.removeListener(Listeners.setEligibleRequestBeforeDataBL);
+      browser.runtime.onConnect.removeListener(uDark.portConnected);
+      browser.webNavigation.onBeforeNavigate.removeListener(Listeners.setEligibleRequestBeforeDataWL);
+      browser.webNavigation.onBeforeNavigate.removeListener(Listeners.setEligibleRequestBeforeDataBL);
     }
     {
       // Main listeners removals
-    browser.webRequest.onHeadersReceived.removeListener(Listeners.editBeforeData);
-    browser.webRequest.onBeforeRequest.removeListener(Listeners.editBeforeRequestStyleSheet_sync);
-    browser.webRequest.onHeadersReceived.removeListener(Listeners.editOnHeadersReceivedStyleSheet);
-    browser.webRequest.onBeforeRequest.removeListener(Listeners.editBeforeRequestImage);
-    browser.webRequest.onHeadersReceived.removeListener(Listeners.editOnHeadersImage);
+      browser.webRequest.onHeadersReceived.removeListener(Listeners.editBeforeData);
+      browser.webRequest.onBeforeRequest.removeListener(Listeners.editBeforeRequestStyleSheet_sync);
+      browser.webRequest.onHeadersReceived.removeListener(Listeners.editOnHeadersReceivedStyleSheet);
+      browser.webRequest.onBeforeRequest.removeListener(Listeners.editBeforeRequestImage);
+      browser.webRequest.onHeadersReceived.removeListener(Listeners.editOnHeadersImage);
     }
     if (uDark.registeredCS && uDark.registeredCS.length) {
       while (uDark.registeredCS.length) {
@@ -283,7 +312,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
 
       }
       if (userSettings.embedsInheritanceBehavior === "inheritFromParent") {
-        uDark.info("Embeds inheritance behavior enabled, registering handlers"); 
+        uDark.info("Embeds inheritance behavior enabled, registering handlers");
         browser.runtime.onMessage.addListener(Listeners.askSynchronousBgIdHelper);
 
 
@@ -349,7 +378,9 @@ class uDarkExtended extends uDarkExtendedContentScript {
 
       let contentScript = {
         js: [
-          // {  file: "content_script.js"    }
+          {
+            file: "websitesOverrideScript.js"
+          },
           {
             file: "contentScriptClass.js"
           },
@@ -366,6 +397,34 @@ class uDarkExtended extends uDarkExtendedContentScript {
           code: uDark.settingsInContentScriptCSS()
         }], // Forced overrides
       };
+      if (uDark.browserInfo.Mozilla_Firefox >= 128) {
+        contentScript.js[0] = { code: `window.world_injection_available = 1;` }
+        uDark.registerCS({
+          css: [{
+            code: uDark.inject_css_override_top_only
+          }],
+          allFrames: false
+        });
+
+        uDark.registerCS({
+          js: [
+          {
+            code: `class uDarkExtended{ install(){}}`
+          },
+          {
+            file: "background.js",
+          },
+          {
+            file: "websitesOverrideScript.js"
+          },
+          {
+            code: `WebsitesOverrideScript.override_website();`
+          }
+          ],
+          world: "MAIN",
+        });
+      }
+
       uDark.registerCS({
         css: [{
           code: uDark.inject_css_override_top_only
@@ -705,6 +764,13 @@ class uDarkExtended extends uDarkExtendedContentScript {
     "content-security-policy-report-only": (x => { false }),
     "content-security-policy": (x => {
       let csp = x.value.toLowerCase();
+      if(uDark.browserInfo.Mozilla_Firefox >= 128){
+        x.value = x.value.replaceAll("data:",v=>{
+          return "https://data-image/ data:"; // Allow replacement of data: for udark data images
+        })
+        return true; // Since FF 128, we have world_injection_available, so no need to bypass CSP unless for udark data-images
+      }
+
       let cspArray = csp.split(/;|,/g).map(x => x.trim()).filter(x => x);
       /* Quoted values are very defined and never contain a comma or a semicolon. No protection needed
       Urls in CSP break on these characters, browser expects them to be url encoded, so we can't have them in the value

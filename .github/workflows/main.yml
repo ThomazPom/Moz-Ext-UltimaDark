@@ -28,6 +28,7 @@ jobs:
         icons/
         Listeners.js
         contentScriptClass.js
+        websitesOverrideScript.js
         backgroundClass.js
         fakeContentScriptClass.js
         popup/popup.html
