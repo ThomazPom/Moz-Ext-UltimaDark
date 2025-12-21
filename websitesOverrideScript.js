@@ -41,12 +41,22 @@ class WebsitesOverrideScript {
 
         let linkIntegrityErrorEvent = function (elem) {
             // This fix is needed for some websites that use link integrity, i don't know why but sometime even removing the integrity earlier in the code does not work
-            uDark.info("Link integrity error", elem, "lead to a reload of this script");
+            uDark.info("Link integrity error", elem, "led to a reload of this script");
             let href = elem.getAttribute("href");
-            href && elem.setAttribute("href", uDark.addNocacheToStrLink(href));
-            elem.removeAttribute("onerror");
+            href && elem.o_ud_setAttribute("href", uDark.addNocacheToStrLink(href));
         }
-
+        document.addEventListener("error", function (event) {
+            let constructor = event?.target?.constructor;
+            if([HTMLScriptElement, HTMLLinkElement].includes(constructor)){
+                let elem = event.target;
+                if(elem.hasAttribute("data-no-integ") || elem.origIntegrity){
+                    linkIntegrityErrorEvent(elem);
+                }
+            }
+        }, {
+            capture: true,
+            passive: true,
+        });
 
         window.userSettingsReadyAction = function () {
             uDark.success("User settings ready", window.userSettings);
@@ -286,7 +296,7 @@ class WebsitesOverrideScript {
         })
         uDark.valuePrototypeEditor([HTMLLinkElement, HTMLScriptElement], "integrity", (elem, value) => {
             console.log("CSS integrity set", elem, value);
-            elem.addEventListener("error", z => linkIntegrityErrorEvent(elem), { once: true, capture: true });
+            // elem.addEventListener("error", z => linkIntegrityErrorEvent(elem), { once: true, capture: true });
             elem.origIntegrity = value;
             return value;
         }, false, (elem, value) => {

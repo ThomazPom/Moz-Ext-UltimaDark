@@ -1156,7 +1156,6 @@ class uDarkC extends uDarkExtended {
     aDocument.querySelectorAll("[integrity]").forEach(integrityElem => {
       integrityElem.setAttribute("data-no-integ", integrityElem.getAttribute("integrity"));
       integrityElem.removeAttribute("integrity");
-      integrityElem.setAttribute("onerror", "uDark.linkIntegrityErrorEvent(this)"); // Fix for reloading the resource if it fails to load, happened on graphene.org 
     });
   }
 
