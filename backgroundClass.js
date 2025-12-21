@@ -761,6 +761,10 @@ class uDarkExtended extends uDarkExtendedContentScript {
     details.charset = (details.charset || ["", defaultCharset])[1].toLowerCase();
   }
   headersDo = {
+    "link"(x) {
+      x.value=x.value.replace("integrity=","data-no-integrity="); // Remove integrity attribute from link headers, as it can block udark css injection
+      return true;
+    },
     "content-security-policy-report-only": (x => { false }),
     "content-security-policy": (x => {
       let csp = x.value.toLowerCase();
