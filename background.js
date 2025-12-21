@@ -741,11 +741,9 @@ class uDarkC extends uDarkExtended {
     return false; // No workaround applied
   }
   transformADocumentBackend(aDocument, parsedDocument, details) {
-    aDocument.querySelectorAll("meta[http-equiv=content-security-policy]").forEach(meta =>
-    {
+    aDocument.querySelectorAll("meta[http-equiv=content-security-policy]").forEach(meta => {
       let item = { value: meta.getAttribute("content") };
-      if(item.value && item.value.trim().length)
-      {
+      if (item.value && item.value.trim().length) {
         uDark.headersDo["content-security-policy"](item);
         meta.setAttribute("content", item.value);
       }
@@ -777,6 +775,9 @@ class uDarkC extends uDarkExtended {
 
       // 13. Restore the original SVG elements that were temporarily replaced
       uDark.restoreSvgElements(svgElements);
+
+      uDark.markUnclosedForms(parsedDocument);
+
     }
 
     // 15. Remove the integrity attribute from elements and replace it with a custom attribute
@@ -815,7 +816,11 @@ class uDarkC extends uDarkExtended {
     let will_return = parsedDocument.ud_doctype + aDocument.outerHTML
     will_return = will_return.trim()
       .unprotect_numbered(protectionExcluded);
-
+    will_return = will_return.replaceAll("</form><!--unclosed-form-->", ""
+      // Our parsing repaired thes unclosed forms but we are able to detect them
+      // But in HTML an unclosed form attaches following elements to the form.
+      // If we send the repaired version with closing </form> the main page will see a closed form and not attach following elements to it.
+    );
     return will_return;
 
   }
@@ -1116,7 +1121,19 @@ class uDarkC extends uDarkExtended {
       headElem.prepend(udMetaDark);
     }
   }
-
+  markUnclosedForms(parsedDocument) {
+    [...parsedDocument.forms].forEach(form => {
+      for(let elem of [...form.elements]) {
+        if(!elem.hasAttribute("form")) {
+          if(!form.contains(elem)) {
+            form.insertAdjacentHTML("afterend", "<!--unclosed-form-->");
+            console.warn("Detected unclosed form", form, elem);
+            return;
+          }
+        }
+      }
+    });
+  }
   restoreSvgElements(svgElements) {
     // Restore the original SVG elements that were temporarily replaced
     svgElements.forEach(([svg, tempReplace]) => {
@@ -2198,11 +2215,11 @@ if (isExtensionPage && isSettingsPage) {
     console.log("Loaded settings:", settings);
   });
 } else {
-  
-    AllLevels.install();
-    new Promise(resolve => {
-      resolve(uDark.install())
-    }).then((installResult) => {
-      installResult !== false && uDark.keypoint("Installed", window.location.href);
-    });
+
+  AllLevels.install();
+  new Promise(resolve => {
+    resolve(uDark.install())
+  }).then((installResult) => {
+    installResult !== false && uDark.keypoint("Installed", window.location.href);
+  });
 }
