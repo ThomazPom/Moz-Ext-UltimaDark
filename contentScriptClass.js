@@ -68,7 +68,7 @@ class uDarkExtendedContentScript {
 
     }
     else {
-      console.warn("UltimaDark : Direct window export is not available, using cloneInto is not implemented yet");
+      // console.warn("UltimaDark : Direct window export is not available, using cloneInto is not implemented yet");
       // TODO : Alterantive injection : Cloneinto ? or smart <script> injection ?
       // CloneInto seems to be the best candidate given testing.
     }
