@@ -762,7 +762,6 @@ class uDarkExtended extends uDarkExtendedContentScript {
   }
   headersDo = {
     "link"(x) {
-      console.log("Original link header:", x.value);
       x.value=x.value.replace("integrity=","data-no-integrity="); // Remove integrity attribute from link headers, as it can block udark css injection
       return true;
     },
