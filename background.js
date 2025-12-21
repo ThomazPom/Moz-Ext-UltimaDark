@@ -816,11 +816,14 @@ class uDarkC extends uDarkExtended {
     let will_return = parsedDocument.ud_doctype + aDocument.outerHTML
     will_return = will_return.trim()
       .unprotect_numbered(protectionExcluded);
-    will_return = will_return.replaceAll("</form><!--unclosed-form-->", ""
+    if(parsedDocument.hasUnclosedForms)
+    {    
       // Our parsing repaired thes unclosed forms but we are able to detect them
       // But in HTML an unclosed form attaches following elements to the form.
       // If we send the repaired version with closing </form> the main page will see a closed form and not attach following elements to it.
-    );
+        will_return = will_return.replaceAll("</form><!--unclosed-form-->", "");
+    }
+    
     return will_return;
 
   }
@@ -1128,6 +1131,7 @@ class uDarkC extends uDarkExtended {
           if(!form.contains(elem)) {
             form.insertAdjacentHTML("afterend", "<!--unclosed-form-->");
             console.warn("Detected unclosed form", form, elem);
+            parsedDocument.hasUnclosedForms = true;
             return;
           }
         }
