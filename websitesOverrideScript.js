@@ -36,7 +36,7 @@ class WebsitesOverrideScript {
         let start = performance.now();
 
         uDark.info("Content script override website", window);
-        
+
         uDark.ensureBestRGBAFuncRef();
         if (!uDark.userSettings.serviceWorkersEnabled && window.navigator.serviceWorker) {
             if (uDark.localStorageAvailable) {
@@ -177,6 +177,9 @@ class WebsitesOverrideScript {
                 let returnVal = value.split(new RegExp("#?" + uDark.imageSrcInfoMarker))[0];
                 if (returnVal.startsWith("https://data-image/?base64IMG=")) {
                     returnVal = returnVal.slice(30);
+                }
+                if (returnVal.startsWith("data:text/ud-late-connection;")) {
+                    returnVal = returnVal.slice(29);
                 }
                 return returnVal;
             }
