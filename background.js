@@ -30,6 +30,18 @@ class uDarkC extends uDarkExtended {
     "table", // Protecting inner elements of <table> creates the situation where we need to protect table too, logically
     "tr", "thead", "th", "tfoot", "td", "tbody", "col", "colgroup", "caption" // However pn front side, users can insert TR in tables and parser would not understand ortphans table inner elements and keep only their text content
   ]
+  static safeExportKeys = [ // Keys that can be exported to the client page without compromising security or confidentiality
+      "cacheEnabled",
+      "serviceWorkersEnabled",
+      "imageEditionEnabled",
+      "min_bright_fg",
+      "max_bright_fg",
+      "min_bright_bg_trigger",
+      "max_bright_bg",
+      "min_bright_bg",
+      "bg_negative_modifier",
+      "fg_negative_modifier",
+    ];
   tagsToExcludeRegex = /<(noscript).*?(<!--.*?-->|.)*?<\/\1/gis // Tags to exclude from processing entirely : They can include strangy stuff like json containing backslashed quotes that will be htmlencoded, and stuff. Thatsa nightmare
   nonConnectedImagesAndSources = new Set();
   static CSS_COLOR_FUNCTIONS = ["rgb", "rgba", "hsl", "hsla", "hwb", "lab", "lch", "color", "color-mix", "oklch", "oklab"]
@@ -122,6 +134,14 @@ class uDarkC extends uDarkExtended {
   }
   defaultSettings = { ...this.userSettings }
 
+  getSafeUserSettings(usedSettings) {
+    
+    return uDarkC.safeExportKeys.reduce((obj, key) => {
+      obj[key] = usedSettings[key];
+      return obj;
+    }, {});
+
+  }
   getSettings(resolve) {
     browser.storage.local.get(null, function (res) {
       Object.assign(uDark.userSettings, res);
@@ -373,12 +393,11 @@ class uDarkC extends uDarkExtended {
         // console.warn("UltimaDark: Image is now connected to DOM, processing it", image,imageTrueSrc,image.isConnected,image.parentNode);
 
         (image.parentNode?.childNodes || [image]).forEach(node => {
-
-          if (node.hasAttribute("src")) {
+          if (node.hasAttribute && node.hasAttribute("src")) {
             node.setAttribute("src", uDark.image_element_prepare_href(node, image.getAttribute("src").replace(modifer, ""), { ...options, dontEditNonConnected: true }));
 
           }
-          if (node.hasAttribute("srcset")) {
+          if (node.hasAttribute && node.hasAttribute("srcset")) {
             node.setAttribute("srcset", uDark.image_element_prepare_href(node, node.getAttribute("srcset").replaceAll(modifer, ""), { ...options, dontEditNonConnected: true }));
 
           }

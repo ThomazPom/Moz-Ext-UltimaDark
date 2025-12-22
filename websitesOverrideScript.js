@@ -36,64 +36,36 @@ class WebsitesOverrideScript {
         let start = performance.now();
 
         uDark.info("Content script override website", window);
+        
+        uDark.ensureBestRGBAFuncRef();
+        if (!uDark.userSettings.serviceWorkersEnabled && window.navigator.serviceWorker) {
+            if (uDark.localStorageAvailable) {
+                // Insecure operations have in common a non available localStorage
+                window.navigator.serviceWorker.getRegistrations().then(rs => rs.map(x => x.unregister()))
+            }
+            delete Navigator.prototype.serviceWorker;
+        }
 
-
+        // Avoid infinite loops 
+        if (window.uDark && window.uDark.installed) {
+            return; // Already fully installed. Do not reinstall if somehow another uDark object gets injected in the page
+        } else {
+            uDark.installed = true;
+        }
         {
-            // Link integrity ignored repair : That was before we found the real reason of the issue : the integrity in LINK headers. Now treating that in the right
-                
-            // let linkIntegrityErrorEvent = function (elem) {
-            //     // This fix is needed for some websites that use link integrity, i don't know why but sometime even removing the integrity earlier in the code does not work
-            //     uDark.info("Link integrity error", elem, "led to a reload of this script");
-            //     let href = elem.getAttribute("href");
-            //     href && elem.o_ud_setAttribute("href", uDark.addNocacheToStrLink(href));
-            // }
-            // document.addEventListener("error", function (event) {
-            //     let constructor = event?.target?.constructor;
-            //     if([HTMLScriptElement, HTMLLinkElement].includes(constructor)){
-            //         let elem = event.target;
-            //         if(elem.hasAttribute("data-no-integ") || elem.origIntegrity){
-            //             linkIntegrityErrorEvent(elem);
-            //         }
-            //     }
-            // }, {
-            //     capture: true,
-            //     passive: true,
-            // });
+            // Zone for revoking property edition by the website : // no true=no trust
+            // https://developer.mozilla.org/fr/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty
+            // Some functions are replaced by good or less polyfills, i prefer native functions when possible
+            Object.defineProperty(String.prototype, "replaceAll", {
+                value: String.prototype.replaceAll,
+                writable: false,
+                configurable: false,
+                enumerable: false
+            }); // WikiCommons uses this one
+
+            // End of zone for revoking property edition by the website
         }
 
-        window.userSettingsReadyAction = function () {
-            uDark.success("User settings ready", window.userSettings);
-            uDark.ensureBestRGBAFuncRef();
-            if (!uDark.userSettings.serviceWorkersEnabled && window.navigator.serviceWorker) {
-                if (uDark.localStorageAvailable) {
-                    // Insecure operations have in common a non available localStorage
-                    window.navigator.serviceWorker.getRegistrations().then(rs => rs.map(x => x.unregister()))
-                }
-                delete Navigator.prototype.serviceWorker;
-            }
-        }
-        if (uDark.direct_window_export) {
-            document.wrappedJSObject = document;
-            // Avoid infinite loops 
-            if (window.uDark && window.uDark.installed) {
-                return; // Already fully installed. Do not reinstall if somehow another uDark object gets injected in the page
-            } else {
-                uDark.installed = true;
-            }
-            {
-                // Zone for revoking property edition by the website : // no true=no trust
-                // https://developer.mozilla.org/fr/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty
-                // Some functions are replaced by good or less polyfills, i prefer native functions when possible
-                Object.defineProperty(String.prototype, "replaceAll", {
-                    value: String.prototype.replaceAll,
-                    writable: false,
-                    configurable: false,
-                    enumerable: false
-                }); // WikiCommons uses this one
-
-                // End of zone for revoking property edition by the website
-            }
-        }
         uDark.checkDomEdit = false;
         if (uDark.checkDomEdit) {
 

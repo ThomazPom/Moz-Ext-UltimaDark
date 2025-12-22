@@ -409,7 +409,9 @@ class uDarkExtended extends uDarkExtendedContentScript {
         uDark.registerCS({
           js: [
           {
-            code: `class uDarkExtended{ install(){}}`
+            code: `class uDarkExtended{ install(){
+              uDark.userSettings = ${JSON.stringify(uDark.getSafeUserSettings(uDark.userSettings))};
+            }}`
           },
           {
             file: "background.js",
@@ -599,7 +601,6 @@ class uDarkExtended extends uDarkExtendedContentScript {
       });
     }
 
-    uDark.keypoint("Installed");
   }
 
   installToggleSiteCommand(resolve) { // This is a command that will be available in the browser shortcuts, it will trigger the toggle action, it's a way to toggle the site without opening the popup

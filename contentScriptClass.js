@@ -37,18 +37,8 @@ class uDarkExtendedContentScript {
       // Do it after checking the parent frame to avoid registering unneeded connections && therefore whitelisting the frame
       name: "port-from-cs"
     });
-
-
     uDark.exportFunction = globalThis.exportFunction; // Don't override the exportFunction function, but make it available to ultimadark
     console.info("UltimaDark", "Content script install", window);
-    // try {
-    //   window.wrappedJSObject.eval("")
-    // }
-    // catch (e) {
-
-    //   console.warn("UltimaDark : Failed evaluating code in content script", e, window.wrappedJSObject);
-    //   uDark.direct_window_export = false; // If we cannot eval, we cannot export functions to the page via performant method
-    // }
     if (uDark.direct_window_export && !window.world_injection_available) {
 
       [
@@ -57,14 +47,21 @@ class uDarkExtendedContentScript {
           window.uDark = new uDarkC();
         },
         AllLevels.install,
+        {
+          do: z => window.wrappedJSObject.uDark.userSettings = cloneInto(uDark.getSafeUserSettings(window.userSettings), window)
+        },
         WebsitesOverrideScript.override_website
 
 
       ].map(code => {
+        if (code.do) {
+          console.log("Executing code.do()", code);
+          return code.do();
+        }
         let codeStr = code.join ? code.map(x => x.toString()).join("\n") : "(" + code.toString() + ")()";
         (new window.wrappedJSObject.Function(codeStr))(); // Use Function to avoid eval, better speed, less warning
-        // window.wrappedJSObject.eval( codeStr );
       });
+
 
     }
     else {
@@ -72,22 +69,6 @@ class uDarkExtendedContentScript {
       // TODO : Alterantive injection : Cloneinto ? or smart <script> injection ?
       // CloneInto seems to be the best candidate given testing.
     }
-
-    window.wrappedJSObject.uDark.userSettings = cloneInto({  // Preserve user privacy by not exporting sensible settings to the page
-      cacheEnabled: window.userSettings.cacheEnabled,
-      serviceWorkersEnabled: window.userSettings.serviceWorkersEnabled,
-      imageEditionEnabled: window.userSettings.imageEditionEnabled,
-      min_bright_fg: window.userSettings.min_bright_fg,
-      max_bright_fg: window.userSettings.max_bright_fg,
-      min_bright_bg_trigger: window.userSettings.min_bright_bg_trigger,
-      max_bright_bg: window.userSettings.max_bright_bg,
-      min_bright_bg: window.userSettings.min_bright_bg,
-      bg_negative_modifier: window.userSettings.bg_negative_modifier,
-      fg_negative_modifier: window.userSettings.fg_negative_modifier,
-    }, window);
-
-    window.wrappedJSObject.userSettingsReadyAction();
-
   }
-  
+
 }
