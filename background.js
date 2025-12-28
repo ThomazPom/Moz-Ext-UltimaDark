@@ -1,3 +1,5 @@
+
+
 class uDarkC extends uDarkExtended {
   exportFunction = f => f; // Emulate the exportFunction function of the content script to avoid many ternary operators
   logPrefix = "UltimaDark:";
@@ -31,18 +33,21 @@ class uDarkC extends uDarkExtended {
     "tr", "thead", "th", "tfoot", "td", "tbody", "col", "colgroup", "caption" // However pn front side, users can insert TR in tables and parser would not understand ortphans table inner elements and keep only their text content
   ]
   static safeExportKeys = [ // Keys that can be exported to the client page without compromising security or confidentiality
-      "cacheEnabled",
-      "serviceWorkersEnabled",
-      "imageEditionEnabled",
-      "min_bright_fg",
-      "max_bright_fg",
-      "min_bright_bg_trigger",
-      "max_bright_bg",
-      "min_bright_bg",
-      "bg_negative_modifier",
-      "fg_negative_modifier",
-    ];
-  tagsToExcludeRegex = /<(noscript).*?(<!--.*?-->|.)*?<\/\1/gis // Tags to exclude from processing entirely : They can include strangy stuff like json containing backslashed quotes that will be htmlencoded, and stuff. Thatsa nightmare
+    "cacheEnabled",
+    "serviceWorkersEnabled",
+    "imageEditionEnabled",
+    "min_bright_fg",
+    "max_bright_fg",
+    "min_bright_bg_trigger",
+    "max_bright_bg",
+    "min_bright_bg",
+    "bg_negative_modifier",
+    "fg_negative_modifier",
+  ];
+
+
+
+  tagsToExcludeRegex = /<(noscript)(?=\s|\/|>)[^>]*>(<!--.*?-->|.)*?<\/\1/gis // Tags to exclude from processing entirely : They can include strangy stuff like json containing backslashed quotes that will be htmlencoded, and stuff. Thatsa nightmare
   nonConnectedImagesAndSources = new Set();
   static CSS_COLOR_FUNCTIONS = ["rgb", "rgba", "hsl", "hsla", "hwb", "lab", "lch", "color", "color-mix", "oklch", "oklab"]
   shortHandRegex = new RegExp(`(?<![\\w-])(${uDarkC.SHORTHANDS.join("|")})([\s\t]*:)`, "gi") // The \t is probably not needed, as \s includes it
@@ -135,7 +140,7 @@ class uDarkC extends uDarkExtended {
   defaultSettings = { ...this.userSettings }
 
   getSafeUserSettings(usedSettings) {
-    
+
     return uDarkC.safeExportKeys.reduce((obj, key) => {
       obj[key] = usedSettings[key];
       return obj;
@@ -710,21 +715,118 @@ class uDarkC extends uDarkExtended {
   }
 
   setDocType(html, parsedDocument, details) {
-    // Extract the DOCTYPE declaration from the original HTML string
 
-    let usedRegex = /^\s*<!doctype\s+html[^<]*?>/i
-    if (details.XHTML) {
-      usedRegex = /.*?<!DOCTYPE\s+html[^<]+?>/is
 
-      // In XHTML documents, the DOCTYPE declaration may be preceded by:
-      // - XML declaration (<?xml version="1.0"?>)
-      // - XML stylesheet processing instructions
-      // - Comments
-      // This regex captures everything up to and including the DOCTYPE declaration
-      // Note: We don't need to handle  DOCTYPE strings in content because
-      // any unescaped DOCTYPE in the XML body cause the document to be invalid
-    }
-    const fullmatch = html.trimLeft().match(usedRegex);
+
+    /*
+       /*
+    ===============================================================================
+    HTML document prolog parsing – exact-fidelity rationale
+    ===============================================================================
+    
+    Purpose
+    -------
+    Extract and preserve the document prolog exactly as found in the original
+    source, up to (and including) the DOCTYPE if present. This logic is explicitly
+    non-normalizing: malformed constructs are preserved verbatim to avoid silently
+    changing the document mode (e.g. quirks → standards).
+    
+    Normative reference:
+    https://www.w3.org/TR/2021/NOTE-html53-20210128/syntax.html#writing-html-documents
+    
+    Per spec, before the <html> element a document may contain, in order:
+    an optional BOM, arbitrary whitespace and comments, a DOCTYPE, then again
+    arbitrary whitespace and comments.
+    
+    -------------------------------------------------------------------------------
+    Whitespace
+    ----------
+    Whitespace is not limited to literal characters. TAB, LF, FF, CR and SPACE
+    (U+0009, U+000A, U+000C, U+000D, U+0020) may appear either directly or encoded
+    as numeric character references (decimal or hexadecimal). The regex therefore
+    accepts both literal and entity-encoded forms to prevent premature termination
+    before the DOCTYPE.
+    
+    -------------------------------------------------------------------------------
+    Comments and bogus constructs
+    -----------------------------
+    Valid comments include <!-- ... --> and <!-- ... --!>. In addition, the HTML
+    tokenizer may emit bogus comment tokens for malformed markup encountered before
+    the document element.
+    
+    Bogus comment state can be entered from the tag-open state when encountering:
+    "/" followed by anything other than an ASCII letter, '>' or EOF
+    OR (by entering into Markup declaration open state with "!" if not followed by "DOCTYPE" or --)
+    OR "?". Toeknizer will repair this into a comment, but thats none of our business
+    
+    -------------------------------------------------------------------------------
+    Interference minimization rationale
+    -----------------------------------
+    Although this proxy actively parses and rewrites parts of the document, the
+    prolog is treated as a pass-through region where interference must be minimized.
+    All constructs that the origin server emitted before <html> are preserved,
+    including semantically inert or malformed ones, to ensure that the client
+    receives content as close as possible to what the website intended after proxy
+    processing.
+    
+    Dropping, normalizing or reordering these constructs could subtly alter parsing
+    behavior, document mode, or downstream client expectations. Preservation here is
+    therefore intentional and defensive, not an attempt at validation or cleanup.
+    // Stray </...> tags are kept to preserve origin fidelity; they also happen to
+    // match the bogus-construct branch cleanly, which simplifies handling.
+    -------------------------------------------------------------------------------
+    Regex intent
+    ------------
+    The regex greedily consumes everything that the HTML parser allows before the
+    document element: whitespace (literal or entity-encoded), valid comments, bogus
+    comments, processing instructions, invalid or removed closing tags, and the
+    DOCTYPE itself. Consumption stops at the first construct that returns the
+    tokenizer to normal data-state element parsing (typically <html>).
+    
+    If no DOCTYPE is present, ud_doctype is left empty to avoid introducing or
+    normalizing a DOCTYPE and accidentally altering the rendering mode.
+    ===============================================================================
+    */
+
+    /*
+    
+ 
+ This regexp ^(  … )* greedily matches everything that is permitted to appear at the
+ start of an HTML document *before normal element parsing begins*, stopping
+ as soon as the tokenizer would re-enter the DATA state for real markup
+ (typically at <html>).
+ 
+ Each alternative corresponds to a construct that is legal or tolerated by the
+ HTML tokenizer in the document prolog:
+    1) \s and \0x00
+    Matches literal ASCII whitespace and BOM at start (Specific to javascript).
+ 
+ 2) &#0*?(9|10|12|13|32)(?![0-9])
+    Matches decimal numeric character references for TAB, LF, FF, CR and SPACE.
+    The negative lookahead prevents over-consuming longer numeric entities.
+ 
+ 3) &#x0*?(9|A|C|D|20)(?![0-9A-F])
+    Same as above, but for hexadecimal numeric character references.
+ 3.5) 0*? accepts leading-zero numeric references (&#09;, &#x000A) while staying minimally greedy.
+ 4) <!--.*?(--!?>|$)
+    Matches valid HTML comments, including the non-standard but tolerated
+    “comment end bang” form (--!>). Also tolerates unterminated comments to
+    preserve malformed input verbatim.
+    // Real HTML comments must consume until '-->' or '--!>'; placing this branch
+     // first avoids treating them as generic '<!' constructs that stop at '>'.
+ 
+ 5) <[\/!\?].*?(>|$)
+    Matches any '<' followed by '/', '!' or '?', covering:
+      - removed or invalid closing tags (</...>)
+      - DOCTYPE declarations (<!DOCTYPE ...>)
+      - comments not caught above
+      - processing instructions (<?...?>)
+    These forms may legitimately lead the tokenizer into the bogus comment
+    state and must be preserved.
+ */
+    let usedRegex =
+      /^(\x00|\s|&#0*?(?:9|10|12|13|32)(?![0-9])|&#x0*?(?:9|A|C|D|20)(?![0-9A-F])|<!--.*?(--!?>|$)|<[\/!\?].*?(>|$))*/si
+    const fullmatch = html.match(usedRegex);
     parsedDocument.ud_doctype = fullmatch ? fullmatch[0] : ""; // Do not return doctype if not found, to avoid transforming a quirk to Standard
   }
   workAroundUnspecifiedCharset(aDocument, details) {
@@ -803,8 +905,98 @@ class uDarkC extends uDarkExtended {
     uDark.restoreIntegrityAttributes(aDocument);
 
   }
+  reparseDocumentWithNoScript(parsedDocument, strO, details) {
+    let allowedHead = new Set([
+
+      "title",
+      "base",
+      "link",
+      "style",
+      "meta",
+      "script",
+      "noscript",
+      "template",
+
+
+    ])
+    let html = parsedDocument.ud_doctype + '<br ud-before-any>' + strO.slice(parsedDocument.ud_doctype.length);
+
+    html = html.replace("<head", "<ud-ptd-head");
+    html = html.replace("</head", "</ud-ptd-head");
+    let retParsedDocument = uDark.createDocumentFromHtml(html, details.XHTML ? "application/xhtml+xml" : "text/html");
+
+    retParsedDocument.restorePTDHead = true;
+    retParsedDocument.ud_doctype = parsedDocument.ud_doctype;
+    let fnNodeStart = node => {
+      retParsedDocument.documentElement.insertBefore(node, retParsedDocument.head);
+    }
+    let fnNode = fnNodeStart
+    let fnNodeHead = node=>{
+      console.log("Adding head node",node);
+      retParsedDocument.head.append(node);
+    };
+    let fnNodeAfterHead = node=>{
+      console.log("Adding head node",node);
+      retParsedDocument.documentElement.insertBefore(node, retParsedDocument.body);
+    };
+    for (let node of [...retParsedDocument.body.childNodes]) { // Use ... to clone the list as we will modify the DOM while iterating
+      
+      if (node.nodeType === Node.ELEMENT_NODE && node.hasAttribute("ud-before-any")) {
+        node.remove();
+        continue;
+      }
+      let isPTDHead = node.nodeType === Node.ELEMENT_NODE && node.tagName.toLowerCase() === "ud-ptd-head"
+      if (isPTDHead) {
+        retParsedDocument.restorePTDHead=false;
+        node.childNodes.forEach(childNode=>{
+          fnNodeHead(childNode);
+        });
+        node.getAttributeNames().forEach(attrName=>{
+          retParsedDocument.head.setAttribute(attrName,node.getAttribute(attrName));
+        });
+        node.remove();
+        fnNode= fnNodeAfterHead;
+        continue;
+      }
+
+      let isEmptyText = node.nodeType === Node.TEXT_NODE && !node.textContent.trim().length
+      let isComment = node.nodeType === Node.COMMENT_NODE
+      let isValidElement = node.nodeType === Node.ELEMENT_NODE && allowedHead.has(node.tagName.toLowerCase())
+      
+      
+
+
+
+      if(isValidElement && fnNode===fnNodeStart)
+      {
+        console.log("Valid head element",node);
+        fnNode = fnNodeHead
+      }
+
+
+      
+      
+      
+      if (
+        isComment
+        || isEmptyText
+        || isValidElement
+
+      ) {
+        fnNode(node, {isEmptyText,isComment,isValidElement});
+      }
+      else {
+        break; // stop at first non-head node
+      }
+
+    }
+
+    return retParsedDocument;
+
+  }
   parseAndEditHtmlContentBackend4(strO, details) {
     // return strO;
+
     let str = strO;
     if (!str || !str.trim().length) {
       return str;
@@ -818,10 +1010,12 @@ class uDarkC extends uDarkExtended {
     let parsedDocument = uDark.createDocumentFromHtml(str, details.XHTML ? "application/xhtml+xml" : "text/html");
     let aDocument = parsedDocument.documentElement;
 
-
-
-
     uDark.setDocType(strO, parsedDocument, details);
+
+    if (parsedDocument.head.querySelector("noscript")) {
+      parsedDocument = uDark.reparseDocumentWithNoScript(parsedDocument, strO, details);
+      aDocument = parsedDocument.documentElement;
+    }
 
     if (details.unspecifiedCharset) {
       let workAroundResult = uDark.workAroundUnspecifiedCharset(aDocument, details);
@@ -835,14 +1029,13 @@ class uDarkC extends uDarkExtended {
     let will_return = parsedDocument.ud_doctype + aDocument.outerHTML
     will_return = will_return.trim()
       .unprotect_numbered(protectionExcluded);
-    if(parsedDocument.hasUnclosedForms)
-    {    
+    if (parsedDocument.hasUnclosedForms) {
       // Our parsing repaired thes unclosed forms but we are able to detect them
       // But in HTML an unclosed form attaches following elements to the form.
       // If we send the repaired version with closing </form> the main page will see a closed form and not attach following elements to it.
-        will_return = will_return.replaceAll("</form><!--unclosed-form-->", "");
+      will_return = will_return.replaceAll("</form><!--unclosed-form-->", "");
     }
-    
+
     return will_return;
 
   }
@@ -868,7 +1061,9 @@ class uDarkC extends uDarkExtended {
       parsedDocument = parser.p_ud_parseFromString(str, options.STRICT_XML);
       aDocument = parsedDocument;
     }
-    else {
+    else { /*We could do all the stuff the backend does to be sure to perfectly parse
+       the document prologue intact <!doctype> and </closing> tags but aside iframe srcdoc frontEditHTML overrides only some innerHTML or inserAdjacentHTML
+        that would have no benefits in having the intact prologue. */
 
       // Cant use \b because of the possibility of a - next to the identifier, it's a word character
       str = str.protect_simple(uDark.tagsToProtectRegex, "ud-tag-ptd-$1");
@@ -1145,9 +1340,9 @@ class uDarkC extends uDarkExtended {
   }
   markUnclosedForms(parsedDocument) {
     [...parsedDocument.forms].forEach(form => {
-      for(let elem of [...form.elements]) {
-        if(!elem.hasAttribute("form")) {
-          if(!form.contains(elem)) {
+      for (let elem of [...form.elements]) {
+        if (!elem.hasAttribute("form")) {
+          if (!form.contains(elem)) {
             form.insertAdjacentHTML("afterend", "<!--unclosed-form-->");
             console.warn("Detected unclosed form", form, elem);
             parsedDocument.hasUnclosedForms = true;
