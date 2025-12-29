@@ -1,10 +1,22 @@
-
-:root {
-  /*
-    I was needed to place this in a specific CSS file wich in injected in the top of the document only: 
-    This code allow user to set its custom colors to the base document.
-    It was needed to be placed in a specific CSS file wich in injected in the top of the document only because otherwise it would force objects, iframes, and other elements to have a black background, therefore they loose all theire transparency or inheritence from the body.
-    */
-    background-color:var(--main-bgcolor);
-    color: var(--secondary-color); 
- }
+body {
+    /*
+     * IMPORTANT — why this background is applied to <body> instead of :root / <html>:
+     *
+     * Browsers have a special rule:
+     * as long as <html> / :root does NOT define a background,
+     * the <body> background is propagated to the entire viewport.
+     *
+     * If a background (even just a color) is set on :root or <html>,
+     * this propagation stops. The <body> background will then only cover
+     * the body box instead of the full window — which breaks the
+     * background image defined by canvas.moe.
+     *
+     * So the background color is defined here on <body> to:
+     *  - keep the propagation to the whole viewport
+     *  - Example is to preserve the background image applied by https://catbox.moe/
+     *
+     * This CSS must also be injected at the top of the document.
+     * Otherwise, objects, iframes, and similar elements may inherit
+     * a forced black background, which removes their transparency.
+     */background-color:var(--main-bgcolor);color:var(--secondary-color);
+}
