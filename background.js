@@ -1010,6 +1010,7 @@ class uDarkC extends uDarkExtended {
     uDark.setDocType(strO, parsedDocument, details);
 
     if (parsedDocument.head.querySelector("noscript")) {
+      uDark.info("Reparsing document to handle <noscript> in <head> for",details.url);
       parsedDocument = uDark.reparseDocumentWithNoScript(parsedDocument, strO, details);
       aDocument = parsedDocument.documentElement;
     }
