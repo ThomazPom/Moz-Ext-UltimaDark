@@ -925,7 +925,7 @@ class uDarkC extends uDarkExtended {
     html = html.replace("</head", "</ud-ptd-head");
     let retParsedDocument = uDark.createDocumentFromHtml(html, details.XHTML ? "application/xhtml+xml" : "text/html");
 
-    retParsedDocument.restorePTDHead = true;
+    retParsedDocument.needRestorePTDHead = true;
     retParsedDocument.ud_doctype = parsedDocument.ud_doctype;
     let fnNodeStart = node => {
       retParsedDocument.documentElement.insertBefore(node, retParsedDocument.head);
@@ -947,7 +947,7 @@ class uDarkC extends uDarkExtended {
       }
       let isPTDHead = node.nodeType === Node.ELEMENT_NODE && node.tagName.toLowerCase() === "ud-ptd-head"
       if (isPTDHead) {
-        retParsedDocument.restorePTDHead=false;
+        retParsedDocument.needRestorePTDHead=false;
         node.childNodes.forEach(childNode=>{
           fnNodeHead(childNode);
         });
@@ -1034,6 +1034,10 @@ class uDarkC extends uDarkExtended {
       // But in HTML an unclosed form attaches following elements to the form.
       // If we send the repaired version with closing </form> the main page will see a closed form and not attach following elements to it.
       will_return = will_return.replaceAll("</form><!--unclosed-form-->", "");
+    }
+    if(parsedDocument.needRestorePTDHead)
+    {
+      will_return = will_return.replace("<ud-ptd-head", "<head").replace("</ud-ptd-head", "</head"); 
     }
 
     return will_return;
