@@ -1,4 +1,4 @@
-body, :root:not(has(body)) {
+body,:root:not(:has(body)) {
     /*
      * IMPORTANT — why this background is applied to <body> instead of :root / <html>:
      *
