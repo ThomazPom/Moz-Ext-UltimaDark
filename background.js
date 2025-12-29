@@ -928,7 +928,6 @@ class uDarkC extends uDarkExtended {
     retParsedDocument.needRestorePTDHead = true;
     retParsedDocument.ud_doctype = parsedDocument.ud_doctype;
 
-    console.log(retParsedDocument);
 
     let fnNodeStart = node => {
       retParsedDocument.documentElement.insertBefore(node, retParsedDocument.head);
@@ -970,7 +969,6 @@ class uDarkC extends uDarkExtended {
 
       if(isValidElement && fnNode===fnNodeStart)
       {
-        console.log("Valid head element",node);
         fnNode = fnNodeHead
       }
 
@@ -987,7 +985,6 @@ class uDarkC extends uDarkExtended {
         fnNode(node, {isEmptyText,isComment,isValidElement});
       }
       else {
-        console.log("Stopping head parsing at node",node);
         break; // stop at first non-head node
       }
 
@@ -1013,9 +1010,7 @@ class uDarkC extends uDarkExtended {
     uDark.setDocType(strO, parsedDocument, details);
 
     if (parsedDocument.head.querySelector("noscript")) {
-      console.time("uDark reparseDocumentWithNoScript");
       parsedDocument = uDark.reparseDocumentWithNoScript(parsedDocument, strO, details);
-      console.timeEnd("uDark reparseDocumentWithNoScript");
       aDocument = parsedDocument.documentElement;
     }
 
@@ -1026,7 +1021,7 @@ class uDarkC extends uDarkExtended {
       }
     }
 
-    // uDark.transformADocumentBackend(aDocument, parsedDocument, details);
+    uDark.transformADocumentBackend(aDocument, parsedDocument, details);
     // 16. Return the final edited HTML
     let will_return = parsedDocument.ud_doctype + aDocument.outerHTML
     if (parsedDocument.hasUnclosedForms) {
@@ -1039,8 +1034,6 @@ class uDarkC extends uDarkExtended {
     {
       will_return = will_return.replace("<ud-ptd-head", "<head").replace("</ud-ptd-head", "</head"); 
     }
-    console.log("original HTML:", strO);
-    console.warn("Final edited HTML:", will_return);
     return will_return;
 
   }
