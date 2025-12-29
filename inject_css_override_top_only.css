@@ -1,4 +1,4 @@
-body {
+body, :root:not(has(body)) {
     /*
      * IMPORTANT — why this background is applied to <body> instead of :root / <html>:
      *
@@ -18,5 +18,7 @@ body {
      * This CSS must also be injected at the top of the document.
      * Otherwise, objects, iframes, and similar elements may inherit
      * a forced black background, which removes their transparency.
-     */background-color:var(--main-bgcolor);color:var(--secondary-color);
+     */
+     background-color:var(--main-bgcolor);
+     color:var(--secondary-color);
 }
