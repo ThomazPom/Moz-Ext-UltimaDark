@@ -924,19 +924,20 @@ class uDarkC extends uDarkExtended {
     html = html.replace("<head", "<ud-ptd-head");
     html = html.replace("</head", "</ud-ptd-head");
     let retParsedDocument = uDark.createDocumentFromHtml(html, details.XHTML ? "application/xhtml+xml" : "text/html");
-
+    
     retParsedDocument.needRestorePTDHead = true;
     retParsedDocument.ud_doctype = parsedDocument.ud_doctype;
+
+    console.log(retParsedDocument);
+
     let fnNodeStart = node => {
       retParsedDocument.documentElement.insertBefore(node, retParsedDocument.head);
     }
     let fnNode = fnNodeStart
     let fnNodeHead = node=>{
-      console.log("Adding head node",node);
       retParsedDocument.head.append(node);
     };
     let fnNodeAfterHead = node=>{
-      console.log("Adding head node",node);
       retParsedDocument.documentElement.insertBefore(node, retParsedDocument.body);
     };
     for (let node of [...retParsedDocument.body.childNodes]) { // Use ... to clone the list as we will modify the DOM while iterating
@@ -948,7 +949,7 @@ class uDarkC extends uDarkExtended {
       let isPTDHead = node.nodeType === Node.ELEMENT_NODE && node.tagName.toLowerCase() === "ud-ptd-head"
       if (isPTDHead) {
         retParsedDocument.needRestorePTDHead=false;
-        node.childNodes.forEach(childNode=>{
+        [...node.childNodes].forEach(childNode=>{ // Use ... to clone the list as we will modify the DOM while iterating
           fnNodeHead(childNode);
         });
         node.getAttributeNames().forEach(attrName=>{
@@ -986,6 +987,7 @@ class uDarkC extends uDarkExtended {
         fnNode(node, {isEmptyText,isComment,isValidElement});
       }
       else {
+        console.log("Stopping head parsing at node",node);
         break; // stop at first non-head node
       }
 
@@ -1001,8 +1003,6 @@ class uDarkC extends uDarkExtended {
     if (!str || !str.trim().length) {
       return str;
     }
-    let protectionExcluded = str.protect_numbered(this.tagsToExcludeRegex, `<noscript data-ud-id="{index}"></noscript`, true);
-    str = protectionExcluded.str;
 
     details.XHTML = details.contentType.includes("application/xhtml+xml");
 
@@ -1013,7 +1013,9 @@ class uDarkC extends uDarkExtended {
     uDark.setDocType(strO, parsedDocument, details);
 
     if (parsedDocument.head.querySelector("noscript")) {
+      console.time("uDark reparseDocumentWithNoScript");
       parsedDocument = uDark.reparseDocumentWithNoScript(parsedDocument, strO, details);
+      console.timeEnd("uDark reparseDocumentWithNoScript");
       aDocument = parsedDocument.documentElement;
     }
 
@@ -1024,11 +1026,9 @@ class uDarkC extends uDarkExtended {
       }
     }
 
-    uDark.transformADocumentBackend(aDocument, parsedDocument, details);
+    // uDark.transformADocumentBackend(aDocument, parsedDocument, details);
     // 16. Return the final edited HTML
     let will_return = parsedDocument.ud_doctype + aDocument.outerHTML
-    will_return = will_return.trim()
-      .unprotect_numbered(protectionExcluded);
     if (parsedDocument.hasUnclosedForms) {
       // Our parsing repaired thes unclosed forms but we are able to detect them
       // But in HTML an unclosed form attaches following elements to the form.
@@ -1039,7 +1039,8 @@ class uDarkC extends uDarkExtended {
     {
       will_return = will_return.replace("<ud-ptd-head", "<head").replace("</ud-ptd-head", "</head"); 
     }
-
+    console.log("original HTML:", strO);
+    console.warn("Final edited HTML:", will_return);
     return will_return;
 
   }
