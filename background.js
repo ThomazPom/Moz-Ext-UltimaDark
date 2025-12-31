@@ -2,7 +2,9 @@
 
 class uDarkC extends uDarkExtended {
   
-  overrideEncodeCharsetForCSS = "utf-8"; // Default override charset for CSS
+  overrideEncodeCharsetForCSS = "utf-8"; /*// We can safely re-encode CSS as UTF-8 with a BOM,
+// ignoring original charset / @charset or charset attribute.
+// This fixes all CSS `content` encoding issues elegantly */
   exportFunction = f => f; // Emulate the exportFunction function of the content script to avoid many ternary operators
   logPrefix = "UltimaDark:";
   log(...args) {
