@@ -47,11 +47,10 @@ class uDarkC extends uDarkExtended {
 
 
 
-  tagsToExcludeRegex = /<(noscript)(?=\s|\/|>)[^>]*>(<!--.*?-->|.)*?<\/\1/gis // Tags to exclude from processing entirely : They can include strangy stuff like json containing backslashed quotes that will be htmlencoded, and stuff. Thatsa nightmare
   nonConnectedImagesAndSources = new Set();
   static CSS_COLOR_FUNCTIONS = ["rgb", "rgba", "hsl", "hsla", "hwb", "lab", "lch", "color", "color-mix", "oklch", "oklab"]
   shortHandRegex = new RegExp(`(?<![\\w-])(${uDarkC.SHORTHANDS.join("|")})([\s\t]*:)`, "gi") // The \t is probably not needed, as \s includes it
-  tagsToProtectRegex = new RegExp(`(?<![\\w-])(${uDarkC.TAGS_TO_PROTECT.join("|")})(?![\\w-])`, "gi")
+  tagsToProtectRegex = new RegExp(`(</?)(${uDarkC.TAGS_TO_PROTECT.join("|")})(?![\\w-])`, "gi")
   // How much the color syntax can be complex: https://developer.mozilla.org/en-US/docs/Web/CSS/color_value#formal_syntax
   fastColorRegex = new RegExp(`(?<![\\w-])(${uDarkC.CSS_COLOR_FUNCTIONS.join("|")})\\(.*?\\)`, "gi")
 
@@ -1065,7 +1064,7 @@ class uDarkC extends uDarkExtended {
         that would have no benefits in having the intact prologue. */
 
       // Cant use \b because of the possibility of a - next to the identifier, it's a word character
-      str = str.protect_simple(uDark.tagsToProtectRegex, "ud-tag-ptd-$1"); // But for noscripts il will become mandatory some day
+      str = str.protect_simple(uDark.tagsToProtectRegex, "$1ud-tag-ptd-$2"); // But for noscripts il will become mandatory some day
       parsedDocument = uDark.createDocumentFromHtml("<html><head>" + str); // Encapsulate in a full HTML document to be able to parse fragments properly
       options.ptd_head = parsedDocument.getElementsByTagName("ud-tag-ptd-head")[0];
       if (options.ptd_head) { // Allows to keep a head with all its forbidden tags and also to know its a full HTML document that was submited
