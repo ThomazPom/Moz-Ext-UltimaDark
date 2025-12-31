@@ -55,8 +55,13 @@ class Listeners {
     // uDark.warn("Image editing complete",details.url.split("#"),event.data.is_photo?"photo": event.data.heuristic);
   }
   static isEligibleResource(details) {
+    // if(details.tabId == -1 && !details.documentUrl){
+    //     console.warn("Preload image (i guess )might cause issues",details);
+    // }
+
     // Check if the resource is eligible for uDark
     return uDark.getPort(details) || details.tabId == -1 && !details.documentUrl.match(uDark.userSettings.exclude_regex);
+    
   }
   static editOnHeadersImage(details) {
 
