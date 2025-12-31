@@ -347,6 +347,14 @@ class Listeners {
 
 
     filter.onstart = event => {
+      if(uDark.overrideEncodeCharsetForCSS){
+        details.overrideEncodeCharset = uDark.overrideEncodeCharsetForCSS;
+        // write  EF BB BF as BOM to specify utf8 charset and priorize over any other charset rule whatever
+        // https://developer.mozilla.org/fr/docs/Web/CSS/Reference/At-rules/@charset
+        filter.write(new Uint8Array([0xEF, 0xBB, 0xBF]));
+      }
+
+
       // console.log("CSS filter started",details.url,details.requestId,details.fromCache)
       // filter.write(uDarkEncode("UTF-8", Listeners.TopCSSFlag)); // Write the top CSS flag to be able to check if the CSS is already edited 
       if (uDark.general_cache.has(`request_${details.requestId}_more_details`)) {

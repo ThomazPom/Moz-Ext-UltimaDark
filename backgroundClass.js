@@ -87,7 +87,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
       }
     }
 
-    filter.write(uDarkEncode(details.charset, options.chunk));
+    filter.write(uDarkEncode(details.overrideEncodeCharset || details.charset, options.chunk));
   }
   settingsInContentScriptCSS() {
     let editedCSS = this.inject_css_override;

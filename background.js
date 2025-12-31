@@ -1,6 +1,8 @@
 
 
 class uDarkC extends uDarkExtended {
+  
+  overrideEncodeCharsetForCSS = "utf-8"; // Default override charset for CSS
   exportFunction = f => f; // Emulate the exportFunction function of the content script to avoid many ternary operators
   logPrefix = "UltimaDark:";
   log(...args) {
