@@ -921,8 +921,8 @@ class uDarkC extends uDarkExtended {
     ])
     let html = parsedDocument.ud_doctype + '<br ud-before-any>' + strO.slice(parsedDocument.ud_doctype.length);
 
-    html = html.replace("<head", "<ud-tag-ptd-head");
-    html = html.replace("</head", "</ud-tag-ptd-head");
+    html = html.replace(new RegExp("<head(?![\\w-])", "i"), "<ud-tag-ptd-head");
+    html = html.replace(new RegExp("</head(?![\\w-])", "i"), "</ud-tag-ptd-head");
     let retParsedDocument = uDark.createDocumentFromHtml(html, details.XHTML ? "application/xhtml+xml" : "text/html");
     
     retParsedDocument.needRestorePTDHead = true;
@@ -945,7 +945,7 @@ class uDarkC extends uDarkExtended {
         node.remove();
         continue;
       }
-      let isPTDHead = node.nodeType === Node.ELEMENT_NODE && node.tagName.toLowerCase() === "ud-ptd-head"
+      let isPTDHead = node.nodeType === Node.ELEMENT_NODE && node.tagName.toLowerCase() === "ud-tag-ptd-head"
       if (isPTDHead) {
         retParsedDocument.needRestorePTDHead=false;
         [...node.childNodes].forEach(childNode=>{ // Use ... to clone the list as we will modify the DOM while iterating
@@ -1065,7 +1065,7 @@ class uDarkC extends uDarkExtended {
         that would have no benefits in having the intact prologue. */
 
       // Cant use \b because of the possibility of a - next to the identifier, it's a word character
-      str = str.protect_simple(uDark.tagsToProtectRegex, "ud-tag-ptd-$1");
+      str = str.protect_simple(uDark.tagsToProtectRegex, "ud-tag-ptd-$1"); // But for noscripts il will become mandatory some day
       parsedDocument = uDark.createDocumentFromHtml("<html><head>" + str); // Encapsulate in a full HTML document to be able to parse fragments properly
       options.ptd_head = parsedDocument.getElementsByTagName("ud-tag-ptd-head")[0];
       if (options.ptd_head) { // Allows to keep a head with all its forbidden tags and also to know its a full HTML document that was submited
