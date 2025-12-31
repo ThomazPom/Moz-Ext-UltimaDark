@@ -921,8 +921,8 @@ class uDarkC extends uDarkExtended {
     ])
     let html = parsedDocument.ud_doctype + '<br ud-before-any>' + strO.slice(parsedDocument.ud_doctype.length);
 
-    html = html.replace("<head", "<ud-ptd-head");
-    html = html.replace("</head", "</ud-ptd-head");
+    html = html.replace("<head", "<ud-tag-ptd-head");
+    html = html.replace("</head", "</ud-tag-ptd-head");
     let retParsedDocument = uDark.createDocumentFromHtml(html, details.XHTML ? "application/xhtml+xml" : "text/html");
     
     retParsedDocument.needRestorePTDHead = true;
@@ -1033,7 +1033,7 @@ class uDarkC extends uDarkExtended {
     }
     if(parsedDocument.needRestorePTDHead)
     {
-      will_return = will_return.replace("<ud-ptd-head", "<head").replace("</ud-ptd-head", "</head"); 
+      will_return = will_return.replace("<ud-tag-ptd-head", "<head").replace("</ud-tag-ptd-head", "</head"); 
     }
     return will_return;
 
