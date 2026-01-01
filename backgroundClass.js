@@ -66,8 +66,20 @@ class uDarkExtended extends uDarkExtendedContentScript {
   handleCSSChunk_sync(data, verify, details, filter) {
     let str = details.rejectedValues;
 
+    if (data && details.dataCount == 1) {
+      details.dataBOMInfo = extractTextEncoderSupportedBOM(data)
+      // If a BOM was preset we are sure about the charset; text decoder will override the charset if needed
+      // But if there is none and we are in unspecifiedCharset (header) mode, we have to verify the charset from @charset
+      if (!details.dataBOMInfo && details.unspecifiedCharset) {
+        let fallBackCharset = detectCSSCharset(data) || uDark.getPort(details).documentCharset || "utf-8";
+        
+        details.charset = fallBackCharset;
+      }
+      details.unspecifiedCharset = false;
 
-    if (data) { str += uDarkDecode(details.charset, data, { stream: true }); }
+    }
+
+    if (data) { str += uDarkDecode(details.charset, data, { stream: true },details); }
 
 
     let options = {};
@@ -408,20 +420,20 @@ class uDarkExtended extends uDarkExtendedContentScript {
 
         uDark.registerCS({
           js: [
-          {
-            code: `class uDarkExtended{ install(){
+            {
+              code: `class uDarkExtended{ install(){
               uDark.userSettings = ${JSON.stringify(uDark.getSafeUserSettings(uDark.userSettings))};
             }}`
-          },
-          {
-            file: "background.js",
-          },
-          {
-            file: "websitesOverrideScript.js"
-          },
-          {
-            code: `WebsitesOverrideScript.override_website();`
-          }
+            },
+            {
+              file: "background.js",
+            },
+            {
+              file: "websitesOverrideScript.js"
+            },
+            {
+              code: `WebsitesOverrideScript.override_website();`
+            }
           ],
           world: "MAIN",
         });
@@ -691,6 +703,10 @@ class uDarkExtended extends uDarkExtendedContentScript {
       // At first, we used exclude_regex here to not register some content scripts, but thent we used it earlier, in the content script registration
 
       let portKey = `port-from-cs-${connectedPort.sender.tab.id}-${connectedPort.sender.frameId}`
+      let prevport = uDark.connected_cs_ports[portKey]
+      if (prevport && prevport.parsePageIsDoneAndConnected) {
+        prevport.parsePageIsDoneAndConnected(connectedPort);
+      }
       uDark.connected_cs_ports[portKey] = connectedPort;
       connectedPort.onDisconnect.addListener(disconnectedPort => {
         let portValue = uDark.connected_cs_ports[portKey]
@@ -763,14 +779,14 @@ class uDarkExtended extends uDarkExtendedContentScript {
   }
   headersDo = {
     "link"(x) {
-      x.value=x.value.replace("integrity=","data-no-integrity="); // Remove integrity attribute from link headers, as it can block udark css injection
+      x.value = x.value.replace("integrity=", "data-no-integrity="); // Remove integrity attribute from link headers, as it can block udark css injection
       return true;
     },
     "content-security-policy-report-only": (x => { false }),
     "content-security-policy": (x => {
       let csp = x.value.toLowerCase();
-      if(uDark.browserInfo.Mozilla_Firefox >= 128){
-        x.value = x.value.replaceAll("data:",v=>{
+      if (uDark.browserInfo.Mozilla_Firefox >= 128) {
+        x.value = x.value.replaceAll("data:", v => {
           return "https://data-image/ data:"; // Allow replacement of data: for udark data images
         })
         return true; // Since FF 128, we have world_injection_available, so no need to bypass CSP unless for udark data-images

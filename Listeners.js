@@ -27,28 +27,28 @@ class Listeners {
     }
   }
   static askSynchronousBgId(details) {
-        let questionParts = details.url.split("/");
-        let param = questionParts.pop();
-        let identifer = questionParts.pop();
-        let mapKey = "askSynchronousBG_" + identifer;
-        let mapData = uDark.general_cache.get(mapKey);
-        
-        // switch off CSS if requested
+    let questionParts = details.url.split("/");
+    let param = questionParts.pop();
+    let identifer = questionParts.pop();
+    let mapKey = "askSynchronousBG_" + identifer;
+    let mapData = uDark.general_cache.get(mapKey);
 
-        if (mapData) {
-          uDark.general_cache.delete(mapKey); // One time use
-          return browser.webNavigation.getFrame(mapData.frameDetails).then(moreFrameDetails => {
-            let isParentUDark = !!uDark.getPort({ tabId: mapData.frameDetails.tabId, frameId: moreFrameDetails.parentFrameId });
-            
-            if (!isParentUDark && mapData.message.switchOffCSS) {
-              uDark.switchOffCSSInFrame(mapData.frameDetails.tabId, mapData.frameDetails.frameId);
-            }
-            return { redirectUrl: `data:application/json,{"parentHasUltimaDark":${isParentUDark}}` };
-          });
+    // switch off CSS if requested
+
+    if (mapData) {
+      uDark.general_cache.delete(mapKey); // One time use
+      return browser.webNavigation.getFrame(mapData.frameDetails).then(moreFrameDetails => {
+        let isParentUDark = !!uDark.getPort({ tabId: mapData.frameDetails.tabId, frameId: moreFrameDetails.parentFrameId });
+
+        if (!isParentUDark && mapData.message.switchOffCSS) {
+          uDark.switchOffCSSInFrame(mapData.frameDetails.tabId, mapData.frameDetails.frameId);
         }
-        return {};
+        return { redirectUrl: `data:application/json,{"parentHasUltimaDark":${isParentUDark}}` };
+      });
+    }
+    return {};
 
-      
+
   }
   static moreInfoOnImageResult(details, obuffer, event) {
 
@@ -61,7 +61,7 @@ class Listeners {
 
     // Check if the resource is eligible for uDark
     return uDark.getPort(details) || details.tabId == -1 && !details.documentUrl.match(uDark.userSettings.exclude_regex);
-    
+
   }
   static editOnHeadersImage(details) {
 
@@ -352,7 +352,7 @@ class Listeners {
 
 
     filter.onstart = event => {
-      if(uDark.overrideEncodeCharsetForCSS){
+      if (uDark.overrideEncodeCharsetForCSS) {
         details.overrideEncodeCharset = uDark.overrideEncodeCharsetForCSS;
         // write  EF BB BF as BOM to specify utf8 charset and priorize over any other charset rule whatever
         // https://developer.mozilla.org/fr/docs/Web/CSS/Reference/At-rules/@charset
@@ -501,7 +501,8 @@ class Listeners {
       let removeHeaders = ["content-security-policy", "x-frame-options", "content-security-policy-report-only"]
       details.responseHeaders = details.responseHeaders.filter(x => !removeHeaders.includes(x.name.toLowerCase()))
     }
-    if (!uDark.getPort(details)) { // If setEligibleRequestBeforeData removed the port, we don't want to darken the page
+    let port = uDark.getPort(details);
+    if (!port) { // If setEligibleRequestBeforeData removed the port, we don't want to darken the page
       return { responseHeaders: details.responseHeaders };
     }
 
@@ -542,13 +543,23 @@ class Listeners {
       details.writeEnd = await new Blob(details.writeEnd).arrayBuffer();
 
 
-      let decodedValue = uDarkDecode(details.charset, details.writeEnd, { stream: true });
-      if (details.debugParsing) { // debug
-        details.writeEnd = decodedValue
+      let decodedValue = uDarkDecode(details.charset, details.writeEnd, { stream: true }, details);
+
+      if (details.dataBOMInfo) {
+        console.log("BOM found in data for", details.url, details.dataBOMInfo);
+        filter.write(details.dataBOMInfo.bytes);
+        details.charset = details.dataBOMInfo.charset;
+        details.unspecifiedCharset = false;
       }
-      else {
-        details.writeEnd = uDark.parseAndEditHtmlContentBackend4(decodedValue, details)
-      }
+
+
+      details.writeEnd = uDark.parseAndEditHtmlContentBackend4(decodedValue, details);
+      port.parsePageIsDoneAndConnected = newPort => { // Will be called when the content script connects. Its safe to not set it now because we have an "arriving soon" port
+        newPort.documentCharset = details.charset;
+        port.parsePageIsDoneAndConnected = null;
+      };
+      port.documentCharset = details.charset; // But what if a css loads before the content script connects ? We set it now too it's free.
+
 
       filter.write(uDarkEncode(details.charset, details.writeEnd));
 
