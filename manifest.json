@@ -42,7 +42,7 @@
   ],
   "browser_action": {
     "default_icon": "icons/38.png",
-    "default_title": "Darkness wins",
+    "default_title": "UltimaDark : Darkness wins",
     "default_popup": "popup/popup.html?mode=uDark-popup"
   },
   "background": {
