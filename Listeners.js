@@ -552,8 +552,8 @@ class Listeners {
         details.unspecifiedCharset = false;
       }
 
-
       details.writeEnd = uDark.parseAndEditHtmlContentBackend4(decodedValue, details);
+
       port.parsePageIsDoneAndConnected = newPort => { // Will be called when the content script connects. Its safe to not set it now because we have an "arriving soon" port
         newPort.documentCharset = details.charset;
         port.parsePageIsDoneAndConnected = null;

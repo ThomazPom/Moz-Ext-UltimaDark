@@ -71,8 +71,11 @@ class uDarkExtended extends uDarkExtendedContentScript {
       // If a BOM was preset we are sure about the charset; text decoder will override the charset if needed
       // But if there is none and we are in unspecifiedCharset (header) mode, we have to verify the charset from @charset
       if (!details.dataBOMInfo && details.unspecifiedCharset) {
+        // console.log("Checking CSS @charset for charset detection", details.url);
+        // console.log("Current charset", details.charset);
+        // console.log("detectCSSCharset(data)", detectCSSCharset(data));
+        // console.log("details.documentCharset", uDark.getPort(details).documentCharset);
         let fallBackCharset = detectCSSCharset(data) || uDark.getPort(details).documentCharset || "utf-8";
-        
         details.charset = fallBackCharset;
       }
       details.unspecifiedCharset = false;
