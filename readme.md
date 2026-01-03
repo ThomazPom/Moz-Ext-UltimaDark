@@ -12,9 +12,14 @@ Once a color is detected, it undergoes the appropriate transformation, either da
 
 The adjustment of website colors, rather than implementing a dark theme, aims to preserve the authenticity of the website's intended design.
 
+### Black★Rock Shooter
+Black★Rock Shooter is the mascot of UltimaDark — bringing dark tones, blue glow, and also too fast for its own good
+
+<img  height="500" alt="image" src="https://github.com/user-attachments/assets/86bf6628-43d3-4c66-b28a-1b37daf5daa0" />
+
 ## Background Color Lightness Transformation Function
 
-`Ultimadark` modifies the lightness of background colors, but it preserves the darkest 20% of background lightness values to respect the design intent of websites that already use dark themes. This ensures that the dark appearance of these sites remains unaltered.
+`Ultimadark` modifies the lightness of background colors, but it preserves the darkest 20% (configurable) of background lightness values to respect the design intent of websites that already use dark themes or dark parts. This ensures that the dark parts or appearance of these sites remains unaltered.
 
 For background lightness values above this threshold, a piecewise linear transformation is applied. The function operates as follows:
 
@@ -24,11 +29,9 @@ For background lightness values above this threshold, a piecewise linear transfo
 
 3. **Decreasing Lightness After 0.5:** Beyond the 0.5 lightness value, the function starts decreasing lightness gradually down to a minimum contrast value (B). The lightness never reaches zero. This is important because many web designs place white elements (lightness = 1) on black backgrounds. By preserving some contrast between these elements, the design remains legible and visually cohesive.
 
-4. **Potential Fidelity at the Threshold (T):** While still under consideration, one idea is to ensure that the transformation starts at the exact original lightness when lightness equals the threshold (T). This would allow for a smoother transition from the original design, maintaining fidelity to the initial background's lightness, and avoiding abrupt visual shifts. However, this idea is still in development and has not been implemented, as it needs more advanced calculus. 
-
 This approach maintains the balance between adapting websites for better readability and preserving the original design aesthetics, particularly on dark-themed websites.
 
-You can review the transformation function here: [Desmos Background Transformation Function](https://www.desmos.com/calculator/2prydrxwbf)
+You can review the transformation function here: [Desmos Background Transformation Function](https://www.desmos.com/calculator/iy2xuec1jl)
 
 ## Text Lightening Transformation Function
 
@@ -40,9 +43,24 @@ You can review the transformation function here: [Desmos Background Transformati
 
 3. **Maintaining Bright Text within B:** For text that is already close to white (lightness values above 0.5), the function ensures that the lightness remains accurate, in the respect of the user upper limit of the maximum lightness value (B), ensuring that even bright text remains visually balanced and readable. This progressive adjustment keeps text within the desired contrast range while maintaining harmony with the overall design. The configurability of (B) is planned, allowing users more control over the upper limits in future versions.
 
- and here [Desmos Foreground Transformation Function](https://www.desmos.com/calculator/37yi1rirw9).
+ and here [Desmos Foreground Transformation Function](https://www.desmos.com/calculator/3dc4ea112c).
+mage Processing (experimental but inevitably needed)
 
-UltimaDark also has the capability to edit pixels in images ("Image Edition" toggle), although this feature is currently experimental and not fully functional. An example of the broken functionality can be seen on the Apple support page: [Broken Example](https://support.apple.com/fr-fr/HT205189). On the other hand, the feature works better on the Sushi Spirit website: [Not-So-Bad Example](https://www.sushispirit.com/).
+## Image Processing feature
+UltimaDark includes an Image Processing feature (enabled by default) that tries to darken background images, keep photos and artwork unchanged, and lighten logos/icons so they stay visible on dark pages.
+Image classification can never be perfect, so this feature is still experimental — but it already makes a big difference on many sites.
+
+### Pooled Image Workers
+
+With Pooled Image Workers, images are processed in already-running background workers, which usually makes transfers and processing faster on pages with many images. If disabled, normal browser messaging is used instead.
+
+###  Image Decision Logic
+
+Heuristic (default) — fast, stable, rule-based logic. Recommended.
+
+IA (experimental — Unfinihsed —  forever disabled by default) — adds an AI layer for some image decisions, but is still incomplete and may add overhead. It also doesn’t fit everyone’s expectation of UltimaDark as a lightweight, ultra-fast extension — so it will remain opt-in only.
+
+Bench — debugging/benchmarking IA mode only.
 
 # Compatibility
 ### Desktop platforms: 
@@ -54,7 +72,7 @@ UltimaDark also has the capability to edit pixels in images ("Image Edition" tog
 
 # Versions
 
- Currently on 1.5.x
+ Currently on 1.6.x
 # Downloads
  [Download from AMO](https://addons.mozilla.org/firefox/addon/ultimadark/) (Firefox's add-on repository)
 
