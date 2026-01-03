@@ -12,8 +12,8 @@ Once a color is detected, it undergoes the appropriate transformation, either da
 
 The adjustment of website colors, rather than implementing a dark theme, aims to preserve the authenticity of the website's intended design.
 
-### Black★Rock Shooter
-<img  height="500" alt="image" src="https://github.com/user-attachments/assets/fe81a4ce-bdba-424a-acb8-5b300c87cca7" />
+### Black★Rock Shooter🌙 Mascot
+<img alt="image" src="https://github.com/user-attachments/assets/fe81a4ce-bdba-424a-acb8-5b300c87cca7" />
 
 ## Background Color Lightness Transformation Function
 
