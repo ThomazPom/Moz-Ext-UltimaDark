@@ -15,7 +15,7 @@ The adjustment of website colors, rather than implementing a dark theme, aims to
 ### Black★Rock Shooter
 Black★Rock Shooter is the mascot of UltimaDark — bringing dark tones, blue glow, and also too fast for its own good
 
-<img  height="500" alt="image" src="https://github.com/user-attachments/assets/86bf6628-43d3-4c66-b28a-1b37daf5daa0" />
+<img  height="500" alt="image" src="https://github.com/user-attachments/assets/1f6f04e8-f133-4ffc-9a0d-17a678daa3e4" />
 
 ## Background Color Lightness Transformation Function
 
