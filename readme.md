@@ -13,8 +13,6 @@ Once a color is detected, it undergoes the appropriate transformation, either da
 The adjustment of website colors, rather than implementing a dark theme, aims to preserve the authenticity of the website's intended design.
 
 ### Black★Rock Shooter
-Black★Rock Shooter is the mascot of UltimaDark — bringing dark tones, blue glow, and also too fast for its own good
-
 <img  height="500" alt="image" src="https://github.com/user-attachments/assets/1f6f04e8-f133-4ffc-9a0d-17a678daa3e4" />
 
 ## Background Color Lightness Transformation Function
