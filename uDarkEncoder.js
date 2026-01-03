@@ -119,6 +119,9 @@ function asCiiWarmup07F(charset) {
     console.log("Warming up ascii decoders with 0x00-0x7F data for charset", charset);
     let arr = new Uint8Array(128);
     for (let i = 0; i < 128; i++) {
+        if([27].includes(i)){
+            continue ; // Skip escape character for iso-2022-jp
+        }
         arr[i] = i;
     }
     uDarkDecode(charset, arr.buffer);
