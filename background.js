@@ -1059,8 +1059,7 @@ class uDarkC extends uDarkExtended {
 
     let parsedDocument, aDocument;
     if (options.STRICT_XML) {
-      let parser = new DOMParser();
-      parsedDocument = parser.p_ud_parseFromString(str, options.STRICT_XML);
+      parsedDocument = uDark.createDocumentFromHtml(str, options.STRICT_XML);
       aDocument = parsedDocument;
     }
     else { /*We could do all the stuff the backend does to be sure to perfectly parse
@@ -1123,7 +1122,7 @@ class uDarkC extends uDarkExtended {
 
   createDocumentFromHtml(html, type = "text/html") {
     // Use DOMParser to convert the HTML string into a DOM document
-    const parser = new DOMParser();
+    const parser = new uDark.DOMParser();
     return parser.p_ud_parseFromString(html, type);
   }
 
@@ -2387,7 +2386,7 @@ class AllLevels {
       CSSStyleSheet.prototype.p_ud_insertRule = CSSStyleSheet.prototype.insertRule;
 
       DOMParser.prototype.p_ud_parseFromString = DOMParser.prototype.parseFromString;
-
+      uDark.DOMParser = DOMParser;
       uDark.createInternalProperty(Element, "innerHTML");
       uDark.createInternalProperty(ShadowRoot, "innerHTML");
       uDark.createInternalProperty(CSS2Properties, "backgroundColor");
