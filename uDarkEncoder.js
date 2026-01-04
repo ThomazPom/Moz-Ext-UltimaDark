@@ -78,8 +78,9 @@ window.encodingByteCounter = {
         if (codepoint >= 0xE0 && codepoint <= 0xEF) return 1; // 1 byte for additional characters in this range
         return 2; // 2 bytes for Kanji and other characters
     },
-    "euc-jp": (codepoint) => {
+    "euc-jp": (codepoint,firstByte) => {
         if (codepoint <= 0x007F) return 1; // 1 byte for ASCII
+        if(firstByte==0x8F) return 3; // 3  bytes for characters starting with 0x8F
         return 2; // Default to 2 bytes for unhandled cases
     },
 
@@ -368,7 +369,8 @@ window.uDarkDecodeSimple = function (decoder, fnCharset, charUint8Array) {
             // console.log("�",codepoint,"DataIndex",dataIndex,"Codepoint",codepoint,"char",char,"index",index,"dataIndex",dataIndex,knownCodepoint,"encodingByteCount",encodingByteCount,"nextBytes",nextBytes,"decodedBytes",nextBytesDecoded);
         }
         else {
-            encodingByteCount = fnCharset.monoByte || fnCharset(codepoint);
+            let nextByte = charUint8Array[dataIndex];
+            encodingByteCount = fnCharset.monoByte || fnCharset(codepoint,nextByte);
         }
         // if(!encodingByteCount)
         // {
