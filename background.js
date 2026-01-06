@@ -540,21 +540,33 @@ class uDarkC extends uDarkExtended {
     }
     let originalFunctionKey = "o_ud_" + laFonction.name
     var originalFunction = uDark.exportFunction(Object.getOwnPropertyDescriptor(leType.prototype, laFonction.name).value, window);
+    
+    // store original function
     Object.defineProperty(leType.prototype, originalFunctionKey, {
       value: originalFunction,
       writable: true
     });
+    
+    // create a named wrapper
+    const wrappedFunction = uDark.exportFunction(function wrapper() {
+      if (conditon === true || conditon.apply(this, arguments)) {
+        const watcher_result = watcher(this, arguments);
+        const result = originalFunction.apply(this, watcher_result);
+        return result_editor(result, this, arguments, watcher_result, originalFunction);
+      }
+      return originalFunction.apply(this, arguments);
+    }, window);
+    
+    // now **set the visible name**
+    Object.defineProperty(wrappedFunction, "name", {
+      value: laFonction.name,
+      configurable: true
+    });
+    
+    // install it
     Object.defineProperty(leType.prototype, laFonction.name, {
       value: {
-        [laFonction.name]: uDark.exportFunction(function () {
-          if (conditon === true || conditon.apply(this, arguments)) { // if a standard function is provided, it will will be able to use the 'this' keyword
-            let watcher_result = watcher(this, arguments);
-            let result = originalFunction.apply(this, watcher_result) // if a standard function is provided, it will will be able to use the 'this' keyword
-            return result_editor(result, this, arguments, watcher_result, originalFunction);
-          } else {
-            return (originalFunction.apply(this, arguments));
-          }
-        }, window)
+        [laFonction.name]: wrappedFunction
       }[laFonction.name]
     });
   }
