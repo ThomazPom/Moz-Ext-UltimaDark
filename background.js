@@ -490,6 +490,36 @@ class uDarkC extends uDarkExtended {
       }
     }
   }
+  repairFunctionNames(proto, aFunction) {
+    if (aFunction && typeof aFunction.name === "string" && aFunction.name !== "") {
+      return aFunction.name;
+    }
+    /*
+      UltimaDark patches browser prototypes early, but other extensions may run
+      first and modify the same APIs. Some (e.g., SingleFile) override the
+      "name" property on native methods so that .name becomes "", while the
+      function itself is still native. This can break UltimaDark logic that
+      relies on correct function names. This helper restores the proper names
+      without replacing the functions or touching the prototype chain.
+    */
+    const keys = Object.getOwnPropertyNames(proto);
+    for (const key of keys) {
+      const desc = Object.getOwnPropertyDescriptor(proto, key);
+      if (desc?.get || desc?.set) continue;
+      const fn = desc.value;
+      if (typeof fn !== "function") continue;
+      const nameDesc = Object.getOwnPropertyDescriptor(fn, "name");
+      if (!nameDesc) continue;
+      if (nameDesc.value !== "" || !nameDesc.configurable) continue;
+      delete fn.name;
+      if (fn.name === "") {
+        Object.defineProperty(fn, "name", { value: key, configurable: true });
+      }
+    }
+    return aFunction.name;
+  }
+
+
   functionPrototypeEditor(leType, laFonction, watcher = x => x, conditon = x => x, result_editor = x => x) {
     if (laFonction.concat) {
       return laFonction.forEach(aFonction => {
@@ -500,6 +530,9 @@ class uDarkC extends uDarkExtended {
       leType = leType.wrappedJSObject;
     }
     uDark.info("Editing function :", leType, laFonction)
+
+    uDark.repairFunctionNames(leType.prototype, laFonction);
+
     leType.prototype.count = (leType.prototype.count || 0) + 1;
     if (!Object.getOwnPropertyDescriptor(leType.prototype, laFonction.name)) {
       uDark.error("No getter for '", leType, laFonction, new Error(), leType.prototype.count, document.location.href)
