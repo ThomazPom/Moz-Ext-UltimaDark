@@ -1,7 +1,7 @@
 
 
 class uDarkC extends uDarkExtended {
-  
+
   overrideEncodeCharsetForCSS = "utf-8"; /*// We can safely re-encode CSS as UTF-8 with a BOM,
 // ignoring original charset / @charset or charset attribute.
 // This fixes all CSS `content` encoding issues elegantly */
@@ -909,25 +909,34 @@ class uDarkC extends uDarkExtended {
 
   }
   reparseDocumentWithNoScript(parsedDocument, strO, details) {
+    /**
+     * Re-parses a document so that <noscript> is treated as an opaque element.
+     *
+     * DOMParser runs with "scripting = off", which means <noscript> contents are
+     * parsed as normal DOM instead of being treated as raw/opaque text. This function
+     * reconstructs the document structure so that:
+     *
+     *  • Elements that are valid inside <head> stay in <head>
+     *  • Elements that belong in <body> are moved there
+     *  • <noscript> is preserved in the same structural position the browser
+     *    would have used when scripting is ON
+     *
+     * The parser tokenization behavior is still relied upon — we simply correct
+     * structural placement afterwards.
+    */
+
     let allowedHead = new Set([
+      "title", "base", "link", "style",
+      "meta", "script", "noscript", "template"
+    ]);
+    // These are the elements HTML defines as valid children of <head>.
 
-      "title",
-      "base",
-      "link",
-      "style",
-      "meta",
-      "script",
-      "noscript",
-      "template",
-
-
-    ])
     let html = parsedDocument.ud_doctype + '<br ud-before-any>' + strO.slice(parsedDocument.ud_doctype.length);
 
     html = html.replace(new RegExp("<head(?![\\w-])", "i"), "<ud-tag-ptd-head");
     html = html.replace(new RegExp("</head(?![\\w-])", "i"), "</ud-tag-ptd-head");
     let retParsedDocument = uDark.createDocumentFromHtml(html, details.XHTML ? "application/xhtml+xml" : "text/html");
-    
+
     retParsedDocument.needRestorePTDHead = true;
     retParsedDocument.ud_doctype = parsedDocument.ud_doctype;
 
@@ -936,56 +945,91 @@ class uDarkC extends uDarkExtended {
       retParsedDocument.documentElement.insertBefore(node, retParsedDocument.head);
     }
     let fnNode = fnNodeStart
-    let fnNodeHead = node=>{
+    let fnNodeHead = node => {
       retParsedDocument.head.append(node);
     };
-    let fnNodeAfterHead = node=>{
-      retParsedDocument.documentElement.insertBefore(node, retParsedDocument.body);
+    let fnNodeAfterHead = (node, infos) => {
+      if (!infos.isComment) {
+        // Only comment nodes are allowed directly after <head>.
+        // Any other type of node found here will be moved into <body>
+        // (which will be created if it does not already exist).
+        //
+        // Note that <script> elements still execute even if <body> has not
+        // yet been parsed. If such a script depends on <body> already existing,
+        // this relocation could break the page.
+        //
+        // As a result, a page that has a <head> but no <body> will end up being
+        // wrapped — but it's difficult to imagine a real-world case where a
+        // script intentionally relies on <body> NOT existing.
+        //
+        // By doing this, we are also deliberately relocating any elements that
+        // originally appeared immediately after <head> into <body>. In practice,
+        // the browser would have moved those elements there eventually anyway;
+        // we’re simply making that behavior explicit and deterministic.
+        //
+        // One possible mitigation would be to only return false for <script>
+        // nodes instead of all non-comment nodes — but for now this additional
+        // check doesn’t seem necessary.
+
+        return false;
+      }
+
+      retParsedDocument.documentElement.insertBefore(
+        node,
+        retParsedDocument.body
+      );
     };
     for (let node of [...retParsedDocument.body.childNodes]) { // Use ... to clone the list as we will modify the DOM while iterating
-      
+
       if (node.nodeType === Node.ELEMENT_NODE && node.hasAttribute("ud-before-any")) {
         node.remove();
         continue;
       }
       let isPTDHead = node.nodeType === Node.ELEMENT_NODE && node.tagName.toLowerCase() === "ud-tag-ptd-head"
       if (isPTDHead) {
-        retParsedDocument.needRestorePTDHead=false;
-        [...node.childNodes].forEach(childNode=>{ // Use ... to clone the list as we will modify the DOM while iterating
+
+        retParsedDocument.needRestorePTDHead = false;
+        [...node.childNodes].forEach(childNode => { // Use ... to clone the list as we will modify the DOM while iterating
           fnNodeHead(childNode);
         });
-        node.getAttributeNames().forEach(attrName=>{
-          retParsedDocument.head.setAttribute(attrName,node.getAttribute(attrName));
+        node.getAttributeNames().forEach(attrName => {
+          retParsedDocument.head.setAttribute(attrName, node.getAttribute(attrName));
         });
         node.remove();
-        fnNode= fnNodeAfterHead;
+        fnNode = fnNodeAfterHead;
         continue;
       }
 
       let isEmptyText = node.nodeType === Node.TEXT_NODE && !node.textContent.trim().length
       let isComment = node.nodeType === Node.COMMENT_NODE
       let isValidElement = node.nodeType === Node.ELEMENT_NODE && allowedHead.has(node.tagName.toLowerCase())
-      
-      
 
 
 
-      if(isValidElement && fnNode===fnNodeStart)
-      {
+
+
+      if (isValidElement && fnNode === fnNodeStart) {
+
+        // Once we encounter the first valid <head> element,
+        // all subsequent valid nodes are assumed to belong inside <head>
+        // until we exit the head context.
         fnNode = fnNodeHead
       }
 
 
-      
-      
-      
+
+
+
       if (
         isComment
         || isEmptyText
         || isValidElement
 
       ) {
-        fnNode(node, {isEmptyText,isComment,isValidElement});
+        let fnResult = fnNode(node, { isEmptyText, isComment, isValidElement });
+        if (fnResult === false) {
+          break;
+        }
       }
       else {
         break; // stop at first non-head node
@@ -1013,7 +1057,7 @@ class uDarkC extends uDarkExtended {
     uDark.setDocType(strO, parsedDocument, details);
 
     if (parsedDocument.head.querySelector("noscript")) {
-      uDark.info("Reparsing document to handle <noscript> in <head> for",details.url);
+      uDark.info("Reparsing document to handle <noscript> in <head> for", details.url);
       parsedDocument = uDark.reparseDocumentWithNoScript(parsedDocument, strO, details);
       aDocument = parsedDocument.documentElement;
     }
@@ -1034,9 +1078,8 @@ class uDarkC extends uDarkExtended {
       // If we send the repaired version with closing </form> the main page will see a closed form and not attach following elements to it.
       will_return = will_return.replaceAll("</form><!--unclosed-form-->", "");
     }
-    if(parsedDocument.needRestorePTDHead)
-    {
-      will_return = will_return.replace("<ud-tag-ptd-head", "<head").replace("</ud-tag-ptd-head", "</head"); 
+    if (parsedDocument.needRestorePTDHead) {
+      will_return = will_return.replace("<ud-tag-ptd-head", "<head").replace("</ud-tag-ptd-head", "</head");
     }
     return will_return;
 
