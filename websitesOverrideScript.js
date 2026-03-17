@@ -702,12 +702,12 @@ class WebsitesOverrideScript {
         }, false, false,
             elem => elem.getPropertyValue("--stealthColor") || elem.o_ud_color // Bein steath sometime is mandatory, like for https://www.startpage.com/
         );
-        uDark.valuePrototypeEditor([HTMLElement, SVGElement], "style", (elem, value) => uDark.edit_str_nochunk(value)) // Care with "style and eget, this cause recursions"
+        uDark.valuePrototypeEditor([HTMLElement, SVGElement], "style", (elem, value) => uDark.edit_str_nochunk(value)); // Care with "style and eget, this cause recursions"
         // TODO: Support CSS url(data-image) in all image relevant CSS properties like background-image etc
 
         uDark.valuePrototypeEditor(HTMLElement, "innerText", (elem, value) => {
             return uDark.edit_str(value)
-        }, (elem, value) => value && (elem instanceof HTMLStyleElement)) // No innerText for SVGStyleElement, it's an HTMLElement feature
+        }, (elem, value) => value && (elem instanceof HTMLStyleElement)); // No innerText for SVGStyleElement, it's an HTMLElement feature
 
         console.info("UltimaDark", "Websites overrides ready", window, "elapsed:", performance.now() - start);
 

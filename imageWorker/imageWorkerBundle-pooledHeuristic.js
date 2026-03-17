@@ -62,14 +62,29 @@ function uDarkColorBitsetSetIfNew(kind, r, g, b) {
         arr[byteIndex] = current | bitMask; // Set bit (idempotent); write only on new color → reduces memory traffic
         return true; // Newly seen color
     }
-    return false; // Already recorded
+    return false; // Already recordeds
 }
 
 var uDark = {
+    hooksAfterEditionResult: [
+        function (editionStatus) {
+            let cssClass = editionStatus.complement.get("uDark_cssClass");
+
+            if (editionStatus.edited && editionStatus.heuristic === "edited_logo" && cssClass) {
+                
+            console.log("Logo edited, asking webpage context to recheck css class", cssClass, editionStatus);
+                postMessage({
+                    type: "recheck_cssClass_in_webpage_context",
+                    logo_edited: 1,
+                    cssClass
+                });
+            }
+        }
+    ],
 
     background_match: /background|sprite|widget|theme|(?<![a-z])(bg|box|panel|fond|fundo|bck)(?![a-z])/i,
-    logo_match: /nav|avatar|logo|icon|alert|notif|cart|menu|tooltip|dropdown|control/i,
-    non_logo_match:/widget|theme|(?<![a-z])(box|panel|fond|fundo|bck)(?![a-z])/i,
+    logo_match: /avatar|logo|icon|alert|notif|cart|menu|tooltip|dropdown|control/i,
+    non_logo_match: /widget|theme|(?<![a-z])(box|panel|fond|fundo|bck)(?![a-z])/i,
     ignore_match: /maps_/i,
     RGBToLinearLightness: (r, g, b) => {
         return (Math.max(r, g, b) + Math.min(r, g, b)) / 2;
@@ -225,6 +240,7 @@ var uDark = {
                 ctx.filter = "none";
                 ctx.drawImage(img, 0, 0);
                 editionStatus.edited = true;
+                editionStatus.heuristic = "shadow_logo"
                 return true;
             }
             // Apply some modifications to the imageData
@@ -362,6 +378,7 @@ var uDark = {
             statsComplete: true,
             lightnessDiversity,
             opaqueCount,
+            opaqueCountSqrt:Math.sqrt(opaqueCount),
             opaqueDiversity,
             opaqueDiversityRatio: opaqueCount ? (opaqueDiversity / opaqueCount) : 0,
             nonOpaqueCount,
@@ -374,10 +391,10 @@ var uDark = {
             pixelCount: N,
 
         });
-        editionStatus.is_photo = !editionStatus.iaEnabled &&
+        editionStatus.is_photo = opaqueDiversity > 175 && !editionStatus.iaEnabled &&
             editionStatus.pixelCount / editionStatus.opaqueDiversity <= this.trigger_ratio_size_number_colors / editionStatus.isGrayscaleDiv
             && editionStatus.pixelCount / editionStatus.isGrayscaleDiv / editionStatus.combinedDistinctColors <= this.trigger_ratio_size_number_lightness_photo
-            && editionStatus.opaqueDiversity / editionStatus.opaqueCount / editionStatus.isGrayscaleDiv > 0.4;
+            && editionStatus.opaqueDiversity / editionStatus.opaqueCountSqrt / editionStatus.isGrayscaleDiv > 0.4;
         // smart is photo given all statswe collected;
         // Note: is_photo heuristic uses ratios N/opaqueDiversity & N/lightnessDiversity.
         // Lower ratios → many distinct colors & lightness levels relative to size → typical of photographic content.
@@ -401,7 +418,7 @@ var uDark = {
         let perf_start = performance.now();
         console.log("Background", "Entering edition", details.url, details.requestId)
 
-        if(complement.has("inside_clickable")){
+        if (complement.has("inside_clickable")) {
             editionConfidence -= 50;
         }
         // Refuse bacground images on certain conditions
@@ -439,7 +456,7 @@ var uDark = {
                 editionStatus.heuristic = "too_much_alpha_for_background"
                 return false; // Not a background : Too much pure alpha pixels
             }
-            if(editionStatus.avg_ligtness<20){
+            if (editionStatus.avg_ligtness < 20) {
                 editionStatus.heuristic = "too_dark_background_already"
                 return false; // If its already a very dark background, no need to darken it more
             }
@@ -449,10 +466,11 @@ var uDark = {
                 editionStatus.heuristic = "dark_background"
                 return false; // If its a background, i'ts already a dark one, and it has no contrast elements, no need to darken it more
             }
-            if (editionStatus.contrast_percent > .45 && editionStatus.avg_ligtness > 127 || editionStatus.contrast_percent > .60) {
-                editionStatus.heuristic = "contrast_background"
-                return false; // This image is bright but seems to have contrast elements, if we darken it we will loose these elements
-            }
+            // if (editionStatus.contrast_percent > .45 && editionStatus.avg_ligtness > 127 || editionStatus.contrast_percent > .60) {
+            //     editionStatus.heuristic = "contrast_background"
+            // // https://www.4gamer.net/image/top_splitter_pc.gif broken example
+            //     return false; // This image is bright but seems to have contrast elements, if we darken it we will loose these elements
+            // }
         }
 
         // Now you can work with the imageData object
@@ -481,7 +499,7 @@ var uDark = {
                 theImageDataClamped8TMP[i + 1] = g * factor;
                 theImageDataClamped8TMP[i + 2] = b * factor;
             }
-            else if (editionStatus.isContrastBright) {
+            else if (editionStatus.isContrastBright && L > 127) {
                 const colorStrength = uDark.colorStrength(r, g, b);
                 if (colorStrength < 0.1) {
 
@@ -690,12 +708,7 @@ var uDark = {
     },
     edit_an_image: async function (details) {
         details.requestId = details.url.split('').map(v => v.charCodeAt(0)).reduce((a, v) => a + ((a << 7) + (a << 3)) ^ v).toString(16);
-        let editionStatus = {
-            edited: false,
-            statsComplete: false,
-            editionConfidenceLogo: 0,
-            editionConfidenceBackground: 0,
-        };
+
 
         // Determine some basic required things about the image
 
@@ -704,6 +717,14 @@ var uDark = {
         // Determine the transformation function to use
         let complementIndex = imageURLObject.hash.indexOf("_uDark")
         let complement = new URLSearchParams(complementIndex == -1 ? "" : imageURLObject.hash.slice(complementIndex + 6))
+        let editionStatus = {
+            complement,
+            edited: false,
+            statsComplete: false,
+            editionConfidenceLogo: 0,
+            editionConfidenceBackground: 0,
+        };
+
         let edition_order_hooks = [uDark.background_image_edit_hook,
         uDark.logo_image_edit_hook
         ];
@@ -714,11 +735,11 @@ var uDark = {
         let hasBGRepeat = complement.has("uDark_backgroundRepeat") && /(?<!no-)repeat|round|space/i.test(complement.get("uDark_backgroundRepeat"));
         let cssGuess = complement.get("css-guess");
         let hasDirectCSSFont = complement.has("uDark_directCssFont");
-        
+
         let imageStrToCheck = imageURLObject.pathname
-                    + imageURLObject.search
-                    + complement.get("class")
-                    + complement.get("uDark_cssClass")
+            + imageURLObject.search
+            + complement.get("class")
+            + complement.get("uDark_cssClass")
 
         if (hasDirectCSSFont || hasBGRepeat ||
             uDark.background_match.test(imageStrToCheck)) {
@@ -734,9 +755,10 @@ var uDark = {
                 || uDark.logo_match.test(
                     imageStrToCheck
                 )
-            ) && !uDark.non_logo_match.test(imageStrToCheck) ){
+            ) && !uDark.non_logo_match.test(imageStrToCheck)) {
 
-            edition_order_hooks = [uDark.logo_image_edit_hook];
+            edition_order_hooks = [uDark.logo_image_edit_hook,uDark.background_image_edit_hook];
+            
         }
 
         if (!edition_order_hooks.length) {
@@ -812,8 +834,35 @@ var uDark = {
 
                     console.log("Image edition hook", imageEditionHook.name, performance.now() - perf_start, details.url, details.requestId)
                     await imageEditionHook(editionStatus, canvas, ctx, imageBitmap, blob, details, imageURLObject, complement);
-                    console.log("Image acceptance", editionStatus.edited, editionStatus.rejected, performance.now() - perf_start, details.url, details.requestId)
+                    console.log("Image acceptance", editionStatus.edited, editionStatus.rejected, performance.now() - perf_start, details.url, details.requestId, editionStatus)
                 }
+            }
+            if(false) { // debug block :  draw grid of yellow and green and then use the iamge as canvaspattern to cover it all
+                if (!editionStatus.edited) {
+                    console.log("Image", "No edition done", performance.now() - perf_start, details.url, details.requestId,editionStatus);
+
+                    ctx.fillStyle = 'rgba(255, 225, 0, 0.5)';
+                    ctx.strokeStyle = 'green';
+                    for (let x = 0; x < canvas.width; x += 30) {
+                        for (let y = 0; y < canvas.height; y += 30) {
+                            ctx.fillStyle = 'rgba(255, 225, 0, 0.5)';
+                            ctx.fillRect(x, y, 20, 20);
+                            ctx.fillStyle = 'black';
+                            ctx.font = '12px Arial';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText('UD', x + 10, y + 10);   ctx.lineWidth = 2;
+                            ctx.strokeRect(x, y, 20, 20);
+                        }
+                    }
+
+
+
+
+
+                    editionStatus.edited = true;
+                }
+
             }
             if (editionStatus.edited === true) {
 
@@ -848,15 +897,14 @@ console.time('load:messageLogicPooled.js');
 // Ce fichier doit être chargé AVANT la logique métier (ex: imageWorkerHeuristicPooled.js)
 
 let imageBuffers = [];
-let activeMessageLogging = false;
-if(!activeMessageLogging)
-    {
-    console.log =()=>undefined
+let activeMessageLogging = true;
+if (!activeMessageLogging) {
+    console.log = () => undefined
 }
 
 self.onmessage = async (ev) => {
     const { inReadable, outWritable } = ev.data;
-    
+
     // Transform: XOR sur chaque chunk (Uint8Array)
     const transform = new TransformStream({
         async transform(chunk, controller) {
@@ -867,20 +915,25 @@ self.onmessage = async (ev) => {
             if (metaLen > 0) {
                 const metaBytes = new Uint8Array(chunk.buffer, chunk.byteOffset + 8, metaLen);
                 meta = new TextDecoder().decode(metaBytes);
-                try { details = JSON.parse(meta);
-                     console.log("Parsed metadata JSON", details);
-                 } catch (e) {
-                     details = null;console.error("Failed to parse metadata JSON", e);
-                     }
+                try {
+                    details = JSON.parse(meta);
+                    console.log("Parsed metadata JSON", details);
+                } catch (e) {
+                    details = null; console.error("Failed to parse metadata JSON", e);
+                }
             }
             payload = new Uint8Array(chunk.buffer, chunk.byteOffset + 8 + metaLen, chunk.byteLength - 8 - metaLen);
             // ... ici tu fais ce que tu veux avec details et payload ...
             // Par défaut, on renvoie juste le payload inchangé
 
             imageBuffers = [payload];
-          
-            const editionResult = await self.uDark.edit_an_image(details);
 
+            const editionResult = await self.uDark.edit_an_image(details);
+            if (uDark.hooksAfterEditionResult) {
+                for (const hook of uDark.hooksAfterEditionResult) {
+                    hook(editionResult);
+                }
+            }
             if (editionResult.edited) {
                 payload = new Uint8Array(editionResult.editedBuffer);
             }
@@ -888,21 +941,20 @@ self.onmessage = async (ev) => {
             controller.enqueue(payload);
         }
     });
-    
+
     // Chaînage: backpressure gérée nativement
     const piping = inReadable.pipeThrough(transform).pipeTo(outWritable);
-    if(ev.data.workerData && ev.data.workerData.iaModelJsonBuffer && ev.data.workerData.iaModelWeightsBuffer) {
-            WorkerGlobalScope.modelBuffer = ev.data.workerData.iaModelJsonBuffer;
-            WorkerGlobalScope.weightsBuffer = ev.data.workerData.iaModelWeightsBuffer;
-            console.log("Worker has model buffers",ev);
+    if (ev.data.workerData && ev.data.workerData.iaModelJsonBuffer && ev.data.workerData.iaModelWeightsBuffer) {
+        WorkerGlobalScope.modelBuffer = ev.data.workerData.iaModelJsonBuffer;
+        WorkerGlobalScope.weightsBuffer = ev.data.workerData.iaModelWeightsBuffer;
+        console.log("Worker has model buffers", ev);
     }
-    else
-    {
-        console.log("Worker has no model buffers",ev.workerData);
+    else {
+        console.log("Worker has no model buffers", ev.workerData);
     }
     // Handshake "ready" pour mesurer l'init côté main
     self.postMessage({ ready: true });
-    
+
     try { await piping; } catch (_) { /* fermeture normale */ }
 };
 

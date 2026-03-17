@@ -788,12 +788,18 @@ class uDarkExtended extends uDarkExtendedContentScript {
     "content-security-policy-report-only": (x => { false }),
     "content-security-policy": (x => {
       let csp = x.value.toLowerCase();
+      if(uDark.browserInfo.Mozilla_Firefox >= 148) {
+        x.value = x.value.replaceAll("require-trusted-types-for ", v => {
+          return "no-require-trusted-types-for"; // Since FF 148, we have a new directive "require-trusted-types-for" that can block our CSP bypass, we set it to 'none' to disable it
+        })
+      }
       if (uDark.browserInfo.Mozilla_Firefox >= 128) {
         x.value = x.value.replaceAll("data:", v => {
           return "https://data-image/ data:"; // Allow replacement of data: for udark data images
         })
         return true; // Since FF 128, we have world_injection_available, so no need to bypass CSP unless for udark data-images
       }
+      
 
       let cspArray = csp.split(/;|,/g).map(x => x.trim()).filter(x => x);
       /* Quoted values are very defined and never contain a comma or a semicolon. No protection needed

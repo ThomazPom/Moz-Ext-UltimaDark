@@ -69,6 +69,239 @@ class uDarkExtendedContentScript {
       // TODO : Alterantive injection : Cloneinto ? or smart <script> injection ?
       // CloneInto seems to be the best candidate given testing.
     }
+    //this.install_postLoadCheckCSSImages();
+
   }
+  /* ============================================================
+ * Background text overlap detection
+ * (first-level function, no uDark.xxx assignment)
+ * ------------------------------------------------------------
+ * - IntersectionObserver driven
+ * - No scroll listener
+ * - elementsFromPoint for paint-order truth
+ * - Sampling strategy:
+ *   • center
+ *   • vertical middle line
+ *   • horizontal middle line
+ *   • two diagonals
+ * - Returns FULL element stack at sampled points
+ * - Caches result in uDark.general_cache
+ * - Supports callbackOnFound(result)
+ * ============================================================ */
+
+  registerPotentialBackgroundSelector(selector, options = {}) {
+
+    /* ------------------------------
+     * Global safety / cache init
+     * ------------------------------ */
+    if (!window.uDark) {
+      window.uDark = {};
+    }
+
+    if (!(uDark.general_cache instanceof Map)) {
+      uDark.general_cache = new Map();
+    }
+
+    if (!uDark._bgTextOverlapIO) {
+      uDark._bgTextOverlapIO = null;
+    }
+
+    const cacheKey = options.cacheKey || ("bgText:" + selector);
+
+    if (uDark.general_cache.has(cacheKey)) {
+      return;
+    }
+
+    /* ------------------------------
+     * Lazy IO init (once)
+     * ------------------------------ */
+    if (!uDark._bgTextOverlapIO) {
+
+      uDark._bgTextOverlapIO = new IntersectionObserver(
+        entries => {
+
+          for (const entry of entries) {
+
+            if (!entry.isIntersecting) {
+              continue;
+            }
+
+            const elem = entry.target;
+            const state = elem.__bgTextOverlapState;
+
+            if (!state || state.resolved) {
+              continue;
+            }
+
+            uDark.analyzeBackgroundTextOverlap(elem, state);
+            uDark._bgTextOverlapIO.unobserve(elem);
+          }
+        },
+        { root: null, threshold: 0 }
+      );
+    }
+
+    /* ------------------------------
+     * Attach elements
+     * ------------------------------ */
+    const elems = document.querySelectorAll(selector);
+    if (!elems.length) {
+      return;
+    }
+
+    elems.forEach(elem => {
+
+      if (elem.__bgTextOverlapState) {
+        return;
+      }
+
+      elem.__bgTextOverlapState = {
+        selector,
+        cacheKey,
+        resolved: false,
+        step: options.step || 40,
+        callbackOnFound: options.callbackOnFound || null
+      };
+
+      uDark._bgTextOverlapIO.observe(elem);
+    });
+  }
+
+
+  /* ============================================================
+   * Core analyzer
+   * ============================================================ */
+  analyzeBackgroundTextOverlap(elem, state) {
+
+    const rect = elem.getBoundingClientRect();
+
+    // Must be in viewport
+    if (
+      rect.bottom <= 0 ||
+      rect.right <= 0 ||
+      rect.top >= innerHeight ||
+      rect.left >= innerWidth
+    ) {
+      return;
+    }
+
+    const points = [];
+    const step = state.step;
+
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+
+    // Center
+    points.push([cx, cy]);
+
+    // Vertical middle line
+    for (let y = rect.top; y <= rect.bottom; y += step) {
+      points.push([cx, y]);
+    }
+
+    // Horizontal middle line
+    for (let x = rect.left; x <= rect.right; x += step) {
+      points.push([x, cy]);
+    }
+
+    // Diagonal TL → BR
+    for (let t = 0; t <= 1; t += step / Math.max(rect.width, rect.height)) {
+      points.push([
+        rect.left + rect.width * t,
+        rect.top + rect.height * t
+      ]);
+    }
+
+    // Diagonal BL → TR
+    for (let t = 0; t <= 1; t += step / Math.max(rect.width, rect.height)) {
+      points.push([
+        rect.left + rect.width * t,
+        rect.bottom - rect.height * t
+      ]);
+    }
+
+    let hasTextOverlay = false;
+    const stacks = [];
+
+    for (const [x, y] of points) {
+
+      if (
+        x < 0 || y < 0 ||
+        x > innerWidth || y > innerHeight
+      ) {
+        continue;
+      }
+
+      const stack = document.elementsFromPoint(x, y);
+
+      stacks.push({
+        x,
+        y,
+        stack
+      });
+
+      for (const node of stack) {
+
+        if (node === elem || elem.contains(node)) {
+          continue;
+        }
+
+        const text = node.innerText || node.textContent;
+
+        if (text && text.trim().length > 0) {
+          hasTextOverlay = true;
+          break;
+        }
+      }
+
+      if (hasTextOverlay) {
+        break;
+      }
+    }
+
+    const result = {
+      selector: state.selector,
+      element: elem,
+      hasTextOverlay,
+      stacks,               // FULL element stacks per sampled point
+      checkedAt: performance.now()
+    };
+
+    uDark.general_cache.set(state.cacheKey, result);
+    state.resolved = true;
+
+    if (typeof state.callbackOnFound === "function") {
+      try {
+        state.callbackOnFound(result);
+      } catch (_) {
+        /* silent by design */
+      }
+    }
+  }
+
+  install_postLoadCheckCSSImages() {
+
+    setTimeout(z => {
+      uDark.registerPotentialBackgroundSelector(
+        ".V2_global_navi .class1 dt.tab1",
+        {
+          callbackOnFound(result) {
+
+            // result object
+            // {
+            //   selector,
+            //   element,
+            //   hasTextOverlay,
+            //   checkedAt
+            // }
+
+            console.log(result)
+          }
+        }
+      );
+    }, 2000)
+
+  }
+
 
 }
