@@ -9,8 +9,8 @@ class WebsitesOverrideScript {
           // Code to run after all document.write operations are complete
         });
         or if its safe to frontEdit HTML the document.write args
-        
-        
+
+
         { // Quick try
         const originalClose = Document.prototype.close;
         window.addEventListener("DOMContentLoaded", () => {
@@ -46,7 +46,7 @@ class WebsitesOverrideScript {
             delete Navigator.prototype.serviceWorker;
         }
 
-        // Avoid infinite loops 
+        // Avoid infinite loops
         if (window.uDark && window.uDark.installed) {
             return; // Already fully installed. Do not reinstall if somehow another uDark object gets injected in the page
         } else {
@@ -147,14 +147,25 @@ class WebsitesOverrideScript {
             args[1] = uDark.frontEditHTML("ANY_ELEMENT", args[1]); // frontEditHTML have a diffferent behavior with STYLE elements
             return args;
         })
-
+        uDark.valuePrototypeEditor(HTMLElement,"nonce", (elem, value) => {
+            return uDark.byPassCSPNonce; 
+        }, (elem, value) => {
+            return elem instanceof HTMLStyleElement;
+        });
+        
         uDark.functionPrototypeEditor(Element, Element.prototype.setAttribute, (elem, args) => {
+            if(args[0].toLowerCase() === "nonce")
+            {
+                args[1] = uDark.byPassCSPNonce; // To bypass CSP that can block our css when we edit style elements textContent, we set a nonce that we will add to our injected css rules, this way we can bypass the hash check and still have some level of security against other css injections
+                return args; 
+            }
             let res = uDark.edit_str(args[1] +
                 "" // I just learn again strings are passed by reference in JS the hard way
             );
             args[1] = res;
             return args;
-        }, (attribute, value) => attribute.toLowerCase() == "style")
+        }, (attribute, value) =>
+             ["style","nonce"].includes (attribute.toLowerCase())   )
 
         uDark.valuePrototypeEditor(HTMLImageElement, "src", (image, value) => {
             // return value;
@@ -626,9 +637,11 @@ class WebsitesOverrideScript {
             testStyle.outerHTML += testStyle.outerHTML + testStyle.outerHTML.slice(0, -8) + ".test20 {color:red!important}" + "</style>"
         }
         /****************************************** */
-
+        
+    
         // FINALLY CNN Use this one (webpack)!!!!
         uDark.valuePrototypeEditor(Node, "textContent", (elem, value) => {
+            elem.o_ud_setAttribute("nonce", uDark.byPassCSPNonce); // To bypass CSP that can block our css when we edit style elements textContent, we set a nonce that we will add to our injected css rules, this way we can bypass the hash check and still have some level of security against other css injections
             return uDark.edit_str(value)
 
         }, (elem, value) => elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement)

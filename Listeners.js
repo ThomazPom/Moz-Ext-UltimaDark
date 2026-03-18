@@ -513,7 +513,7 @@ class Listeners {
     }
     details.responseHeaders = details.responseHeaders.filter(x => {
       var a_filter = uDark.headersDo[x.name.toLowerCase()];
-      return a_filter ? a_filter(x) : true;
+      return a_filter ? a_filter(x,details) : true;
     })
 
 

@@ -785,8 +785,8 @@ class uDarkExtended extends uDarkExtendedContentScript {
       x.value = x.value.replace("integrity=", "data-no-integrity="); // Remove integrity attribute from link headers, as it can block udark css injection
       return true;
     },
-    "content-security-policy-report-only": (x => { false }),
-    "content-security-policy": (x => {
+    "content-security-policy-report-only": (x,details) => { return false },
+    "content-security-policy": (x,details) => {
       let csp = x.value.toLowerCase();
       if(uDark.browserInfo.Mozilla_Firefox >= 148) {
         x.value = x.value.replaceAll("require-trusted-types-for ", v => {
@@ -796,6 +796,11 @@ class uDarkExtended extends uDarkExtendedContentScript {
       if (uDark.browserInfo.Mozilla_Firefox >= 128) {
         x.value = x.value.replaceAll("data:", v => {
           return "https://data-image/ data:"; // Allow replacement of data: for udark data images
+        })
+        
+        x.value = x.value.replaceAll(/(['"]sha[0-9]{1,3}-)/gi,(v,g1)=>{
+          details.hasHashCSP = true;
+          return `'nonce-${uDark.byPassCSPNonce}' `+ g1; // Allow replacement of sha hashes for udark css, as they can be used to block our css injection, we replace them with a nonce that we will add to our injected css rules, this way we can bypass the hash check and still have some level of security against other css injections
         })
         return true; // Since FF 128, we have world_injection_available, so no need to bypass CSP unless for udark data-images
       }
@@ -834,7 +839,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
       }).join("; ");
       x.value = newCSP;
       return true; // Return true to apply the change, false to remove the header. We must keep the header since a website can send x frame options, among CSP, and removing it would give priority to the x frame options
-    }),
+    },
   }
   registeredCS = []
   is_background = true // Tell ultimadark that we are in the background script and is_color_var is not available for instance

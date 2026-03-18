@@ -156,6 +156,7 @@ class uDarkC extends uDarkExtended {
       resolve(res);
     })
   }
+  byPassCSPNonce="8IBTHwOdqNKAWeKl7plt8g=="
   imageSrcInfoMarker = "_uDark"
   imageWorkerJsFile = {
     pooledAI: "imageWorker/imageWorkerBundle-pooledAI.js",
@@ -752,6 +753,11 @@ class uDarkC extends uDarkExtended {
   }
   edit_styles_elements(parentElement, details, add_class = "ud-edited-background", options = {}) {
     parentElement.querySelectorAll(`style:not(.${add_class})`).forEach(astyle => {
+      if(!details || details.hasHashCSP)
+      {
+        astyle.setAttribute("nonce", uDark.byPassCSPNonce);
+      }
+      
       astyle.p_ud_innerHTML = uDark.edit_str(astyle.innerHTML.unprotect_simple("ud-tag-ptd-" /*display:table is a thing*/), false, false, details, false, options);
       // astyle.innerHTML='*{fill:red!important;}'
       // According to https://stackoverflow.com/questions/55895361/how-do-i-change-the-innerhtml-of-a-global-style-element-with-cssrule ,
@@ -913,7 +919,7 @@ class uDarkC extends uDarkExtended {
     aDocument.querySelectorAll("meta[http-equiv=content-security-policy]").forEach(meta => {
       let item = { value: meta.getAttribute("content") };
       if (item.value && item.value.trim().length) {
-        uDark.headersDo["content-security-policy"](item);
+        uDark.headersDo["content-security-policy"](item,details);
         meta.setAttribute("content", item.value);
       }
 
