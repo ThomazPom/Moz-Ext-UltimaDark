@@ -23116,7 +23116,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       settingsSaveTimeout: null,
       tabChangeListenersEnabled: false,
       // Feature toggles
-      cacheEnabled: true,
+      cacheEnabled: false,
       imageEditionEnabled: true,
       serviceWorkersEnabled: true,
       autoRefreshOnToggle: false,

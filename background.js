@@ -128,7 +128,7 @@ class uDarkC extends uDarkExtended {
     bg_negative_modifier: 0, // handy transformer for OLED displays : modifier for background colors
     fg_negative_modifier: 0, // Handy transformer for OLED displays : modifier for foreground colors
     precisionNumber: 2,
-    cacheEnabled: true, // Enable or disable caching
+    cacheEnabled: false, // Enable or disable caching
     inject_css_suggestedimageEditionEnabled: true, // Enable or disable image edition
     serviceWorkersEnabled: false, // Enable or disable service workers
     imageEditionEnabled: true, // Enable or disable image edition

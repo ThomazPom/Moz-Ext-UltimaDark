@@ -645,21 +645,7 @@
 
       <!-- Feature Toggles -->
       <div class="mb-4">
-        <div class="mb-3">
-          <div class="d-flex align-items-center justify-content-between p-3 rounded border"
-            :class="$store.app.cacheEnabled ? 'border-success bg-success bg-opacity-10' : 'border-danger bg-danger bg-opacity-10'"
-            :style="$store.app.cacheEnabled ? '' : 'opacity: 0.7;'">
-            <span class="fw-medium">Cache System</span>
-            <div class="btn-group" role="group" aria-label="Cache Toggle">
-              <button type="button" class="btn btn-sm"
-                :class="$store.app.cacheEnabled ? 'btn-success' : 'btn-outline-secondary'"
-                @click="$store.app.cacheEnabled = true; $store.app.saveSettings();">ENABLED</button>
-              <button type="button" class="btn btn-sm"
-                :class="!$store.app.cacheEnabled ? 'btn-danger' : 'btn-outline-secondary'"
-                @click="$store.app.cacheEnabled = false; $store.app.saveSettings();">DISABLED</button>
-            </div>
-          </div>
-        </div>
+
         <div class="mb-3">
           <div class="d-flex align-items-center justify-content-between p-3 rounded border"
             :class="$store.app.imageEditionEnabled ? 'border-success bg-success bg-opacity-10' : 'border-danger bg-danger bg-opacity-10'"
@@ -774,6 +760,25 @@
           <div class="form-text mt-1" style="margin-left: 8px; color: #b5d6f8; font-size: 13px;">
             When enabled, the current tab will automatically refresh whenever you change any setting.
             ⚠️ It may cause a lot of refreshes, so use with caution. Some websites may ban or block repeated refreshes.
+          </div>
+        </div>
+        <div class="mb-3">
+          <div class="d-flex align-items-center justify-content-between p-3 rounded border"
+            :class="$store.app.cacheEnabled ? 'border-success bg-success bg-opacity-10' : 'border-danger bg-danger bg-opacity-10'"
+            :style="$store.app.cacheEnabled ? '' : 'opacity: 0.7;'">
+            <span class="fw-medium">Cache System</span>
+            <div class="btn-group" role="group" aria-label="Cache Toggle">
+              <button type="button" class="btn btn-sm"
+                :class="$store.app.cacheEnabled ? 'btn-success' : 'btn-outline-secondary'"
+                @click="$store.app.cacheEnabled = true; $store.app.saveSettings();">ENABLED</button>
+              <button type="button" class="btn btn-sm"
+                :class="!$store.app.cacheEnabled ? 'btn-danger' : 'btn-outline-secondary'"
+                @click="$store.app.cacheEnabled = false; $store.app.saveSettings();">DISABLED</button>
+            </div>
+          </div>
+          <div class="form-text mt-1" style="margin-left: 8px; color: #b5d6f8; font-size: 13px;">
+            The UltimaDark cache system, while harmless in terms of performance, is now considered unnecessary and will be removed soon.
+            <a href="https://github.com/ThomazPom/Moz-Ext-UltimaDark/issues/176" target="_blank" class="text-info">More info</a>.
           </div>
         </div>
       </div>

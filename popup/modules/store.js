@@ -77,7 +77,7 @@ document.addEventListener("alpine:init", () => {
         tabChangeListenersEnabled: false,
 
         // Feature toggles
-        cacheEnabled: true,
+        cacheEnabled: false,
         imageEditionEnabled: true,
         serviceWorkersEnabled: true,
         autoRefreshOnToggle: false,
