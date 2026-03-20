@@ -969,6 +969,12 @@ class uDarkC extends uDarkExtended {
     // 15. Remove the integrity attribute from elements and replace it with a custom attribute
     uDark.restoreIntegrityAttributes(aDocument);
 
+    aDocument.querySelectorAll("template").forEach(template => {
+      if (template.content instanceof DocumentFragment) {
+        uDark.transformADocumentBackend(template.content, parsedDocument, details);
+      }
+    });
+
   }
   reparseDocumentWithNoScript(parsedDocument, strO, details) {
     /**
@@ -1130,7 +1136,6 @@ class uDarkC extends uDarkExtended {
         return workAroundResult;
       }
     }
-
     uDark.transformADocumentBackend(aDocument, parsedDocument, details);
     // 16. Return the final edited HTML
     let will_return = parsedDocument.ud_doctype + aDocument.outerHTML
