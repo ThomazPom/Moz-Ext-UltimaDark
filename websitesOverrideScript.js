@@ -154,18 +154,27 @@ class WebsitesOverrideScript {
         });
         
         uDark.functionPrototypeEditor(Element, Element.prototype.setAttribute, (elem, args) => {
-            if(args[0].toLowerCase() === "nonce")
+           
+            if(elem instanceof HTMLLinkElement && args[0].toLowerCase() === "integrity")
             {
-                args[1] = uDark.byPassCSPNonce; // To bypass CSP that can block our css when we edit style elements textContent, we set a nonce that we will add to our injected css rules, this way we can bypass the hash check and still have some level of security against other css injections
-                return args; 
+               elem.origIntegrity = args[1];
+               args[0] = new Error("CancelledCall");
+               args[0].altArgs = ["data-no-integrity", args[1]];
+               return args;
             }
+            
+            // if(elem instanceof HTMLStyleElement && args[0].toLowerCase() === "nonce")
+            // { // useless : if site is defining a nonce, it has it as CSP
+            //     args[1] = uDark.byPassCSPNonce; // To bypass CSP that can block our css when we edit style elements textContent, we set a nonce that we will add to our injected css rules, this way we can bypass the hash check and still have some level of security against other css injections
+            //     return args; 
+            // }
             let res = uDark.edit_str(args[1] +
                 "" // I just learn again strings are passed by reference in JS the hard way
             );
             args[1] = res;
             return args;
         }, (attribute, value) =>
-             ["style","nonce"].includes (attribute.toLowerCase())   )
+             ["style","integrity"].includes (attribute.toLowerCase())   )
 
         uDark.valuePrototypeEditor(HTMLImageElement, "src", (image, value) => {
             // return value;
@@ -283,11 +292,11 @@ class WebsitesOverrideScript {
                 elem.addEventListener("load", uDark.do_idk_mode);
             }
         })
-        uDark.valuePrototypeEditor([HTMLLinkElement, HTMLScriptElement], "integrity", (elem, value) => {
+        uDark.valuePrototypeEditor([HTMLLinkElement], "integrity", (elem, value) => {
             console.log("CSS integrity set", elem, value);
             // elem.addEventListener("error", z => linkIntegrityErrorEvent(elem), { once: true, capture: true });
             elem.origIntegrity = value;
-            return value;
+            return new Error("CancelledCall");
         }, false, (elem, value) => {
             elem.removeAttribute("integrity");
         },
@@ -637,14 +646,16 @@ class WebsitesOverrideScript {
             testStyle.outerHTML += testStyle.outerHTML + testStyle.outerHTML.slice(0, -8) + ".test20 {color:red!important}" + "</style>"
         }
         /****************************************** */
-        
     
         // FINALLY CNN Use this one (webpack)!!!!
         uDark.valuePrototypeEditor(Node, "textContent", (elem, value) => {
-            elem.o_ud_setAttribute("nonce", uDark.byPassCSPNonce); // To bypass CSP that can block our css when we edit style elements textContent, we set a nonce that we will add to our injected css rules, this way we can bypass the hash check and still have some level of security against other css injections
+            if(!elem.nonce)
+            {
+                elem.o_ud_setAttribute("nonce", uDark.byPassCSPNonce); // To bypass CSP that can block our css when we edit style elements textContent, we set a nonce that we will add to our injected css rules, this way we can bypass the hash check and still have some level of security against other css injections
+            }
             return uDark.edit_str(value)
 
-        }, (elem, value) => elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement)
+        }, (elem, value) => elem instanceof HTMLStyleElement || elem instanceof SVGStyleElement )
 
 
         uDark.valuePrototypeEditor(CSS2Properties, "fill", (elem, value) => {

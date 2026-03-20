@@ -462,6 +462,9 @@ class uDarkC extends uDarkExtended {
     let override_get_set = {};
     if (setter) {
       override_get_set.set = uDark.exportFunction(function (value) { // getters must be exported like regular functions
+        if (value instanceof Error && value.message === "CancelledCall") {
+          return originalProperty.get.call(this); // Return the original value without modification if the call was cancelled
+        }
         var new_value = (!conditon || conditon(this, value) === true) ? setter(this, value) : value;
         let call_result = originalProperty.set.call(this, new_value || value);
         aftermath && aftermath(this, value, new_value);
@@ -550,8 +553,14 @@ class uDarkC extends uDarkExtended {
     
     // create a named wrapper
     const wrappedFunction = uDark.exportFunction(function wrapper() {
+      
       if (conditon === true || conditon.apply(this, arguments)) {
         const watcher_result = watcher(this, arguments);
+
+        if(watcher_result[0] instanceof Error && watcher_result[0].message === "CancelledCall") {
+       
+          return originalFunction.apply(this, arguments[0].altArgs); // Return the original value without modification if the call was cancelled
+        }
         const result = originalFunction.apply(this, watcher_result);
         return result_editor(result, this, arguments, watcher_result, originalFunction);
       }
@@ -755,7 +764,9 @@ class uDarkC extends uDarkExtended {
     parentElement.querySelectorAll(`style:not(.${add_class})`).forEach(astyle => {
       if(!details || details.hasHashCSP)
       {
-        astyle.setAttribute("nonce", uDark.byPassCSPNonce);
+        if(!astyle.nonce){
+          astyle.setAttribute("nonce", uDark.byPassCSPNonce);
+        }
       }
       
       astyle.p_ud_innerHTML = uDark.edit_str(astyle.innerHTML.unprotect_simple("ud-tag-ptd-" /*display:table is a thing*/), false, false, details, false, options);
@@ -1483,7 +1494,7 @@ class uDarkC extends uDarkExtended {
 
   restoreIntegrityAttributes(aDocument) {
     // Remove the integrity attribute from elements and store it as a custom attribute
-    aDocument.querySelectorAll("[integrity]").forEach(integrityElem => {
+    aDocument.querySelectorAll("link[integrity]").forEach(integrityElem => {
       integrityElem.setAttribute("data-no-integ", integrityElem.getAttribute("integrity"));
       integrityElem.removeAttribute("integrity");
     });
