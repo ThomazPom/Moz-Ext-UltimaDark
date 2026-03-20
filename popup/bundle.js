@@ -23120,6 +23120,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       imageEditionEnabled: true,
       serviceWorkersEnabled: true,
       autoRefreshOnToggle: false,
+      autoRefreshOnAnySettingChange: false,
       embedsInheritanceBehavior: false,
       // Pattern lists
       inclusionPatterns: "",

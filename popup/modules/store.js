@@ -81,6 +81,7 @@ document.addEventListener("alpine:init", () => {
         imageEditionEnabled: true,
         serviceWorkersEnabled: true,
         autoRefreshOnToggle: false,
+        autoRefreshOnAnySettingChange: false,
         embedsInheritanceBehavior: false,
 
 
