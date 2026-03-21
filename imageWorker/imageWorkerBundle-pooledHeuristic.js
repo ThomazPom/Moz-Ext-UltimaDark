@@ -42,6 +42,14 @@ console.log("Image Service worker started")
 */
 const COLOR_BITSET_SIZE = 1 << 24;                  // 16,777,216 possible RGB colors
 const COLOR_BITSET_BYTES = COLOR_BITSET_SIZE >>> 3; // 2,097,152 bytes per bitset (~2MB)
+
+// Pre-computed darkening factor LUT indexed by perceived lightness (0-255).
+// Avoids expensive Math.pow() per pixel in the background darkening loop.
+const DARKENING_FACTOR_LUT = new Float32Array(256);
+for (let L = 0; L < 256; L++) {
+    DARKENING_FACTOR_LUT[L] = Math.pow(255 / (L + 127), L / 127 * 2.8);
+}
+
 const uDarkColorBitsets = {
     opaque: new Uint8Array(COLOR_BITSET_BYTES),     // Tracks presence of fully opaque colors (a == 255)
     nonOpaque: new Uint8Array(COLOR_BITSET_BYTES)   // Tracks presence where alpha < 255 (alpha ignored for indexing)
@@ -493,7 +501,8 @@ var uDark = {
             let g = imageData.data[i + 1];
             let b = imageData.data[i + 2];
             const L = uDark.getPerceivedLightness_approx(r, g, b);
-            let factor = Math.pow(255 / (L + 127), L / 127 * 2.8);
+            const lo = L | 0;
+            let factor = DARKENING_FACTOR_LUT[lo] + (DARKENING_FACTOR_LUT[lo < 255 ? lo + 1 : 255] - DARKENING_FACTOR_LUT[lo]) * (L - lo);
             if (L > 127) {
                 theImageDataClamped8TMP[i] = r * factor;
                 theImageDataClamped8TMP[i + 1] = g * factor;
