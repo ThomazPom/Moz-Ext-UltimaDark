@@ -1,0 +1,48 @@
+name: Image Processing Issue
+description: Report an image that is incorrectly darkened, lightened, or left unchanged when it shouldn't be.
+labels: [image-processing]
+body:
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Quick Checklist
+      description: Please try to confirm what you can.
+      options:
+        - label: I have Image Processing enabled in UltimaDark settings.
+          required: false
+        - label: I had a quick look at [existing issues](https://github.com/ThomazPom/Moz-Ext-UltimaDark/issues?q=is%3Aissue+label%3Aimage-processing) and this does not seem to have been reported yet.
+          required: false
+  - type: input
+    id: url
+    attributes:
+      label: Page URL where the image appears
+      placeholder: https://www.example.com/page-with-image
+    validations:
+      required: true
+  - type: dropdown
+    id: problem_type
+    attributes:
+      label: What went wrong?
+      options:
+        - A background image was not darkened (should have been)
+        - A photo or artwork was darkened (should have been left alone)
+        - A logo or icon was not lightened (should have been)
+        - A logo or icon was darkened (should have been lightened)
+        - An image looks distorted or has visual artifacts
+        - Other (describe below)
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe the problem. A screenshot showing the image is very helpful!
+      placeholder: "e.g. The site logo in the header is a dark logo on a dark background, making it invisible."
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: |
+        > [!CAUTION]
+        > **GitHub is experiencing a high volume of malicious spam comments.**
+        > If you receive any replies asking you to download a file, do **NOT** follow the download links!

@@ -1,0 +1,56 @@
+name: Color / Readability Issue
+description: Report a site where the colors look off, contrast is poor, or text is hard to read — even though nothing is technically broken.
+labels: [readability]
+body:
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Quick Checklist
+      description: Please try to confirm what you can.
+      options:
+        - label: I am using a recent version of UltimaDark on a desktop browser.
+          required: false
+        - label: I had a quick look at [existing issues](https://github.com/ThomazPom/Moz-Ext-UltimaDark/issues?q=is%3Aissue+label%3Areadability) and this does not seem to have been reported yet.
+          required: false
+  - type: input
+    id: url
+    attributes:
+      label: Site URL
+      placeholder: https://www.example.com
+    validations:
+      required: true
+  - type: dropdown
+    id: problem_type
+    attributes:
+      label: What kind of problem?
+      options:
+        - Text is hard to read (low contrast)
+        - Colors look weird or shifted
+        - Some elements are too dark
+        - Some elements are too bright
+        - Overall result looks unpleasant
+        - Other (describe below)
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe what looks off. Screenshots are very helpful — even a quick one!
+      placeholder: "e.g. The body text is dark gray on a dark background, making it very hard to read."
+    validations:
+      required: true
+  - type: textarea
+    id: settings
+    attributes:
+      label: Your UltimaDark settings (optional)
+      description: If you've adjusted the lightness sliders or other settings, mentioning them can help us reproduce the issue.
+      placeholder: "e.g. Background lightness at 15%, text lightness at 85%"
+    validations:
+      required: false
+  - type: markdown
+    attributes:
+      value: |
+        > [!CAUTION]
+        > **GitHub is experiencing a high volume of malicious spam comments.**
+        > If you receive any replies asking you to download a file, do **NOT** follow the download links!

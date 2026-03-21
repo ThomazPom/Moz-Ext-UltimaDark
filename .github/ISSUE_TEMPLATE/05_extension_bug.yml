@@ -1,0 +1,58 @@
+name: Extension Bug
+description: Report a bug with UltimaDark itself — popup issues, settings not saving, crashes, or other non-site-specific problems.
+labels: [bug, extension]
+body:
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Quick Checklist
+      description: Please try to confirm what you can — don't worry if you're unsure about some of these.
+      options:
+        - label: I am using a recent version of UltimaDark on a desktop browser.
+          required: false
+        - label: I had a quick look at [existing issues](https://github.com/ThomazPom/Moz-Ext-UltimaDark/issues?q=is%3Aissue) and this does not seem to have been reported yet.
+          required: false
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the bug. Screenshots are welcome!
+      placeholder: "e.g. When I open the popup and change the lightness slider, the setting resets after restarting the browser."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior (optional)
+      description: If you have an idea of what should happen instead, let us know.
+    validations:
+      required: false
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce (optional)
+      description: If you can reproduce the bug, list the steps so we can try too.
+      placeholder: |
+        1. Open the UltimaDark popup
+        2. Change the lightness slider to 30%
+        3. Close and reopen the browser
+        4. The slider is back to default
+    validations:
+      required: false
+  - type: textarea
+    id: log
+    attributes:
+      label: Console Log (optional, for advanced users)
+      description: |
+        If you're comfortable with developer tools, you can grab the extension logs:
+        Go to `about:debugging#/runtime/this-firefox`, click "Inspect" on UltimaDark, and check for errors.
+        Don't worry if you don't know how to do this — it's not required!
+      render: shell
+    validations:
+      required: false
+  - type: markdown
+    attributes:
+      value: |
+        > [!CAUTION]
+        > **GitHub is experiencing a high volume of malicious spam comments.**
+        > If you receive any replies asking you to download a file, do **NOT** follow the download links!

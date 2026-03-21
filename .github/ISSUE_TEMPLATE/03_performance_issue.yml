@@ -1,0 +1,46 @@
+name: Performance Issue
+description: Report a site or scenario where UltimaDark causes noticeable slowness, lag, or high resource usage.
+labels: [performance]
+body:
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Quick Checklist
+      description: Please try to confirm what you can — don't worry if you're unsure about some of these.
+      options:
+        - label: I am using a recent version of UltimaDark on a desktop browser.
+          required: false
+        - label: The slowness goes away when I disable UltimaDark.
+          required: false
+        - label: I had a quick look at [existing issues](https://github.com/ThomazPom/Moz-Ext-UltimaDark/issues?q=is%3Aissue+label%3Aperformance) and this does not seem to have been reported yet.
+          required: false
+  - type: input
+    id: url
+    attributes:
+      label: Affected site URL (if specific to a site)
+      placeholder: https://www.example.com
+    validations:
+      required: false
+  - type: textarea
+    id: description
+    attributes:
+      label: What is slow?
+      description: Describe what you experience — page load delay, scrolling lag, high CPU, browser freezing, etc.
+      placeholder: "e.g. Scrolling on this site becomes very choppy with UltimaDark enabled. Smooth again when disabled."
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Additional details (optional)
+      description: |
+        Anything that might help: does it happen on every page load? Only on large pages? Only with Image Processing enabled?
+        If you know how to check CPU/memory usage in `about:performance` or Task Manager, feel free to share numbers.
+    validations:
+      required: false
+  - type: markdown
+    attributes:
+      value: |
+        > [!CAUTION]
+        > **GitHub is experiencing a high volume of malicious spam comments.**
+        > If you receive any replies asking you to download a file, do **NOT** follow the download links!

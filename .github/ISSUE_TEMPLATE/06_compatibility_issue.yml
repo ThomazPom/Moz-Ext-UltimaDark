@@ -1,0 +1,54 @@
+name: Compatibility Issue
+description: Report a conflict with another extension, a specific browser version, or an OS-level setting (system dark mode, high contrast, etc.).
+labels: [compatibility]
+body:
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Quick Checklist
+      description: Please try to confirm what you can — don't worry if you're unsure about some of these.
+      options:
+        - label: I am using a recent version of UltimaDark on a desktop browser.
+          required: false
+        - label: I had a quick look at [existing issues](https://github.com/ThomazPom/Moz-Ext-UltimaDark/issues?q=is%3Aissue+label%3Acompatibility) and this does not seem to have been reported yet.
+          required: false
+  - type: dropdown
+    id: conflict_type
+    attributes:
+      label: What kind of compatibility issue?
+      options:
+        - Conflict with another extension
+        - Issue with a specific browser version
+        - Issue with system dark mode / OS theme
+        - Issue with high contrast or accessibility settings
+        - Other (describe below)
+    validations:
+      required: true
+  - type: input
+    id: conflicting
+    attributes:
+      label: Name of the other extension, browser version, or OS setting involved
+      placeholder: "e.g. uBlock Origin, Firefox 130, Windows High Contrast mode"
+    validations:
+      required: false
+  - type: textarea
+    id: description
+    attributes:
+      label: What happens?
+      description: Describe the problem. Screenshots are welcome!
+      placeholder: "e.g. When Dark Reader and UltimaDark are both enabled, pages flash white then go fully black."
+    validations:
+      required: true
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Workaround (optional)
+      description: If you found a way around the problem, let us know — it helps narrow down the cause.
+    validations:
+      required: false
+  - type: markdown
+    attributes:
+      value: |
+        > [!CAUTION]
+        > **GitHub is experiencing a high volume of malicious spam comments.**
+        > If you receive any replies asking you to download a file, do **NOT** follow the download links!
