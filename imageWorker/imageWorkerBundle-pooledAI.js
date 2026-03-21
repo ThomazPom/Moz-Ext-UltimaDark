@@ -194,51 +194,60 @@ var uDark = {
     },
 
     check_image_lines_content: function (canvas, ctx) {
-        const leftBorderImageData = ctx.getImageData(0, 0, 1, canvas.height);
-        const rightBorderImageData = ctx.getImageData(canvas.width - 1, 0, 1, canvas.height);
-        const topBorderImageData = ctx.getImageData(0, 0, canvas.width, 1);
-        const bottomBorderImageData = ctx.getImageData(0, canvas.height - 1, canvas.width, 1);
-        const centerVerticalLineImageData = ctx.getImageData(canvas.width / 2, 0, 1, canvas.height);
-        const centerHorizontalLineImageData = ctx.getImageData(0, canvas.height / 2, canvas.width, 1);
+        // 6 thin getImageData calls (way cheaper than 1 full-image read for large canvases)
+        const list_test = [
+            ctx.getImageData(0, 0, 1, canvas.height),                    // left
+            ctx.getImageData(canvas.width - 1, 0, 1, canvas.height),     // right
+            ctx.getImageData(0, 0, canvas.width, 1),                     // top
+            ctx.getImageData(0, canvas.height - 1, canvas.width, 1),     // bottom
+            ctx.getImageData(canvas.width / 2, 0, 1, canvas.height),     // center V
+            ctx.getImageData(0, canvas.height / 2, canvas.width, 1),     // center H
+        ];
         let linesAchromatic = Array(10).fill(false);
         let linesGradient = Array(10).fill(false);
         let linesAchromaticCount = 0;
         let linesAchromaticOpaqueCount = 0;
         let linesGradientsCount = 0;
-        let list_test = [leftBorderImageData, rightBorderImageData, topBorderImageData, bottomBorderImageData, centerVerticalLineImageData, centerHorizontalLineImageData]
+
         for (let i = 0; i < list_test.length; i++) {
-            let imageData = list_test[i];
-            let theImageDataBufferTMP = new ArrayBuffer(imageData.data.length);
-            let theImageDataClamped8TMP = new Uint8ClampedArray(theImageDataBufferTMP);
-            theImageDataClamped8TMP.set(imageData.data);
-            let theImageDataUint32TMP = new Uint32Array(theImageDataBufferTMP)
-            let number = theImageDataUint32TMP[0];
-            var r = number & 0xff;
-            var g = (number >> 8) & 0xff;
-            var b = (number >> 16) & 0xff;
-            var a = (number >> 24) & 0xff;
-            if (theImageDataUint32TMP.every(x => x == number)) {
-                linesAchromatic[i] = [r, g, b, a]
+            // Uint32Array view directly on the buffer — no copy needed
+            const lineU32 = new Uint32Array(list_test[i].data.buffer);
+            const first = lineU32[0];
+            const r0 = first & 0xff;
+            const g0 = (first >> 8) & 0xff;
+            const b0 = (first >> 16) & 0xff;
+            const a0 = (first >> 24) & 0xff;
+
+            // Single pass: check uniform AND gradient simultaneously
+            let isUniform = true;
+            let isGradient = true;
+            let currentLightness = Math.max(uDark.getPerceivedLightness_approx(r0, g0, b0), a0);
+
+            for (let n = 1; n < lineU32.length; n++) {
+                const number = lineU32[n];
+                if (isUniform && number !== first) {
+                    isUniform = false;
+                }
+                if (isGradient) {
+                    const r = number & 0xff;
+                    const g = (number >> 8) & 0xff;
+                    const b = (number >> 16) & 0xff;
+                    const a = (number >> 24) & 0xff;
+                    const lightness = Math.max(uDark.getPerceivedLightness_approx(r, g, b), a);
+                    if (lightness > currentLightness + 5 || lightness < currentLightness - 5) {
+                        isGradient = false;
+                    }
+                    currentLightness = lightness;
+                }
+                if (!isUniform && !isGradient) break;
+            }
+
+            if (isUniform) {
+                linesAchromatic[i] = [r0, g0, b0, a0];
                 linesAchromaticCount++;
-                if (a == 255) {
+                if (a0 === 255) {
                     linesAchromaticOpaqueCount++;
                 }
-            }
-            let isGradient = true;
-            let currentLightness = Math.max(uDark.getPerceivedLightness_approx(r, g, b), a);
-            for (let n = 1; n < theImageDataUint32TMP.length; n++) {
-                // Start to 1 as we already checked the first pixel
-                number = theImageDataUint32TMP[n];
-                r = number & 0xff;
-                g = (number >> 8) & 0xff;
-                b = (number >> 16) & 0xff;
-                a = (number >> 24) & 0xff;
-                let lightness = Math.max(uDark.getPerceivedLightness_approx(r, g, b), a);
-                if (lightness > currentLightness + 5 || lightness < currentLightness - 5) {
-                    isGradient = false;
-                    break;
-                }
-                currentLightness = lightness;
             }
             if (isGradient) {
                 linesGradient[i] = true;
@@ -567,9 +576,9 @@ var uDark = {
 
         const theImageDataClamped8TMP = editionStatus.theImageDataClamped8TMP;
         for (let i = 0; i < theImageDataClamped8TMP.length; i += 4) {
-            let r = imageData.data[i];
-            let g = imageData.data[i + 1];
-            let b = imageData.data[i + 2];
+            let r = theImageDataClamped8TMP[i];
+            let g = theImageDataClamped8TMP[i + 1];
+            let b = theImageDataClamped8TMP[i + 2];
             const L = uDark.getPerceivedLightness_approx(r, g, b);
             const lo = L | 0;
             let factor = DARKENING_FACTOR_LUT[lo] + (DARKENING_FACTOR_LUT[lo < 255 ? lo + 1 : 255] - DARKENING_FACTOR_LUT[lo]) * (L - lo);
