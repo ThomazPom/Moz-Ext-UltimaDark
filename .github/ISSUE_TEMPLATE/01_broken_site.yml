@@ -1,79 +1,62 @@
 name: Broken Site Report
-description: Help us improve UltimaDark by reporting a site that is broken in a new way on a supported desktop browser.
+description: Report a single website that UltimaDark breaks or displays incorrectly. One site per issue please.
 labels: [bug]
 body:
-  - type: checkboxes
-    attributes:
-      label: Please do not remove or skip any part of this template
-      description: All fields are required for a helpful report.
-      options:
-        - label: I understand that skipping or removing required fields may result in my issue being closed or blocked.
-          required: true
   - type: checkboxes
     id: checklist
     attributes:
       label: Quick Checklist
-      description: |
-        Before submitting, please make sure you have completed all of the following steps:
+      description: Please try to confirm what you can — don't worry if you're unsure about some of these.
       options:
-        - label: I am using a compatible desktop browser that is up-to-date, or listed as compatible in the [README](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/blob/master/readme.md).
-          required: true
-        - label: I am reporting a genuinely new issue, not something that belongs in [#6](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/issues/6), [#7](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/issues/7), [#8](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/issues/8), or [#94](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/issues/94).
-          required: true
-        - label: This site is not already listed in an open or closed issue, or in the issues above.
-          required: true
-        - label: I am using the latest version of UltimaDark.
-          required: true
-        - label: I have checked that ImageEdition, Caching, Service Worker Compatibility, and the extension itself are all enabled. I have also reloaded the site in a new tab, or flushed it with [Tab Suspender](https://www.github.com/Hau-Hau/firefox-tab-suspender).
-          required: true
-        - label: I tried disabling caching and refreshed the page several times, but the problem persists.
-          required: true
-        - label: The site is not on my excluded sites list, nor is it a protected domain.
-          required: true
-        - label: I have searched [known issues](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/issues), including closed ones, to avoid posting a duplicate.
-          required: true
-        - label: I have read the [README](https://www.github.com/ThomazPom/Moz-Ext-UltimaDark/blob/master/readme.md) and understand how to open a helpful issue.
-          required: true
-  - type: textarea
+        - label: I am using a recent version of UltimaDark on a desktop browser.
+          required: false
+        - label: I had a quick look at [existing issues](https://github.com/ThomazPom/Moz-Ext-UltimaDark/issues?q=is%3Aissue) and this site does not seem to have been reported yet.
+          required: false
+        - label: The site is not on my excluded sites list.
+          required: false
+        - label: I have tried reloading the page and the problem persists.
+          required: false
+  - type: input
     id: url
     attributes:
       label: Site URL
-      placeholder: www.example.com
+      placeholder: https://www.example.com
     validations:
       required: true
   - type: textarea
     id: description
     attributes:
-      label: Provide a description of what about the site is broken and attach screenshots at the bottom
-      placeholder: Provide as much detail about the problem as you can and suggest solutions if you have one. 
+      label: What is broken?
+      description: Describe the visual problem as best you can. Screenshots are very helpful if you can attach some!
+      placeholder: "e.g. The navbar text is invisible on a dark background, making the menu unreadable."
     validations:
       required: true
-  - type: checkboxes
-    id: verbose
+  - type: textarea
+    id: expected
     attributes:
-      label: Provide console logs 
-      options:
-        - label: Go to about:debugging#/runtime/this-firefox
-          required: false
-        - label: Click "Inspect" on UltimaDark
-          required: false
-        - label: Clear the log and refresh the page that is broken
-          required: false
-        - label: Copy the WHOLE output and insert it below
-          required: false
+      label: Expected behavior (optional)
+      description: If you have an idea of what it should look like instead, let us know.
+      placeholder: "e.g. The navbar text should be light-colored so it is readable."
+    validations:
+      required: false
   - type: textarea
     id: log
     attributes:
-      label: Console Log or Error Output
+      label: Extension Console Log (optional, for advanced users)
       description: |
-        Please copy and paste any output from the browser console or extension log that seems unusual, denotes a problem, or looks related to your issue—even if it's not an obvious error. This could be an error, a warning, or just something that stands out.
-        You do not need to paste the entire log—just the lines that seem connected to the problem (errors, warnings, or anything mentioning UltimaDark or the site).
-      placeholder: |
-        Example:
-        Error: Failed to apply dark mode on example.com background.js:2620:15
-        Warning: Disconnected from tab example.com
-        Set [] background.js:502:21
-         ...more relevant lines...
+        If you're comfortable with developer tools, you can grab the extension logs:
+        Go to `about:debugging#/runtime/this-firefox`, click "Inspect" on UltimaDark, clear the log, then reload the broken page.
+        Don't worry if you don't know how to do this — it's not required!
+      render: shell
+    validations:
+      required: false
+  - type: textarea
+    id: site_log
+    attributes:
+      label: Site Console Log (optional, for advanced users)
+      description: |
+        If you know how to open the browser console (F12 → Console tab), check if there are any errors on the page and paste the relevant lines here.
+        Again, no worries if this is not something you're familiar with.
       render: shell
     validations:
       required: false
@@ -81,7 +64,6 @@ body:
     attributes:
       value: |
         > [!CAUTION]
-        > ### GitHub is experiencing a high volume of malicious spam comments.
-        > ### If you receive any replies asking you download a file, do NOT follow the download links!
-        >
-        > Note that this issue may be temporarily locked as an anti-spam measure after it is opened.
+        > **GitHub is experiencing a high volume of malicious spam comments.**
+        > If you receive any replies asking you to download a file, do **NOT** follow the download links!
+        > This issue may be temporarily locked as an anti-spam measure after it is opened.

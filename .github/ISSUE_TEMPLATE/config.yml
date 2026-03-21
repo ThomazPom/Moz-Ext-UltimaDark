@@ -1,1 +1,5 @@
-blank_issues_enabled: true
+blank_issues_enabled: false
+contact_links:
+  - name: General Question or Discussion
+    url: https://github.com/ThomazPom/Moz-Ext-UltimaDark/discussions
+    about: Use Discussions for general questions, help, or ideas that are not feature requests or bug reports.

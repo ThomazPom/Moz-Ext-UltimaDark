@@ -1,12 +1,34 @@
 name: Feature Request
-description: Request new features or enhancements to existing features here
-labels: enhancement
-body: 
+description: Suggest a new feature or an improvement to an existing one. One idea per issue please.
+labels: [enhancement]
+body:
   - type: checkboxes
+    id: checklist
     attributes:
-      label: DO NOT CREATE UNIQUE ISSUES FOR FEATURE REQUESTS
-      description: Submit feature reqeusts to [#19](https://github.com/ThomazPom/Moz-Ext-UltimaDark/issues/19)
+      label: Quick Checklist
       options:
-        - label: I understand that I should not be creating individual issues for feature requests or submitting this template after reading it
+        - label: I have searched [existing issues](https://github.com/ThomazPom/Moz-Ext-UltimaDark/issues?q=is%3Aissue+label%3Aenhancement) to make sure this has not already been requested.
           required: true
-  
+  - type: textarea
+    id: description
+    attributes:
+      label: What would you like?
+      description: Describe the feature or improvement clearly. One idea per issue keeps discussions focused.
+      placeholder: "e.g. Add an option to exclude specific elements from darkening using a CSS selector."
+    validations:
+      required: true
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Why is this useful?
+      description: Explain the use case or problem this would solve.
+      placeholder: "e.g. Some sites have decorative elements that look wrong when darkened, and I'd like to exclude them without disabling the extension on the whole site."
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or workarounds you've considered (optional)
+      placeholder: "e.g. I currently add the site to excluded sites, but that disables dark mode entirely."
+    validations:
+      required: false
