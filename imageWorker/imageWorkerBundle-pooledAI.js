@@ -4,7 +4,7 @@ console.time('load:messageLogicPooled.js');
 // Ce fichier doit être chargé AVANT la logique métier (ex: imageWorkerHeuristicPooled.js)
 
 let imageBuffers = [];
-let activeMessageLogging = true;
+let activeMessageLogging = false; // Toggle pour activer/désactiver les logs de messages
 if (!activeMessageLogging) {
     console.log = () => undefined
 }
