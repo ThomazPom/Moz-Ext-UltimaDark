@@ -1,4 +1,4 @@
-blank_issues_enabled: false
+blank_issues_enabled: true
 contact_links:
   - name: General Question or Discussion
     url: https://github.com/ThomazPom/Moz-Ext-UltimaDark/discussions
