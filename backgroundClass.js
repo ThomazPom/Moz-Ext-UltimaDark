@@ -602,9 +602,10 @@ class uDarkExtended extends uDarkExtendedContentScript {
       new Promise(uDark.installToggleSiteCommand)
     ]).then(x => uDark.info("CSS processed")).then(r => uDark.setListener(true));
     browser.storage.onChanged.addListener((changes, area) => {
-
-      if (area == "local" && !(uDark.installOrUpdate++ == true)) {
-        uDark.success("Settings changed");
+      const isSyncUpdate = area == "sync" && (uDark.userSettings.syncSettingsEnabled || uDark.userSettings.syncListsEnabled);
+      const isLocalUpdate = area == "local" && !(uDark.installOrUpdate++ == true);
+      if (isLocalUpdate || isSyncUpdate) {
+        uDark.success(isSyncUpdate ? "Sync data changed from another device" : "Settings changed");
         new Promise(uDark.getSettings).then(uDark.preparePool).then(uDark.setListener);
       }
     });

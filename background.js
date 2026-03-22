@@ -139,8 +139,25 @@ class uDarkC extends uDarkExtended {
     //Image working model
     imageDecisionLogic: "pooledHeuristic", // from concat.js : pooledAI, pooledHeuristic, native, nativeOldSlow, bench ..
     pooledWorkersEnabled: true, // Use pooled workers by default
+
+    // Sync settings (these flags themselves are always stored in local only)
+    syncSettingsEnabled: false, // Sync scalar settings across devices via Firefox Sync
+    syncListsEnabled: false, // Sync inclusion/exclusion lists across devices via Firefox Sync
   }
   defaultSettings = { ...this.userSettings }
+
+  // Keys that must never leave storage.local (sync flags themselves, transient state, etc.)
+  static localOnlyKeys = ["syncSettingsEnabled", "syncListsEnabled"]
+
+  // Keys that are synced as lists (union-merged across devices) rather than overwritten
+  static syncableListKeys = ["inclusionPatterns", "exclusionPatterns"]
+
+  // All other userSettings keys are syncable scalar settings (derived automatically)
+  static get syncableSettingsKeys() {
+    return Object.keys(uDark.defaultSettings).filter(k =>
+      !uDarkC.localOnlyKeys.includes(k) && !uDarkC.syncableListKeys.includes(k)
+    );
+  }
 
   getSafeUserSettings(usedSettings) {
 
@@ -151,10 +168,29 @@ class uDarkC extends uDarkExtended {
 
   }
   getSettings(resolve) {
-    browser.storage.local.get(null, function (res) {
-      Object.assign(uDark.userSettings, res);
-      resolve(res);
-    })
+    browser.storage.local.get(null, function (localRes) {
+      Object.assign(uDark.userSettings, localRes);
+      // If sync is enabled, overlay synced values on top of local
+      const needsSyncSettings = localRes.syncSettingsEnabled;
+      const needsSyncLists = localRes.syncListsEnabled;
+      if (needsSyncSettings || needsSyncLists) {
+        browser.storage.sync.get(null, function (syncRes) {
+          if (needsSyncSettings) {
+            for (const key of uDarkC.syncableSettingsKeys) {
+              if (syncRes[key] !== undefined) uDark.userSettings[key] = syncRes[key];
+            }
+          }
+          if (needsSyncLists) {
+            for (const key of uDarkC.syncableListKeys) {
+              if (syncRes[key] !== undefined) uDark.userSettings[key] = syncRes[key];
+            }
+          }
+          resolve(uDark.userSettings);
+        });
+      } else {
+        resolve(localRes);
+      }
+    });
   }
   byPassCSPNonce="8IBTHwOdqNKAWeKl7plt8g=="
   imageSrcInfoMarker = "_uDark"

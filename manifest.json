@@ -23,8 +23,11 @@
     }
   },
   "browser_specific_settings": {
+    
     "gecko": {
-      "strict_min_version": "79.0"
+      "strict_min_version": "79.0",
+      "id": "{7c7f6dea-3957-4bb9-9eec-2ef2b9e5bcec}" // This is required for Firefox sync to work on development versions. See https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/browser_specific_settings#Firefox_sync_and_development_extensions for details.
+  
     },
     "gecko_android ": {
       "strict_min_version": "42.0"

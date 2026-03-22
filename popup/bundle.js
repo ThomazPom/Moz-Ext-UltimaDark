@@ -23122,6 +23122,9 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       autoRefreshOnToggle: false,
       autoRefreshOnAnySettingChange: false,
       embedsInheritanceBehavior: false,
+      // Sync flags (stored in local only, never synced themselves)
+      syncSettingsEnabled: false,
+      syncListsEnabled: false,
       // Pattern lists
       inclusionPatterns: "",
       exclusionPatterns: "",
@@ -23683,6 +23686,20 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
         ;
         try {
           await browser.storage.local.set(uDark.userSettings);
+          if (this.syncSettingsEnabled || this.syncListsEnabled) {
+            const syncData = {};
+            if (this.syncSettingsEnabled) {
+              for (const key of uDarkC.syncableSettingsKeys) {
+                syncData[key] = uDark.userSettings[key];
+              }
+            }
+            if (this.syncListsEnabled) {
+              for (const key of uDarkC.syncableListKeys) {
+                syncData[key] = uDark.userSettings[key];
+              }
+            }
+            await browser.storage.sync.set(syncData);
+          }
           console.log("Settings saved");
         } catch (error2) {
           console.error("Failed to save settings:", error2);
@@ -23719,12 +23736,14 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       },
       // Advanced actions
       clearAllData() {
+        const syncEnabled = this.syncSettingsEnabled || this.syncListsEnabled;
         showBS5Modal({
           title: "Clear All Settings",
-          body: "Are you sure you want to clear all UltimaDark settings? This cannot be undone.",
-          okText: "Clear All",
+          body: "Are you sure you want to clear all UltimaDark settings? This cannot be undone." + (syncEnabled ? "<br><br>You have sync enabled. Do you also want to clear synced data on all your other devices?" : ""),
+          okText: syncEnabled ? "Clear local only" : "Clear All",
           okClass: "btn-danger",
-          cancelText: "Cancel",
+          cancelText: syncEnabled ? "Clear local + synced" : "Cancel",
+          cancelClass: syncEnabled ? "btn-warning" : "btn-secondary",
           showCancel: true,
           onOk: async () => {
             await browser.storage.local.clear();
@@ -23732,9 +23751,135 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
             this.loadSettings();
             showBS5Modal({
               title: "Settings Cleared",
-              body: "All settings have been reset to defaults.",
+              body: "Local settings have been reset to defaults." + (syncEnabled ? " Synced data was kept." : ""),
               okText: "OK",
               showCancel: false
+            });
+          },
+          onCancel: syncEnabled ? async () => {
+            await browser.storage.local.clear();
+            await browser.storage.sync.clear();
+            await browser.storage.local.set(uDark.defaultSettings);
+            this.loadSettings();
+            showBS5Modal({
+              title: "Settings Cleared",
+              body: "All settings have been reset to defaults, including synced data across your devices.",
+              okText: "OK",
+              showCancel: false
+            });
+          } : null
+        });
+      },
+      // --- Sync across devices ---
+      // Helper: union-merge two newline-separated pattern lists, deduplicate
+      _mergePatternLists(localList, syncList) {
+        const localPatterns = localList.split("\n").filter((p) => p.trim());
+        const syncPatterns = syncList.split("\n").filter((p) => p.trim());
+        const merged = [.../* @__PURE__ */ new Set([...localPatterns, ...syncPatterns])];
+        return merged.join("\n");
+      },
+      toggleSyncSettings() {
+        if (this.syncSettingsEnabled) {
+          this.syncSettingsEnabled = false;
+          this.saveSettings();
+          return;
+        }
+        browser.storage.sync.get(null).then((syncRes) => {
+          const hasSyncData = uDarkC.syncableSettingsKeys.some((k) => syncRes[k] !== void 0);
+          if (hasSyncData) {
+            showBS5Modal({
+              title: "Synced settings found",
+              body: "Settings from another device were found in your Firefox Sync. Do you want to <b>keep this device's settings</b> and push them to all synced devices, or <b>use the synced settings</b> from your other device?",
+              okText: "Keep this device's",
+              cancelText: "Use synced",
+              showCancel: true,
+              okClass: "btn-primary",
+              cancelClass: "btn-warning",
+              onOk: async () => {
+                const syncData = {};
+                for (const key of uDarkC.syncableSettingsKeys) {
+                  syncData[key] = uDark.userSettings[key];
+                }
+                await browser.storage.sync.set(syncData);
+                this.syncSettingsEnabled = true;
+                this.saveSettings();
+              },
+              onCancel: async () => {
+                for (const key of uDarkC.syncableSettingsKeys) {
+                  if (syncRes[key] !== void 0) {
+                    this[key] = syncRes[key];
+                  }
+                }
+                this.syncSettingsEnabled = true;
+                this.saveSettings();
+              }
+            });
+          } else {
+            showBS5Modal({
+              title: "Enable settings sync",
+              body: "Your current settings will be synced across all devices where this is enabled via Firefox Sync.",
+              okText: "Enable sync",
+              cancelText: "Cancel",
+              showCancel: true,
+              onOk: async () => {
+                const syncData = {};
+                for (const key of uDarkC.syncableSettingsKeys) {
+                  syncData[key] = uDark.userSettings[key];
+                }
+                await browser.storage.sync.set(syncData);
+                this.syncSettingsEnabled = true;
+                this.saveSettings();
+              }
+            });
+          }
+        });
+      },
+      toggleSyncLists() {
+        if (this.syncListsEnabled) {
+          this.syncListsEnabled = false;
+          this.saveSettings();
+          return;
+        }
+        browser.storage.sync.get(null).then((syncRes) => {
+          const hasSyncData = uDarkC.syncableListKeys.some((k) => syncRes[k] !== void 0);
+          if (hasSyncData) {
+            showBS5Modal({
+              title: "Synced lists found",
+              body: "Exclusion/inclusion lists from another device were found in your Firefox Sync. Your lists will be <b>merged</b> together (combined, deduplicated). From now on, changes will sync automatically across all devices.",
+              okText: "Merge & enable sync",
+              cancelText: "Cancel",
+              showCancel: true,
+              onOk: async () => {
+                const syncData = {};
+                for (const key of uDarkC.syncableListKeys) {
+                  const merged = this._mergePatternLists(
+                    this[key] || "",
+                    syncRes[key] || ""
+                  );
+                  this[key] = merged;
+                  syncData[key] = merged;
+                }
+                await browser.storage.sync.set(syncData);
+                this.syncListsEnabled = true;
+                this.saveSettings();
+              }
+            });
+          } else {
+            showBS5Modal({
+              title: "Enable list sync",
+              body: "Your inclusion and exclusion lists will be synced across all devices where this is enabled via Firefox Sync.",
+              okText: "Enable sync",
+              cancelText: "Cancel",
+              showCancel: true,
+              onOk: async () => {
+                const syncData = {};
+                for (const key of uDarkC.syncableListKeys) {
+                  syncData[key] = this[key];
+                }
+                await browser.storage.sync.set(syncData);
+                this.syncListsEnabled = true;
+                this.saveSettings();
+              }
             });
           }
         });

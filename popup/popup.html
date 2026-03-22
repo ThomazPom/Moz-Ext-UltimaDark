@@ -783,6 +783,57 @@
         </div>
       </div>
 
+      <!-- Sync Across Devices -->
+      <div class="mb-4">
+        <h5 class="text-light mb-2">Sync Across Devices (Firefox Sync):</h5>
+        <div class="form-text mb-3">
+          <p class="text-warning">
+            ⚠️ You must be signed into the same Firefox Account on your devices:<br>
+            You may want to sync manually your settings to avoid wait for Firefox Sync to do it automatically (which can occur with some delay):<br>
+          <a href="about:preferences#sync" target="_blank" class="text-info">Firefox sync settings ➜</a>
+           + 
+            <a href="https://support.mozilla.org/en-US/kb/how-do-i-set-sync-my-computer" target="_blank" class="text-info">How to set up Firefox Sync  ➜</a>
+          
+          </p>
+          
+        </div>
+        <div class="mb-3">
+          <div class="d-flex align-items-center justify-content-between p-3 rounded border"
+            :class="$store.app.syncSettingsEnabled ? 'border-success bg-success bg-opacity-10' : 'border-secondary'"
+            :style="$store.app.syncSettingsEnabled ? '' : 'opacity: 0.7;'">
+            <span class="fw-medium">Sync Settings</span>
+            <div class="btn-group" role="group" aria-label="Sync Settings Toggle">
+              <button type="button" class="btn btn-sm"
+                :class="$store.app.syncSettingsEnabled ? 'btn-success' : 'btn-outline-secondary'"
+                @click="if (!$store.app.syncSettingsEnabled) $store.app.toggleSyncSettings();">ENABLED</button>
+              <button type="button" class="btn btn-sm"
+                :class="!$store.app.syncSettingsEnabled ? 'btn-danger' : 'btn-outline-secondary'"
+                @click="if ($store.app.syncSettingsEnabled) $store.app.toggleSyncSettings();">DISABLED</button>
+            </div>
+          </div>
+          <div class="form-text mt-1" style="margin-left: 8px; color: #b5d6f8; font-size: 13px;">
+            Sync your UltimaDark settings (sliders, toggles) across all devices signed into Firefox Sync.
+          </div>
+        </div>
+        <div class="mb-3">
+          <div class="d-flex align-items-center justify-content-between p-3 rounded border"
+            :class="$store.app.syncListsEnabled ? 'border-success bg-success bg-opacity-10' : 'border-secondary'"
+            :style="$store.app.syncListsEnabled ? '' : 'opacity: 0.7;'">
+            <span class="fw-medium">Sync Exclusion & Inclusion Lists</span>
+            <div class="btn-group" role="group" aria-label="Sync Lists Toggle">
+              <button type="button" class="btn btn-sm"
+                :class="$store.app.syncListsEnabled ? 'btn-success' : 'btn-outline-secondary'"
+                @click="if (!$store.app.syncListsEnabled) $store.app.toggleSyncLists();">ENABLED</button>
+              <button type="button" class="btn btn-sm"
+                :class="!$store.app.syncListsEnabled ? 'btn-danger' : 'btn-outline-secondary'"
+                @click="if ($store.app.syncListsEnabled) $store.app.toggleSyncLists();">DISABLED</button>
+            </div>
+          </div>
+          <div class="form-text mt-1" style="margin-left: 8px; color: #b5d6f8; font-size: 13px;">
+            Sync your website exclusion and inclusion lists across devices. Lists are merged (combined and deduplicated) when first enabled.
+          </div>
+        </div>
+      </div>
 
       <!-- Quick Actions -->
       <div class="mb-4">
