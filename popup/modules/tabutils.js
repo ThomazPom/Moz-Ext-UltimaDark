@@ -24,19 +24,21 @@ export async function searchTabIDMatchingPatterns(tab, patterns, remove_flags = 
             return pattern.split("#ud_")[0].trim();
         });
     }
-    let matchingPatterns = [];
-    for (let pattern of patterns) {
+    const matchingPatterns = await Promise.all(
+      patterns.map(async pattern => {
         try {
-            let matchingTabs = await browser.tabs.query({url: pattern}).catch(console.warn) || [];
-            matchingTabs = matchingTabs.filter(x => x.id == tab.id);
-            if (matchingTabs.length) {
-                matchingPatterns.push(pattern);
-            }
-        } catch (error) {
-            console.warn("Pattern matching error for", pattern, error);
+          let matchingTabs = await browser.tabs.query({ 
+            url: pattern, 
+            windowId: tab.windowId,
+            index: tab.index 
+          }).catch(console.warn);
+          return (matchingTabs.length ?? 0) > 0 ? pattern : null;
+        } catch (error2) {
+          console.warn("Pattern matching error for", pattern, error2);
         }
-    }
-    return matchingPatterns;
+      })
+    )
+    return matchingPatterns.filter(Boolean);
 }
 export async function getEmbedsOfTab(tab,filterfunction) {
     if (!tab || typeof tab.id === 'undefined') return [];
