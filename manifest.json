@@ -56,7 +56,7 @@
       "backgroundClass.js",
       "Listeners.js",
       "background.js",
-      "backgroundDocumentPipelineFix.js",
+      "backgroundDocumentWriteEngine.js",
       "uDarkEncoder.js"
     ]
   }

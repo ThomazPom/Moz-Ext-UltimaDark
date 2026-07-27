@@ -1157,12 +1157,36 @@ class uDarkC extends uDarkExtended {
 
     if (!details.debugParsing) {
 
-      // Shared steps 4, 5, 8, 9, 10, 11, 13 and 15.
-      uDark.transformDOMSubtree(aDocument, details, {});
+      // 4. Temporarily replace all SVG elements to avoid accidental style modifications
+      const svgElements = uDark.processSvgElements(aDocument, details);
+      // 5. Edit styles and attributes inline for background elements
+      uDark.edit_styles_attributes(aDocument, details);
+      uDark.edit_styles_elements(aDocument, details, "ud-edited-background");
+
+      // 8. Add a custom identifier to favicon links to manage cache
+      uDark.processLinks(aDocument);
+
+      // 9. Process image sources and prepare them for custom modifications
+      uDark.processImages(aDocument);
+
+      // 10. Recursively process iframes using the "srcdoc" attribute by applying the same editing logic
+      uDark.processIframes(aDocument, details, {});
+
+      // 11. Handle elements with color attributes (color, bgcolor) and ensure proper color handling
+      uDark.processColoredItems(aDocument);
+
+      // 12. Inject custom CSS and dark color scheme if required (only for the first data load)
+      uDark.injectStylesIfNeeded(parsedDocument, details); // Only benefit of this ; avoids page being white on uDark refresh
+
+      // 13. Restore the original SVG elements that were temporarily replaced
+      uDark.restoreSvgElements(svgElements);
 
       uDark.markUnclosedForms(parsedDocument);
 
     }
+
+    // 15. Remove the integrity attribute from elements and replace it with a custom attribute
+    uDark.restoreIntegrityAttributes(aDocument);
 
     aDocument.querySelectorAll("template").forEach(template => {
       if (template.content instanceof DocumentFragment) {
@@ -1347,218 +1371,6 @@ class uDarkC extends uDarkExtended {
 
   }
 
-
-  createInclusiveDOMQueryScope(root) {
-    if (!root || typeof root.querySelectorAll !== "function") {
-      return false;
-    }
-
-    return {
-      querySelectorAll(selector) {
-        const nodes = [...root.querySelectorAll(selector)];
-
-        if (
-          root instanceof Element &&
-          typeof root.matches === "function" &&
-          root.matches(selector)
-        ) {
-          nodes.unshift(root);
-        }
-
-        return nodes;
-      }
-    };
-  }
-
-  transformDOMSubtree(root, details, options = {}) {
-    if (!root || typeof root.querySelectorAll !== "function") {
-      return;
-    }
-
-    if (root instanceof SVGElement) {
-      uDark.frontEditSVG(root, details);
-      return;
-    }
-
-    const scope = uDark.createInclusiveDOMQueryScope(root);
-    if (!scope) {
-      return;
-    }
-
-    const svgElements = uDark.processSvgElements(scope, details);
-
-    uDark.edit_styles_attributes(scope, details, options);
-    uDark.edit_styles_elements(
-      scope,
-      details,
-      "ud-edited-background",
-      options
-    );
-
-    uDark.processLinks(scope);
-    uDark.processImages(scope);
-    uDark.processIframes(scope, details, options);
-    uDark.processColoredItems(scope);
-    uDark.restoreSvgElements(svgElements);
-    uDark.restoreIntegrityAttributes(scope);
-  }
-
-  installDocumentWriteEngine() {
-    const P = Document.prototype;
-
-    const originalOpen = P.open;
-    const originalWrite = P.write;
-    const originalWriteln = P.writeln;
-    const originalClose = P.close;
-
-    const documentStates = new WeakMap();
-
-    const createState = () => ({
-      editedSubtrees: new WeakSet(),
-      processing: false,
-      closed: false
-    });
-
-    function getState(doc) {
-      let state = documentStates.get(doc);
-
-      if (!state) {
-        state = createState();
-        documentStates.set(doc, state);
-      }
-
-      return state;
-    }
-
-    function resetState(doc) {
-      documentStates.set(doc, createState());
-    }
-
-    function frontEditDOMSubtree(root, state) {
-      if (!(root instanceof Element)) {
-        return;
-      }
-
-      if (state.editedSubtrees.has(root)) {
-        return;
-      }
-
-      try {
-        uDark.transformDOMSubtree(root, undefined, {
-          fromDocumentWrite: true
-        });
-
-        state.editedSubtrees.add(root);
-      } catch (error) {
-        console.error(
-          "[UltimaDark document.write] Subtree edit failed",
-          root,
-          error
-        );
-      }
-    }
-
-    function processStableBranches(root, state) {
-      let parent = root;
-
-      while (parent instanceof Element) {
-        const children = parent.children;
-        const count = children.length;
-
-        if (count === 0) {
-          return;
-        }
-
-        for (let i = 0; i < count - 1; i++) {
-          frontEditDOMSubtree(children[i], state);
-        }
-
-        parent = children[count - 1];
-      }
-    }
-
-    function processWrittenDocument(doc, final = false) {
-      const state = getState(doc);
-
-      if (state.processing) {
-        return;
-      }
-
-      state.processing = true;
-
-      try {
-        if (final) {
-          if (doc.head) {
-            for (const child of [...doc.head.children]) {
-              frontEditDOMSubtree(child, state);
-            }
-          }
-
-          if (doc.body) {
-            for (const child of [...doc.body.children]) {
-              frontEditDOMSubtree(child, state);
-            }
-          }
-
-          state.closed = true;
-          return;
-        }
-
-        if (doc.head) {
-          processStableBranches(doc.head, state);
-        }
-
-        if (doc.body) {
-          processStableBranches(doc.body, state);
-        }
-      } finally {
-        state.processing = false;
-      }
-    }
-
-    Object.defineProperty(P, "open", {
-      configurable: true,
-      writable: true,
-      value: function open(...args) {
-        const result = originalOpen.apply(this, args);
-        resetState(this);
-        return result;
-      }
-    });
-
-    Object.defineProperty(P, "write", {
-      configurable: true,
-      writable: true,
-      value: function write(...args) {
-        const result = originalWrite.apply(this, args);
-        processWrittenDocument(this, false);
-        return result;
-      }
-    });
-
-    Object.defineProperty(P, "writeln", {
-      configurable: true,
-      writable: true,
-      value: function writeln(...args) {
-        const result = originalWriteln.apply(this, args);
-        processWrittenDocument(this, false);
-        return result;
-      }
-    });
-
-    Object.defineProperty(P, "close", {
-      configurable: true,
-      writable: true,
-      value: function close(...args) {
-        const result = originalClose.apply(this, args);
-        processWrittenDocument(this, true);
-        return result;
-      }
-    });
-
-    uDark.log("document.write support installed");
-  }
-
   frontEditHTML(elem, strO, details, options = {}) {
     // 0. Return the original value if it's not a string
     if (!(strO instanceof String || typeof strO === "string")) {
@@ -1595,8 +1407,30 @@ class uDarkC extends uDarkExtended {
       }
       aDocument = parsedDocument;
     }
-    // Shared steps 4, 5, 8, 9, 10, 11, 13 and 15.
-    uDark.transformDOMSubtree(aDocument, details, options);
+    // 4. Temporarily replace all SVG elements to avoid accidental style modifications
+    const svgElements = uDark.processSvgElements(aDocument, details);
+
+    // 5. Edit styles and attributes inline for background elements
+    uDark.edit_styles_attributes(aDocument, details);
+    uDark.edit_styles_elements(aDocument, details, "ud-edited-background");
+
+    // 8. Add a custom identifier to favicon links to manage cache
+    uDark.processLinks(aDocument);
+
+    // 9. Process image sources and prepare them for custom modifications
+    uDark.processImages(aDocument);
+
+    // 10. Recursively process iframes using the "srcdoc" attribute by applying the same editing logic
+    uDark.processIframes(aDocument, details, options);
+
+    // 11. Handle elements with color attributes (color, bgcolor) and ensure proper color handling
+    uDark.processColoredItems(aDocument);
+
+    // 13. Restore the original SVG elements that were temporarily replaced
+    uDark.restoreSvgElements(svgElements);
+
+    // 15. Remove the integrity attribute from elements and replace it with a custom attribute
+    uDark.restoreIntegrityAttributes(aDocument);
 
     // 18. After all the edits, return the final HTML output
 
@@ -2958,7 +2792,6 @@ if (isExtensionPage && isSettingsPage) {
 } else {
 
   AllLevels.install();
-  uDark.installDocumentWriteEngine();
   new Promise(resolve => {
     resolve(uDark.install())
   }).then((installResult) => {
