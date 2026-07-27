@@ -1,0 +1,299 @@
+name: Finalize PR 214 document.write pipeline
+
+on:
+  push:
+    branches:
+      - feature/document-write-dom-pipeline
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/document-write-dom-pipeline
+
+      - name: Apply final pipeline corrections
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          background = Path("background.js")
+          source = background.read_text(encoding="utf-8")
+
+          def replace_once(text, old, new, label):
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected exactly one match, found {count}")
+              return text.replace(old, new, 1)
+
+          old_backend = '''    if (!details.debugParsing) {
+
+      // Shared steps 4, 5, 8, 9, 10, 11, 13 and 15.
+      uDark.transformDOMSubtree(aDocument, details, {});
+
+      uDark.markUnclosedForms(parsedDocument);
+
+    }
+
+    aDocument.querySelectorAll("template").forEach(template => {'''
+
+          new_backend = '''    if (!details.debugParsing) {
+
+      /*
+       * Keep the historical backend order while sharing the common work:
+       * transform -> backend injection -> SVG restore -> forms -> integrity.
+       */
+      const transformedSubtree = uDark.transformDOMSubtree(
+        aDocument,
+        details,
+        {
+          deferSvgRestore: true,
+          deferIntegrityRestore: true
+        }
+      );
+
+      // Backend-only operation: never inject this for document.write subtrees.
+      uDark.injectStylesIfNeeded(parsedDocument, details);
+
+      uDark.restoreSvgElements(transformedSubtree.svgElements);
+      uDark.markUnclosedForms(parsedDocument);
+
+    }
+
+    /*
+     * Historically this also runs when debugParsing is enabled.
+     */
+    uDark.restoreIntegrityAttributes(aDocument);
+
+    aDocument.querySelectorAll("template").forEach(template => {'''
+
+          source = replace_once(
+              source,
+              old_backend,
+              new_backend,
+              "backend pipeline"
+          )
+
+          old_methods = '''  createInclusiveDOMQueryScope(root) {
+    if (!root || typeof root.querySelectorAll !== "function") {
+      return false;
+    }
+
+    return {
+      querySelectorAll(selector) {
+        const nodes = [...root.querySelectorAll(selector)];
+
+        if (
+          root instanceof Element &&
+          typeof root.matches === "function" &&
+          root.matches(selector)
+        ) {
+          nodes.unshift(root);
+        }
+
+        return nodes;
+      }
+    };
+  }
+
+  transformDOMSubtree(root, details, options = {}) {
+    if (!root || typeof root.querySelectorAll !== "function") {
+      return;
+    }
+
+    if (root instanceof SVGElement) {
+      uDark.frontEditSVG(root, details);
+      return;
+    }
+
+    const scope = uDark.createInclusiveDOMQueryScope(root);
+    if (!scope) {
+      return;
+    }
+
+    const svgElements = uDark.processSvgElements(scope, details);
+
+    uDark.edit_styles_attributes(scope, details, options);
+    uDark.edit_styles_elements(
+      scope,
+      details,
+      "ud-edited-background",
+      options
+    );
+
+    uDark.processLinks(scope);
+    uDark.processImages(scope);
+    uDark.processIframes(scope, details, options);
+    uDark.processColoredItems(scope);
+    uDark.restoreSvgElements(svgElements);
+    uDark.restoreIntegrityAttributes(scope);
+  }
+'''
+
+          new_methods = '''  createInclusiveDOMQueryScope(root, excludedSubtrees = false) {
+    if (!root || typeof root.querySelectorAll !== "function") {
+      return false;
+    }
+
+    /*
+     * document.write can make a parent stable after one of its descendants
+     * was already processed as an independent stable subtree. Exclude every
+     * result belonging to one of those completed descendant subtrees.
+     */
+    const isInsideExcludedSubtree = node => {
+      if (!excludedSubtrees) {
+        return false;
+      }
+
+      for (
+        let current = node;
+        current && current !== root;
+        current = current.parentNode
+      ) {
+        if (excludedSubtrees.has(current)) {
+          return true;
+        }
+      }
+
+      return false;
+    };
+
+    const querySelectorAll = selector => {
+      const nodes = [];
+
+      // Native querySelectorAll() never includes the query root itself.
+      if (
+        root instanceof Element &&
+        typeof root.matches === "function" &&
+        root.matches(selector)
+      ) {
+        nodes.push(root);
+      }
+
+      for (const node of root.querySelectorAll(selector)) {
+        if (!isInsideExcludedSubtree(node)) {
+          nodes.push(node);
+        }
+      }
+
+      return nodes;
+    };
+
+    return {
+      querySelectorAll,
+      querySelector(selector) {
+        return querySelectorAll(selector)[0] || null;
+      }
+    };
+  }
+
+  transformDOMSubtree(root, details, options = {}) {
+    const result = {
+      svgElements: []
+    };
+
+    if (!root || typeof root.querySelectorAll !== "function") {
+      return result;
+    }
+
+    if (root instanceof SVGElement) {
+      uDark.frontEditSVG(root, details);
+      return result;
+    }
+
+    const scope = uDark.createInclusiveDOMQueryScope(
+      root,
+      options.excludedSubtrees
+    );
+
+    if (!scope) {
+      return result;
+    }
+
+    result.svgElements = uDark.processSvgElements(scope, details);
+
+    uDark.edit_styles_attributes(scope, details, options);
+    uDark.edit_styles_elements(
+      scope,
+      details,
+      "ud-edited-background",
+      options
+    );
+
+    uDark.processLinks(scope);
+    uDark.processImages(scope);
+    uDark.processIframes(scope, details, options);
+    uDark.processColoredItems(scope);
+
+    if (!options.deferSvgRestore) {
+      uDark.restoreSvgElements(result.svgElements);
+    }
+
+    if (!options.deferIntegrityRestore) {
+      uDark.restoreIntegrityAttributes(scope);
+    }
+
+    return result;
+  }
+'''
+
+          source = replace_once(
+              source,
+              old_methods,
+              new_methods,
+              "shared DOM methods"
+          )
+
+          old_engine_call = '''        uDark.transformDOMSubtree(root, undefined, {
+          fromDocumentWrite: true
+        });'''
+
+          new_engine_call = '''        uDark.transformDOMSubtree(root, undefined, {
+          fromDocumentWrite: true,
+          excludedSubtrees: state.editedSubtrees
+        });'''
+
+          source = replace_once(
+              source,
+              old_engine_call,
+              new_engine_call,
+              "document.write filtered scope"
+          )
+
+          background.write_text(source, encoding="utf-8")
+
+          manifest = Path("manifest.json")
+          manifest_source = manifest.read_text(encoding="utf-8")
+          manifest_source = replace_once(
+              manifest_source,
+              '      "backgroundDocumentPipelineFix.js",\n',
+              '',
+              "temporary manifest entry"
+          )
+          manifest.write_text(manifest_source, encoding="utf-8")
+          PY
+
+          rm -f backgroundDocumentPipelineFix.js
+          rm -f .github/workflows/finalize-pr214.yml
+
+      - name: Validate JavaScript syntax and cleanup
+        run: |
+          node --check background.js
+          test ! -e backgroundDocumentPipelineFix.js
+          ! grep -q 'backgroundDocumentPipelineFix.js' manifest.json
+          ! grep -q 'finalize-pr214.yml' <(git ls-files)
+          grep -q 'excludedSubtrees: state.editedSubtrees' background.js
+          grep -q 'uDark.injectStylesIfNeeded(parsedDocument, details);' background.js
+
+      - name: Commit final correction
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: preserve backend behavior and filter processed subtrees"
+          git push origin HEAD:feature/document-write-dom-pipeline
