@@ -1,0 +1,55 @@
+name: Fix PR 214 backend injection
+
+on:
+  push:
+    branches:
+      - feature/document-write-dom-pipeline
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/document-write-dom-pipeline
+
+      - name: Restore backend-only style injection
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path("background.js")
+          source = path.read_text(encoding="utf-8")
+
+          old = '''      // Shared steps 4, 5, 8, 9, 10, 11, 13 and 15.
+      uDark.transformDOMSubtree(aDocument, details, {});
+
+      uDark.markUnclosedForms(parsedDocument);'''
+
+          new = '''      // Shared steps 4, 5, 8, 9, 10, 11, 13 and 15.
+      uDark.transformDOMSubtree(aDocument, details, {});
+
+      // Backend-only operation: do not run this for each document.write subtree.
+      uDark.injectStylesIfNeeded(parsedDocument, details);
+
+      uDark.markUnclosedForms(parsedDocument);'''
+
+          if source.count(old) != 1:
+              raise SystemExit("Expected backend block was not found exactly once")
+
+          path.write_text(source.replace(old, new), encoding="utf-8")
+
+      - name: Remove temporary workflow
+        run: rm .github/workflows/fix-pr214.yml
+
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add background.js .github/workflows/fix-pr214.yml
+          git commit -m "fix: restore backend style injection"
+          git push origin HEAD:feature/document-write-dom-pipeline
