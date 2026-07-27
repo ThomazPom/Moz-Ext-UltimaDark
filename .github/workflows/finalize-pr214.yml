@@ -286,7 +286,7 @@ jobs:
           node --check background.js
           test ! -e backgroundDocumentPipelineFix.js
           ! grep -q 'backgroundDocumentPipelineFix.js' manifest.json
-          ! grep -q 'finalize-pr214.yml' <(git ls-files)
+          test ! -e .github/workflows/finalize-pr214.yml
           grep -q 'excludedSubtrees: state.editedSubtrees' background.js
           grep -q 'uDark.injectStylesIfNeeded(parsedDocument, details);' background.js
 
