@@ -978,21 +978,37 @@ class uDarkC extends uDarkExtended {
     svg.setAttribute("udark-infos", new URLSearchParams(options.notableInfos).toString());
 
   }
-  edit_styles_elements(parentElement, details, add_class = "ud-edited-background", options = {}) {
-    parentElement.querySelectorAll(`style:not(.${add_class})`).forEach(astyle => {
+  edit_styles_elements(
+    parentElement,
+    details,
+    add_class = "ud-edited-background",
+    options = {}
+  ) {
+
+    const styles = parentElement.querySelectorAll(
+      `style:not(.${add_class})`
+    );
+
+
+    styles.forEach(astyle => {
       if (!details || details.hasHashCSP) {
         if (!astyle.nonce) {
           astyle.setAttribute("nonce", uDark.byPassCSPNonce);
         }
       }
 
-      astyle.p_ud_innerHTML = uDark.edit_str(astyle.innerHTML.unprotect_simple("ud-tag-ptd-" /*display:table is a thing*/), false, false, details, false, options);
-      // astyle.innerHTML='*{fill:red!important;}'
-      // According to https://stackoverflow.com/questions/55895361/how-do-i-change-the-innerhtml-of-a-global-style-element-with-cssrule ,
-      // it is not possible to edit a style element innerHTML with its cssStyleSheet alone
-      // As long as we are returing a STR, we have to edit the style element innerHTML;
+      astyle.p_ud_innerHTML = uDark.edit_str(
+        astyle.innerHTML.unprotect_simple(
+          "ud-tag-ptd-"
+        ),
+        false,
+        false,
+        details,
+        false,
+        options
+      );
 
-      astyle.classList.add(add_class)
+      astyle.classList.add(add_class);
     });
   }
 
@@ -1206,10 +1222,14 @@ class uDarkC extends uDarkExtended {
       fromDocumentWrite: _fromDocumentWrite = false,
       ...editOptions
     } = options;
+
     const scope = uDark.createInclusiveDOMQueryScope(
       root,
       excludedSubtrees
     );
+
+
+
     const result = { svgElements: [] };
 
     if (!scope) {
@@ -1263,7 +1283,7 @@ class uDarkC extends uDarkExtended {
     if (!details.debugParsing) {
 
       const transformedSubtree = uDark.transformDOMSubtree(
-        aDocument,
+        parsedDocument,
         details,
         {
           deferSvgRestore: true,
@@ -1463,6 +1483,7 @@ class uDarkC extends uDarkExtended {
     if (parsedDocument.needRestorePTDHead) {
       will_return = will_return.replace("<ud-tag-ptd-head", "<head").replace("</ud-tag-ptd-head", "</head");
     }
+    return will_return.replaceAll(`http-equiv="refresh"`, "")
     return will_return;
 
   }
@@ -1975,18 +1996,8 @@ class uDarkC extends uDarkExtended {
       }
     }
 
-    const markEdited = value => (
-      typeof value === "string" && !value.startsWith("/*edited*/")
-        ? "/*edited*/" + value
-        : value
-    );
 
-    if (str && typeof str === "object" && "str" in str) {
-      str.str = markEdited(str.str);
-      return str;
-    }
-
-    return markEdited(str || strO); // It's essential to return the original value if the CSS is broken, if e did not knew what to do with it, we should not have edited it. This is demostrated on hub.docker.com that looks into a comment only css
+    return (str || strO); // It's essential to return the original value if the CSS is broken, if e did not knew what to do with it, we should not have edited it. This is demostrated on hub.docker.com that looks into a comment only css
   }
   rgba_val(r, g, b, a) {
     a = typeof a == "number" ? a : 1;
@@ -2833,7 +2844,6 @@ class AllLevels {
       uDark.createInternalProperty(Navigator, "serviceWorker", navigator.serviceWorker != undefined);
 
     }
-
     {
 
       String.prototype.protect = function (regexSearch, protectWith) {

@@ -1,31 +1,6 @@
 class WebsitesOverrideScript {
     static override_website = function () {
 
-        // Note : We dont support document.write() yet. Shoudl we find a way to monitor document.close?
-        /*
-        I need to check if i can catch the automatic or explicit document.close
-        or use an event
-        window.addEventListener("DOMContentLoaded", () => {
-          // Code to run after all document.write operations are complete
-        });
-        or if its safe to frontEdit HTML the document.write args
-
-
-        { // Quick try
-        const originalClose = Document.prototype.close;
-        window.addEventListener("DOMContentLoaded", () => {
-          console.log('UtimaDark',"DOMContentLoaded")
-        // Code to run after all document.write operations are complete
-        });
-        // Override document.close
-        Document.prototype.close = function() {
-        console.log("Intercepted document.close");
-        // Place any additional actions here that should happen after the last document.write
-        // Call the original close to ensure the document is properly closed
-        originalClose.call(this);
-        };
-        }
-        */
         try {
             typeof localStorage;
             uDark.localStorageAvailable = true;
@@ -121,7 +96,7 @@ class WebsitesOverrideScript {
                 }
             }
         }
-        
+
         // uDark.functionPrototypeEditor(HTMLObjectElement, HTMLObjectElement.prototype.checkValidity, (elem, args) => {
         //   return args;
         // })
@@ -144,7 +119,7 @@ class WebsitesOverrideScript {
             return args
         });
 
-        
+
         uDark.functionPrototypeEditor(CSSStyleSheet,
             [
                 CSSStyleSheet.prototype.replace,
@@ -254,7 +229,7 @@ class WebsitesOverrideScript {
         //   };
         // })();
 
-        
+
         uDark.valuePrototypeEditor([HTMLSourceElement, HTMLImageElement], "srcset", (image, value) => {
             console.log("Editing srcset", image, value);
             let srcSourceArray = uDark.processSRCset(value).map(
@@ -263,7 +238,7 @@ class WebsitesOverrideScript {
             return srcSourceArray.join(", ");
 
         },
-        
+
             // false, // Condition: Inconditional
             // //Aftermath: none
             // false,
@@ -283,7 +258,7 @@ class WebsitesOverrideScript {
 
         );
 
-        
+
 
         // function makeSmartElement(tag) {
         //   const el = document.createElement(tag);
@@ -384,10 +359,6 @@ class WebsitesOverrideScript {
             // console.log(args)
             return args
         }, (text, type) => ["text/html", "application/xhtml+xml"].includes(type))
-
-
-
-
         uDark.functionPrototypeEditor(Node, [ // So far we assume the CSS inserted in HTMStyleElements via appendChild or insertBefore are valid. This migh not always be the case, this is to keep in mind.
             Node.prototype.appendChild,
             Node.prototype.insertBefore
@@ -779,234 +750,1278 @@ class WebsitesOverrideScript {
 
         WebsitesOverrideScript.installDocumentWriteEngine();
 
-        (() => {
-            const proto = HTMLHeadElement.prototype;
-            const originalAppendChild = proto.appendChild;
-
-            Object.defineProperty(proto, "appendChild", {
-                configurable: true,
-                writable: true,
-
-                value: function appendChild(child) {
-                    if (
-                        child instanceof HTMLStyleElement &&
-                        child.textContent &&
-                        !child.textContent.includes("/*edited*/")
-                    ) {
-                        child.o_ud_textContent = uDark.edit_str(
-                            child.textContent
-                        );
-                    }
-
-                    return originalAppendChild.call(this, child);
-                }
-            });
-        })();
 
         console.info("UltimaDark", "Websites overrides ready", window, "elapsed:", performance.now() - start);
 
     }
+static installDocumentWriteEngine = function () {
+    if (uDark.documentWriteEngineInstalled) {
+        return;
+    }
 
-    static installDocumentWriteEngine = function () {
-        if (uDark.documentWriteEngineInstalled) {
-            return;
+    uDark.documentWriteEngineInstalled = true;
+
+    const documentPrototype =
+        Document.prototype;
+
+    const originalOpen =
+        documentPrototype.open;
+
+    const originalWrite =
+        documentPrototype.write;
+
+    const originalWriteln =
+        documentPrototype.writeln;
+
+    const originalClose =
+        documentPrototype.close;
+
+    /*
+     * État propre à chaque Document.
+     */
+    const documentStates =
+        new WeakMap();
+
+    /*
+     * Conserve la source brute et le dernier résultat édité
+     * de chaque <style>.
+     *
+     * Cela permet de gérer un style réparti sur plusieurs
+     * appels à document.write() sans rééditer le préfixe
+     * déjà transformé.
+     */
+    const styleEditStates =
+        new WeakMap();
+
+    const createBranch = () => ({
+        root: null,
+        chain: []
+    });
+
+    const createState = doc => ({
+        /*
+         * Sous-arbres déjà traités pendant le cycle courant.
+         */
+        editedSubtrees:
+            new WeakSet(),
+
+        /*
+         * Racines à traiter ou à réessayer.
+         */
+        pendingRoots:
+            new Set(),
+
+        /*
+         * Frontières indépendantes du head et du body.
+         *
+         * Une racine peut avoir été adoptée dans un autre
+         * Document tout en restant dans la pile du parser.
+         */
+        branches: {
+            head: createBranch(),
+            body: createBranch()
+        },
+
+        processing:
+            false,
+
+        /*
+         * Une opération réentrante peut demander qu'un parcours
+         * complet soit effectué par le traitement extérieur.
+         */
+        processWholeDocument:
+            false,
+
+        /*
+         * close() peut être appelé pendant un traitement.
+         * Le reset sera alors effectué à la sortie du parcours.
+         */
+        resetAfterProcessing:
+            false,
+
+        /*
+         * Le premier write de la session nécessite un traitement
+         * complet. Les suivants utilisent les racines détectées.
+         */
+        initialized:
+            false,
+
+        active:
+            false,
+
+        /*
+         * Permet de détecter le remplacement du document.
+         */
+        documentElement:
+            doc.documentElement
+    });
+
+    const getState = doc => {
+        let state =
+            documentStates.get(doc);
+
+        if (!state) {
+            state =
+                createState(doc);
+
+            documentStates.set(
+                doc,
+                state
+            );
         }
 
-        uDark.documentWriteEngineInstalled = true;
+        return state;
+    };
 
-        const documentPrototype = Document.prototype;
-        const originalOpen = documentPrototype.open;
-        const originalWrite = documentPrototype.write;
-        const originalWriteln = documentPrototype.writeln;
-        const originalClose = documentPrototype.close;
-        const documentStates = new WeakMap();
+    const resetState = doc => {
+        const state =
+            createState(doc);
 
-        const createState = doc => ({
-            editedSubtrees: new WeakSet(),
-            processing: false,
-            finalizer: false,
-            finalized: false,
-            active: false,
-            documentElement: doc.documentElement
-        });
+        documentStates.set(
+            doc,
+            state
+        );
 
-        const getState = doc => {
-            let state = documentStates.get(doc);
-            if (!state) {
-                state = createState(doc);
-                documentStates.set(doc, state);
-            }
-            return state;
-        };
+        return state;
+    };
 
-        const resetState = doc => {
-            const previousState = documentStates.get(doc);
-            if (previousState?.finalizer) {
-                doc.removeEventListener(
-                    "DOMContentLoaded",
-                    previousState.finalizer
-                );
-            }
-            const state = createState(doc);
-            documentStates.set(doc, state);
-            return state;
-        };
+    const synchronizeState = doc => {
+        const state =
+            getState(doc);
 
-        const synchronizeState = doc => {
-            const state = getState(doc);
-            if (state.documentElement !== doc.documentElement) {
-                return resetState(doc);
-            }
-            return state;
-        };
+        /*
+         * Le documentElement a été remplacé :
+         * nouvelle session de parsing.
+         */
+        if (
+            state.documentElement !==
+            doc.documentElement
+        ) {
+            return resetState(doc);
+        }
 
-        const editSubtree = (root, state) => {
-            if (!(root instanceof Element) || state.editedSubtrees.has(root)) {
-                return true;
-            }
+        return state;
+    };
 
-            try {
-                uDark.transformDOMSubtree(root, undefined, {
-                    fromDocumentWrite: true,
-                    excludedSubtrees: state.editedSubtrees
-                });
-                state.editedSubtrees.add(root);
-                return true;
-            } catch (error) {
-                uDark.error("document.write subtree edit failed", root, error);
-                return false;
-            }
-        };
-
-        const editStableBranches = (root, state) => {
-            let parent = root;
-
-            while (parent instanceof Element) {
-                // SVG contents are one editing unit handled by frontEditSVG().
-                // Never mark individual descendants before their SVG root.
-                if (parent instanceof SVGElement) {
-                    return;
-                }
-
-                const children = [...parent.children];
-                if (!children.length) {
-                    return;
-                }
-
-                for (let index = 0; index < children.length - 1; index++) {
-                    editSubtree(children[index], state);
-                }
-
-                parent = children[children.length - 1];
-            }
-        };
-
-        const processDocument = (doc, final = false) => {
-            const state = getState(doc);
-            if (!state.active || state.processing) {
-                return;
-            }
-
-            state.processing = true;
-            try {
-                if (final) {
-                    state.finalized = !doc.documentElement ||
-                        editSubtree(doc.documentElement, state);
-                    state.documentElement = doc.documentElement;
-                    return;
-                }
-
-                if (doc.documentElement) {
-                    editStableBranches(doc.documentElement, state);
-                }
-            } finally {
-                state.processing = false;
-            }
-        };
-
-        const attachFinalizer = doc => {
-            const state = synchronizeState(doc);
-            if (!state.active || state.finalizer || state.finalized) {
-                return;
-            }
-
-            if (doc.readyState !== "loading") {
-                state.finalizer = () => {
-                    state.finalizer = false;
-                    processDocument(doc, true);
-                };
-                queueMicrotask(state.finalizer);
-                return;
-            }
-
-            state.finalizer = () => {
-                state.finalizer = false;
-                processDocument(doc, true);
-            };
-            doc.addEventListener("DOMContentLoaded", state.finalizer, {
-                once: true
-            });
-        };
-
-        const installMethod = (name, original, handler) => {
-            const descriptor = Object.getOwnPropertyDescriptor(
+    const installMethod = (
+        name,
+        original,
+        handler
+    ) => {
+        const descriptor =
+            Object.getOwnPropertyDescriptor(
                 documentPrototype,
                 name
             );
-            const wrapper = new Proxy(original, {
-                apply(target, thisArg, args) {
-                    return handler(target, thisArg, args);
-                },
-                get(target, property, receiver) {
-                    if (property === "toString") {
-                        return Function.prototype.toString.bind(target);
-                    }
-                    return Reflect.get(target, property, receiver);
-                }
-            });
 
-            Object.defineProperty(documentPrototype, name, {
+        const wrapper =
+            new Proxy(
+                original,
+                {
+                    apply(
+                        target,
+                        thisArg,
+                        args
+                    ) {
+                        return handler(
+                            target,
+                            thisArg,
+                            args
+                        );
+                    },
+
+                    get(
+                        target,
+                        property,
+                        receiver
+                    ) {
+                        if (
+                            property ===
+                            "toString"
+                        ) {
+                            return Function.prototype
+                                .toString
+                                .bind(target);
+                        }
+
+                        return Reflect.get(
+                            target,
+                            property,
+                            receiver
+                        );
+                    }
+                }
+            );
+
+        Object.defineProperty(
+            documentPrototype,
+            name,
+            {
                 ...descriptor,
                 value: wrapper
+            }
+        );
+    };
+
+    const collectStyles = root => {
+        const styles = [];
+
+        if (
+            root instanceof
+            HTMLStyleElement
+        ) {
+            styles.push(root);
+        }
+
+        styles.push(
+            ...root.querySelectorAll(
+                "style"
+            )
+        );
+
+        return styles;
+    };
+
+    /*
+     * Détermine si l'élément appartient à un sous-arbre
+     * qui sera exclu par transformDOMSubtree().
+     *
+     * Un style appartenant à un sous-arbre exclu ne doit
+     * surtout pas être temporairement remis à sa source brute.
+     */
+    const isInsideExcludedSubtree = (
+        element,
+        root,
+        state
+    ) => {
+        let current =
+            element;
+
+        while (
+            current instanceof Element
+        ) {
+            if (
+                state.editedSubtrees.has(
+                    current
+                )
+            ) {
+                return true;
+            }
+
+            if (current === root) {
+                break;
+            }
+
+            current =
+                current.parentElement;
+        }
+
+        return false;
+    };
+
+    /*
+     * Prépare les styles avant le traitement du sous-arbre.
+     *
+     * Exemple :
+     *
+     * write("<style>body{background:#fff")
+     * write(";color:#000}</style>")
+     *
+     * Après le premier write, le début du style est édité.
+     * Le parser ajoute ensuite le suffixe brut à ce texte édité.
+     *
+     * On reconstruit donc :
+     *
+     * ancienne source brute + nouveau suffixe brut
+     *
+     * avant de transformer le style complet une seule fois.
+     */
+    const prepareStylesForEdit = (
+        root,
+        state
+    ) => {
+        const preparedStyles = [];
+
+        for (
+            const style of
+            collectStyles(root)
+        ) {
+            /*
+             * Le sous-arbre sera ignoré par
+             * excludedSubtrees : ne pas toucher à son CSS.
+             */
+            if (
+                isInsideExcludedSubtree(
+                    style,
+                    root,
+                    state
+                )
+            ) {
+                continue;
+            }
+
+            const originalText =
+                style.textContent;
+
+            const previous =
+                styleEditStates.get(style);
+
+            let rawText =
+                originalText;
+
+            if (previous) {
+                if (
+                    originalText ===
+                    previous.editedText
+                ) {
+                    /*
+                     * Style inchangé inclus dans une racine
+                     * plus grande qui doit être retraitée.
+                     */
+                    rawText =
+                        previous.rawText;
+                } else if (
+                    originalText.startsWith(
+                        previous.editedText
+                    )
+                ) {
+                    /*
+                     * Le parser a prolongé la précédente version
+                     * transformée avec un suffixe encore brut.
+                     */
+                    rawText =
+                        previous.rawText +
+                        originalText.slice(
+                            previous.editedText.length
+                        );
+                }
+
+                /*
+                 * Sinon, le contenu a été modifié par un autre
+                 * mécanisme et devient la nouvelle source brute.
+                 */
+            }
+
+            if (
+                originalText !==
+                rawText
+            ) {
+                style.textContent =
+                    rawText;
+            }
+
+            preparedStyles.push({
+                style,
+                rawText,
+
+                /*
+                 * Texte réellement actif avant la tentative.
+                 * Il sera restauré si l'édition échoue.
+                 */
+                originalText
             });
+        }
+
+        return preparedStyles;
+    };
+
+    const saveEditedStyles =
+        preparedStyles => {
+            for (
+                const {
+                    style,
+                    rawText
+                } of preparedStyles
+            ) {
+                styleEditStates.set(
+                    style,
+                    {
+                        rawText,
+
+                        editedText:
+                            style.textContent
+                    }
+                );
+            }
         };
 
-        installMethod("open", originalOpen, (original, doc, args) => {
-            const result = Reflect.apply(original, doc, args);
+    const restorePreparedStyles =
+        preparedStyles => {
+            for (
+                const {
+                    style,
+                    originalText
+                } of preparedStyles
+            ) {
+                try {
+                    /*
+                     * En cas d'erreur, restaure exactement
+                     * le CSS qui était actif avant la tentative.
+                     */
+                    style.textContent =
+                        originalText;
+                } catch {
+                    /*
+                     * L'erreur principale est déjà remontée
+                     * par editSubtree().
+                     */
+                }
+            }
+        };
 
-            // The obsolete three-argument overload is an alias of
-            // window.open() and does not replace the current document.
+    const editSubtree = (
+        root,
+        state
+    ) => {
+        if (
+            !(root instanceof Element) ||
+            state.editedSubtrees.has(root)
+        ) {
+            return true;
+        }
+
+        const preparedStyles =
+            prepareStylesForEdit(
+                root,
+                state
+            );
+
+        try {
+            uDark.transformDOMSubtree(
+                root,
+                undefined,
+                {
+                    fromDocumentWrite:
+                        true,
+
+                    excludedSubtrees:
+                        state.editedSubtrees
+                }
+            );
+
+            saveEditedStyles(
+                preparedStyles
+            );
+
+            state.editedSubtrees.add(
+                root
+            );
+
+            return true;
+        } catch (error) {
+            /*
+             * Ne laisse pas un style temporairement brut
+             * ou partiellement transformé après un échec.
+             */
+            restorePreparedStyles(
+                preparedStyles
+            );
+
+            uDark.error(
+                "document.write subtree edit failed",
+                root,
+                error
+            );
+
+            return false;
+        }
+    };
+
+    /*
+     * Supprime :
+     *
+     * - les doublons ;
+     * - les descendants déjà couverts par une racine ancêtre.
+     */
+    const normalizeRoots = roots => {
+        const uniqueRoots = [
+            ...new Set(
+                roots.filter(
+                    root =>
+                        root instanceof Element
+                )
+            )
+        ];
+
+        return uniqueRoots.filter(
+            root =>
+                !uniqueRoots.some(
+                    candidate =>
+                        candidate !== root &&
+                        candidate.contains(root)
+                )
+        );
+    };
+
+    /*
+     * Traite les racines détectées.
+     *
+     * Un parcours complet n'est effectué que lors du premier
+     * write d'une session ou après remplacement du document.
+     */
+    const processDocument = (
+        doc,
+        wholeDocument = false
+    ) => {
+        const state =
+            getState(doc);
+
+        if (!state.active) {
+            return;
+        }
+
+        /*
+         * Une opération imbriquée ne lance pas un second parcours.
+         * Elle ajoute ses racines à la file du traitement extérieur.
+         */
+        if (state.processing) {
+            if (wholeDocument) {
+                state.processWholeDocument =
+                    true;
+            }
+
+            return;
+        }
+
+        state.processing = true;
+
+        let failed =
+            false;
+
+        try {
+            let mustProcessWholeDocument =
+                wholeDocument ||
+                state.processWholeDocument;
+
+            state.processWholeDocument =
+                false;
+
+            do {
+                const roots = [];
+
+                if (
+                    mustProcessWholeDocument &&
+                    doc.documentElement
+                ) {
+                    roots.push(
+                        doc.documentElement
+                    );
+                }
+
+                roots.push(
+                    ...state.pendingRoots
+                );
+
+                state.pendingRoots.clear();
+
+                const normalizedRoots =
+                    normalizeRoots(roots);
+
+                for (
+                    const root of
+                    normalizedRoots
+                ) {
+                    if (
+                        !editSubtree(
+                            root,
+                            state
+                        )
+                    ) {
+                        /*
+                         * Ne perd pas une racine ayant échoué.
+                         * Elle sera réessayée lors du prochain
+                         * write, writeln ou close.
+                         */
+                        state.pendingRoots.add(
+                            root
+                        );
+
+                        failed = true;
+                    }
+                }
+
+                /*
+                 * Évite de boucler immédiatement sur une racine
+                 * qui échoue systématiquement.
+                 */
+                if (failed) {
+                    break;
+                }
+
+                mustProcessWholeDocument =
+                    state.processWholeDocument;
+
+                state.processWholeDocument =
+                    false;
+            } while (
+                mustProcessWholeDocument ||
+                state.pendingRoots.size
+            );
+
+            if (!failed) {
+                state.initialized =
+                    true;
+            }
+
+            state.documentElement =
+                doc.documentElement;
+        } finally {
+            state.processing = false;
+
+            /*
+             * Un close() réentrant a demandé la fin de la
+             * session pendant que cet état était encore utilisé.
+             */
+            if (
+                state.resetAfterProcessing
+            ) {
+                resetState(doc);
+            }
+        }
+    };
+
+    /*
+     * Snapshot local de la frontière droite.
+     *
+     * Aucun accès récursif à textContent.
+     */
+    const snapshotNode = node => {
+        const lastChild =
+            node.lastChild;
+
+        return {
+            node,
+
+            childNodesLength:
+                node.childNodes.length,
+
+            lastChild,
+
+            /*
+             * Couvre la continuation d'un Text existant,
+             * notamment dans un <style>.
+             */
+            lastTextLength:
+                lastChild?.nodeType ===
+                Node.TEXT_NODE
+                    ? lastChild.data.length
+                    : -1
+        };
+    };
+
+    const nodeChanged = snapshot => {
+        const node =
+            snapshot.node;
+
+        const lastChild =
+            node.lastChild;
+
+        return (
+            node.childNodes.length !==
+                snapshot.childNodesLength ||
+
+            lastChild !==
+                snapshot.lastChild ||
+
+            (
+                lastChild?.nodeType ===
+                    Node.TEXT_NODE &&
+
+                lastChild.data.length !==
+                    snapshot.lastTextLength
+            )
+        );
+    };
+
+    /*
+     * Approximation synchrone de la branche encore ouverte.
+     *
+     * Le moteur suit volontairement uniquement la frontière
+     * droite. Les autres hooks UltimaDark couvrent les
+     * changements effectués ailleurs.
+     */
+    const getRightmostChain = root => {
+        const chain = [];
+
+        let node =
+            root;
+
+        while (
+            node instanceof Element
+        ) {
+            chain.push(node);
+
+            node =
+                node.lastElementChild;
+        }
+
+        return chain;
+    };
+
+    const snapshotChain = chain =>
+        chain.map(snapshotNode);
+
+    /*
+     * Récupère :
+     *
+     * - les nouvelles racines ajoutées après l'ancien
+     *   dernier enfant ;
+     * - les parents dont le dernier Text a été prolongé.
+     */
+    const collectChangedRoots =
+        snapshots => {
+            const roots = [];
+
+            for (
+                const snapshot of
+                snapshots
+            ) {
+                if (
+                    !nodeChanged(snapshot)
+                ) {
+                    continue;
+                }
+
+                const node =
+                    snapshot.node;
+
+                const lastChild =
+                    node.lastChild;
+
+                const structureChanged =
+                    node.childNodes.length !==
+                        snapshot.childNodesLength ||
+
+                    lastChild !==
+                        snapshot.lastChild;
+
+                if (structureChanged) {
+                    let addedNode =
+                        null;
+
+                    if (
+                        !snapshot.lastChild
+                    ) {
+                        addedNode =
+                            node.firstChild;
+                    } else if (
+                        snapshot.lastChild
+                            .parentNode === node
+                    ) {
+                        addedNode =
+                            snapshot.lastChild
+                                .nextSibling;
+                    }
+
+                    let foundRoot =
+                        false;
+
+                    while (addedNode) {
+                        if (
+                            addedNode instanceof
+                            Element
+                        ) {
+                            roots.push(
+                                addedNode
+                            );
+
+                            foundRoot =
+                                true;
+                        } else if (
+                            addedNode.nodeType ===
+                            Node.TEXT_NODE
+                        ) {
+                            /*
+                             * Le texte appartient directement
+                             * au parent suivi.
+                             */
+                            roots.push(node);
+
+                            foundRoot =
+                                true;
+                        }
+
+                        addedNode =
+                            addedNode.nextSibling;
+                    }
+
+                    /*
+                     * Remplacement, retrait, adoption ou cas
+                     * impossible à reconstruire localement.
+                     */
+                    if (!foundRoot) {
+                        roots.push(node);
+                    }
+
+                    continue;
+                }
+
+                /*
+                 * Même objet Text, mais contenu prolongé.
+                 */
+                if (
+                    lastChild?.nodeType ===
+                        Node.TEXT_NODE &&
+
+                    lastChild.data.length !==
+                        snapshot.lastTextLength
+                ) {
+                    roots.push(node);
+                }
+            }
+
+            return normalizeRoots(roots);
+        };
+
+    const captureBranch = branch => {
+        const chain = [
+            ...(branch?.chain ?? [])
+        ];
+
+        return {
+            root:
+                branch?.root ?? null,
+
+            chain,
+
+            snapshots:
+                snapshotChain(chain)
+        };
+    };
+
+    const captureZone = (
+        doc,
+        state,
+        zone
+    ) => {
+        const container =
+            doc[zone];
+
+        return {
+            container,
+
+            containerSnapshot:
+                container
+                    ? snapshotNode(container)
+                    : null,
+
+            branch:
+                captureBranch(
+                    state.branches[zone]
+                )
+        };
+    };
+
+    const captureParsingContext = (
+        doc,
+        state
+    ) => ({
+        documentElement:
+            doc.documentElement,
+
+        head:
+            captureZone(
+                doc,
+                state,
+                "head"
+            ),
+
+        body:
+            captureZone(
+                doc,
+                state,
+                "body"
+            )
+    });
+
+    const queueRoots = (
+        state,
+        roots
+    ) => {
+        for (
+            const root of
+            roots
+        ) {
+            state.pendingRoots.add(
+                root
+            );
+        }
+    };
+
+    /*
+     * Calcule la prochaine frontière avant toute modification
+     * réalisée par transformDOMSubtree().
+     */
+    const computeNextBranch = (
+        zoneContext,
+        currentContainer,
+        sameDocument,
+        branchChanged
+    ) => {
+        if (!sameDocument) {
+            const root =
+                currentContainer
+                    ?.lastElementChild ??
+                null;
+
+            return {
+                root,
+
+                chain:
+                    root
+                        ? getRightmostChain(
+                            root
+                        )
+                        : []
+            };
+        }
+
+        const containerWasReplaced =
+            currentContainer !==
+            zoneContext.container;
+
+        const containerChanged =
+            containerWasReplaced ||
+
+            (
+                zoneContext.containerSnapshot
+                    ? nodeChanged(
+                        zoneContext
+                            .containerSnapshot
+                    )
+                    : Boolean(
+                        currentContainer
+                            ?.lastChild
+                    )
+            );
+
+        /*
+         * Une nouvelle racine top-level est apparue
+         * dans le conteneur.
+         */
+        if (
+            containerChanged &&
+            currentContainer
+                ?.lastElementChild
+        ) {
+            const root =
+                currentContainer
+                    .lastElementChild;
+
+            return {
+                root,
+
+                chain:
+                    getRightmostChain(
+                        root
+                    )
+            };
+        }
+
+        /*
+         * Aucun nouveau top-level, mais le parser a continué
+         * dans l'ancienne racine, éventuellement exportée.
+         */
+        if (
+            zoneContext.branch.root &&
+            branchChanged
+        ) {
+            return {
+                root:
+                    zoneContext.branch.root,
+
+                chain:
+                    getRightmostChain(
+                        zoneContext
+                            .branch
+                            .root
+                    )
+            };
+        }
+
+        /*
+         * Aucun changement : conserve la candidate précédente.
+         */
+        return {
+            root:
+                zoneContext.branch.root,
+
+            chain: [
+                ...zoneContext.branch.chain
+            ]
+        };
+    };
+
+    /*
+     * Handler commun à write(), writeln() et close().
+     *
+     * close() peut également flusher du contenu dans une
+     * frontière précédemment exportée.
+     */
+    const parserMutationHandler = (
+        original,
+        doc,
+        args,
+        closing = false
+    ) => {
+        const previousState =
+            getState(doc);
+
+        const context =
+            captureParsingContext(
+                doc,
+                previousState
+            );
+
+        /*
+         * Parsing natif.
+         *
+         * La synchronisation doit impérativement intervenir
+         * après cet appel.
+         */
+        const result =
+            Reflect.apply(
+                original,
+                doc,
+                args
+            );
+
+        const sameDocument =
+            doc.documentElement ===
+            context.documentElement;
+
+        const state =
+            synchronizeState(doc);
+
+        /*
+         * Nouveau cycle extérieur :
+         *
+         * - renouvelle editedSubtrees ;
+         * - conserve pendingRoots, qui peut contenir une
+         *   racine ayant échoué précédemment.
+         *
+         * En cas de réentrance, aucune structure partagée
+         * n'est réinitialisée.
+         */
+        if (!state.processing) {
+            state.editedSubtrees =
+                new WeakSet();
+        }
+
+        state.active =
+            true;
+
+        const mustProcessWholeDocument =
+            !sameDocument ||
+            !state.initialized;
+
+        let headBranchChanges = [];
+        let bodyBranchChanges = [];
+
+        if (sameDocument) {
+            /*
+             * Changements dans les anciennes frontières,
+             * même si leurs racines ont été adoptées dans
+             * un autre Document.
+             */
+            headBranchChanges =
+                collectChangedRoots(
+                    context.head
+                        .branch
+                        .snapshots
+                );
+
+            bodyBranchChanges =
+                collectChangedRoots(
+                    context.body
+                        .branch
+                        .snapshots
+                );
+
+            queueRoots(
+                state,
+                headBranchChanges
+            );
+
+            queueRoots(
+                state,
+                bodyBranchChanges
+            );
+
+            /*
+             * Changements top-level encore contenus
+             * dans le Document écrit.
+             */
+            if (
+                doc.head ===
+                context.head.container
+            ) {
+                if (
+                    context.head
+                        .containerSnapshot
+                ) {
+                    queueRoots(
+                        state,
+                        collectChangedRoots([
+                            context.head
+                                .containerSnapshot
+                        ])
+                    );
+                }
+            } else if (doc.head) {
+                state.pendingRoots.add(
+                    doc.head
+                );
+            }
+
+            if (
+                doc.body ===
+                context.body.container
+            ) {
+                if (
+                    context.body
+                        .containerSnapshot
+                ) {
+                    queueRoots(
+                        state,
+                        collectChangedRoots([
+                            context.body
+                                .containerSnapshot
+                        ])
+                    );
+                }
+            } else if (doc.body) {
+                state.pendingRoots.add(
+                    doc.body
+                );
+            }
+        }
+
+        /*
+         * Les frontières head et body sont calculées
+         * indépendamment avant l'édition.
+         */
+        state.branches = {
+            head:
+                computeNextBranch(
+                    context.head,
+                    doc.head,
+                    sameDocument,
+                    headBranchChanges.length >
+                        0
+                ),
+
+            body:
+                computeNextBranch(
+                    context.body,
+                    doc.body,
+                    sameDocument,
+                    bodyBranchChanges.length >
+                        0
+                )
+        };
+
+        /*
+         * L'édition passe exclusivement par processDocument().
+         */
+        processDocument(
+            doc,
+            mustProcessWholeDocument
+        );
+
+        if (closing) {
+            /*
+             * Si close() est réentrant, le traitement extérieur
+             * utilise encore cet état. Le reset doit être différé.
+             */
+            if (state.processing) {
+                state.resetAfterProcessing =
+                    true;
+            } else {
+                resetState(doc);
+            }
+        }
+
+        return result;
+    };
+
+    installMethod(
+        "open",
+        originalOpen,
+        (
+            original,
+            doc,
+            args
+        ) => {
+            const result =
+                Reflect.apply(
+                    original,
+                    doc,
+                    args
+                );
+
+            /*
+             * L'overload obsolète à trois arguments est
+             * un alias de window.open().
+             */
             if (args.length < 3) {
                 resetState(doc);
             }
 
             return result;
-        });
+        }
+    );
 
-        installMethod("write", originalWrite, (original, doc, args) => {
-            const result = Reflect.apply(original, doc, args);
-            const state = synchronizeState(doc);
-            state.active = true;
-            attachFinalizer(doc);
-            processDocument(doc);
-            return result;
-        });
+    installMethod(
+        "write",
+        originalWrite,
+        (
+            original,
+            doc,
+            args
+        ) =>
+            parserMutationHandler(
+                original,
+                doc,
+                args,
+                false
+            )
+    );
 
-        installMethod("writeln", originalWriteln, (original, doc, args) => {
-            const result = Reflect.apply(original, doc, args);
-            const state = synchronizeState(doc);
-            state.active = true;
-            attachFinalizer(doc);
-            processDocument(doc);
-            return result;
-        });
+    installMethod(
+        "writeln",
+        originalWriteln,
+        (
+            original,
+            doc,
+            args
+        ) =>
+            parserMutationHandler(
+                original,
+                doc,
+                args,
+                false
+            )
+    );
 
-        installMethod("close", originalClose, (original, doc, args) => {
-            const result = Reflect.apply(original, doc, args);
-            synchronizeState(doc);
-            processDocument(doc, true);
-            return result;
-        });
-        uDark.log("document.write support installed");
-    }
+    installMethod(
+        "close",
+        originalClose,
+        (
+            original,
+            doc,
+            args
+        ) =>
+            parserMutationHandler(
+                original,
+                doc,
+                args,
+                true
+            )
+    );
+
+    uDark.log(
+        "document.write support installed"
+    );
+};
 }
