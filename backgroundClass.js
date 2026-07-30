@@ -173,8 +173,18 @@ class uDarkExtended extends uDarkExtendedContentScript {
       ...contentScriptRegister
     }
 
-    browser.contentScripts.register(contentScript).then(x => uDark.registeredCS.push(x));
+    const registrationPromise = browser.contentScripts.register(contentScript)
+      .then(registration => {
+        uDark.registeredCS.push(registration);
+        return registration;
+      });
+    uDark.pendingCSRegistrations.add(registrationPromise);
+    const removePendingRegistration = () => {
+      uDark.pendingCSRegistrations.delete(registrationPromise);
+    };
+    registrationPromise.then(removePendingRegistration, removePendingRegistration);
 
+    return registrationPromise;
   }
   properListToRegex(list) {
     return list.map(x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // Sanitize regex
@@ -185,7 +195,16 @@ class uDarkExtended extends uDarkExtendedContentScript {
     const results = await Promise.all(array.map(asyncPredicate));
     return array.filter((_, i) => results[i]);
   }
-  async setListener(initial) {
+  setListener(initial) {
+    const listenerUpdate = uDark.listenerUpdateQueue.then(
+      () => uDark.applyListenerSettings(initial)
+    );
+    uDark.listenerUpdateQueue = listenerUpdate.catch(error => {
+      uDark.error("Failed to update listeners", error);
+    });
+    return listenerUpdate;
+  }
+  async applyListenerSettings(initial) {
     let userSettings = uDark.userSettings;
     initial && Common.appCompat(userSettings);
 
@@ -259,10 +278,12 @@ class uDarkExtended extends uDarkExtendedContentScript {
       browser.webRequest.onBeforeRequest.removeListener(Listeners.editBeforeRequestImage);
       browser.webRequest.onHeadersReceived.removeListener(Listeners.editOnHeadersImage);
     }
+    await Promise.allSettled([...uDark.pendingCSRegistrations]);
     if (uDark.registeredCS && uDark.registeredCS.length) {
-      while (uDark.registeredCS.length) {
-        uDark.registeredCS.shift().unregister();
-      }
+      const registrations = uDark.registeredCS.splice(0);
+      await Promise.allSettled(
+        registrations.map(registration => registration.unregister())
+      );
     }
     if (uDark.stopListenersNow) {
       uDark.info("Listeners stopped by request");
@@ -442,6 +463,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
         "UltimaDark enable state :", uDark.userSettings.isEnabled)
     }
 
+    await Promise.allSettled([...uDark.pendingCSRegistrations]);
 
     browser.webRequest.handlerBehaviorChanged().then(x => uDark.info(`In-memory cache flushed`), error => console.error(`Error: ${error}`));
     browser.browsingData.removeCache({}).then(x => uDark.info(`Browser cache flushed`), error => console.error(`Error: ${error}`));
@@ -1029,6 +1051,8 @@ class uDarkExtended extends uDarkExtendedContentScript {
     },
   }
   registeredCS = []
+  pendingCSRegistrations = new Set()
+  listenerUpdateQueue = Promise.resolve()
   is_background = true // Tell ultimadark that we are in the background script and is_color_var is not available for instance
   LoggingWorker = class LoggingWorker extends Worker {
     constructor(...args) {

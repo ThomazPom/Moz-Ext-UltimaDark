@@ -23148,6 +23148,8 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       tabReloadPromise: null,
       resolveTabReload: null,
       tabChangeListenersEnabled: false,
+      tabActivatedListener: null,
+      tabUpdatedListener: null,
       // Feature toggles
       cacheEnabled: false,
       imageEditionEnabled: true,
@@ -23715,15 +23717,21 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       enableTabChangeListeners() {
         if (this.tabChangeListenersEnabled) return;
         this.tabChangeListenersEnabled = true;
-        browser.tabs.onActivated.addListener(this.handleTabActivated.bind(this));
-        browser.tabs.onUpdated.addListener(this.handleTabUpdated.bind(this));
+        this.tabActivatedListener ||= this.handleTabActivated.bind(this);
+        browser.tabs.onActivated.addListener(this.tabActivatedListener);
+        this.tabUpdatedListener ||= this.handleTabUpdated.bind(this);
+        browser.tabs.onUpdated.addListener(this.tabUpdatedListener);
         console.log("Tab change listeners enabled");
       },
       disableTabChangeListeners() {
         if (!this.tabChangeListenersEnabled) return;
         this.tabChangeListenersEnabled = false;
-        browser.tabs.onActivated.removeListener(this.handleTabActivated.bind(this));
-        browser.tabs.onUpdated.removeListener(this.handleTabUpdated.bind(this));
+        if (this.tabActivatedListener) {
+          browser.tabs.onActivated.removeListener(this.tabActivatedListener);
+        }
+        if (this.tabUpdatedListener) {
+          browser.tabs.onUpdated.removeListener(this.tabUpdatedListener);
+        }
         console.log("Tab change listeners disabled");
       },
       async handleTabActivated(activeInfo) {
@@ -23790,7 +23798,9 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       },
       async debouncedSaveSettings() {
         for (const key of Object.keys(uDark.userSettings)) {
-          uDark.userSettings[key] = this[key];
+          if (this.hasOwnProperty(key)) {
+            uDark.userSettings[key] = this[key];
+          }
         }
         ;
         try {

@@ -82,6 +82,8 @@ document.addEventListener("alpine:init", () => {
         tabReloadPromise: null,
         resolveTabReload: null,
         tabChangeListenersEnabled: false,
+        tabActivatedListener: null,
+        tabUpdatedListener: null,
 
         // Feature toggles
         cacheEnabled: false,
@@ -735,10 +737,12 @@ document.addEventListener("alpine:init", () => {
             this.tabChangeListenersEnabled = true;
 
             // Listen for tab activation changes
-            browser.tabs.onActivated.addListener(this.handleTabActivated.bind(this));
+            this.tabActivatedListener ||= this.handleTabActivated.bind(this);
+            browser.tabs.onActivated.addListener(this.tabActivatedListener);
 
             // Listen for tab updates (URL changes, etc.)
-            browser.tabs.onUpdated.addListener(this.handleTabUpdated.bind(this));
+            this.tabUpdatedListener ||= this.handleTabUpdated.bind(this);
+            browser.tabs.onUpdated.addListener(this.tabUpdatedListener);
 
             console.log('Tab change listeners enabled');
         },
@@ -748,8 +752,12 @@ document.addEventListener("alpine:init", () => {
             this.tabChangeListenersEnabled = false;
 
             // Remove listeners
-            browser.tabs.onActivated.removeListener(this.handleTabActivated.bind(this));
-            browser.tabs.onUpdated.removeListener(this.handleTabUpdated.bind(this));
+            if (this.tabActivatedListener) {
+                browser.tabs.onActivated.removeListener(this.tabActivatedListener);
+            }
+            if (this.tabUpdatedListener) {
+                browser.tabs.onUpdated.removeListener(this.tabUpdatedListener);
+            }
 
             console.log('Tab change listeners disabled');
         },
@@ -836,7 +844,9 @@ document.addEventListener("alpine:init", () => {
         async debouncedSaveSettings() {
 
             for (const key of Object.keys(uDark.userSettings)) {
-                uDark.userSettings[key] = this[key];
+                if (this.hasOwnProperty(key)) {
+                    uDark.userSettings[key] = this[key];
+                }
             };
             try {
                 await browser.storage.local.set(uDark.userSettings);

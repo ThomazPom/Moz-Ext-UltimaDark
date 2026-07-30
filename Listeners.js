@@ -60,7 +60,15 @@ class Listeners {
     // }
 
     // Check if the resource is eligible for uDark
-    return uDark.getPort(details) || details.tabId == -1 && !details.documentUrl.match(uDark.userSettings.exclude_regex);
+    const ownerUrl = details.documentUrl || details.originUrl;
+    return Boolean(
+      uDark.getPort(details)
+      || (
+        details.tabId == -1
+        && ownerUrl
+        && !ownerUrl.match(uDark.userSettings.exclude_regex)
+      )
+    );
 
   }
   static editOnHeadersImage(details) {

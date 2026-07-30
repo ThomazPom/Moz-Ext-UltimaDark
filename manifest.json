@@ -31,7 +31,7 @@
   
       "id": "{0a0f6dea-3957-4bb9-9eec-2ef2b9e5bcec}"
     },
-    "gecko_android ": {
+    "gecko_android": {
       "strict_min_version": "42.0"
     }
   },

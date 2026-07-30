@@ -1129,7 +1129,7 @@ class uDarkC extends uDarkExtended {
     preserve malformed input verbatim.
     // Real HTML comments must consume until '-->' or '--!>'; placing this branch
     // first avoids treating them as generic '<!' constructs that stop at '>'.
-    
+
     5) <[\/!\?].*?(>|$)
     Matches any '<' followed by '/', '!' or '?', covering:
     - removed or invalid closing tags (</...>)
