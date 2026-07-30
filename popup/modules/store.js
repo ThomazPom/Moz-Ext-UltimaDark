@@ -953,6 +953,10 @@ document.addEventListener("alpine:init", () => {
                 : null;
         },
 
+        shortcutSettingsSupported() {
+            return Boolean(this.optionalCommandMethod("openShortcutSettings"));
+        },
+
         async openShortcutSettings() {
             const openSettings = this.optionalCommandMethod("openShortcutSettings");
             if (openSettings) {

@@ -679,7 +679,7 @@
               <button type="button" class="btn btn-outline-warning"
                 @click="$store.app.resetToggleSiteShortcut()">Reset</button>
               <button type="button" class="btn btn-outline-secondary"
-                x-show="$store.app.optionalCommandMethod('openShortcutSettings')"
+                x-show="$store.app.shortcutSettingsSupported()"
                 @click="$store.app.openShortcutSettings()">Firefox shortcuts</button>
             </div>
           </div>

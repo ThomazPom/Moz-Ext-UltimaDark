@@ -24003,6 +24003,9 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
         const method = browser.commands?.[methodName];
         return typeof method === "function" ? method.bind(browser.commands) : null;
       },
+      shortcutSettingsSupported() {
+        return Boolean(this.optionalCommandMethod("openShortcutSettings"));
+      },
       async openShortcutSettings() {
         const openSettings = this.optionalCommandMethod("openShortcutSettings");
         if (openSettings) {
