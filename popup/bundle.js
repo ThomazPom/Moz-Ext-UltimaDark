@@ -23118,6 +23118,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       excludeButtonText: "Exclude",
       toggleSiteShortcut: "",
       toggleSiteShortcutDraft: "",
+      shortcutCommandsSupported: null,
       // Color settings
       min_bright_fg: 0.2,
       max_bright_fg: 1,
@@ -23842,13 +23843,21 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
         globalThis.stop = true;
       },
       async loadToggleSiteShortcut() {
-        if (!browser.commands?.getAll) return;
+        this.shortcutCommandsSupported = Boolean(
+          browser.commands?.getAll && browser.commands?.update && browser.commands?.reset
+        );
+        if (!this.shortcutCommandsSupported) {
+          this.toggleSiteShortcut = "";
+          this.toggleSiteShortcutDraft = "";
+          return;
+        }
         const commands = await browser.commands.getAll();
         const toggleCommand = commands.find((command) => command.name === "toggle-site");
         this.toggleSiteShortcut = toggleCommand?.shortcut || "";
         this.toggleSiteShortcutDraft = this.toggleSiteShortcut;
       },
       async updateToggleSiteShortcut() {
+        if (!this.shortcutCommandsSupported) return;
         try {
           await browser.commands.update({
             name: "toggle-site",
@@ -23865,6 +23874,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
         }
       },
       async resetToggleSiteShortcut() {
+        if (!this.shortcutCommandsSupported) return;
         await browser.commands.reset("toggle-site");
         await this.loadToggleSiteShortcut();
       },

@@ -662,7 +662,7 @@
       <!-- Feature Toggles -->
       <div class="mb-4">
 
-        <div class="mb-3">
+        <div class="mb-3" x-show="$store.app.shortcutCommandsSupported === true">
           <div class="p-3 rounded border border-info bg-info bg-opacity-10">
             <div class="d-flex align-items-center justify-content-between gap-3 mb-2">
               <span class="fw-medium">Toggle current site shortcut</span>
@@ -679,6 +679,7 @@
               <button type="button" class="btn btn-outline-warning"
                 @click="$store.app.resetToggleSiteShortcut()">Reset</button>
               <button type="button" class="btn btn-outline-secondary"
+                x-show="browser.commands?.openShortcutSettings"
                 @click="$store.app.openShortcutSettings()">Firefox shortcuts</button>
             </div>
           </div>
@@ -688,7 +689,7 @@
             included.
           </div>
         </div>
-        <div class="mb-3">
+        <div class="mb-3" x-show="$store.app.shortcutCommandsSupported === true">
           <div class="d-flex align-items-center justify-content-between p-3 rounded border"
             :class="$store.app.headlessShortcutToggleEnabled ? 'border-warning bg-warning bg-opacity-10' : 'border-success bg-success bg-opacity-10'">
             <span class="fw-medium">Shortcut behavior</span>
@@ -705,6 +706,10 @@
             Ask first is the default and shows the exact patterns before applying them; press Enter to confirm.
             Apply instantly changes the site immediately without opening a confirmation.
           </div>
+        </div>
+        <div class="alert alert-secondary py-2 mb-3"
+          x-show="$store.app.shortcutCommandsSupported === false">
+          Keyboard shortcuts are not supported on this Firefox platform.
         </div>
         <div class="mb-3">
           <div class="d-flex align-items-center justify-content-between p-3 rounded border"
@@ -1218,7 +1223,8 @@
   </div>
 
   <!-- Footer with Keyboard Shortcut Info -->
-  <div class="mt-4 pt-3 border-top" x-show="!window.location.search.includes('fullmode')">
+  <div class="mt-4 pt-3 border-top"
+    x-show="!window.location.search.includes('fullmode') && $store.app.shortcutCommandsSupported === true">
     <div class="text-center text-muted small">
       Press <kbd class="bg-dark text-light px-2 py-1 rounded"
         x-text="$store.app.toggleSiteShortcut || 'No shortcut assigned'"></kbd>
