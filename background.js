@@ -121,35 +121,38 @@ class uDarkC extends uDarkExtended {
       this.originalCss = css;
       this.cleanCss = "";
       this.comments = [];
-      this.items = [];
+      this.anchorAttribute = "data-ud-comment-anchor";
+      while (css.includes(`[${this.anchorAttribute}`)) {
+        this.anchorAttribute += "-x";
+      }
       this.scan();
     }
 
     mergeWithCssRules(cssRules) {
-      const merged = [];
-      let ruleIndex = 0;
+      const prefix = `[${this.anchorAttribute}="`;
 
-      for (const item of this.items) {
-        if (item.type === "comment") {
-          merged.push({
-            type: "comment",
-            cssText: item.cssText,
-          });
-        } else if (item.type === "rule") {
-          const rule = cssRules[ruleIndex++];
+      return cssRules.map(rule => {
+        const selector = rule && rule.selectorText;
+        const isAnchor = typeof selector === "string" &&
+          selector.startsWith(prefix) &&
+          selector.endsWith('"]');
+        const indexText = isAnchor
+          ? selector.slice(prefix.length, -2)
+          : "";
 
-          if (rule) {
-            merged.push(rule);
+        if (/^\d+$/.test(indexText)) {
+          const comment = this.comments[Number(indexText)];
+
+          if (comment !== undefined) {
+            return {
+              type: "comment",
+              cssText: comment,
+            };
           }
         }
-      }
 
-      // Si CSSOM a ajouté/gardé des rules non vues par le scanner.
-      while (ruleIndex < cssRules.length) {
-        merged.push(cssRules[ruleIndex++]);
-      }
-
-      return merged;
+        return rule;
+      });
     }
 
     scan() {
@@ -195,14 +198,6 @@ class uDarkC extends uDarkExtended {
         }
       };
 
-      const pushPendingRuleIfNeeded = () => {
-        // Quand une vraie rule démarre après un ou plusieurs commentaires,
-        // on note juste “ici il y aura une vraie cssRule”.
-        this.items.push({
-          type: "rule",
-        });
-      };
-
       const consumeComment = () => {
         const start = i;
         const end = css.indexOf("*/", i + 2);
@@ -224,17 +219,17 @@ class uDarkC extends uDarkExtended {
           );
 
         if (topLevelComment) {
-          this.items.push({
-            type: "comment",
-            cssText: text,
-          });
+          const commentIndex = this.comments.push(text) - 1;
+          out.push(
+            `[${this.anchorAttribute}="${commentIndex}"] {}`
+          );
 
           lastSignificant = "COMMENT_TOP";
         } else {
+          out.push(whitespaceLike(text));
           lastSignificant = "OTHER";
         }
 
-        out.push(whitespaceLike(text));
         i = end + 2;
       };
 
@@ -253,10 +248,6 @@ class uDarkC extends uDarkExtended {
         }
 
         if (ch === "{") {
-          if (depth === 0) {
-            pushPendingRuleIfNeeded();
-          }
-
           depth++;
           out.push(ch);
           lastSignificant = "OTHER";
@@ -278,8 +269,6 @@ class uDarkC extends uDarkExtended {
         }
 
         if (ch === ";" && depth === 0) {
-          pushPendingRuleIfNeeded();
-
           out.push(ch);
           lastSignificant = "RULE_END";
           i++;

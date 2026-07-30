@@ -670,7 +670,7 @@ class WebsitesOverrideScript {
             args[1] = "dark";
             return [elem, args]
         },
-            (elem, args) => elem.id = "ud-meta-dark" && args[0] == "content")
+            (elem, args) => elem.id == "ud-meta-dark" && args[0] == "content")
 
         uDark.valuePrototypeEditor(CSS2Properties, "fill", (elem, value) => {
             if (!console.warn("Fill not reimplented", elem, value)) { return value };
