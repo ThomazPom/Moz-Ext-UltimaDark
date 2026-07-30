@@ -75,6 +75,7 @@ async function loadPopup() {
         
         // Load settings from storage first
         await alpineStore.loadSettings();
+        await alpineStore.loadToggleSiteShortcut();
         
 
         // Get active tab
@@ -94,6 +95,11 @@ async function loadPopup() {
         console.log("Current tab :", tab);
         // Update current site
         alpineStore.updateUrl(url, "main", {tab});
+        await alpineStore.recomputeCurrentSiteMatches();
+
+        if (new URLSearchParams(window.location.search).get("action") === "toggleSite") {
+            alpineStore.reviewShortcutToggle();
+        }
         
 
         // Enable tab change listeners for real-time updates
@@ -120,6 +126,14 @@ async function loadPopup() {
         alpineStore.addHook("savedSettings", "reloadOnAnySetting", () => {
             alpineStore.autoRefreshIfEnabled("anysetting");
         });
+        if (browser.commands?.onChanged) {
+            browser.commands.onChanged.addListener(changeInfo => {
+                if (changeInfo.name === "toggle-site") {
+                    alpineStore.toggleSiteShortcut = changeInfo.newShortcut;
+                    alpineStore.toggleSiteShortcutDraft = changeInfo.newShortcut;
+                }
+            });
+        }
 
         // Setup watchers for settings changes
         console.log('Popup loaded successfully');

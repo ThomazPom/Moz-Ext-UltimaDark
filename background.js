@@ -317,6 +317,7 @@ class uDarkC extends uDarkExtended {
     imageEditionEnabled: true, // Enable or disable image edition
     autoRefreshOnToggle: false,
     autoRefreshOnAnySettingChange: false,
+    headlessShortcutToggleEnabled: false,
     embedsInheritanceBehavior: false, // Whether to apply uDark to embeds (like iframes) based on the parent page settings
 
     //Image working model

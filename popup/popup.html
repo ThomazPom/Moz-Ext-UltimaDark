@@ -648,6 +648,50 @@
       <div class="mb-4">
 
         <div class="mb-3">
+          <div class="p-3 rounded border border-info bg-info bg-opacity-10">
+            <div class="d-flex align-items-center justify-content-between gap-3 mb-2">
+              <span class="fw-medium">Toggle current site shortcut</span>
+              <kbd class="bg-dark text-light px-2 py-1 rounded"
+                x-text="$store.app.toggleSiteShortcut || 'Not assigned'"></kbd>
+            </div>
+            <div class="input-group input-group-sm">
+              <input type="text" class="form-control font-monospace"
+                x-model="$store.app.toggleSiteShortcutDraft"
+                placeholder="Example: Alt+Shift+U"
+                @keyup.enter="$store.app.updateToggleSiteShortcut()">
+              <button type="button" class="btn btn-info"
+                @click="$store.app.updateToggleSiteShortcut()">Save</button>
+              <button type="button" class="btn btn-outline-warning"
+                @click="$store.app.resetToggleSiteShortcut()">Reset</button>
+              <button type="button" class="btn btn-outline-secondary"
+                @click="$store.app.openShortcutSettings()">Firefox shortcuts</button>
+            </div>
+          </div>
+          <div class="form-text mt-1" style="margin-left: 8px; color: #b5d6f8; font-size: 13px;">
+            Change the shortcut here if it conflicts with another application or extension. Use Firefox shortcut syntax,
+            such as <code>Alt+Shift+U</code>. Pressing it repeatedly alternates the current site between excluded and
+            included.
+          </div>
+        </div>
+        <div class="mb-3">
+          <div class="d-flex align-items-center justify-content-between p-3 rounded border"
+            :class="$store.app.headlessShortcutToggleEnabled ? 'border-warning bg-warning bg-opacity-10' : 'border-success bg-success bg-opacity-10'">
+            <span class="fw-medium">Shortcut confirmation</span>
+            <div class="btn-group" role="group" aria-label="Shortcut Confirmation Toggle">
+              <button type="button" class="btn btn-sm"
+                :class="!$store.app.headlessShortcutToggleEnabled ? 'btn-success' : 'btn-outline-secondary'"
+                @click="$store.app.headlessShortcutToggleEnabled = false; $store.app.saveSettings();">REVIEW</button>
+              <button type="button" class="btn btn-sm"
+                :class="$store.app.headlessShortcutToggleEnabled ? 'btn-warning' : 'btn-outline-secondary'"
+                @click="$store.app.headlessShortcutToggleEnabled = true; $store.app.saveSettings();">HEADLESS</button>
+            </div>
+          </div>
+          <div class="form-text mt-1" style="margin-left: 8px; color: #b5d6f8; font-size: 13px;">
+            Review mode is the default and shows the exact patterns before applying them; press Enter to confirm.
+            Headless mode applies the shortcut immediately without opening a confirmation.
+          </div>
+        </div>
+        <div class="mb-3">
           <div class="d-flex align-items-center justify-content-between p-3 rounded border"
             :class="$store.app.imageEditionEnabled ? 'border-success bg-success bg-opacity-10' : 'border-danger bg-danger bg-opacity-10'"
             :style="$store.app.imageEditionEnabled ? '' : 'opacity: 0.7;'">
@@ -1171,7 +1215,9 @@
   <!-- Footer with Keyboard Shortcut Info -->
   <div class="mt-4 pt-3 border-top">
     <div class="text-center text-muted small">
-      Press <kbd class="bg-dark text-light px-2 py-1 rounded">Ctrl+Shift+U</kbd> to toggle UltimaDark on current site
+      Press <kbd class="bg-dark text-light px-2 py-1 rounded"
+        x-text="$store.app.toggleSiteShortcut || 'No shortcut assigned'"></kbd>
+      to toggle UltimaDark on the current site
     </div>
   </div>
 

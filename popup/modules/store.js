@@ -50,6 +50,8 @@ document.addEventListener("alpine:init", () => {
         precisionNumber: 2,
         lastTargetHost: "",
         excludeButtonText: "Exclude",
+        toggleSiteShortcut: "",
+        toggleSiteShortcutDraft: "",
 
         // Color settings
         min_bright_fg: 0.2,
@@ -83,6 +85,7 @@ document.addEventListener("alpine:init", () => {
         serviceWorkersEnabled: true,
         autoRefreshOnToggle: false,
         autoRefreshOnAnySettingChange: false,
+        headlessShortcutToggleEnabled: false,
         embedsInheritanceBehavior: false,
 
         // Sync flags (stored in local only, never synced themselves)
@@ -801,6 +804,113 @@ document.addEventListener("alpine:init", () => {
                 console.error('Failed to load settings:', error);
             }
             globalThis.stop = true;
+        },
+
+        async loadToggleSiteShortcut() {
+            if (!browser.commands?.getAll) return;
+            const commands = await browser.commands.getAll();
+            const toggleCommand = commands.find(command => command.name === "toggle-site");
+            this.toggleSiteShortcut = toggleCommand?.shortcut || "";
+            this.toggleSiteShortcutDraft = this.toggleSiteShortcut;
+        },
+
+        async updateToggleSiteShortcut() {
+            try {
+                await browser.commands.update({
+                    name: "toggle-site",
+                    shortcut: this.toggleSiteShortcutDraft.trim(),
+                });
+                await this.loadToggleSiteShortcut();
+            } catch (error) {
+                showBS5Modal({
+                    title: "Invalid Keyboard Shortcut",
+                    body: `Firefox could not assign this shortcut: <code>${error.message}</code>`,
+                    okText: "OK",
+                    showCancel: false,
+                });
+            }
+        },
+
+        async resetToggleSiteShortcut() {
+            await browser.commands.reset("toggle-site");
+            await this.loadToggleSiteShortcut();
+        },
+
+        async openShortcutSettings() {
+            if (browser.commands?.openShortcutSettings) {
+                await browser.commands.openShortcutSettings();
+            }
+        },
+
+        getShortcutToggleTarget() {
+            const site = this.currentSite();
+            if (!site?.host) return null;
+            const hostParts = site.host.split('.');
+            const precision = Math.min(Number(this.precisionNumber) || 2, hostParts.length);
+            const targetHost = hostParts.slice(-precision).join('.');
+            return {
+                targetHost,
+                patterns: [`*://${targetHost}/*`, `*://*.${targetHost}/*`],
+            };
+        },
+
+        getReviewedShortcutTogglePlan() {
+            const site = this.currentSite();
+            const target = this.getShortcutToggleTarget();
+            if (!site || !target) return null;
+            const exclusions = this.exclusionPatterns.split('\n').filter(pattern => pattern.trim());
+            const matchingSet = new Set(site.exclusionMatches);
+            const matchingFullExclusions = exclusions.filter(pattern => {
+                const [base, flag] = pattern.split('#ud_');
+                return matchingSet.has(base) && (!flag || flag === 'all');
+            });
+            return {
+                ...target,
+                excludeSite: matchingFullExclusions.length === 0,
+                matchingFullExclusions,
+            };
+        },
+
+        async applyReviewedShortcutToggle(plan) {
+            if (!plan) return;
+            let exclusions = this.exclusionPatterns.split('\n').filter(pattern => pattern.trim());
+            let inclusions = this.inclusionPatterns.split('\n').filter(pattern => pattern.trim());
+
+            if (plan.excludeSite) {
+                for (const pattern of plan.patterns) {
+                    if (!exclusions.includes(pattern)) exclusions.push(pattern);
+                }
+                this.exclusionPatterns = exclusions.join('\n');
+            } else {
+                const removalSet = new Set(plan.matchingFullExclusions);
+                exclusions = exclusions.filter(pattern => !removalSet.has(pattern));
+                for (const pattern of plan.patterns) {
+                    if (!inclusions.includes(pattern)) inclusions.push(pattern);
+                }
+                this.exclusionPatterns = exclusions.join('\n');
+                this.inclusionPatterns = inclusions.join('\n');
+            }
+
+            await this.debouncedSaveSettings();
+            await this.recomputeCurrentSiteMatches();
+        },
+
+        reviewShortcutToggle() {
+            const plan = this.getReviewedShortcutTogglePlan();
+            if (!plan) return;
+            const action = plan.excludeSite ? 'exclude' : 'include';
+            const changes = plan.excludeSite
+                ? `Add exclusions:<br>${plan.patterns.map(pattern => `<code>${pattern}</code>`).join('<br>')}`
+                : `Remove matching exclusions:<br>${plan.matchingFullExclusions.map(pattern => `<code>${pattern}</code>`).join('<br>')}<br><br>Add inclusions:<br>${plan.patterns.map(pattern => `<code>${pattern}</code>`).join('<br>')}`;
+            showBS5Modal({
+                title: `${plan.excludeSite ? 'Exclude' : 'Include'} Current Site`,
+                body: `The shortcut will <strong>${action}</strong> <code>${plan.targetHost}</code>.<br><br>${changes}<br><br>Press Enter to confirm.`,
+                okText: plan.excludeSite ? 'Exclude' : 'Include',
+                okClass: plan.excludeSite ? 'btn-danger' : 'btn-success',
+                cancelText: 'Cancel',
+                showCancel: true,
+                onOk: () => this.applyReviewedShortcutToggle(plan),
+            });
         },
 
 

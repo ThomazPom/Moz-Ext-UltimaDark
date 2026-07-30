@@ -1,23 +1,3 @@
-// Listen for keyboard shortcut commands (e.g., Ctrl+Shift+U)
-if (typeof browser !== 'undefined' && browser.commands && browser.commands.onCommand) {
-  browser.commands.onCommand.addListener(async function (command) {
-    if (command === 'toggle-site') {
-      // Get the active tab
-      let tabs = await browser.tabs.query({ active: true, currentWindow: true });
-      let tab = tabs[0];
-      if (!tab || !tab.url) return;
-      // Send a message to the popup or content script to toggle exclusion for this site
-      // We'll use storage as a trigger for the popup logic
-      let url = tab.url;
-      // Use a custom event in storage to trigger popup logic
-      await browser.storage.local.set({ __udark_toggle_site: { url, time: Date.now() } });
-      // Optionally, open the popup if not already open
-      if (browser.browserAction && browser.browserAction.openPopup) {
-        try { await browser.browserAction.openPopup(); } catch (e) { }
-      }
-    }
-  });
-}
 class Common {
   static appCompat(res) {
 
@@ -619,26 +599,130 @@ class uDarkExtended extends uDarkExtendedContentScript {
 
   }
 
-  installToggleSiteCommand(resolve) { // This is a command that will be available in the browser shortcuts, it will trigger the toggle action, it's a way to toggle the site without opening the popup
+  async findMatchingTabPatterns(tab, patterns) {
+    const matches = await Promise.all(patterns.map(async pattern => {
+      try {
+        const matchingTabs = await browser.tabs.query({
+          url: pattern,
+          windowId: tab.windowId,
+          index: tab.index,
+        });
+        return matchingTabs.length ? pattern : null;
+      } catch (error) {
+        uDark.warn("Unable to test shortcut pattern", pattern, error);
+        return null;
+      }
+    }));
+    return matches.filter(Boolean);
+  }
+
+  async persistShortcutToggleLists(lists) {
+    Object.assign(uDark.userSettings, lists);
+    await browser.storage.local.set(lists);
+    if (uDark.userSettings.syncListsEnabled) {
+      await browser.storage.sync.set(lists);
+    }
+  }
+
+  async toggleCurrentSiteFromShortcut() {
+    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.url) return;
+
+    let url;
+    try {
+      url = new URL(tab.url);
+    } catch (error) {
+      uDark.warn("Shortcut ignored for invalid tab URL", tab.url);
+      return;
+    }
+    if (!["http:", "https:"].includes(url.protocol) || !url.hostname) {
+      uDark.warn("Shortcut ignored for unsupported tab", tab.url);
+      return;
+    }
+
+    const hostParts = url.hostname.split(".");
+    const precision = Math.min(Number(uDark.userSettings.precisionNumber) || 2, hostParts.length);
+    const targetHost = hostParts.slice(-precision).join(".");
+    const targetPatterns = [`*://${targetHost}/*`, `*://*.${targetHost}/*`];
+    const exclusions = uDark.userSettings.exclusionPatterns.split("\n").filter(pattern => pattern.trim());
+    const inclusions = uDark.userSettings.inclusionPatterns.split("\n").filter(pattern => pattern.trim());
+    const fullExclusionBases = exclusions
+      .filter(pattern => {
+        const flag = pattern.split("#ud_")[1];
+        return !flag || flag === "all";
+      })
+      .map(pattern => pattern.split("#ud_")[0]);
+    const matchingExclusions = await uDark.findMatchingTabPatterns(tab, fullExclusionBases);
+
+    if (matchingExclusions.length) {
+      const matchingSet = new Set(matchingExclusions);
+      const nextExclusions = exclusions.filter(pattern => {
+        const [base, flag] = pattern.split("#ud_");
+        return !matchingSet.has(base) || (flag && flag !== "all");
+      });
+      for (const pattern of targetPatterns) {
+        if (!inclusions.includes(pattern)) inclusions.push(pattern);
+      }
+      await uDark.persistShortcutToggleLists({
+        exclusionPatterns: nextExclusions.join("\n"),
+        inclusionPatterns: inclusions.join("\n"),
+      });
+      uDark.success("Shortcut included current site", targetHost);
+    } else {
+      for (const pattern of targetPatterns) {
+        if (!exclusions.includes(pattern)) exclusions.push(pattern);
+      }
+      await uDark.persistShortcutToggleLists({
+        exclusionPatterns: exclusions.join("\n"),
+      });
+      uDark.success("Shortcut excluded current site", targetHost);
+    }
+
+    if (uDark.userSettings.autoRefreshOnToggle) {
+      await browser.tabs.reload(tab.id);
+    }
+  }
+
+  async openShortcutToggleReview() {
+    const actionApi = browser.browserAction || browser.action;
+    if (!actionApi?.setPopup || !actionApi?.openPopup) {
+      uDark.warn("Unable to open shortcut review popup");
+      return;
+    }
+    const previousPopupPromise = actionApi.getPopup
+      ? actionApi.getPopup({})
+      : Promise.resolve("/popup/popup.html?mode=uDark-popup");
+    const setPopupPromise = actionApi.setPopup({
+      popup: "/popup/popup.html?mode=uDark-popup&action=toggleSite",
+    });
+    // Call openPopup immediately while the keyboard command still carries
+    // user activation. Awaiting extension API calls first can lose it.
+    const openPopupPromise = actionApi.openPopup();
+    try {
+      await Promise.all([setPopupPromise, openPopupPromise]);
+    } finally {
+      previousPopupPromise.then(previousPopup => {
+        setTimeout(() => {
+          actionApi.setPopup({ popup: previousPopup });
+        }, 1000);
+      });
+    }
+  }
+
+  installToggleSiteCommand(resolve) {
     if (!browser.commands) {
       uDark.warn("Browser does not support commands, toggle site command will not be available");
       resolve();
       return;
     }
-    browser.commands.onCommand.addListener((command) => {
+    browser.commands.onCommand.addListener(async command => {
       if (command === "toggle-site") {
         console.log("Shortcut triggered: toggle-site");
-
-        browser.browserAction.getPopup({}).then(previousValue => { // Prepare to restore the previous popup after the toggle
-          setTimeout(() => {
-            browser.browserAction.setPopup({ popup: previousValue }); // Restore the previous popup after the toggle
-          }, 500);
-        });
-
-        browser.browserAction.setPopup({ popup: "/popup/popup.html?mode=uDark-popup&action=toggleSite" }); // Open the popup with the toggle action
-        browser.browserAction.openPopup(); // Open the popup
-
-
+        if (uDark.userSettings.headlessShortcutToggleEnabled) {
+          await uDark.toggleCurrentSiteFromShortcut();
+        } else {
+          await uDark.openShortcutToggleReview();
+        }
       }
     });
     resolve();
