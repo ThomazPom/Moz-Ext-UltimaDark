@@ -896,7 +896,7 @@ class uDarkExtended extends uDarkExtendedContentScript {
       if (uDark.browserInfo.Mozilla_Firefox >= 148) {
         x.value = x.value.replace(
           /(^|[;,])([ \t\n\f\r]*)trusted-types(?=[ \t\n\f\r;,]|$)/gi,
-          "$1$2trusted-types ultimadark#domparser"
+          "$1$2trusted-types ultimadark"
         );
       }
 

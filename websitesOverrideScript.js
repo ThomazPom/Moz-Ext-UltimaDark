@@ -83,7 +83,7 @@ class WebsitesOverrideScript {
             if (globalThis.trustedTypes) {
                 try {
                     uDark.domParserPolicy = globalThis.trustedTypes.createPolicy(
-                        "ultimadark#dom-parser",
+                        "ultimadark",
                         {
                             createHTML: value => value
                         }
