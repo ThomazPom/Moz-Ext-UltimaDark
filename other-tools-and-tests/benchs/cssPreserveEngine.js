@@ -183,7 +183,7 @@
                     "/* before */",
                     ".kept-before { color: #000; }",
                     "/* before-invalid */",
-                    ":is( { color: red; }",
+                    "@unknown-ud-rule test;",
                     "/* after-invalid */",
                     ".kept-after { background: #fff; }",
                     "/* end */",
