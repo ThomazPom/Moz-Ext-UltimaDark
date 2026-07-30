@@ -23142,6 +23142,9 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       },
       // Internal state
       settingsSaveTimeout: null,
+      tabReloadTimeout: null,
+      tabReloadPromise: null,
+      resolveTabReload: null,
       tabChangeListenersEnabled: false,
       // Feature toggles
       cacheEnabled: false,
@@ -23216,6 +23219,16 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
         };
         const badge = this.getSiteBadge();
         return labels[badge.text] || badge.text;
+      },
+      getSiteCardClass() {
+        if (this.currentSite()?.isProtected) {
+          return "border-warning bg-warning bg-opacity-10";
+        }
+        const status = this.getSiteBadge().text;
+        if (status === "INCLUDED") return "border-success bg-success bg-opacity-10";
+        if (status === "EXCLUDED") return "border-danger bg-danger bg-opacity-10";
+        if (status.startsWith("PARTIAL")) return "border-warning bg-warning bg-opacity-10";
+        return "border-secondary";
       },
       // Hook system methods
       // Add a hook to a named hook group
@@ -23637,8 +23650,10 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
           }
           if (added) {
             this.exclusionPatterns = patterns.join("\n");
-            this.saveSettings();
+            await this.debouncedSaveSettings();
             await this.recomputeCurrentSiteMatches();
+            this.activate_hooks("savedSettings");
+            await this.autoRefreshIfEnabled("toggle");
             console.log("Added exclusion patterns:", patternsToAdd);
           } else {
             console.log("Patterns already exist:", patternsToAdd);
@@ -23658,15 +23673,28 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
         }
         await doAdd();
       },
-      includeCurrentSite() {
+      async includeCurrentSite() {
         const site = this.currentSite();
         if (!site.host) return;
         const hostParts = site.host.split(".");
         const precision = Math.min(this.precisionNumber, hostParts.length);
         const targetHost = hostParts.slice(-precision).join(".");
         this.lastTargetHost = targetHost;
-        this.addInclusionPattern(`*://${targetHost}/*`);
-        this.addInclusionPattern(`*://*.${targetHost}/*`);
+        const patternsToAdd = [`*://${targetHost}/*`, `*://*.${targetHost}/*`];
+        const patterns = this.inclusionPatterns.split("\n").filter((pattern) => pattern.trim());
+        let added = false;
+        for (const pattern of patternsToAdd) {
+          if (!patterns.includes(pattern)) {
+            patterns.push(pattern);
+            added = true;
+          }
+        }
+        if (!added) return;
+        this.inclusionPatterns = patterns.join("\n");
+        await this.debouncedSaveSettings();
+        await this.recomputeCurrentSiteMatches();
+        this.activate_hooks("savedSettings");
+        await this.autoRefreshIfEnabled("toggle");
       },
       updatePrecision() {
         this.updateExcludeButtonText();
@@ -23736,16 +23764,27 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
         if (from2 == "anysetting" && !this.autoRefreshOnAnySettingChange) return;
         let tab = this.sites[this.activeSite].tab;
         if (!tab || typeof tab.id === "undefined") return;
-        console.log("Auto-refreshing tab:", tab.id);
-        try {
-          return new Promise((resolve2, reject) => {
-            setTimeout(() => {
-              resolve2(browser.tabs.reload(tab.id, { bypassCache: true }));
-            }, 200);
+        if (this.tabReloadPromise && !this.tabReloadTimeout) return this.tabReloadPromise;
+        window.clearTimeout(this.tabReloadTimeout);
+        if (!this.tabReloadPromise) {
+          this.tabReloadPromise = new Promise((resolve2) => {
+            this.resolveTabReload = resolve2;
           });
-        } catch (e) {
-          console.error("Failed to refresh tab:", e);
         }
+        this.tabReloadTimeout = window.setTimeout(async () => {
+          this.tabReloadTimeout = null;
+          console.log("Auto-refreshing tab:", tab.id);
+          try {
+            await browser.tabs.reload(tab.id, { bypassCache: true });
+          } catch (error2) {
+            console.error("Failed to refresh tab:", error2);
+          } finally {
+            this.resolveTabReload?.();
+            this.tabReloadPromise = null;
+            this.resolveTabReload = null;
+          }
+        }, 200);
+        return this.tabReloadPromise;
       },
       async debouncedSaveSettings() {
         for (const key of Object.keys(uDark.userSettings)) {
@@ -24011,9 +24050,12 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
         browser.storage.sync.get(null).then((syncRes) => {
           const hasSyncData = uDarkC.syncableListKeys.some((k) => syncRes[k] !== void 0);
           if (hasSyncData) {
+            const chooseSitesOnlyActive = !this.inclusionPatterns.split("\n").some((pattern) => pattern.trim());
+            const syncedInclusions = String(syncRes.inclusionPatterns || "").split("\n").filter((pattern) => pattern.trim());
+            const chooseSitesOnlyWarning = chooseSitesOnlyActive && syncedInclusions.length ? `<br><br><strong class="text-warning">Choose-sites-only mode is active.</strong> Merging will add ${syncedInclusions.length} enabled-site pattern${syncedInclusions.length === 1 ? "" : "s"} from Firefox Sync, so UltimaDark may no longer stay off by default.` : "";
             showBS5Modal({
               title: "Synced lists found",
-              body: "Exclusion/inclusion lists from another device were found in your Firefox Sync. Your lists will be <b>merged</b> together (combined, deduplicated). From now on, changes will sync automatically across all devices.",
+              body: "Exclusion/inclusion lists from another device were found in your Firefox Sync. Your lists will be <b>merged</b> together (combined, deduplicated). From now on, changes will sync automatically across all devices." + chooseSitesOnlyWarning,
               okText: "Merge & enable sync",
               cancelText: "Cancel",
               showCancel: true,
@@ -24070,7 +24112,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
           const file = e.target.files[0];
           if (!file) return;
           const reader = new FileReader();
-          reader.onload = (e2) => {
+          reader.onload = async (e2) => {
             try {
               const settings = JSON.parse(e2.target.result);
               for (const key in settings) {
@@ -24080,7 +24122,10 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
                   }
                 }
               }
-              this.saveSettings();
+              await this.debouncedSaveSettings();
+              await this.recomputeCurrentSiteMatches();
+              this.updateExcludeButtonText();
+              this.activate_hooks("savedSettings");
               showBS5Modal({
                 title: "Import Complete",
                 body: "Settings imported successfully!",

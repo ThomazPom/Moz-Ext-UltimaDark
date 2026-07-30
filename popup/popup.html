@@ -29,18 +29,19 @@
       <div class="p-2 rounded border"
         :class="$store.app.isEnabled ? 'border-success bg-success bg-opacity-10' : 'border-danger bg-danger bg-opacity-10'"
         :style="$store.app.isEnabled ? '' : 'opacity: 0.7;'">
-        <div class="btn-group w-100" role="group" aria-label="UltimaDark mode">
-          <button type="button" class="btn btn-sm flex-fill text-nowrap"
-            :class="$store.app.isEnabled === true ? 'btn-success' : 'btn-outline-secondary'"
-            @click="$store.app.isEnabled = true; $store.app.saveSettings();">ENABLED</button>
-          <button type="button" class="btn btn-sm flex-fill text-nowrap"
-            :class="$store.app.isEnabled === false ? 'btn-danger' : 'btn-outline-secondary'"
-            @click="$store.app.isEnabled = false; $store.app.saveSettings();">DISABLED</button>
-          <button type="button" class="btn btn-sm flex-fill text-nowrap"
-            :class="$store.app.isEnabled === 'auto' ? 'btn-info' : 'btn-outline-secondary'"
-            @click="$store.app.isEnabled = 'auto'; $store.app.saveSettings();">FOLLOW SYSTEM</button>
-          <button type="button" class="btn btn-sm flex-fill text-nowrap"
-            :class="$store.app.isEnabled === 'pause' ? 'btn-warning' : 'btn-outline-secondary'"
+        <div class="d-flex w-100">
+          <div class="btn-group flex-grow-1" role="group" aria-label="UltimaDark mode">
+            <button type="button" class="btn btn-sm flex-fill text-nowrap"
+              :class="$store.app.isEnabled === true ? 'btn-success' : 'btn-outline-secondary'"
+              @click="$store.app.isEnabled = true; $store.app.saveSettings();">ENABLED</button>
+            <button type="button" class="btn btn-sm flex-fill text-nowrap"
+              :class="$store.app.isEnabled === false ? 'btn-danger' : 'btn-outline-secondary'"
+              @click="$store.app.isEnabled = false; $store.app.saveSettings();">DISABLED</button>
+            <button type="button" class="btn btn-sm flex-fill text-nowrap"
+              :class="$store.app.isEnabled === 'auto' ? 'btn-info' : 'btn-outline-secondary'"
+              @click="$store.app.isEnabled = 'auto'; $store.app.saveSettings();">FOLLOW SYSTEM</button>
+          </div>
+          <button type="button" class="btn btn-sm btn-outline-warning text-nowrap ms-1"
             @click="$modals.showInfoModalForTimedMode()">SCHEDULED</button>
         </div>
       </div>
@@ -70,7 +71,7 @@
     <!-- Current Site Section -->
     <div class="mb-4">
       <!-- Merged Site Info & Status Card -->
-      <div class="card bg-dark border border-success mb-3">
+      <div class="card bg-dark border mb-3" :class="$store.app.getSiteCardClass()">
         <div class="card-body p-3">
           <div class="d-flex justify-content-between align-items-center mb-2">
             <div class="text-light">
@@ -82,7 +83,7 @@
                 </span>
               </template>
             </div>
-            <div>
+            <div x-show="!$store.app.sites[$store.app.activeSite].isProtected">
               <span :class="`badge ${$store.app.getSiteBadge().class}`" x-text="$store.app.getSiteBadgeLabel()"></span>
             </div>
           </div>
@@ -151,7 +152,8 @@
                     x-text="$store.app.sites[$store.app.activeSite].exclusionMatches.join(', ')"></code></details>
               </div>
             </template>
-            <template x-if="$store.app.getSiteBadge().text === 'DEFAULT'">
+            <template
+              x-if="$store.app.getSiteBadge().text === 'DEFAULT' && !$store.app.sites[$store.app.activeSite].isProtected">
               <div>
                 <div class="fw-bold text-secondary">UltimaDark is off until you enable this site.</div>
               </div>
@@ -160,7 +162,8 @@
         </div>
       </div>
       <!-- Zone 3: Proposed Patterns, Quick Actions, Precision -->
-      <div class="card bg-dark border border-info mb-4">
+      <div class="card bg-dark border border-info mb-4"
+        x-show="!$store.app.sites[$store.app.activeSite].isProtected">
         <div class="card-body">
           <div class="d-flex justify-content-center gap-3 mb-3">
             <button class="btn btn-danger px-4 py-2 d-flex flex-column align-items-center" style="font-size: 1rem;"
@@ -278,7 +281,7 @@
       </div>
       <div class="mb-4">
         <h5 class="fw-semibold mb-3 text-light"><i class="fas fa-list me-2"
-            style="color: var(--dark-accent-red);"></i>Currently Excluded:</h5>
+            style="color: var(--dark-accent-red);"></i>Disabled websites</h5>
         <div x-data="{ editing: null, newValue: '' }">
           <template x-if="editing !== null">
             <div class="d-flex align-items-center gap-2 mb-3">
@@ -423,7 +426,8 @@
         <div x-show="$store.app.embeds.length > 0">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="text-light mb-0">
-              Found <span x-text="$store.app.embeds.length" class="badge bg-info"></span> embed(s)
+              Found <span x-text="$store.app.embeds.length" class="badge bg-info"></span>
+              <span x-text="$store.app.embeds.length === 1 ? 'embedded frame' : 'embedded frames'"></span>
             </h5>
             <div class="small text-muted">
               <template x-if="$store.app.embeds.length > 0">
@@ -569,7 +573,7 @@
       </div>
       <!-- Current Inclusions List -->
       <div class="mb-4">
-        <h5 class="text-light mb-2">Currently Included:</h5>
+        <h5 class="text-light mb-2">Enabled websites</h5>
         <div x-data="{ editing: null, newValue: '' }">
           <template x-if="editing !== null">
             <div class="d-flex align-items-center gap-2 mb-3">
@@ -720,17 +724,13 @@
             Darkens interface images while trying to preserve photos and artwork. Some images may be classified
             incorrectly.
           </div>
-          <div class="form-text mt-1" style="margin-left: 8px; color: #b5d6f8; font-size: 13px;">
-            Helps process images that websites load or replace after the page opens. Leave enabled unless it causes
-            compatibility problems.
-          </div>
         </div>
         <div class="mb-3">
           <div class="d-flex align-items-center justify-content-between p-3 rounded border"
             :class="$store.app.serviceWorkersEnabled ? 'border-success bg-success bg-opacity-10' : 'border-danger bg-danger bg-opacity-10'"
             :style="$store.app.serviceWorkersEnabled ? '' : 'opacity: 0.7;'">
-            <span class="fw-medium">Fix images on dynamic websites</span>
-            <div class="btn-group" role="group" aria-label="Dynamic website image compatibility">
+            <span class="fw-medium">Allow website service workers</span>
+            <div class="btn-group" role="group" aria-label="Allow website service workers">
               <button type="button" class="btn btn-sm"
                 :class="$store.app.serviceWorkersEnabled ? 'btn-success' : 'btn-outline-secondary'"
                 @click="$store.app.serviceWorkersEnabled = true; $store.app.saveSettings();">ENABLED</button>
@@ -739,7 +739,14 @@
                 @click="$store.app.serviceWorkersEnabled = false; $store.app.saveSettings();">DISABLED</button>
             </div>
           </div>
+          <div class="form-text mt-1" style="margin-left: 8px; color: #b5d6f8; font-size: 13px;">
+            Enabled leaves website service workers available. Disable only if UltimaDark fails on a
+            service-worker-based site: the legacy workaround unregisters and hides service workers where UltimaDark
+            runs. This may disrupt offline features, notifications, or background updates. Reload affected tabs after
+            changing it.
+          </div>
         </div>
+        <div x-show="$store.app.imageEditionEnabled">
         <!-- Pooled Worker Toggle -->
         <div class="mb-3">
           <div class="d-flex align-items-center justify-content-between p-3 rounded border"
@@ -761,7 +768,7 @@
           </div>
         </div>
         <!-- Image detection method -->
-        <div class="mb-3" x-show="$store.app.pooledWorkersEnabled">
+        <div class="mb-3" x-show="$store.app.imageEditionEnabled && $store.app.pooledWorkersEnabled">
           <div
             class="d-flex align-items-center justify-content-between p-3 rounded border border-info bg-info bg-opacity-10">
             <span class="fw-medium">Image detection method</span>
@@ -781,6 +788,7 @@
           <div class="form-text mt-1" style="margin-left: 8px; color: #b5d6f8; font-size: 13px;">
             Choose between fast rule-based classification and AI detection.
           </div>
+        </div>
         </div>
         <div class="mb-3">
           <div class="d-flex align-items-center justify-content-between p-3 rounded border"
@@ -900,8 +908,9 @@
               x-text="$store.app.cacheEnabled ? 'ENABLED' : 'DISABLED'"></span></div>
           <div>Images: <span :class="$store.app.imageEditionEnabled ? 'text-success' : 'text-danger'"
               x-text="$store.app.imageEditionEnabled ? 'ENABLED' : 'DISABLED'"></span></div>
-          <div>Service Workers: <span :class="$store.app.serviceWorkersEnabled ? 'text-success' : 'text-danger'"
-              x-text="$store.app.serviceWorkersEnabled ? 'ENABLED' : 'DISABLED'"></span></div>
+          <div>Website service workers: <span
+              :class="$store.app.serviceWorkersEnabled ? 'text-success' : 'text-danger'"
+              x-text="$store.app.serviceWorkersEnabled ? 'ALLOWED' : 'BLOCKED BY LEGACY WORKAROUND'"></span></div>
           <div>Precision: <span class="text-warning" x-text="$store.app.precisionNumber"></span></div>
         </div>
       </div>

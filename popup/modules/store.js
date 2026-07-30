@@ -77,6 +77,9 @@ document.addEventListener("alpine:init", () => {
         },
         // Internal state
         settingsSaveTimeout: null,
+        tabReloadTimeout: null,
+        tabReloadPromise: null,
+        resolveTabReload: null,
         tabChangeListenersEnabled: false,
 
         // Feature toggles
@@ -170,6 +173,18 @@ document.addEventListener("alpine:init", () => {
             };
             const badge = this.getSiteBadge();
             return labels[badge.text] || badge.text;
+        },
+
+        getSiteCardClass() {
+            if (this.currentSite()?.isProtected) {
+                return 'border-warning bg-warning bg-opacity-10';
+            }
+
+            const status = this.getSiteBadge().text;
+            if (status === 'INCLUDED') return 'border-success bg-success bg-opacity-10';
+            if (status === 'EXCLUDED') return 'border-danger bg-danger bg-opacity-10';
+            if (status.startsWith('PARTIAL')) return 'border-warning bg-warning bg-opacity-10';
+            return 'border-secondary';
         },
 
         // Hook system methods
@@ -646,8 +661,10 @@ document.addEventListener("alpine:init", () => {
                 }
                 if (added) {
                     this.exclusionPatterns = patterns.join('\n');
-                    this.saveSettings();
+                    await this.debouncedSaveSettings();
                     await this.recomputeCurrentSiteMatches();
+                    this.activate_hooks("savedSettings");
+                    await this.autoRefreshIfEnabled("toggle");
                     console.log('Added exclusion patterns:', patternsToAdd);
                 } else {
                     console.log('Patterns already exist:', patternsToAdd);
@@ -668,16 +685,31 @@ document.addEventListener("alpine:init", () => {
             await doAdd();
         },
 
-        includeCurrentSite() {
+        async includeCurrentSite() {
             const site = this.currentSite();
             if (!site.host) return;
             const hostParts = site.host.split('.');
             const precision = Math.min(this.precisionNumber, hostParts.length);
             const targetHost = hostParts.slice(-precision).join('.');
             this.lastTargetHost = targetHost;
-            // Add both with and without wildcard subdomain
-            this.addInclusionPattern(`*://${targetHost}/*`);
-            this.addInclusionPattern(`*://*.${targetHost}/*`);
+            const patternsToAdd = [`*://${targetHost}/*`, `*://*.${targetHost}/*`];
+            const patterns = this.inclusionPatterns.split('\n').filter(pattern => pattern.trim());
+            let added = false;
+
+            for (const pattern of patternsToAdd) {
+                if (!patterns.includes(pattern)) {
+                    patterns.push(pattern);
+                    added = true;
+                }
+            }
+
+            if (!added) return;
+
+            this.inclusionPatterns = patterns.join('\n');
+            await this.debouncedSaveSettings();
+            await this.recomputeCurrentSiteMatches();
+            this.activate_hooks("savedSettings");
+            await this.autoRefreshIfEnabled("toggle");
         },
 
         updatePrecision() {
@@ -774,16 +806,30 @@ document.addEventListener("alpine:init", () => {
             if (from == "anysetting" && !this.autoRefreshOnAnySettingChange) return;
             let tab = this.sites[this.activeSite].tab;
             if (!tab || typeof tab.id === 'undefined') return;
-            console.log("Auto-refreshing tab:", tab.id);
-            try {
-                return new Promise((resolve, reject) => {
-                    setTimeout(() => {
-                        resolve(browser.tabs.reload(tab.id, { bypassCache: true }));
-                    }, 200); // Delay to ensure any changes are applied
+
+            if (this.tabReloadPromise && !this.tabReloadTimeout) return this.tabReloadPromise;
+            window.clearTimeout(this.tabReloadTimeout);
+            if (!this.tabReloadPromise) {
+                this.tabReloadPromise = new Promise(resolve => {
+                    this.resolveTabReload = resolve;
                 });
-            } catch (e) {
-                console.error("Failed to refresh tab:", e);
             }
+
+            this.tabReloadTimeout = window.setTimeout(async () => {
+                this.tabReloadTimeout = null;
+                console.log("Auto-refreshing tab:", tab.id);
+                try {
+                    await browser.tabs.reload(tab.id, { bypassCache: true });
+                } catch (error) {
+                    console.error("Failed to refresh tab:", error);
+                } finally {
+                    this.resolveTabReload?.();
+                    this.tabReloadPromise = null;
+                    this.resolveTabReload = null;
+                }
+            }, 200);
+
+            return this.tabReloadPromise;
         },
 
         async debouncedSaveSettings() {
@@ -1086,11 +1132,20 @@ document.addEventListener("alpine:init", () => {
             browser.storage.sync.get(null).then(syncRes => {
                 const hasSyncData = uDarkC.syncableListKeys.some(k => syncRes[k] !== undefined);
                 if (hasSyncData) {
+                    const chooseSitesOnlyActive = !this.inclusionPatterns.split('\n').some(pattern => pattern.trim());
+                    const syncedInclusions = String(syncRes.inclusionPatterns || '')
+                        .split('\n').filter(pattern => pattern.trim());
+                    const chooseSitesOnlyWarning = chooseSitesOnlyActive && syncedInclusions.length
+                        ? '<br><br><strong class="text-warning">Choose-sites-only mode is active.</strong> '
+                            + `Merging will add ${syncedInclusions.length} enabled-site pattern`
+                            + `${syncedInclusions.length === 1 ? '' : 's'} from Firefox Sync, so UltimaDark may no longer stay off by default.`
+                        : '';
                     showBS5Modal({
                         title: 'Synced lists found',
                         body: 'Exclusion/inclusion lists from another device were found in your Firefox Sync. '
                             + 'Your lists will be <b>merged</b> together (combined, deduplicated). '
-                            + 'From now on, changes will sync automatically across all devices.',
+                            + 'From now on, changes will sync automatically across all devices.'
+                            + chooseSitesOnlyWarning,
                         okText: 'Merge & enable sync',
                         cancelText: 'Cancel',
                         showCancel: true,
@@ -1151,7 +1206,7 @@ document.addEventListener("alpine:init", () => {
                 if (!file) return;
 
                 const reader = new FileReader();
-                reader.onload = (e) => {
+                reader.onload = async (e) => {
                     try {
                         const settings = JSON.parse(e.target.result);
                         for (const key in settings) {
@@ -1163,7 +1218,10 @@ document.addEventListener("alpine:init", () => {
                         }
 
 
-                        this.saveSettings();
+                        await this.debouncedSaveSettings();
+                        await this.recomputeCurrentSiteMatches();
+                        this.updateExcludeButtonText();
+                        this.activate_hooks("savedSettings");
                         showBS5Modal({
                             title: 'Import Complete',
                             body: 'Settings imported successfully!',
