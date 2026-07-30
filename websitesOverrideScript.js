@@ -601,57 +601,6 @@ class WebsitesOverrideScript {
             uDark.functionPrototypeEditor(CanvasRenderingContext2D, CanvasRenderingContext2D.prototype.strokeText, darken_canvas_stroke)
             uDark.functionPrototypeEditor(CanvasRenderingContext2D, CanvasRenderingContext2D.prototype.strokeRect, darken_canvas_stroke)
         }
-        /******************** BUT ********************** */
-        // Here are all the cases when editing a style element can affect the page style, and there is a lot of them
-        // I encountered innerHTML  appendChild and insertBefore so far, but there are all these cases in the wild
-
-        if (false) {
-            let ite = undefined
-            var testStyle = document.createElement("style")
-
-            testStyle.outerHTML += testStyle.outerHTML + testStyle.outerHTML.slice(0, -8) + ".test20 {color:red!important}" + "</style>" // has no effects
-            document.querySelectorAll(".test").forEach(w => w.remove())
-            document.head.appendChild(testStyle)
-            testStyle.classList.add("test")
-            testStyle.append(ite = document.createTextNode("invalid"))
-            testStyle.replaceChildren(document.createTextNode(".test1 {color:red!important}"))
-
-            testStyle.textContent += ".test16{color:red!important}"
-            testStyle.innerHTML += ".test17 {color:red!important}"
-            testStyle.innerText += ".test18 {color:red!important}"
-            testStyle.outerText // Replaces the element by some text, unsuitable
-            testStyle.append(ite = document.createTextNode("invalid"))
-            testStyle.replaceChild(document.createTextNode(".test2 {color:red!important}"), ite)
-            testStyle.append(ite = document.createTextNode(".test3 {color:red!important}"))
-            testStyle.prepend(ite = document.createTextNode(".test4 {color:red!important}"))
-
-            ite.before(document.createTextNode(".test5 {color:red!important}"))
-            ite.after(document.createTextNode(".test6 {color:red!important}"))
-            testStyle.appendChild(ite = document.createTextNode(".test7 {color:red!important}"))
-            testStyle.insertBefore(document.createTextNode(".test8 {color:red!important}"), ite)
-            testStyle.append(ite = document.createTextNode(""))
-            testStyle.append(ite = document.createTextNode("invalid"))
-            ite.replaceWith(document.createTextNode(".test11 {color:red!important}"))
-            testStyle.append(ite = document.createTextNode(""))
-            ite.insertData(0, ".test9 {color:red!important}")
-            ite.appendData(".test10 {color:red!important}")
-
-            ite.replaceData(0, 0, ".test12 {color:red!important}")
-            ite.data += ".test13 {color:red!important}"
-            ite.nodeValue += ".test14 {color:red!important}"
-            ite.textContent += ".test15 {color:red!important}"
-            for (let i = 20; i; i--) {
-                let title = document.createElement("div");
-                title.classList.add("test" + i)
-                title.classList.add("test")
-                title.textContent = "Test #" + i;
-                document.body.prepend(title)
-            }
-
-            testStyle.outerHTML += testStyle.outerHTML + testStyle.outerHTML.slice(0, -8) + ".test20 {color:red!important}" + "</style>"
-        }
-        /****************************************** */
-
         // FINALLY CNN Use this one (webpack)!!!!
         uDark.valuePrototypeEditor(Node, "textContent", (elem, value) => {
             if (!elem.nonce) {

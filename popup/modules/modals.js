@@ -241,21 +241,28 @@ function showAsciiColorModal(type) {
     ? 'Hues → (0°→360°) • Saturation ↓ (0%→100%) — OLED background preview'
     : 'Hues → (0°→360°) • Saturation ↓ (0%→100%) — Text color preview';
 
-  let out = '';
+  const pre = document.createElement('pre');
+  pre.style.whiteSpace = 'pre';
+  pre.style.paddingBottom = '20px';
+  pre.style.font = '16px/0.9 monospace';
+
   for (let r = 0; r < rows; r++) {
     const s = (r / (rows - 1)) * 100;
     const lightness = (r / (rows - 1)) * 100;
     for (let c = 0; c < cols; c++) {
       const h = (c / cols) * 360;
       const rgb = uDark.hslToRgb(h / 360, s / 100, lightness / 100);
-            let colorStr = type === 'bg'
-              ? uDark.rgba_oled(rgb[0], rgb[1], rgb[2], 1)
-              : uDark.revert_rgba(rgb[0], rgb[1], rgb[2], 1);
-      out += `<span style="color:${colorStr};">${char}</span>`;
+      const colorStr = type === 'bg'
+        ? uDark.rgba_oled(rgb[0], rgb[1], rgb[2], 1)
+        : uDark.revert_rgba(rgb[0], rgb[1], rgb[2], 1);
+      const cell = document.createElement('span');
+      cell.style.color = colorStr;
+      cell.textContent = char;
+      pre.appendChild(cell);
     }
-    out += "\n";
+    pre.appendChild(document.createTextNode('\n'));
   }
-  $container.innerHTML = `<pre style='white-space:pre;padding-bottom:20px; font:16px/0.9 monospace;'>${out}</pre>`;
+  $container.replaceChildren(pre);
   $legend.textContent = legendText;
 
   // Show modal (Bootstrap 5)

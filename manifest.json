@@ -11,8 +11,7 @@
   // "web_accessible_resources": [
   //  // "ultimaDark.css"
   // ], 
-  // Sha265 is for UdarkTools.htm. It is required to allow the javascript fixing the filterHTMLResponseData to run.
-  "content_security_policy": "script-src 'self' blob: 'unsafe-eval' 'sha256-RooFZFVBc+eqIlPYtIwvNYqUBaN1qp1VnXMy2xZLRKg='; ",
+  "content_security_policy": "script-src 'self' blob: 'unsafe-eval'; ",
   "commands": {
     "toggle-site": {
       "suggested_key": {
@@ -26,13 +25,16 @@
   "browser_specific_settings": {
     
     "gecko": {
-      "strict_min_version": "79.0",
+      "strict_min_version": "140.0",
       // ID is required for Firefox sync to work on development versions. See https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/browser_specific_settings#Firefox_sync_and_development_extensions for details.
   
-      "id": "{0a0f6dea-3957-4bb9-9eec-2ef2b9e5bcec}"
+      "id": "{0a0f6dea-3957-4bb9-9eec-2ef2b9e5bcec}",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
     },
     "gecko_android": {
-      "strict_min_version": "42.0"
+      "strict_min_version": "142.0"
     }
   },
   "permissions": [

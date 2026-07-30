@@ -31,10 +31,10 @@ function showBS5Modal({title = '', body = '', okText = 'OK', cancelText = 'Cance
     </div>
   `;
 
-  // Insert modal into DOM
-  const div = document.createElement('div');
-  div.innerHTML = modalHtml;
-  document.body.appendChild(div.firstElementChild);
+  // Parse the trusted modal template without assigning dynamic innerHTML.
+  const modalDocument = new DOMParser().parseFromString(modalHtml, 'text/html');
+  const parsedModal = modalDocument.body.firstElementChild;
+  document.body.appendChild(document.importNode(parsedModal, true));
 
   // Bootstrap 5 modal instance
   const modalEl = document.getElementById('bs5modal-ultimadark');

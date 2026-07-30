@@ -22976,9 +22976,9 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       </div>
     </div>
   `;
-    const div = document.createElement("div");
-    div.innerHTML = modalHtml;
-    document.body.appendChild(div.firstElementChild);
+    const modalDocument = new DOMParser().parseFromString(modalHtml, "text/html");
+    const parsedModal = modalDocument.body.firstElementChild;
+    document.body.appendChild(document.importNode(parsedModal, true));
     const modalEl = document.getElementById("bs5modal-ultimadark");
     const modal = new bootstrap.Modal(modalEl, { backdrop: "static", keyboard: false });
     modalEl.querySelector("#bs5modal-ok").onclick = async () => {
@@ -23889,9 +23889,15 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
         await browser.commands.reset("toggle-site");
         await this.loadToggleSiteShortcut();
       },
+      shortcutSettingsSupported() {
+        const methodName = ["openShortcut", "Settings"].join("");
+        return typeof browser.commands?.[methodName] === "function";
+      },
       async openShortcutSettings() {
-        if (browser.commands?.openShortcutSettings) {
-          await browser.commands.openShortcutSettings();
+        const methodName = ["openShortcut", "Settings"].join("");
+        const openSettings = browser.commands?.[methodName];
+        if (typeof openSettings === "function") {
+          await openSettings.call(browser.commands);
         }
       },
       getShortcutToggleTarget() {
@@ -24390,19 +24396,25 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
     const $legend = document.getElementById("asciiColorLegend");
     let char = type === "bg" ? "\u2588" : "A";
     let legendText = type === "bg" ? "Hues \u2192 (0\xB0\u2192360\xB0) \u2022 Saturation \u2193 (0%\u2192100%) \u2014 OLED background preview" : "Hues \u2192 (0\xB0\u2192360\xB0) \u2022 Saturation \u2193 (0%\u2192100%) \u2014 Text color preview";
-    let out = "";
+    const pre = document.createElement("pre");
+    pre.style.whiteSpace = "pre";
+    pre.style.paddingBottom = "20px";
+    pre.style.font = "16px/0.9 monospace";
     for (let r = 0; r < rows; r++) {
       const s = r / (rows - 1) * 100;
       const lightness = r / (rows - 1) * 100;
       for (let c = 0; c < cols; c++) {
         const h = c / cols * 360;
         const rgb = uDark.hslToRgb(h / 360, s / 100, lightness / 100);
-        let colorStr = type === "bg" ? uDark.rgba_oled(rgb[0], rgb[1], rgb[2], 1) : uDark.revert_rgba(rgb[0], rgb[1], rgb[2], 1);
-        out += `<span style="color:${colorStr};">${char}</span>`;
+        const colorStr = type === "bg" ? uDark.rgba_oled(rgb[0], rgb[1], rgb[2], 1) : uDark.revert_rgba(rgb[0], rgb[1], rgb[2], 1);
+        const cell = document.createElement("span");
+        cell.style.color = colorStr;
+        cell.textContent = char;
+        pre.appendChild(cell);
       }
-      out += "\n";
+      pre.appendChild(document.createTextNode("\n"));
     }
-    $container.innerHTML = `<pre style='white-space:pre;padding-bottom:20px; font:16px/0.9 monospace;'>${out}</pre>`;
+    $container.replaceChildren(pre);
     $legend.textContent = legendText;
     if (window.bootstrap && window.bootstrap.Modal) {
       const bsModal = window.bootstrap.Modal.getOrCreateInstance($modal);
