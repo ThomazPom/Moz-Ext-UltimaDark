@@ -35,6 +35,24 @@ body {
     min-height: 100vh;
 }
 
+/* Full-page settings mode, opened from the Advanced tab. */
+body.fullmode {
+    width: 100% !important;
+}
+
+body.fullmode > .container {
+    max-width: 1200px;
+}
+
+body.fullmode .pattern-list {
+    max-height: 60vh !important;
+}
+
+body.fullmode .pattern-list-editor {
+    height: 40vh !important;
+    min-height: 240px;
+}
+
 /* Custom scrollbar for dark theme */
 ::-webkit-scrollbar {
     width: 8px;

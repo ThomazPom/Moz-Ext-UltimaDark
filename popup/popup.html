@@ -13,7 +13,8 @@
 
 <body x-data
   x-init="if (window.location.search.includes('fullmode')) { $nextTick(() => { const btn = document.getElementById('tab-settings'); if (btn) { if (window.bootstrap && window.bootstrap.Tab) { window.bootstrap.Tab.getOrCreateInstance(btn).show(); } else { btn.click(); } setTimeout(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' }), 120); } }); }"
-  class="dark" data-bs-theme="dark" style="width: 600px;padding:10px;">
+  class="dark" :class="{ 'fullmode': window.location.search.includes('fullmode') }"
+  data-bs-theme="dark" style="width: 600px;padding:10px;">
 
   <div class="container py-3 mx-auto">
     <!-- Header -->
@@ -317,7 +318,7 @@
               <button @click="editing=null" class="btn btn-secondary btn-sm">Cancel</button>
             </div>
           </template>
-          <div class="table-responsive" style="max-height: 180px;">
+          <div class="table-responsive pattern-list" style="max-height: 180px;">
             <table class="table table-dark table-sm align-middle mb-0" style="min-width: 420px;">
               <tbody>
                 <template x-for="(pattern, idx) in $store.app.exclusionPatterns.split('\n').filter(p => p.trim())"
@@ -575,7 +576,7 @@
               <button @click="editing=null" class="btn btn-secondary btn-sm">Cancel</button>
             </div>
           </template>
-          <div class="table-responsive" style="max-height: 150px;">
+          <div class="table-responsive pattern-list" style="max-height: 150px;">
             <table class="table table-dark table-sm align-middle mb-0" style="min-width: 420px;">
               <tbody>
                 <template x-for="(pattern, idx) in $store.app.inclusionPatterns.split('\n').filter(p => p.trim())"
@@ -666,25 +667,6 @@
             icons. The aim is better readability and comfort, but image classification is always an approximation—never
             exact. Some images may be misclassified due to the complexity of web content and the limits of automated
             detection.
-          </div>
-        </div>
-        <div class="mb-3">
-          <div class="d-flex align-items-center justify-content-between p-3 rounded border"
-            :class="$store.app.foregroundBordersEnabled ? 'border-success bg-success bg-opacity-10' : 'border-danger bg-danger bg-opacity-10'"
-            :style="$store.app.foregroundBordersEnabled ? '' : 'opacity: 0.7;'">
-            <span class="fw-medium">Foreground border colors</span>
-            <div class="btn-group" role="group" aria-label="Foreground Border Colors Toggle">
-              <button type="button" class="btn btn-sm"
-                :class="$store.app.foregroundBordersEnabled ? 'btn-success' : 'btn-outline-secondary'"
-                @click="$store.app.foregroundBordersEnabled = true; $store.app.saveSettings();">ENABLED</button>
-              <button type="button" class="btn btn-sm"
-                :class="!$store.app.foregroundBordersEnabled ? 'btn-danger' : 'btn-outline-secondary'"
-                @click="$store.app.foregroundBordersEnabled = false; $store.app.saveSettings();">DISABLED</button>
-            </div>
-          </div>
-          <div class="form-text mt-1" style="margin-left: 8px; color: #b5d6f8; font-size: 13px;">
-            Transforms border colors like foreground text, producing clearer division lines and a more pronounced
-            outline effect.
           </div>
         </div>
         <div class="mb-3">
@@ -895,8 +877,9 @@
       <h4 style="color: #ffffff; margin-bottom: 15px;">Advanced options</h4>
       <!-- Advanced Settings Link -->
       <div class="mb-4">
-        <a href="../popup.html" target="_blank" class="btn btn-dark d-flex justify-content-between align-items-center">
-          <span><span class="me-2">⟵</span> Advanced settings</span>
+        <a href="./popup.html?fullmode" target="_blank"
+          class="btn btn-dark d-flex justify-content-between align-items-center">
+          <span><span class="me-2">↗</span> Open full-page settings</span>
           <span>⚙️</span>
         </a>
       </div>
@@ -911,13 +894,13 @@
           <div class="mb-3">
             <label class="form-label text-light small">Exclusion Patterns (Manual):</label>
             <textarea x-model="$store.app.exclusionPatterns" @input="$store.app.saveSettings()"
-              class="form-control form-control-sm font-monospace" style="height: 80px;"
+              class="form-control form-control-sm font-monospace pattern-list-editor" style="height: 80px;"
               placeholder="*://example.com/*"></textarea>
           </div>
           <div class="mb-3">
             <label class="form-label text-light small">Inclusion Patterns (Manual):</label>
             <textarea x-model="$store.app.inclusionPatterns" @input="$store.app.saveSettings()"
-              class="form-control form-control-sm font-monospace" style="height: 80px;"
+              class="form-control form-control-sm font-monospace pattern-list-editor" style="height: 80px;"
               placeholder="<all_urls>"></textarea>
           </div>
         </div>
@@ -928,6 +911,26 @@
     <!-- Color Settings Tab (moved out of Advanced) -->
     <div class="tab-pane fade" id="tab-pane-color-settings" role="tabpanel" aria-labelledby="tab-color-settings">
       <h4 class="text-light mb-3">Color settings</h4>
+      <div class="mb-4">
+        <div class="d-flex align-items-center justify-content-between p-3 rounded border"
+          :class="$store.app.foregroundBordersEnabled ? 'border-success bg-success bg-opacity-10' : 'border-danger bg-danger bg-opacity-10'"
+          :style="$store.app.foregroundBordersEnabled ? '' : 'opacity: 0.7;'">
+          <span class="fw-medium">Foreground border colors</span>
+          <div class="btn-group" role="group" aria-label="Foreground Border Colors Toggle">
+            <button type="button" class="btn btn-sm"
+              :class="$store.app.foregroundBordersEnabled ? 'btn-success' : 'btn-outline-secondary'"
+              @click="$store.app.foregroundBordersEnabled = true; $store.app.saveSettings();">ENABLED</button>
+            <button type="button" class="btn btn-sm"
+              :class="!$store.app.foregroundBordersEnabled ? 'btn-danger' : 'btn-outline-secondary'"
+              @click="$store.app.foregroundBordersEnabled = false; $store.app.saveSettings();">DISABLED</button>
+          </div>
+        </div>
+        <div class="form-text mt-1" style="margin-left: 8px; color: #b5d6f8; font-size: 13px;">
+          Transforms border colors like foreground text for clearer division lines and a stronger outline effect. It is
+          a good companion to OLED mode, where brighter borders can preserve visual separation against pure-black
+          backgrounds.
+        </div>
+      </div>
       <div x-data="{ shown: null }" class="mb-3">
         <div class="d-flex gap-2 mb-3">
           <button class="btn btn-outline-info btn-sm" @click="$modals.showAsciiColorModal('text')">Show Text Color Grid
