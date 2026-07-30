@@ -670,6 +670,25 @@
         </div>
         <div class="mb-3">
           <div class="d-flex align-items-center justify-content-between p-3 rounded border"
+            :class="$store.app.foregroundBordersEnabled ? 'border-success bg-success bg-opacity-10' : 'border-danger bg-danger bg-opacity-10'"
+            :style="$store.app.foregroundBordersEnabled ? '' : 'opacity: 0.7;'">
+            <span class="fw-medium">Foreground border colors</span>
+            <div class="btn-group" role="group" aria-label="Foreground Border Colors Toggle">
+              <button type="button" class="btn btn-sm"
+                :class="$store.app.foregroundBordersEnabled ? 'btn-success' : 'btn-outline-secondary'"
+                @click="$store.app.foregroundBordersEnabled = true; $store.app.saveSettings();">ENABLED</button>
+              <button type="button" class="btn btn-sm"
+                :class="!$store.app.foregroundBordersEnabled ? 'btn-danger' : 'btn-outline-secondary'"
+                @click="$store.app.foregroundBordersEnabled = false; $store.app.saveSettings();">DISABLED</button>
+            </div>
+          </div>
+          <div class="form-text mt-1" style="margin-left: 8px; color: #b5d6f8; font-size: 13px;">
+            Transforms border colors like foreground text, producing clearer division lines and a more pronounced
+            outline effect.
+          </div>
+        </div>
+        <div class="mb-3">
+          <div class="d-flex align-items-center justify-content-between p-3 rounded border"
             :class="$store.app.serviceWorkersEnabled ? 'border-success bg-success bg-opacity-10' : 'border-danger bg-danger bg-opacity-10'"
             :style="$store.app.serviceWorkersEnabled ? '' : 'opacity: 0.7;'">
             <span class="fw-medium">Service Workers Compatibility</span>

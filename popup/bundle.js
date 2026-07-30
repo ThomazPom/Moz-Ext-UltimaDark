@@ -23101,6 +23101,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       max_bright_bg: 0.4,
       bg_negative_modifier: 0,
       fg_negative_modifier: 0,
+      foregroundBordersEnabled: false,
       lcdColorSettings: {
         min_bright_fg: 0.2,
         max_bright_fg: 1,

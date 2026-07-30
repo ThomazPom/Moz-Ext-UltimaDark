@@ -40,6 +40,7 @@ class uDarkC extends uDarkExtended {
     "cacheEnabled",
     "serviceWorkersEnabled",
     "imageEditionEnabled",
+    "foregroundBordersEnabled",
     "min_bright_fg",
     "max_bright_fg",
     "min_bright_bg_trigger",
@@ -307,6 +308,7 @@ class uDarkC extends uDarkExtended {
     max_bright_bg: 0.4, // background with value over min_bright_bg_trigger will be darkened from min_bright_bg up to this value
     bg_negative_modifier: 0, // handy transformer for OLED displays : modifier for background colors
     fg_negative_modifier: 0, // Handy transformer for OLED displays : modifier for foreground colors
+    foregroundBordersEnabled: false, // Transform border colors as foreground colors for a brighter outline effect
     precisionNumber: 2,
     preserve_comments: true,
     cacheEnabled: false, // Enable or disable caching
@@ -384,6 +386,20 @@ class uDarkC extends uDarkExtended {
     // native: "imageWorker/imageWorkerBundle-nativeOldSlow.js",
   }
   foreground_color_css_properties = ["color", "caret-color"] // css properties that are foreground colors;, putting caret-color or any other property will edit the caret color with lightening and preventing the caret from being darkened
+  foreground_complex_color_css_properties = []
+  foreground_border_properties = [
+    "border", "border-color",
+    "border-top", "border-top-color",
+    "border-right", "border-right-color",
+    "border-bottom", "border-bottom-color",
+    "border-left", "border-left-color",
+    "border-block", "border-block-color",
+    "border-block-start", "border-block-start-color",
+    "border-block-end", "border-block-end-color",
+    "border-inline", "border-inline-color",
+    "border-inline-start", "border-inline-start-color",
+    "border-inline-end", "border-inline-end-color",
+  ]
 
 
   static generateNestedParenthesisRegex(depth) { // Generates a regex that matches nested parenthesis
@@ -2466,6 +2482,7 @@ class uDarkC extends uDarkExtended {
 
   edit_cssProperties(cssRule, details, options) {
     let foregroundFastItems = [],
+      foregroundComplexItems = [],
       variablesItems = [],
       backgroundItems = [],
       wordingActions = [];
@@ -2482,10 +2499,20 @@ class uDarkC extends uDarkExtended {
       if (uDark.css_properties_wording_action_dict[x]) {
         wordingActions.push(x);
       } // Check if some wording action is needed
-      if (uDark.foreground_color_css_properties.includes(x)) {
+      // Shorthands are temporarily stored as --ud-ptd-* custom properties so
+      // CSSStyleDeclaration does not expand them into their longhand values.
+      // Classify them by their original name while editing the protected key.
+      let originalProperty = x.startsWith("--ud-ptd-") ? x.slice("--ud-ptd-".length) : x;
+      if (uDark.foreground_color_css_properties.includes(originalProperty)) {
         foregroundFastItems.push(x);
         continue;
       } // Do foreground items first as its faster to check a list
+      if (uDark.foreground_complex_color_css_properties.includes(originalProperty)
+        || (uDark.userSettings.foregroundBordersEnabled
+          && uDark.foreground_border_properties.includes(originalProperty))) {
+        foregroundComplexItems.push(x);
+        continue;
+      } // Complex foreground values need token scanning instead of fastValue0
       if (x.match(uDark.background_color_css_properties_regex)) {
         backgroundItems.push(x);
         continue;
@@ -2506,6 +2533,12 @@ class uDarkC extends uDarkExtended {
 
     foregroundFastItems.length && uDark.edit_all_cssRule_colors(cssRule, foregroundFastItems, options, {
       fastValue0: true,
+      l_var: "--uDark_transform_lighten",
+      h_var: "--uDark_transform_text_hue",
+      js_static_transform: uDark.revert_rgba,
+    })
+
+    foregroundComplexItems.length && uDark.edit_all_cssRule_colors(cssRule, foregroundComplexItems, options, {
       l_var: "--uDark_transform_lighten",
       h_var: "--uDark_transform_text_hue",
       js_static_transform: uDark.revert_rgba,
