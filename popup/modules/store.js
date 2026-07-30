@@ -946,16 +946,17 @@ document.addEventListener("alpine:init", () => {
             await this.loadToggleSiteShortcut();
         },
 
-        shortcutSettingsSupported() {
-            const methodName = ["openShortcut", "Settings"].join("");
-            return typeof browser.commands?.[methodName] === "function";
+        optionalCommandMethod(methodName) {
+            const method = browser.commands?.[methodName];
+            return typeof method === "function"
+                ? method.bind(browser.commands)
+                : null;
         },
 
         async openShortcutSettings() {
-            const methodName = ["openShortcut", "Settings"].join("");
-            const openSettings = browser.commands?.[methodName];
-            if (typeof openSettings === "function") {
-                await openSettings.call(browser.commands);
+            const openSettings = this.optionalCommandMethod("openShortcutSettings");
+            if (openSettings) {
+                await openSettings();
             }
         },
 

@@ -22952,34 +22952,144 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
 
   // modules/bs5modals.js
   window.bootstrap = window.bootstrap || require_bootstrap();
+  var modalBodyTags = /* @__PURE__ */ new Set([
+    "A",
+    "B",
+    "BR",
+    "CODE",
+    "DIV",
+    "EM",
+    "INPUT",
+    "LABEL",
+    "LI",
+    "P",
+    "PRE",
+    "SMALL",
+    "SPAN",
+    "STRONG",
+    "UL"
+  ]);
+  var modalBodyDropTags = /* @__PURE__ */ new Set([
+    "EMBED",
+    "IFRAME",
+    "MATH",
+    "OBJECT",
+    "SCRIPT",
+    "STYLE",
+    "SVG"
+  ]);
+  function appendSafeModalBody(target, html) {
+    const parsed = new DOMParser().parseFromString(String(html), "text/html");
+    [...parsed.body.querySelectorAll("*")].forEach((element) => {
+      if (!modalBodyTags.has(element.tagName)) {
+        if (modalBodyDropTags.has(element.tagName)) {
+          element.remove();
+        } else {
+          element.replaceWith(...element.childNodes);
+        }
+        return;
+      }
+      const classes = [...element.classList].filter((className) => /^[a-zA-Z0-9_-]+$/.test(className));
+      const color2 = element.tagName === "SPAN" ? element.style.color : "";
+      const href = element.tagName === "A" ? element.getAttribute("href") : "";
+      const targetName = element.tagName === "A" ? element.getAttribute("target") : "";
+      const inputType = element.tagName === "INPUT" ? element.getAttribute("type") : "";
+      const inputIndex = element.tagName === "INPUT" ? element.getAttribute("data-index") : "";
+      const inputChecked = element.tagName === "INPUT" && element.hasAttribute("checked");
+      [...element.attributes].forEach((attribute) => {
+        element.removeAttribute(attribute.name);
+      });
+      if (classes.length) {
+        element.classList.add(...classes);
+      }
+      if (color2) {
+        element.style.color = color2;
+      }
+      if (href && (href.startsWith("https://addons.mozilla.org/") || href.startsWith("?"))) {
+        element.setAttribute("href", href);
+      }
+      if (targetName === "_blank") {
+        element.setAttribute("target", "_blank");
+        element.setAttribute("rel", "noopener noreferrer");
+      }
+      if (inputType === "checkbox") {
+        element.setAttribute("type", "checkbox");
+        if (/^\d+$/.test(inputIndex)) {
+          element.setAttribute("data-index", inputIndex);
+        }
+        if (inputChecked) {
+          element.setAttribute("checked", "checked");
+          element.checked = true;
+        }
+      }
+    });
+    target.append(...parsed.body.childNodes);
+  }
   function showBS5Modal({ title = "", body = "", okText = "OK", cancelText = "Cancel", showCancel = true, onOk = null, onCancel = null, okClass = "btn-primary", cancelClass = "btn-secondary", extraText = "", onExtra = null, extraClass = "btn-secondary" }) {
     const isShortcutToggleMode = new URLSearchParams(window.location.search).get("action") === "toggleSite";
     const existing = document.getElementById("bs5modal-ultimadark");
     if (existing) existing.remove();
-    const modalHtml = `
-    <div class="modal fade" id="bs5modal-ultimadark" tabindex="-1" aria-labelledby="bs5modalLabel" aria-hidden="true">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="bs5modalLabel">${title}</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            ${body}
-          </div>
-          <div class="modal-footer">
-            ${extraText ? `<button type="button" class="btn ${extraClass}" id="bs5modal-extra">${extraText}</button>` : ""}
-            ${showCancel ? `<button type="button" class="btn ${cancelClass}" data-bs-dismiss="modal" id="bs5modal-cancel">${cancelText}</button>` : ""}
-            <button type="button" class="btn ${okClass}" id="bs5modal-ok">${okText}</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-    const modalDocument = new DOMParser().parseFromString(modalHtml, "text/html");
-    const parsedModal = modalDocument.body.firstElementChild;
-    document.body.appendChild(document.importNode(parsedModal, true));
-    const modalEl = document.getElementById("bs5modal-ultimadark");
+    const createElement = (tagName, classNames = []) => {
+      const element = document.createElement(tagName);
+      element.classList.add(...classNames);
+      return element;
+    };
+    const createButton = ({ id, text, classes, dismiss = false, label = "" }) => {
+      const button = createElement("button", classes);
+      button.type = "button";
+      button.id = id;
+      button.textContent = text;
+      if (dismiss) button.dataset.bsDismiss = "modal";
+      if (label) button.setAttribute("aria-label", label);
+      return button;
+    };
+    const safeClasses = (value) => String(value).split(/\s+/).filter((className) => /^[a-zA-Z0-9_-]+$/.test(className));
+    const modalEl = createElement("div", ["modal", "fade"]);
+    modalEl.id = "bs5modal-ultimadark";
+    modalEl.tabIndex = -1;
+    modalEl.setAttribute("aria-labelledby", "bs5modalLabel");
+    modalEl.setAttribute("aria-hidden", "true");
+    const dialog = createElement("div", ["modal-dialog"]);
+    const content = createElement("div", ["modal-content"]);
+    const header = createElement("div", ["modal-header"]);
+    const titleElement = createElement("h5", ["modal-title"]);
+    titleElement.id = "bs5modalLabel";
+    titleElement.textContent = title;
+    const closeButton = createButton({
+      id: "bs5modal-close",
+      text: "",
+      classes: ["btn-close"],
+      dismiss: true,
+      label: "Close"
+    });
+    header.append(titleElement, closeButton);
+    const bodyElement = createElement("div", ["modal-body"]);
+    appendSafeModalBody(bodyElement, body);
+    const footer = createElement("div", ["modal-footer"]);
+    if (extraText) {
+      footer.appendChild(createButton({
+        id: "bs5modal-extra",
+        text: extraText,
+        classes: ["btn", ...safeClasses(extraClass)]
+      }));
+    }
+    if (showCancel) {
+      footer.appendChild(createButton({
+        id: "bs5modal-cancel",
+        text: cancelText,
+        classes: ["btn", ...safeClasses(cancelClass)],
+        dismiss: true
+      }));
+    }
+    footer.appendChild(createButton({
+      id: "bs5modal-ok",
+      text: okText,
+      classes: ["btn", ...safeClasses(okClass)]
+    }));
+    content.append(header, bodyElement, footer);
+    dialog.appendChild(content);
+    modalEl.appendChild(dialog);
+    document.body.appendChild(modalEl);
     const modal = new bootstrap.Modal(modalEl, { backdrop: "static", keyboard: false });
     modalEl.querySelector("#bs5modal-ok").onclick = async () => {
       try {
@@ -23889,15 +23999,14 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
         await browser.commands.reset("toggle-site");
         await this.loadToggleSiteShortcut();
       },
-      shortcutSettingsSupported() {
-        const methodName = ["openShortcut", "Settings"].join("");
-        return typeof browser.commands?.[methodName] === "function";
+      optionalCommandMethod(methodName) {
+        const method = browser.commands?.[methodName];
+        return typeof method === "function" ? method.bind(browser.commands) : null;
       },
       async openShortcutSettings() {
-        const methodName = ["openShortcut", "Settings"].join("");
-        const openSettings = browser.commands?.[methodName];
-        if (typeof openSettings === "function") {
-          await openSettings.call(browser.commands);
+        const openSettings = this.optionalCommandMethod("openShortcutSettings");
+        if (openSettings) {
+          await openSettings();
         }
       },
       getShortcutToggleTarget() {

@@ -25,16 +25,13 @@
   "browser_specific_settings": {
     
     "gecko": {
-      "strict_min_version": "140.0",
+      "strict_min_version": "128.0",
       // ID is required for Firefox sync to work on development versions. See https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/browser_specific_settings#Firefox_sync_and_development_extensions for details.
   
-      "id": "{0a0f6dea-3957-4bb9-9eec-2ef2b9e5bcec}",
-      "data_collection_permissions": {
-        "required": ["none"]
-      }
+      "id": "{0a0f6dea-3957-4bb9-9eec-2ef2b9e5bcec}"
     },
     "gecko_android": {
-      "strict_min_version": "142.0"
+      "strict_min_version": "128.0"
     }
   },
   "permissions": [
