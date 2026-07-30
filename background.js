@@ -1097,7 +1097,7 @@ class uDarkC extends uDarkExtended {
     comments, processing instructions, invalid or removed closing tags, and the
     DOCTYPE itself. Consumption stops at the first construct that returns the
     tokenizer to normal data-state element parsing (typically <html>).
-    
+
     If no DOCTYPE is present, ud_doctype is left empty to avoid introducing or
     normalizing a DOCTYPE and accidentally altering the rendering mode.
     ===============================================================================
@@ -1105,21 +1105,21 @@ class uDarkC extends uDarkExtended {
 
     /*
     
-    
+
     This regexp ^(  … )* greedily matches everything that is permitted to appear at the
     start of an HTML document *before normal element parsing begins*, stopping
     as soon as the tokenizer would re-enter the DATA state for real markup
     (typically at <html>).
-    
+
     Each alternative corresponds to a construct that is legal or tolerated by the
     HTML tokenizer in the document prolog:
     1) \s and \0x00
     Matches literal ASCII whitespace and BOM at start (Specific to javascript).
-    
+
     2) &#0*?(9|10|12|13|32)(?![0-9])
     Matches decimal numeric character references for TAB, LF, FF, CR and SPACE.
     The negative lookahead prevents over-consuming longer numeric entities.
-    
+
     3) &#x0*?(9|A|C|D|20)(?![0-9A-F])
     Same as above, but for hexadecimal numeric character references.
     3.5) 0*? accepts leading-zero numeric references (&#09;, &#x000A) while staying minimally greedy.
@@ -1500,7 +1500,6 @@ class uDarkC extends uDarkExtended {
     if (parsedDocument.needRestorePTDHead) {
       will_return = will_return.replace("<ud-tag-ptd-head", "<head").replace("</ud-tag-ptd-head", "</head");
     }
-    return will_return.replaceAll(`http-equiv="refresh"`, "")
     return will_return;
 
   }

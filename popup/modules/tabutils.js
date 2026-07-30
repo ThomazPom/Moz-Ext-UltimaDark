@@ -27,14 +27,15 @@ export async function searchTabIDMatchingPatterns(tab, patterns, remove_flags = 
     const matchingPatterns = await Promise.all(
       patterns.map(async pattern => {
         try {
-          let matchingTabs = await browser.tabs.query({ 
-            url: pattern, 
+          const matchingTabs = await browser.tabs.query({
+            url: pattern,
             windowId: tab.windowId,
-            index: tab.index 
-          }).catch(console.warn);
-          return (matchingTabs.length ?? 0) > 0 ? pattern : null;
+            index: tab.index
+          });
+          return matchingTabs.length > 0 ? pattern : null;
         } catch (error2) {
           console.warn("Pattern matching error for", pattern, error2);
+          return null;
         }
       })
     )

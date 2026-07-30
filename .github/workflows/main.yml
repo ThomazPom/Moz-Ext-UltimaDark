@@ -74,7 +74,7 @@ jobs:
           fi
           git tag "v${{ env.VERSION }}"
           git push origin "v${{ env.VERSION }}"
-          
+
       - name: Set release extension ID
         run: |
           sed -i \
