@@ -3,7 +3,7 @@
 import Alpine from 'alpinejs';
 // Utility for showing Bootstrap 5 modals programmatically (no jQuery, pure JS)
 window.bootstrap = window.bootstrap || require('bootstrap');
-function showBS5Modal({title = '', body = '', okText = 'OK', cancelText = 'Cancel', showCancel = true, onOk = null, onCancel = null, okClass = 'btn-primary', cancelClass = 'btn-secondary'}) {
+function showBS5Modal({title = '', body = '', okText = 'OK', cancelText = 'Cancel', showCancel = true, onOk = null, onCancel = null, okClass = 'btn-primary', cancelClass = 'btn-secondary', extraText = '', onExtra = null, extraClass = 'btn-secondary'}) {
   const isShortcutToggleMode = new URLSearchParams(window.location.search).get('action') === 'toggleSite';
   // Remove any existing modal
   const existing = document.getElementById('bs5modal-ultimadark');
@@ -22,6 +22,7 @@ function showBS5Modal({title = '', body = '', okText = 'OK', cancelText = 'Cance
             ${body}
           </div>
           <div class="modal-footer">
+            ${extraText ? `<button type="button" class="btn ${extraClass}" id="bs5modal-extra">${extraText}</button>` : ''}
             ${showCancel ? `<button type="button" class="btn ${cancelClass}" data-bs-dismiss="modal" id="bs5modal-cancel">${cancelText}</button>` : ''}
             <button type="button" class="btn ${okClass}" id="bs5modal-ok">${okText}</button>
           </div>
@@ -51,6 +52,15 @@ function showBS5Modal({title = '', body = '', okText = 'OK', cancelText = 'Cance
     modalEl.querySelector('#bs5modal-cancel').onclick = async () => {
       try {
         if (onCancel) await onCancel();
+      } finally {
+        modal.hide();
+      }
+    };
+  }
+  if (extraText) {
+    modalEl.querySelector('#bs5modal-extra').onclick = async () => {
+      try {
+        if (onExtra) await onExtra();
       } finally {
         modal.hide();
       }

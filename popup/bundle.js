@@ -22952,7 +22952,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
 
   // modules/bs5modals.js
   window.bootstrap = window.bootstrap || require_bootstrap();
-  function showBS5Modal({ title = "", body = "", okText = "OK", cancelText = "Cancel", showCancel = true, onOk = null, onCancel = null, okClass = "btn-primary", cancelClass = "btn-secondary" }) {
+  function showBS5Modal({ title = "", body = "", okText = "OK", cancelText = "Cancel", showCancel = true, onOk = null, onCancel = null, okClass = "btn-primary", cancelClass = "btn-secondary", extraText = "", onExtra = null, extraClass = "btn-secondary" }) {
     const isShortcutToggleMode = new URLSearchParams(window.location.search).get("action") === "toggleSite";
     const existing = document.getElementById("bs5modal-ultimadark");
     if (existing) existing.remove();
@@ -22968,6 +22968,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
             ${body}
           </div>
           <div class="modal-footer">
+            ${extraText ? `<button type="button" class="btn ${extraClass}" id="bs5modal-extra">${extraText}</button>` : ""}
             ${showCancel ? `<button type="button" class="btn ${cancelClass}" data-bs-dismiss="modal" id="bs5modal-cancel">${cancelText}</button>` : ""}
             <button type="button" class="btn ${okClass}" id="bs5modal-ok">${okText}</button>
           </div>
@@ -22991,6 +22992,15 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       modalEl.querySelector("#bs5modal-cancel").onclick = async () => {
         try {
           if (onCancel) await onCancel();
+        } finally {
+          modal.hide();
+        }
+      };
+    }
+    if (extraText) {
+      modalEl.querySelector("#bs5modal-extra").onclick = async () => {
+        try {
+          if (onExtra) await onExtra();
         } finally {
           modal.hide();
         }
@@ -23193,6 +23203,20 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
         this._lastSiteBadge = processedBageValue.text;
         return processedBageValue;
       },
+      getSiteBadgeLabel() {
+        const labels = {
+          "INCLUDED": "ENABLED ON THIS SITE",
+          "EXCLUDED": "DISABLED ON THIS SITE",
+          "PARTIAL (Images Only)": "IMAGES DISABLED",
+          "PARTIAL (CSS Only)": "PAGE COLORS DISABLED",
+          "PARTIAL (Image Resource Only)": "IMAGE FILES DISABLED",
+          "PARTIAL (Resources Only)": "RESOURCES DISABLED",
+          "PARTIAL": "PARTLY DISABLED",
+          "DEFAULT": "OFF ON THIS SITE"
+        };
+        const badge = this.getSiteBadge();
+        return labels[badge.text] || badge.text;
+      },
       // Hook system methods
       // Add a hook to a named hook group
       addHook(hookGroup, key, hook) {
@@ -23284,6 +23308,31 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
         this.inclusionPatterns = patterns.join("\n");
         this.saveSettings();
         this.recomputeCurrentSiteMatches();
+      },
+      enableChooseSitesOnlyMode() {
+        const patternCount = this.inclusionPatterns.split("\n").filter((pattern) => pattern.trim()).length;
+        if (patternCount === 0) {
+          showBS5Modal({
+            title: "Choose-sites-only Mode Is Active",
+            body: "UltimaDark already stays off by default because your included-sites list is empty.<br><br>Visit a site and use <strong>Include This Site</strong> or your site-toggle shortcut to enable UltimaDark there.",
+            okText: "Got It",
+            showCancel: false
+          });
+          return;
+        }
+        showBS5Modal({
+          title: "Start Choose-sites-only Mode?",
+          body: `This will remove all <strong>${patternCount}</strong> pattern${patternCount === 1 ? "" : "s"} from your included-sites list.<br><br>With that list empty, UltimaDark will stay off on every site by default. You can then visit the sites you want and enable them one by one with <strong>Include This Site</strong> or your site-toggle shortcut.<br><br><strong>Your excluded-sites list will not be changed.</strong>`,
+          okText: "Clear List and Start",
+          okClass: "btn-warning",
+          cancelText: "Keep Current List",
+          showCancel: true,
+          onOk: () => {
+            this.inclusionPatterns = "";
+            this.saveSettings();
+            this.recomputeCurrentSiteMatches();
+          }
+        });
       },
       async addExclusionPattern(pattern, checkAlreadyCovered = true) {
         if (!pattern || !pattern.trim()) return;
@@ -23832,6 +23881,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
         }
         await this.debouncedSaveSettings();
         await this.recomputeCurrentSiteMatches();
+        await this.autoRefreshIfEnabled("toggle");
       },
       reviewShortcutToggle() {
         const plan = this.getReviewedShortcutTogglePlan();
@@ -23851,37 +23901,41 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       // Advanced actions
       clearAllData() {
         const syncEnabled = this.syncSettingsEnabled || this.syncListsEnabled;
+        const resetLocal = async () => {
+          await browser.storage.local.clear();
+          await browser.storage.local.set(uDark.defaultSettings);
+          this.loadSettings();
+          showBS5Modal({
+            title: "Settings Reset",
+            body: "Settings on this device have been reset to defaults." + (syncEnabled ? " Synced data was kept." : ""),
+            okText: "OK",
+            showCancel: false
+          });
+        };
+        const resetEverywhere = async () => {
+          await browser.storage.local.clear();
+          await browser.storage.sync.clear();
+          await browser.storage.local.set(uDark.defaultSettings);
+          this.loadSettings();
+          showBS5Modal({
+            title: "Settings Reset",
+            body: "Local and synced settings have been reset to defaults.",
+            okText: "OK",
+            showCancel: false
+          });
+        };
         showBS5Modal({
-          title: "Clear All Settings",
-          body: "Are you sure you want to clear all UltimaDark settings? This cannot be undone." + (syncEnabled ? "<br><br>You have sync enabled. Do you also want to clear synced data on all your other devices?" : ""),
-          okText: syncEnabled ? "Clear local only" : "Clear All",
+          title: "Reset UltimaDark",
+          body: "This restores UltimaDark settings and site lists to their defaults. This cannot be undone." + (syncEnabled ? "<br><br>Choose whether to reset only this device or also erase the settings stored in Firefox Sync." : ""),
+          okText: syncEnabled ? "Reset This Device" : "Reset Settings",
           okClass: "btn-danger",
-          cancelText: syncEnabled ? "Clear local + synced" : "Cancel",
-          cancelClass: syncEnabled ? "btn-warning" : "btn-secondary",
+          cancelText: "Cancel",
+          cancelClass: "btn-secondary",
           showCancel: true,
-          onOk: async () => {
-            await browser.storage.local.clear();
-            await browser.storage.local.set(uDark.defaultSettings);
-            this.loadSettings();
-            showBS5Modal({
-              title: "Settings Cleared",
-              body: "Local settings have been reset to defaults." + (syncEnabled ? " Synced data was kept." : ""),
-              okText: "OK",
-              showCancel: false
-            });
-          },
-          onCancel: syncEnabled ? async () => {
-            await browser.storage.local.clear();
-            await browser.storage.sync.clear();
-            await browser.storage.local.set(uDark.defaultSettings);
-            this.loadSettings();
-            showBS5Modal({
-              title: "Settings Cleared",
-              body: "All settings have been reset to defaults, including synced data across your devices.",
-              okText: "OK",
-              showCancel: false
-            });
-          } : null
+          onOk: resetLocal,
+          extraText: syncEnabled ? "Reset All Synced Devices" : "",
+          extraClass: "btn-warning",
+          onExtra: syncEnabled ? resetEverywhere : null
         });
       },
       // --- Sync across devices ---
@@ -24100,11 +24154,16 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
   }
   function generateBadgeHTML(badge) {
     const badgeMap = {
-      "EXCLUDED": 'This site is currently <span class="text-danger">EXCLUDED</span>.',
-      "PARTIAL (Images Only)": 'This site is currently <span class="text-warning">PARTIAL (Images Only)</span>.',
-      "DEFAULT": `This site is currently <span class="text">${badge.text}</span>.`
+      "INCLUDED": "UltimaDark is enabled on this site.",
+      "EXCLUDED": "UltimaDark is disabled on this site.",
+      "PARTIAL (Images Only)": "Image processing is disabled on this site.",
+      "PARTIAL (CSS Only)": "Page-color processing is disabled on this site.",
+      "PARTIAL (Image Resource Only)": "Image-file processing is disabled on this site.",
+      "PARTIAL (Resources Only)": "Resource processing is disabled on this site.",
+      "PARTIAL": "Some UltimaDark processing is disabled on this site.",
+      "DEFAULT": "UltimaDark is off on this site."
     };
-    return badgeMap[badge.text] || `This site is currently <b class="text">${badge.text}</b>.`;
+    return badgeMap[badge.text] || badge.text;
   }
   function generateExclusionPatternsHTML(site, store2) {
     if (!site.exclusionMatches || site.exclusionMatches.length === 0) {
@@ -24217,7 +24276,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
     const matchingInclusions = generateInclusionPatternsHTML(site);
     const badge = store2 ? store2.getSiteBadge() : { text: "EXCLUDED" };
     if (site.exclusionMatches.length > 0) {
-      const badgeHtml = `This site is currently <b>${badge.text}</b>.`;
+      const badgeHtml = generateBadgeHTML(badge);
       showBS5Modal({
         title: "Site is Excluded",
         body: `${badgeHtml}${matchingExclusions}<br><br>Uncheck any exclusion patterns you want to keep.<br>Do you want to <strong>remove</strong> the selected exclusion patterns and include the site?`,
@@ -24288,53 +24347,33 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
   }
   function showInfoModalForTimedMode() {
     showBS5Modal({
-      title: "Timed light / dark mode",
+      title: "Scheduling Help",
       body: `
   <p>
-    If you want UltimaDark to automatically enable/disable based on time, the
-    <strong>best and most reliable solution</strong> is to use
-    UltimaDark in<strong class="btn btn-outline-info btn-sm">  Auto Mode</strong> together with
-    <a href="https://addons.mozilla.org/fr/firefox/addon/automatic-dark/" target="_blank"  class="link-info">Automatic Dark</a>.
+    UltimaDark can follow Firefox\u2019s light or dark appearance. Select
+    <strong>Follow System</strong>, then use Firefox or a theme-scheduling extension to change that appearance on a
+    schedule.
   </p>
-
   <p>
-    Automatic Dark is a <strong>Mozilla-recommended</strong> extension dedicated to theme scheduling.
-    It already provides features that would be hard to replicate properly inside UltimaDark, such as:
-  </p>
-
-  <ul>
-    <li>Automatic or manual sunrise/sunset times</li>
-    <li>System theme\u2013based switching</li>
-    <li>Separate daytime and nighttime themes</li>
-  </ul>
-
-  <p>
-    When Automatic Dark switches the browser theme, UltimaDark\u2019s
-    <strong>Auto Mode</strong> follows instantly. The result is seamless, accurate timed activation
-    without adding extra complexity to UltimaDark.
-  </p>
-
-  <p>
-    <strong>Recommended setup:</strong> enable <em  class="btn btn-outline-info btn-sm">Auto Mode</em> in UltimaDark, and install and configure
-    <a href="https://addons.mozilla.org/fr/firefox/addon/automatic-dark/" target="_blank"  class="link-info">Automatic Dark</a>.
+    For sunrise, sunset, and custom time schedules, we recommend the Mozilla-recommended
+    <a href="https://addons.mozilla.org/fr/firefox/addon/automatic-dark/" target="_blank"
+      class="link-info">Automatic Dark</a> extension.
   </p>
 `,
       okText: "View Automatic Dark",
       onOk: () => {
         window.open("https://addons.mozilla.org/fr/firefox/addon/automatic-dark/", "_blank");
       },
-      showCancel: "Go back"
+      cancelText: "Go Back",
+      showCancel: true
     });
   }
   function showImportSettingsInfo() {
-    const url = "?fullmode";
-    const bodyHtml = `To import settings, a separate popup window must be opened in <strong>full mode</strong> so the hidden input can be activated.<br><br>
-  1. Click the button below to open the full-mode view.<br>
-  2. In that window, click "Import Settings" again to choose your exported JSON file.<br><br>
+    const bodyHtml = `Firefox requires settings imports to open in a separate window.<br><br>
+  Open that window, then choose your exported UltimaDark JSON file.<br><br>
   <div class="d-flex justify-content-center mb-3">
-     <a href="?fullmode" target="_blank" class="btn btn-secondary">Open Full Import Window</a>
-  </div>
-  <small class="text-muted">(File input cannot be triggered reliably in the constrained popup size due to browser security / UX restrictions.)</small>`;
+     <a href="?fullmode" target="_blank" class="btn btn-secondary">Open Import Window</a>
+  </div>`;
     showBS5Modal({
       title: "Import Settings",
       body: bodyHtml,
@@ -24374,6 +24413,48 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
   console.log("Popup script loaded!");
   module_default.start();
   var alpineStore = module_default.store("app");
+  function normalizeShortcutKey(key) {
+    const aliases = {
+      " ": "space",
+      "arrowup": "up",
+      "arrowdown": "down",
+      "arrowleft": "left",
+      "arrowright": "right",
+      "escape": "esc"
+    };
+    const normalized = String(key || "").toLowerCase();
+    return aliases[normalized] || normalized;
+  }
+  function eventMatchesShortcut(event, shortcut) {
+    if (!shortcut) return false;
+    const parts = shortcut.split("+").map((part) => part.trim().toLowerCase()).filter(Boolean);
+    const modifiers = new Set(parts.filter(
+      (part) => ["ctrl", "control", "macctrl", "command", "cmd", "meta", "alt", "option", "shift"].includes(part)
+    ));
+    const shortcutKey = parts.find((part) => !modifiers.has(part));
+    if (!shortcutKey) return false;
+    const needsCtrl = modifiers.has("ctrl") || modifiers.has("control") || modifiers.has("macctrl");
+    const needsMeta = modifiers.has("command") || modifiers.has("cmd") || modifiers.has("meta");
+    const needsAlt = modifiers.has("alt") || modifiers.has("option");
+    const needsShift = modifiers.has("shift");
+    return event.ctrlKey === needsCtrl && event.metaKey === needsMeta && event.altKey === needsAlt && event.shiftKey === needsShift && normalizeShortcutKey(event.key) === normalizeShortcutKey(shortcutKey);
+  }
+  function installFocusedPopupShortcut() {
+    window.addEventListener("keydown", async (event) => {
+      const target = event.target;
+      const isEditing = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement || target?.isContentEditable;
+      if (event.repeat || isEditing || document.querySelector(".modal.show")) return;
+      if (!eventMatchesShortcut(event, alpineStore.toggleSiteShortcut)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (alpineStore.headlessShortcutToggleEnabled) {
+        await alpineStore.applyReviewedShortcutToggle(alpineStore.getReviewedShortcutTogglePlan());
+      } else {
+        alpineStore.reviewShortcutToggle();
+      }
+    }, true);
+  }
+  installFocusedPopupShortcut();
   alpineStore.addHook("update", "inclusionMatches", async function(hookData) {
     let { tab } = hookData;
     if (!tab) return [];

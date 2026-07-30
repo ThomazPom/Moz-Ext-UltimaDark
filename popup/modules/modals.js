@@ -32,12 +32,17 @@ function createSafeHostElement(displayHost) {
 // Generate badge HTML based on site status
 function generateBadgeHTML(badge) {
   const badgeMap = {
-    'EXCLUDED': 'This site is currently <span class="text-danger">EXCLUDED</span>.',
-    'PARTIAL (Images Only)': 'This site is currently <span class="text-warning">PARTIAL (Images Only)</span>.',
-    'DEFAULT': `This site is currently <span class="text">${badge.text}</span>.`
+    'INCLUDED': 'UltimaDark is enabled on this site.',
+    'EXCLUDED': 'UltimaDark is disabled on this site.',
+    'PARTIAL (Images Only)': 'Image processing is disabled on this site.',
+    'PARTIAL (CSS Only)': 'Page-color processing is disabled on this site.',
+    'PARTIAL (Image Resource Only)': 'Image-file processing is disabled on this site.',
+    'PARTIAL (Resources Only)': 'Resource processing is disabled on this site.',
+    'PARTIAL': 'Some UltimaDark processing is disabled on this site.',
+    'DEFAULT': 'UltimaDark is off on this site.'
   };
   
-  return badgeMap[badge.text] || `This site is currently <b class="text">${badge.text}</b>.`;
+  return badgeMap[badge.text] || badge.text;
 }
 
 // Generate exclusion patterns display
@@ -180,7 +185,7 @@ function confirmIncludeSite(site, onConfirm) {
   const badge = store ? store.getSiteBadge() : { text: 'EXCLUDED' };
 
   if (site.exclusionMatches.length > 0) {
-    const badgeHtml = `This site is currently <b>${badge.text}</b>.`;
+    const badgeHtml = generateBadgeHTML(badge);
     showBS5Modal({
       title: 'Site is Excluded',
       body: `${badgeHtml}${matchingExclusions}<br><br>Uncheck any exclusion patterns you want to keep.<br>Do you want to <strong>remove</strong> the selected exclusion patterns and include the site?`,
@@ -262,57 +267,36 @@ function showAsciiColorModal(type) {
   }
 }
 function showInfoModalForTimedMode() {
-  
   showBS5Modal({
-    title: 'Timed light / dark mode',
+    title: 'Scheduling Help',
     body: `
   <p>
-    If you want UltimaDark to automatically enable/disable based on time, the
-    <strong>best and most reliable solution</strong> is to use
-    UltimaDark in<strong class="btn btn-outline-info btn-sm">  Auto Mode</strong> together with
-    <a href="https://addons.mozilla.org/fr/firefox/addon/automatic-dark/" target="_blank"  class="link-info">Automatic Dark</a>.
+    UltimaDark can follow Firefox’s light or dark appearance. Select
+    <strong>Follow System</strong>, then use Firefox or a theme-scheduling extension to change that appearance on a
+    schedule.
   </p>
-
   <p>
-    Automatic Dark is a <strong>Mozilla-recommended</strong> extension dedicated to theme scheduling.
-    It already provides features that would be hard to replicate properly inside UltimaDark, such as:
-  </p>
-
-  <ul>
-    <li>Automatic or manual sunrise/sunset times</li>
-    <li>System theme–based switching</li>
-    <li>Separate daytime and nighttime themes</li>
-  </ul>
-
-  <p>
-    When Automatic Dark switches the browser theme, UltimaDark’s
-    <strong>Auto Mode</strong> follows instantly. The result is seamless, accurate timed activation
-    without adding extra complexity to UltimaDark.
-  </p>
-
-  <p>
-    <strong>Recommended setup:</strong> enable <em  class="btn btn-outline-info btn-sm">Auto Mode</em> in UltimaDark, and install and configure
-    <a href="https://addons.mozilla.org/fr/firefox/addon/automatic-dark/" target="_blank"  class="link-info">Automatic Dark</a>.
+    For sunrise, sunset, and custom time schedules, we recommend the Mozilla-recommended
+    <a href="https://addons.mozilla.org/fr/firefox/addon/automatic-dark/" target="_blank"
+      class="link-info">Automatic Dark</a> extension.
   </p>
 `,
     okText: 'View Automatic Dark',
     onOk: () => {
       window.open('https://addons.mozilla.org/fr/firefox/addon/automatic-dark/', '_blank');
     },
-    showCancel: "Go back"
+    cancelText: 'Go Back',
+    showCancel: true
   });
 }
 
 // Inform user about Import Settings flow (requires opening full mode in separate window)
 function showImportSettingsInfo() {
-  const url = '?fullmode';
-  const bodyHtml = `To import settings, a separate popup window must be opened in <strong>full mode</strong> so the hidden input can be activated.<br><br>
-  1. Click the button below to open the full-mode view.<br>
-  2. In that window, click "Import Settings" again to choose your exported JSON file.<br><br>
+  const bodyHtml = `Firefox requires settings imports to open in a separate window.<br><br>
+  Open that window, then choose your exported UltimaDark JSON file.<br><br>
   <div class="d-flex justify-content-center mb-3">
-     <a href="?fullmode" target="_blank" class="btn btn-secondary">Open Full Import Window</a>
-  </div>
-  <small class="text-muted">(File input cannot be triggered reliably in the constrained popup size due to browser security / UX restrictions.)</small>`;
+     <a href="?fullmode" target="_blank" class="btn btn-secondary">Open Import Window</a>
+  </div>`;
   showBS5Modal({
     title: 'Import Settings',
     body: bodyHtml,

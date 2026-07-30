@@ -157,6 +157,21 @@ document.addEventListener("alpine:init", () => {
             return processedBageValue;
         },
 
+        getSiteBadgeLabel() {
+            const labels = {
+                'INCLUDED': 'ENABLED ON THIS SITE',
+                'EXCLUDED': 'DISABLED ON THIS SITE',
+                'PARTIAL (Images Only)': 'IMAGES DISABLED',
+                'PARTIAL (CSS Only)': 'PAGE COLORS DISABLED',
+                'PARTIAL (Image Resource Only)': 'IMAGE FILES DISABLED',
+                'PARTIAL (Resources Only)': 'RESOURCES DISABLED',
+                'PARTIAL': 'PARTLY DISABLED',
+                'DEFAULT': 'OFF ON THIS SITE',
+            };
+            const badge = this.getSiteBadge();
+            return labels[badge.text] || badge.text;
+        },
+
         // Hook system methods
         // Add a hook to a named hook group
         addHook(hookGroup, key, hook) {
@@ -255,6 +270,33 @@ document.addEventListener("alpine:init", () => {
             this.inclusionPatterns = patterns.join('\n');
             this.saveSettings();
             this.recomputeCurrentSiteMatches();
+        },
+        enableChooseSitesOnlyMode() {
+            const patternCount = this.inclusionPatterns.split('\n').filter(pattern => pattern.trim()).length;
+
+            if (patternCount === 0) {
+                showBS5Modal({
+                    title: 'Choose-sites-only Mode Is Active',
+                    body: 'UltimaDark already stays off by default because your included-sites list is empty.<br><br>Visit a site and use <strong>Include This Site</strong> or your site-toggle shortcut to enable UltimaDark there.',
+                    okText: 'Got It',
+                    showCancel: false
+                });
+                return;
+            }
+
+            showBS5Modal({
+                title: 'Start Choose-sites-only Mode?',
+                body: `This will remove all <strong>${patternCount}</strong> pattern${patternCount === 1 ? '' : 's'} from your included-sites list.<br><br>With that list empty, UltimaDark will stay off on every site by default. You can then visit the sites you want and enable them one by one with <strong>Include This Site</strong> or your site-toggle shortcut.<br><br><strong>Your excluded-sites list will not be changed.</strong>`,
+                okText: 'Clear List and Start',
+                okClass: 'btn-warning',
+                cancelText: 'Keep Current List',
+                showCancel: true,
+                onOk: () => {
+                    this.inclusionPatterns = '';
+                    this.saveSettings();
+                    this.recomputeCurrentSiteMatches();
+                }
+            });
         },
         async addExclusionPattern(pattern, checkAlreadyCovered = true) {
             if (!pattern || !pattern.trim()) return;
@@ -893,6 +935,7 @@ document.addEventListener("alpine:init", () => {
 
             await this.debouncedSaveSettings();
             await this.recomputeCurrentSiteMatches();
+            await this.autoRefreshIfEnabled("toggle");
         },
 
         reviewShortcutToggle() {
@@ -917,40 +960,45 @@ document.addEventListener("alpine:init", () => {
         // Advanced actions
         clearAllData() {
             const syncEnabled = this.syncSettingsEnabled || this.syncListsEnabled;
+            const resetLocal = async () => {
+                await browser.storage.local.clear();
+                await browser.storage.local.set(uDark.defaultSettings);
+                this.loadSettings();
+                showBS5Modal({
+                    title: 'Settings Reset',
+                    body: 'Settings on this device have been reset to defaults.'
+                        + (syncEnabled ? ' Synced data was kept.' : ''),
+                    okText: 'OK',
+                    showCancel: false
+                });
+            };
+            const resetEverywhere = async () => {
+                await browser.storage.local.clear();
+                await browser.storage.sync.clear();
+                await browser.storage.local.set(uDark.defaultSettings);
+                this.loadSettings();
+                showBS5Modal({
+                    title: 'Settings Reset',
+                    body: 'Local and synced settings have been reset to defaults.',
+                    okText: 'OK',
+                    showCancel: false
+                });
+            };
             showBS5Modal({
-                title: 'Clear All Settings',
-                body: 'Are you sure you want to clear all UltimaDark settings? This cannot be undone.'
+                title: 'Reset UltimaDark',
+                body: 'This restores UltimaDark settings and site lists to their defaults. This cannot be undone.'
                     + (syncEnabled
-                        ? '<br><br>You have sync enabled. Do you also want to clear synced data on all your other devices?'
+                        ? '<br><br>Choose whether to reset only this device or also erase the settings stored in Firefox Sync.'
                         : ''),
-                okText: syncEnabled ? 'Clear local only' : 'Clear All',
+                okText: syncEnabled ? 'Reset This Device' : 'Reset Settings',
                 okClass: 'btn-danger',
-                cancelText: syncEnabled ? 'Clear local + synced' : 'Cancel',
-                cancelClass: syncEnabled ? 'btn-warning' : 'btn-secondary',
+                cancelText: 'Cancel',
+                cancelClass: 'btn-secondary',
                 showCancel: true,
-                onOk: async () => {
-                    await browser.storage.local.clear();
-                    await browser.storage.local.set(uDark.defaultSettings);
-                    this.loadSettings();
-                    showBS5Modal({
-                        title: 'Settings Cleared',
-                        body: 'Local settings have been reset to defaults.' + (syncEnabled ? ' Synced data was kept.' : ''),
-                        okText: 'OK',
-                        showCancel: false
-                    });
-                },
-                onCancel: syncEnabled ? async () => {
-                    await browser.storage.local.clear();
-                    await browser.storage.sync.clear();
-                    await browser.storage.local.set(uDark.defaultSettings);
-                    this.loadSettings();
-                    showBS5Modal({
-                        title: 'Settings Cleared',
-                        body: 'All settings have been reset to defaults, including synced data across your devices.',
-                        okText: 'OK',
-                        showCancel: false
-                    });
-                } : null
+                onOk: resetLocal,
+                extraText: syncEnabled ? 'Reset All Synced Devices' : '',
+                extraClass: 'btn-warning',
+                onExtra: syncEnabled ? resetEverywhere : null,
             });
         },
 

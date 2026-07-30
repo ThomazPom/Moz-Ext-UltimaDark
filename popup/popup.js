@@ -38,6 +38,65 @@ let alpineStore = Alpine.store("app");
 
 import { searchTabIDMatchingPatterns, isSiteProtected , getEmbedsOfTab} from './modules/tabutils.js';
 
+function normalizeShortcutKey(key) {
+    const aliases = {
+        " ": "space",
+        "arrowup": "up",
+        "arrowdown": "down",
+        "arrowleft": "left",
+        "arrowright": "right",
+        "escape": "esc",
+    };
+    const normalized = String(key || "").toLowerCase();
+    return aliases[normalized] || normalized;
+}
+
+function eventMatchesShortcut(event, shortcut) {
+    if (!shortcut) return false;
+
+    const parts = shortcut.split("+").map(part => part.trim().toLowerCase()).filter(Boolean);
+    const modifiers = new Set(parts.filter(part =>
+        ["ctrl", "control", "macctrl", "command", "cmd", "meta", "alt", "option", "shift"].includes(part)
+    ));
+    const shortcutKey = parts.find(part => !modifiers.has(part));
+    if (!shortcutKey) return false;
+
+    const needsCtrl = modifiers.has("ctrl") || modifiers.has("control") || modifiers.has("macctrl");
+    const needsMeta = modifiers.has("command") || modifiers.has("cmd") || modifiers.has("meta");
+    const needsAlt = modifiers.has("alt") || modifiers.has("option");
+    const needsShift = modifiers.has("shift");
+
+    return event.ctrlKey === needsCtrl
+        && event.metaKey === needsMeta
+        && event.altKey === needsAlt
+        && event.shiftKey === needsShift
+        && normalizeShortcutKey(event.key) === normalizeShortcutKey(shortcutKey);
+}
+
+function installFocusedPopupShortcut() {
+    window.addEventListener("keydown", async event => {
+        const target = event.target;
+        const isEditing = target instanceof HTMLInputElement
+            || target instanceof HTMLTextAreaElement
+            || target instanceof HTMLSelectElement
+            || target?.isContentEditable;
+
+        if (event.repeat || isEditing || document.querySelector(".modal.show")) return;
+        if (!eventMatchesShortcut(event, alpineStore.toggleSiteShortcut)) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (alpineStore.headlessShortcutToggleEnabled) {
+            await alpineStore.applyReviewedShortcutToggle(alpineStore.getReviewedShortcutTogglePlan());
+        } else {
+            alpineStore.reviewShortcutToggle();
+        }
+    }, true);
+}
+
+installFocusedPopupShortcut();
+
 
 // Hook for inclusion matches
 alpineStore.addHook("update", "inclusionMatches", async function(hookData) {
