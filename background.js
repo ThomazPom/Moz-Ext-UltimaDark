@@ -53,6 +53,15 @@ class uDarkC extends uDarkExtended {
 
 
   nonConnectedImagesAndSources = new Set();
+  lateConnectionReferences = new WeakMap();
+  lateConnectionStates = new WeakMap();
+  lateConnectionErrorTargets = new WeakSet();
+  lateConnectionErrorCaptureInstalled = false;
+  lateConnectionModifier = "data:text/ud-late-connection;";
+  lateConnectionStageByHost = new WeakMap();
+  lateConnectionStageByRoot = new WeakMap();
+  lateConnectionActiveStages = new Set();
+  lateConnectionStagingFacadeInstalled = false;
   static CSS_COLOR_FUNCTIONS = ["rgb", "rgba", "hsl", "hsla", "hwb", "lab", "lch", "color", "color-mix", "oklch", "oklab"]
   shortHandRegex = new RegExp(`(?<![\\w-])(${uDarkC.SHORTHANDS.join("|")})([\s\t]*:)`, "gi") // The \t is probably not needed, as \s includes it
   tagsToProtectRegex = new RegExp(`(</?)(${uDarkC.TAGS_TO_PROTECT.join("|")})(?![\\w-])`, "gi")
@@ -570,6 +579,535 @@ class uDarkC extends uDarkExtended {
   search_logo_match(documentElement, selectorText) {
     return documentElement.querySelector(`a[href*=index] ${selectorText},a[href*=logo] ${selectorText}, a[href*=icon] ${selectorText},a[href='/'] ${selectorText}`);
   }
+  image_element_strip_late_connection(value) {
+    return String(value || "").replaceAll(uDark.lateConnectionModifier, "");
+  }
+  image_element_restore_original_href(value) {
+    let originalValue = String(value || "")
+      .split(new RegExp("#?" + uDark.imageSrcInfoMarker))[0];
+    if (originalValue.startsWith("https://data-image/?base64IMG=")) {
+      originalValue = originalValue.slice(30);
+    }
+    return uDark.image_element_strip_late_connection(originalValue);
+  }
+  image_element_restore_original_srcset(value) {
+    return uDark.processSRCset(value).map(([srcSource, descriptor]) => {
+      const originalSource = uDark.image_element_restore_original_href(srcSource);
+      return descriptor ? `${originalSource} ${descriptor}` : originalSource;
+    }).join(", ");
+  }
+  image_element_prepare_srcset(image, value, options = {}) {
+    return uDark.processSRCset(value).map(([srcSource, descriptor]) => {
+      const preparedSource = uDark.image_element_prepare_href(image, srcSource, options);
+      return descriptor ? `${preparedSource} ${descriptor}` : preparedSource;
+    }).join(", ");
+  }
+  image_element_late_connection_group(element) {
+    let image = element instanceof HTMLImageElement ? element : null;
+    const picture = element instanceof HTMLSourceElement && element.parentElement instanceof HTMLPictureElement
+      ? element.parentElement
+      : image?.parentElement instanceof HTMLPictureElement
+        ? image.parentElement
+        : null;
+
+    if (!image && picture) {
+      image = [...picture.children].find(child => child instanceof HTMLImageElement) || null;
+    }
+
+    const sources = picture
+      ? [...picture.children].filter(child => child instanceof HTMLSourceElement)
+      : element instanceof HTMLSourceElement
+        ? [element]
+        : [];
+
+    return {
+      image,
+      elements: image ? [...sources, image] : sources,
+    };
+  }
+  image_element_has_late_connection_marker(element) {
+    return ["src", "srcset"].some(attribute =>
+      element.hasAttribute?.(attribute) &&
+      element.getAttribute(attribute).includes(uDark.lateConnectionModifier)
+    );
+  }
+  image_element_track_late_connection(element) {
+    if (uDark.lateConnectionReferences.has(element)) {
+      return;
+    }
+    const reference = new WeakRef(element);
+    uDark.lateConnectionReferences.set(element, reference);
+    uDark.nonConnectedImagesAndSources.add(reference);
+  }
+  image_element_untrack_late_connection(element) {
+    const reference = uDark.lateConnectionReferences.get(element);
+    if (reference) {
+      uDark.nonConnectedImagesAndSources.delete(reference);
+      uDark.lateConnectionReferences.delete(element);
+    }
+  }
+  image_element_install_staging_facade() {
+    if (uDark.lateConnectionStagingFacadeInstalled) {
+      return;
+    }
+    uDark.lateConnectionStagingFacadeInstalled = true;
+
+    const parentNode = Object.getOwnPropertyDescriptor(Node.prototype, "parentNode");
+    const parentElement = Object.getOwnPropertyDescriptor(Node.prototype, "parentElement");
+    const getRootNode = Node.prototype.getRootNode;
+    uDark.lateConnectionNativeParentNode = parentNode.get;
+    uDark.lateConnectionNativeParentElement = parentElement.get;
+    uDark.lateConnectionNativeGetRootNode = getRootNode;
+    uDark.lateConnectionNativeAppendChild = Node.prototype.appendChild;
+
+    Object.defineProperty(Node.prototype, "parentNode", {
+      ...parentNode,
+      get() {
+        if (uDark.image_element_is_actively_staged_root(this)) {
+          return null;
+        }
+        return parentNode.get.call(this);
+      },
+    });
+    Object.defineProperty(Node.prototype, "parentElement", {
+      ...parentElement,
+      get() {
+        if (uDark.image_element_is_actively_staged_root(this)) {
+          return null;
+        }
+        return parentElement.get.call(this);
+      },
+    });
+    Node.prototype.getRootNode = function (...args) {
+      const nativeRoot = getRootNode.apply(this, args);
+      return uDark.lateConnectionStageByHost.get(nativeRoot)?.root || nativeRoot;
+    };
+
+    ["remove", "before", "after", "replaceWith"].forEach(methodName => {
+      const prototype = Element.prototype;
+      const nativeMethod = prototype[methodName];
+      if (typeof nativeMethod !== "function") {
+        return;
+      }
+      Object.defineProperty(prototype, methodName, {
+        configurable: true,
+        writable: true,
+        value: function (...args) {
+          if (uDark.image_element_is_actively_staged_root(this)) {
+            return undefined;
+          }
+          return nativeMethod.apply(this, args);
+        },
+      });
+    });
+  }
+  image_element_is_actively_staged_root(element) {
+    const stage = uDark.lateConnectionStageByRoot.get(element);
+    return Boolean(
+      stage &&
+      uDark.lateConnectionNativeParentNode.call(element) === stage.host
+    );
+  }
+  image_element_native_root(element) {
+    return uDark.lateConnectionNativeGetRootNode.call(element, { composed: true });
+  }
+  image_element_cleanup_stage(stage) {
+    if (!stage) {
+      return;
+    }
+    uDark.lateConnectionStageByHost.delete(stage.host);
+    if (stage.root) {
+      uDark.lateConnectionStageByRoot.delete(stage.root);
+    }
+    uDark.lateConnectionActiveStages.delete(stage);
+    stage.elements.forEach(element => {
+      const state = uDark.lateConnectionStates.get(element);
+      if (state?.stage === stage) {
+        state.stage = null;
+      }
+    });
+    stage.elements.clear();
+  }
+  image_element_poll_unstageable_late_connection(element) {
+    const state = uDark.lateConnectionStates.get(element);
+    if (!state || state.pollingConnection) {
+      return;
+    }
+    state.pollingConnection = true;
+    const reference = new WeakRef(element);
+    const inspect = () => {
+      const currentElement = reference.deref();
+      const currentState = currentElement && uDark.lateConnectionStates.get(currentElement);
+      if (!currentElement || !currentState) {
+        return;
+      }
+      if (currentElement.isConnected) {
+        currentState.pollingConnection = false;
+        uDark.image_element_recover_late_connection(currentElement);
+        return;
+      }
+      const root = uDark.image_element_native_root(currentElement);
+      if (!(root instanceof DocumentFragment) || root instanceof ShadowRoot) {
+        currentState.pollingConnection = false;
+        uDark.image_element_stage_late_connection(currentElement);
+        return;
+      }
+      requestAnimationFrame(inspect);
+    };
+    requestAnimationFrame(inspect);
+  }
+  image_element_stage_late_connection(element) {
+    const state = uDark.lateConnectionStates.get(element);
+    if (!state || element.isConnected) {
+      if (element.isConnected && state?.failureCaught) {
+        uDark.image_element_recover_late_connection(element);
+      }
+      return;
+    }
+
+    const nativeRoot = uDark.image_element_native_root(element);
+    const existingStage = uDark.lateConnectionStageByHost.get(nativeRoot);
+    if (existingStage) {
+      existingStage.elements.add(element);
+      state.stage = existingStage;
+      return;
+    }
+    if (nativeRoot instanceof DocumentFragment) {
+      uDark.image_element_poll_unstageable_late_connection(element);
+      return;
+    }
+    if (!(nativeRoot instanceof Element)) {
+      return;
+    }
+
+    const host = document.createElement("udark-image-stage");
+    const shadowRoot = host.attachShadow({ mode: "closed" });
+    const slot = document.createElement("slot");
+    const stage = {
+      host,
+      slot,
+      root: nativeRoot,
+      elements: new Set([element]),
+      handling: false,
+    };
+    shadowRoot.appendChild(slot);
+    uDark.lateConnectionStageByHost.set(host, stage);
+    uDark.lateConnectionStageByRoot.set(nativeRoot, stage);
+    uDark.lateConnectionActiveStages.add(stage);
+    state.stage = stage;
+    slot.addEventListener("slotchange", () => {
+      if (stage.handling) {
+        return;
+      }
+      const actualParent = uDark.lateConnectionNativeParentNode.call(stage.root);
+      if (actualParent === stage.host) {
+        return;
+      }
+      stage.handling = true;
+      const elements = [...stage.elements];
+      uDark.image_element_cleanup_stage(stage);
+      elements.forEach(lateElement => {
+        const lateState = uDark.lateConnectionStates.get(lateElement);
+        if (!lateState) {
+          return;
+        }
+        const group = uDark.image_element_late_connection_group(lateElement);
+        if (group.image) {
+          uDark.image_element_install_decode_waiter(group.image);
+          uDark.image_element_install_late_connection_error(group.image);
+        }
+        if (lateElement.isConnected) {
+          if (lateState.failureCaught) {
+            uDark.image_element_recover_late_connection(group.image || lateElement);
+          }
+        } else {
+          uDark.image_element_stage_late_connection(lateElement);
+        }
+      });
+    });
+    uDark.lateConnectionNativeAppendChild.call(host, nativeRoot);
+  }
+  image_element_install_decode_waiter(image) {
+    if (!(image instanceof HTMLImageElement)) {
+      return;
+    }
+
+    let state = uDark.lateConnectionStates.get(image);
+    if (!state) {
+      state = {
+        options: {},
+        failureCaught: false,
+        recovering: false,
+        decodeWaiters: [],
+        originalOwnDecode: Object.getOwnPropertyDescriptor(image, "decode"),
+        originalOwnDecodeCaptured: true,
+      };
+      uDark.lateConnectionStates.set(image, state);
+    }
+    if (!state.originalOwnDecodeCaptured) {
+      state.originalOwnDecode = Object.getOwnPropertyDescriptor(image, "decode");
+      state.originalOwnDecodeCaptured = true;
+    }
+    if (state.decodeInstalled) {
+      return;
+    }
+
+    state.decodeInstalled = true;
+    Object.defineProperty(image, "decode", {
+      configurable: true,
+      writable: true,
+      value: () => new Promise((resolve, reject) => {
+        state.decodeWaiters.push({ resolve, reject });
+      }),
+    });
+  }
+  image_element_restore_decode(image, state) {
+    if (!(image instanceof HTMLImageElement) || !state?.decodeInstalled) {
+      return;
+    }
+
+    if (state.originalOwnDecode) {
+      Object.defineProperty(image, "decode", state.originalOwnDecode);
+    } else {
+      delete image.decode;
+    }
+    state.decodeInstalled = false;
+
+    if (!state.decodeWaiters.length) {
+      return;
+    }
+
+    let decodeResult;
+    try {
+      decodeResult = HTMLImageElement.prototype.decode.call(image);
+    } catch (error) {
+      state.decodeWaiters.splice(0).forEach(waiter => waiter.reject(error));
+      return;
+    }
+
+    Promise.resolve(decodeResult).then(
+      value => state.decodeWaiters.splice(0).forEach(waiter => waiter.resolve(value)),
+      error => state.decodeWaiters.splice(0).forEach(waiter => waiter.reject(error))
+    );
+  }
+  image_element_register_late_connection(element, options = {}) {
+    let state = uDark.lateConnectionStates.get(element);
+    if (!state) {
+      state = {
+        options,
+        failureCaught: false,
+        recovering: false,
+        decodeWaiters: [],
+        originalOwnDecodeCaptured: false,
+      };
+      uDark.lateConnectionStates.set(element, state);
+    } else {
+      // A detached preloader can be reused for another URL after its first
+      // native load. Start a fresh marker/error/release cycle for that URL.
+      if (state.releasedDetached) {
+        state.failureCaught = false;
+        state.recovering = false;
+        state.releasedDetached = false;
+        state.originalAttributes = undefined;
+      }
+      state.options = options;
+    }
+
+    uDark.image_element_track_late_connection(element);
+    element.setAttribute("ud-non-connected", "1");
+    uDark.image_element_stage_late_connection(element);
+
+    const group = uDark.image_element_late_connection_group(element);
+    if (group.image) {
+      uDark.image_element_install_decode_waiter(group.image);
+      uDark.image_element_install_late_connection_error(group.image);
+    }
+    uDark.image_element_ensure_late_connection_error_capture();
+  }
+  image_element_install_late_connection_error(image) {
+    if (!(image instanceof HTMLImageElement) || uDark.lateConnectionErrorTargets.has(image)) {
+      return;
+    }
+
+    uDark.lateConnectionErrorTargets.add(image);
+    image.addEventListener("error", event => {
+      uDark.image_element_handle_late_connection_error(event);
+    }, { capture: true });
+    image.addEventListener("load", event => {
+      const state = uDark.lateConnectionStates.get(image);
+      if (!state?.suppressContextualLoad) {
+        return;
+      }
+      // The website already received the native detached preload. Rewriting
+      // the now-connected URL with UltimaDark context can produce another
+      // native load, which is an internal implementation detail.
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      state.suppressContextualLoad = false;
+      uDark.lateConnectionStates.delete(image);
+    }, { capture: true });
+  }
+  image_element_handle_late_connection_error(event) {
+    const image = event.target instanceof HTMLImageElement
+      ? event.target
+      : event.currentTarget instanceof HTMLImageElement
+        ? event.currentTarget
+        : null;
+    if (!image) {
+      return;
+    }
+
+    const group = uDark.image_element_late_connection_group(image);
+    if (!group.elements.some(uDark.image_element_has_late_connection_marker)) {
+      return;
+    }
+
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+
+    group.elements.forEach(element => {
+      const state = uDark.lateConnectionStates.get(element) || {
+        options: {},
+        decodeWaiters: [],
+      };
+      state.failureCaught = true;
+      uDark.lateConnectionStates.set(element, state);
+      uDark.image_element_track_late_connection(element);
+    });
+
+    if (image.isConnected) {
+      uDark.image_element_recover_late_connection(image);
+    } else {
+      uDark.image_element_release_detached_late_connection(image);
+    }
+  }
+  image_element_release_detached_late_connection(element) {
+    const group = uDark.image_element_late_connection_group(element);
+    const elements = group.elements.length ? group.elements : [element];
+    const states = elements.map(groupElement => uDark.lateConnectionStates.get(groupElement));
+    if (states.some(state => state?.recovering || state?.releasedDetached)) {
+      return;
+    }
+
+    const releaseAttribute = (groupElement, attribute) => {
+      const value = groupElement.getAttribute?.(attribute);
+      if (!value?.includes(uDark.lateConnectionModifier)) {
+        return;
+      }
+      const state = uDark.lateConnectionStates.get(groupElement);
+      const originalValue = uDark.image_element_strip_late_connection(value);
+      state.originalAttributes ||= {};
+      state.originalAttributes[attribute] = originalValue;
+      state.releasedDetached = true;
+      // Deliberately bypass the patched property setter. The website must
+      // receive a genuine native load/decode before it decides to insert the
+      // image; contextual UltimaDark processing happens at insertion.
+      groupElement.setAttribute(attribute, originalValue);
+    };
+
+    elements.filter(groupElement => groupElement instanceof HTMLSourceElement)
+      .forEach(source => releaseAttribute(source, "srcset"));
+    if (group.image) {
+      releaseAttribute(group.image, "srcset");
+      releaseAttribute(group.image, "src");
+      uDark.image_element_restore_decode(
+        group.image,
+        uDark.lateConnectionStates.get(group.image)
+      );
+    } else {
+      elements.forEach(groupElement => {
+        releaseAttribute(groupElement, "srcset");
+        releaseAttribute(groupElement, "src");
+      });
+    }
+  }
+  image_element_ensure_late_connection_error_capture() {
+    if (!document?.documentElement) {
+      return;
+    }
+
+    if (!uDark.lateConnectionErrorCaptureInstalled) {
+      uDark.lateConnectionErrorCaptureInstalled = true;
+      document.addEventListener("error", event => {
+        uDark.image_element_handle_late_connection_error(event);
+      }, true);
+    }
+  }
+  image_element_recover_late_connection(element) {
+    const group = uDark.image_element_late_connection_group(element);
+    const elements = group.elements.length ? group.elements : [element];
+    const states = elements.map(groupElement => uDark.lateConnectionStates.get(groupElement));
+
+    if (states.some(state => state?.recovering)) {
+      return;
+    }
+    states.forEach(state => {
+      if (state) state.recovering = true;
+    });
+
+    new Set(states.map(state => state?.stage).filter(Boolean))
+      .forEach(stage => uDark.image_element_cleanup_stage(stage));
+
+    elements.forEach(groupElement => {
+      groupElement.removeAttribute?.("ud-non-connected");
+    });
+
+    try {
+      const imageState = group.image
+        ? uDark.lateConnectionStates.get(group.image)
+        : null;
+      if (imageState?.releasedDetached) {
+        imageState.suppressContextualLoad = true;
+      }
+
+      const restoreAttribute = (groupElement, attribute) => {
+        const currentValue = groupElement.getAttribute?.(attribute);
+        const state = uDark.lateConnectionStates.get(groupElement);
+        const cleanValue = currentValue?.includes(uDark.lateConnectionModifier)
+          ? uDark.image_element_strip_late_connection(currentValue)
+          : state?.releasedDetached
+            ? state.originalAttributes?.[attribute]
+            : null;
+        if (!cleanValue) {
+          return;
+        }
+
+        const options = {
+          ...(state?.options || {}),
+          dontEditNonConnected: true,
+        };
+        const preparedValue = attribute === "srcset"
+          ? uDark.image_element_prepare_srcset(groupElement, cleanValue, options)
+          : uDark.image_element_prepare_href(groupElement, cleanValue, options);
+        groupElement.setAttribute(attribute, preparedValue);
+      };
+
+      // In a picture element, responsive sources must be valid before the img
+      // fallback is restored, otherwise Firefox can retain the fallback preview.
+      elements.filter(groupElement => groupElement instanceof HTMLSourceElement)
+        .forEach(source => restoreAttribute(source, "srcset"));
+      if (group.image) {
+        restoreAttribute(group.image, "srcset");
+        restoreAttribute(group.image, "src");
+      } else {
+        elements.forEach(groupElement => {
+          restoreAttribute(groupElement, "srcset");
+          restoreAttribute(groupElement, "src");
+        });
+      }
+    } finally {
+      elements.forEach(groupElement => {
+        uDark.image_element_untrack_late_connection(groupElement);
+        const state = uDark.lateConnectionStates.get(groupElement);
+        if (groupElement === group.image) {
+          uDark.image_element_restore_decode(groupElement, state);
+        }
+        if (!(groupElement === group.image && state?.suppressContextualLoad)) {
+          uDark.lateConnectionStates.delete(groupElement);
+        }
+      });
+    }
+  }
   elements_or_ancestor_parents_is_tagNames(tagNames, elements) {
     return elements.some(element => {
       let parent = element;
@@ -611,35 +1149,9 @@ class uDarkC extends uDarkExtended {
       return imageTrueSrc;
     }
     if (!image.isConnected && !options.dontEditNonConnected) {
-      let modifer = "data:text/ud-late-connection;"
       // console.warn("UltimaDark: Image is not connected to DOM, delaying its processing until it is connected", image,`${modifer}${imageTrueSrc}`,new Error());
-      image.setAttribute("ud-non-connected", "1");
-      let resolverOnerror = null;
-      image.decode = x => new Promise((resolve) => {
-        resolverOnerror = resolve;
-      }); // Override decode to be able to resolve when the image is connected and processed
-      image.addEventListener("error", function listener(event) {
-        event.stopPropagation();
-        event.stopImmediatePropagation();
-        image.removeAttribute("ud-non-connected");
-        // console.warn("UltimaDark: Image is now connected to DOM, processing it", image,imageTrueSrc,image.isConnected,image.parentNode);
-
-        (image.parentNode?.childNodes || [image]).forEach(node => {
-          if (node.hasAttribute && node.hasAttribute("src")) {
-            node.setAttribute("src", uDark.image_element_prepare_href(node, image.getAttribute("src").replace(modifer, ""), { ...options, dontEditNonConnected: true }));
-
-          }
-          if (node.hasAttribute && node.hasAttribute("srcset")) {
-            node.setAttribute("srcset", uDark.image_element_prepare_href(node, node.getAttribute("srcset").replaceAll(modifer, ""), { ...options, dontEditNonConnected: true }));
-
-          }
-        });
-        if (resolverOnerror) {
-          resolverOnerror(HTMLImageElement.prototype.decode.call(image));
-        }
-
-      }, { once: true, capture: true });
-      return `${modifer}${imageTrueSrc}`; // Wait for the image to be connected to process it and know its context, using error listener
+      uDark.image_element_register_late_connection(image, options);
+      return `${uDark.lateConnectionModifier}${imageTrueSrc}`; // Wait for the captured error and DOM connection before processing with full context
     }
     if (uDark.search_clickable_parent(image.getRootNode(), selectorText)) {
       notableInfos.inside_clickable = true;

@@ -75,6 +75,10 @@ class WebsitesOverrideScript {
         uDark.info("Websites overrides install", window);
 
         {
+            if (uDark.userSettings.imageEditionEnabled) {
+                uDark.image_element_install_staging_facade();
+            }
+
             // Create a dedicated passthrough Trusted Types policy for UltimaDark.
             // It allows extension-generated markup to be passed to Trusted Types-protected
             // DOM sinks while preserving the page's Trusted Types enforcement.
@@ -131,7 +135,11 @@ class WebsitesOverrideScript {
 
 
         // This is the one youtube uses
-        uDark.valuePrototypeEditor([Element, ShadowRoot], "innerHTML", uDark.frontEditHTML); // toString : some objects can redefine tostring to generate their inner
+        uDark.valuePrototypeEditor(
+            [Element, ShadowRoot],
+            "innerHTML",
+            uDark.frontEditHTML
+        ); // toString : some objects can redefine tostring to generate their inner
 
         // uDark.valuePrototypeEditor([Element, ShadowRoot], "innerHTML", uDark.frontEditHTML, (elem,value)=>
 
@@ -141,13 +149,17 @@ class WebsitesOverrideScript {
             uDark.valuePrototypeEditor([HTMLIFrameElement], "srcdoc", uDark.frontEditHTML);
         }
 
-        uDark.valuePrototypeEditor(Element, "outerHTML", uDark.frontEditHTML); // toString : sombe object can redefine tostring to generate thzir inner
+        uDark.valuePrototypeEditor(
+            Element,
+            "outerHTML",
+            uDark.frontEditHTML
+        ); // toString : sombe object can redefine tostring to generate thzir inner
 
         // This is the one google uses
         uDark.functionPrototypeEditor(Element, Element.prototype.insertAdjacentHTML, (elem, args) => {
             args[1] = uDark.frontEditHTML("ANY_ELEMENT", args[1]); // frontEditHTML have a diffferent behavior with STYLE elements
             return args;
-        })
+        }, true)
         uDark.valuePrototypeEditor(HTMLElement, "nonce", (elem, value) => {
             return uDark.byPassCSPNonce;
         }, (elem, value) => {
@@ -197,14 +209,7 @@ class WebsitesOverrideScript {
             //Aftermath: none
             false,
             (image, value) => { // Edited getter, to trick websites that are checking src integrity after setting it
-                let returnVal = value.split(new RegExp("#?" + uDark.imageSrcInfoMarker))[0];
-                if (returnVal.startsWith("https://data-image/?base64IMG=")) {
-                    returnVal = returnVal.slice(30);
-                }
-                if (returnVal.startsWith("data:text/ud-late-connection;")) {
-                    returnVal = returnVal.slice(29);
-                }
-                return returnVal;
+                return uDark.image_element_restore_original_href(value);
             }
 
         );
@@ -232,30 +237,12 @@ class WebsitesOverrideScript {
 
         uDark.valuePrototypeEditor([HTMLSourceElement, HTMLImageElement], "srcset", (image, value) => {
             console.log("Editing srcset", image, value);
-            let srcSourceArray = uDark.processSRCset(value).map(
-                ([srcSource, descriptor]) => uDark.image_element_prepare_href(image, srcSource) + " " + descriptor
-            );
-            return srcSourceArray.join(", ");
+            return uDark.image_element_prepare_srcset(image, value);
 
         },
-
-            // false, // Condition: Inconditional
-            // //Aftermath: none
-            // false,
-            // (image, value) => { // Edited getter, to trick websites that are checking src integrity after setting it
-            //   let srcSourceArray = uDark.processSRCset(image.getAttribute("srcset")).map(
-            //     ([srcSource, descriptor]) => {
-            //       let returnVal = value.split(new RegExp("#?" + uDark.imageSrcInfoMarker))[0];
-            //       if (returnVal.startsWith("https://data-image/?base64IMG=")) {
-            //         returnVal = returnVal.slice(30) + " " + descriptor;
-            //       }
-            //       return returnVal;
-            //     }
-            //   );
-            //   return srcSourceArray.join(", ");
-
-            // }
-
+            false,
+            false,
+            (image, value) => uDark.image_element_restore_original_srcset(value)
         );
 
 
