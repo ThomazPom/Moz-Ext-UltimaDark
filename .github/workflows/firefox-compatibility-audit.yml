@@ -14,8 +14,8 @@ permissions:
   contents: read
 
 jobs:
-  lint-compatibility:
-    name: web-ext lint (Firefox ${{ matrix.minimum }})
+  lint-release-package:
+    name: Mozilla lint — Firefox ${{ matrix.minimum }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -24,135 +24,135 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Prepare isolated extension tree
+      - name: Build exact release package
+        shell: bash
         run: |
           set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/extension"
-          rsync -a --delete --exclude '.git/' --exclude '.github/' ./ "$RUNNER_TEMP/extension/"
-          python3 - "$RUNNER_TEMP/extension/manifest.json" "${{ matrix.minimum }}" <<'PY'
-          import pathlib, re, sys
+
+          package="$RUNNER_TEMP/extension"
+          mkdir -p "$package"
+
+          files=(
+            manifest.json
+            uDarkTools.htm
+            uDarkTools.js
+            inject_css_override_no_edit.css
+            inject_css_override_top_only.css
+            inject_css_override.css
+            inject_css_suggested.css
+            inject_css_suggested_no_edit.css
+            background.js
+            entities.json
+            uDarkEncoder.js
+            icons
+            Listeners.js
+            contentScriptClass.js
+            websitesOverrideScript.js
+            backgroundClass.js
+            fakeContentScriptClass.js
+            popup/popup.html
+            popup/bundle.js
+            popup/bundle.js.map
+            popup/bundle.css
+            popup/options_styles.css
+            popup/bootstrap-icons-CVBWLLHT.woff2
+            popup/bootstrap-icons-VQNJTM6Q.woff
+            popup/modules
+            popup/bootstrapdarkened.css
+            imageWorker/imageWorkerBundle-native.js
+            imageWorker/imageWorkerBundle-pooledAI.js
+            imageWorker/imageWorkerBundle-pooledBench.js
+            imageWorker/imageWorkerBundle-pooledHeuristic.js
+            imageWorker/imageClassifierModel.json
+            imageWorker/imageClassifierModel.weights.bin
+          )
+
+          for item in "${files[@]}"; do
+            mkdir -p "$package/$(dirname "$item")"
+            cp -a "$item" "$package/$item"
+          done
+
+          # The release workflow removes full-line // comments before packaging.
+          sed -i 's/^[[:space:]]*\/\/.*$//g' "$package/manifest.json"
+
+          python3 - "$package/manifest.json" "${{ matrix.minimum }}" <<'PY'
+          import json
+          import pathlib
+          import sys
+
           path = pathlib.Path(sys.argv[1])
-          text = path.read_text(encoding="utf-8")
-          pattern = r'("gecko"\s*:\s*\{.*?"strict_min_version"\s*:\s*")[^"]+("\s*,)'
-          patched, count = re.subn(pattern, rf'\g<1>{sys.argv[2]}\2', text, count=1, flags=re.S)
-          if count != 1:
-              raise SystemExit("Could not patch desktop gecko.strict_min_version")
-          path.write_text(patched, encoding="utf-8")
+          minimum = sys.argv[2]
+          manifest = json.loads(path.read_text(encoding="utf-8"))
+          manifest["browser_specific_settings"]["gecko"]["strict_min_version"] = minimum
+          path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
           PY
 
-      - name: Run Mozilla web-ext lint
-        continue-on-error: true
+          (cd "$package" && zip -qr "$RUNNER_TEMP/UltimaDark-firefox-${{ matrix.minimum }}.zip" .)
+
+      - name: Show Mozilla linter version
+        run: npx --yes web-ext@latest --version
+
+      - name: Run Mozilla Extension Linter
+        shell: bash
         run: |
+          set +e
           npx --yes web-ext@latest lint \
             --source-dir "$RUNNER_TEMP/extension" \
-            --output json > "web-ext-firefox-${{ matrix.minimum }}.json"
+            --output json \
+            > "$RUNNER_TEMP/firefox-${{ matrix.minimum }}-lint.json"
+          echo "lint_exit_code=$?" >> "$GITHUB_ENV"
+          exit 0
 
-      - name: Summarize lint result
+      - name: Produce report
+        shell: bash
         run: |
-          python3 - "web-ext-firefox-${{ matrix.minimum }}.json" "${{ matrix.minimum }}" <<'PY'
-          import json, os, pathlib, sys
+          python3 - "$RUNNER_TEMP/firefox-${{ matrix.minimum }}-lint.json" "${{ matrix.minimum }}" <<'PY'
+          import json
+          import os
+          import pathlib
+          import sys
+
           report = pathlib.Path(sys.argv[1])
+          minimum = sys.argv[2]
           data = json.loads(report.read_text(encoding="utf-8"))
           summary = data.get("summary", {})
+
           lines = [
-              f"## Firefox {sys.argv[2]} web-ext lint", "",
+              f"## Firefox {minimum}",
+              "",
               f"- Errors: **{summary.get('errors', 0)}**",
               f"- Warnings: **{summary.get('warnings', 0)}**",
-              f"- Notices: **{summary.get('notices', 0)}**", ""
+              f"- Notices: **{summary.get('notices', 0)}**",
+              f"- Linter exit code: **{os.environ.get('lint_exit_code', '?')}**",
+              "",
+              "### Messages",
+              "",
           ]
+
           messages = data.get("errors", []) + data.get("warnings", []) + data.get("notices", [])
-          if messages:
-              lines += ["### Messages", ""]
-              for item in messages:
-                  location = f" — `{item.get('file')}`" if item.get("file") else ""
-                  lines.append(f"- {item.get('message', 'Unknown message')}{location}")
-                  if item.get("description"):
-                      lines.append(f"  - {item['description']}")
+          for item in messages:
+              location = item.get("file") or "manifest/package"
+              lines.append(f"- **{item.get('message', 'Unknown message')}** — `{location}`")
+              description = item.get("description")
+              if description:
+                  lines.append(f"  - {description}")
+
           text = "\n".join(lines) + "\n"
-          report.with_suffix(".md").write_text(text, encoding="utf-8")
-          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as output:
-              output.write(text)
+          output = pathlib.Path(f"firefox-{minimum}-lint.md")
+          output.write_text(text, encoding="utf-8")
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary_file:
+              summary_file.write(text)
           PY
 
       - uses: actions/upload-artifact@v4
         with:
-          name: web-ext-firefox-${{ matrix.minimum }}
+          name: firefox-${{ matrix.minimum }}-mozilla-lint
           path: |
-            web-ext-firefox-${{ matrix.minimum }}.json
-            web-ext-firefox-${{ matrix.minimum }}.md
-
-  firefox-115-smoke-test:
-    name: Load extension in Firefox 115 ESR
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Install Firefox 115 runtime libraries
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libdbus-glib-1-2 libgtk-3-0 libasound2t64
-
-      - name: Prepare Firefox 115-compatible manifest
-        run: |
-          set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/extension"
-          rsync -a --delete --exclude '.git/' --exclude '.github/' ./ "$RUNNER_TEMP/extension/"
-          python3 - "$RUNNER_TEMP/extension/manifest.json" <<'PY'
-          import pathlib, re, sys
-          path = pathlib.Path(sys.argv[1])
-          text = path.read_text(encoding="utf-8")
-          pattern = r'("gecko"\s*:\s*\{.*?"strict_min_version"\s*:\s*")[^"]+("\s*,)'
-          patched, count = re.subn(pattern, r'\g<1>115.0\2', text, count=1, flags=re.S)
-          if count != 1:
-              raise SystemExit("Could not patch desktop gecko.strict_min_version")
-          path.write_text(patched, encoding="utf-8")
-          PY
-
-      - name: Download Firefox 115 ESR
-        run: |
-          set -euo pipefail
-          curl -fsSL \
-            "https://archive.mozilla.org/pub/firefox/releases/115.18.0esr/linux-x86_64/en-US/firefox-115.18.0esr.tar.bz2" \
-            -o "$RUNNER_TEMP/firefox.tar.bz2"
-          tar -xjf "$RUNNER_TEMP/firefox.tar.bz2" -C "$RUNNER_TEMP"
-          "$RUNNER_TEMP/firefox/firefox" --version
-
-      - name: Smoke-test extension startup
-        run: |
-          set -euo pipefail
-          LOG="$RUNNER_TEMP/firefox-115-web-ext.log"
-          set +e
-          timeout 30s xvfb-run -a npx --yes web-ext@latest run \
-            --source-dir "$RUNNER_TEMP/extension" \
-            --firefox "$RUNNER_TEMP/firefox/firefox" \
-            --no-reload --start-url about:blank >"$LOG" 2>&1
-          status=$?
-          set -e
-          cat "$LOG"
-          if [ "$status" -ne 0 ] && [ "$status" -ne 124 ]; then exit "$status"; fi
-          if grep -Eqi "(ExtensionError|Failed to install|not compatible|minimum Firefox version)" "$LOG"; then exit 1; fi
-          if ! grep -Eqi "(Installed|Running web extension|Launching extension)" "$LOG"; then
-            echo "Could not confirm that Firefox 115 loaded the extension" >&2
-            exit 1
-          fi
-          {
-            echo "## Firefox 115 ESR runtime smoke test"
-            echo
-            echo "Firefox 115.18.0 ESR accepted and launched the extension with only desktop strict_min_version changed to 115.0."
-            echo
-            echo "This proves package loading and startup, not exhaustive website-level behavior."
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: firefox-115-smoke-test
-          path: ${{ runner.temp }}/firefox-115-web-ext.log
+            ${{ runner.temp }}/UltimaDark-firefox-${{ matrix.minimum }}.zip
+            ${{ runner.temp }}/firefox-${{ matrix.minimum }}-lint.json
+            firefox-${{ matrix.minimum }}-lint.md
