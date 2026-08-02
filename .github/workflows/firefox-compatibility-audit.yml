@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 env:
-  SOURCE_COMMIT: 0dcc9c9859fb27d115894d979930ac959e516b72
+  SOURCE_COMMIT: c5fbdcd0d716f9e74a4283708d2a25ca403b6e47
 
 jobs:
   lint-release-package:
@@ -34,7 +34,7 @@ jobs:
             android: "128.0"
 
     steps:
-      - name: Check out exact UltimaDark 1.6.70 source
+      - name: Check out exact latest UltimaDark source
         uses: actions/checkout@v4
         with:
           ref: ${{ env.SOURCE_COMMIT }}
@@ -48,9 +48,9 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
-          grep -q '"version": "1.6.70"' manifest.json
+          grep -q '"version": "1.6.72"' manifest.json
 
-      - name: Build exact 1.6.70 release package
+      - name: Build exact latest release package
         shell: bash
         run: |
           set -euo pipefail
@@ -60,6 +60,7 @@ jobs:
           files=(
             manifest.json
             uDarkTools.htm
+            uDarkTools.js
             inject_css_override_no_edit.css
             inject_css_override_top_only.css
             inject_css_override.css
