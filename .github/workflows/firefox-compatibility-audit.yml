@@ -73,13 +73,18 @@ jobs:
           )
 
           for item in "${files[@]}"; do
+            test -e "$item"
             mkdir -p "$package/$(dirname "$item")"
             cp -a "$item" "$package/$item"
           done
 
-          # The release workflow removes full-line // comments before packaging.
+          # Reproduce the manifest transformations from the release workflow.
           sed -i 's/^[[:space:]]*\/\/.*$//g' "$package/manifest.json"
+          sed -i \
+            's/{0a0f6dea-3957-4bb9-9eec-2ef2b9e5bcec}/{7c7f6dea-3957-4bb9-9eec-2ef2b9e5bcec}/g' \
+            "$package/manifest.json"
 
+          # Change only the desktop minimum under browser_specific_settings.gecko.
           python3 - "$package/manifest.json" "${{ matrix.minimum }}" <<'PY'
           import json
           import pathlib
@@ -156,3 +161,54 @@ jobs:
             ${{ runner.temp }}/UltimaDark-firefox-${{ matrix.minimum }}.zip
             ${{ runner.temp }}/firefox-${{ matrix.minimum }}-lint.json
             firefox-${{ matrix.minimum }}-lint.md
+
+  verify-package-delta:
+    name: Verify 115/128 package delta
+    needs: lint-release-package
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: firefox-*-mozilla-lint
+          path: artifacts
+
+      - name: Prove packages differ only by desktop minimum
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir pkg115 pkg128
+          unzip -q artifacts/firefox-115.0-mozilla-lint/_temp/UltimaDark-firefox-115.0.zip -d pkg115
+          unzip -q artifacts/firefox-128.0-mozilla-lint/_temp/UltimaDark-firefox-128.0.zip -d pkg128
+
+          python3 <<'PY'
+          import json
+          import pathlib
+
+          left = pathlib.Path("pkg115")
+          right = pathlib.Path("pkg128")
+
+          left_files = sorted(p.relative_to(left) for p in left.rglob("*") if p.is_file())
+          right_files = sorted(p.relative_to(right) for p in right.rglob("*") if p.is_file())
+          if left_files != right_files:
+              raise SystemExit("The Firefox 115 and 128 packages do not contain the same files")
+
+          for relative in left_files:
+              if relative.as_posix() == "manifest.json":
+                  continue
+              if (left / relative).read_bytes() != (right / relative).read_bytes():
+                  raise SystemExit(f"Unexpected package difference: {relative}")
+
+          manifest115 = json.loads((left / "manifest.json").read_text(encoding="utf-8"))
+          manifest128 = json.loads((right / "manifest.json").read_text(encoding="utf-8"))
+
+          value115 = manifest115["browser_specific_settings"]["gecko"].pop("strict_min_version")
+          value128 = manifest128["browser_specific_settings"]["gecko"].pop("strict_min_version")
+
+          if value115 != "115.0" or value128 != "128.0":
+              raise SystemExit(f"Unexpected minimum versions: {value115!r}, {value128!r}")
+          if manifest115 != manifest128:
+              raise SystemExit("The manifests differ by more than desktop strict_min_version")
+
+          print("Verified: every packaged byte is identical except desktop strict_min_version (115.0 vs 128.0).")
+          PY
