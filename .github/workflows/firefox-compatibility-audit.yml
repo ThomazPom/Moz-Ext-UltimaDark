@@ -2,15 +2,6 @@ name: Firefox compatibility audit
 
 on:
   workflow_dispatch:
-    inputs:
-      firefox_min_version:
-        description: Desktop Firefox minimum version to audit
-        required: true
-        default: "115.0"
-      firefox_runtime_version:
-        description: Firefox ESR runtime version used for the smoke test
-        required: true
-        default: "115.18.0esr"
   pull_request:
     paths:
       - "manifest.json"
@@ -29,100 +20,64 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        minimum:
-          - "115.0"
-          - "128.0"
+        minimum: ["115.0", "128.0"]
 
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
 
       - name: Prepare isolated extension tree
-        shell: bash
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/extension"
-          rsync -a --delete \
-            --exclude '.git/' \
-            --exclude '.github/' \
-            ./ "$RUNNER_TEMP/extension/"
-
+          rsync -a --delete --exclude '.git/' --exclude '.github/' ./ "$RUNNER_TEMP/extension/"
           python3 - "$RUNNER_TEMP/extension/manifest.json" "${{ matrix.minimum }}" <<'PY'
-          import pathlib
-          import re
-          import sys
-
+          import pathlib, re, sys
           path = pathlib.Path(sys.argv[1])
-          minimum = sys.argv[2]
           text = path.read_text(encoding="utf-8")
           pattern = r'("gecko"\s*:\s*\{.*?"strict_min_version"\s*:\s*")[^"]+("\s*,)'
-          patched, count = re.subn(pattern, rf'\g<1>{minimum}\2', text, count=1, flags=re.S)
+          patched, count = re.subn(pattern, rf'\g<1>{sys.argv[2]}\2', text, count=1, flags=re.S)
           if count != 1:
               raise SystemExit("Could not patch desktop gecko.strict_min_version")
           path.write_text(patched, encoding="utf-8")
           PY
 
       - name: Run Mozilla web-ext lint
-        shell: bash
         run: |
-          set -o pipefail
           npx --yes web-ext@latest lint \
             --source-dir "$RUNNER_TEMP/extension" \
-            --output json \
-            > "web-ext-firefox-${{ matrix.minimum }}.json"
+            --output json > "web-ext-firefox-${{ matrix.minimum }}.json"
 
       - name: Summarize lint result
-        shell: bash
         run: |
           python3 - "web-ext-firefox-${{ matrix.minimum }}.json" "${{ matrix.minimum }}" <<'PY'
-          import json
-          import pathlib
-          import sys
-
-          report_path = pathlib.Path(sys.argv[1])
-          minimum = sys.argv[2]
-          data = json.loads(report_path.read_text(encoding="utf-8"))
+          import json, os, pathlib, sys
+          report = pathlib.Path(sys.argv[1])
+          data = json.loads(report.read_text(encoding="utf-8"))
           summary = data.get("summary", {})
-          errors = summary.get("errors", 0)
-          warnings = summary.get("warnings", 0)
-          notices = summary.get("notices", 0)
-
           lines = [
-              f"## Firefox {minimum} web-ext lint",
-              "",
-              f"- Errors: **{errors}**",
-              f"- Warnings: **{warnings}**",
-              f"- Notices: **{notices}**",
-              "",
+              f"## Firefox {sys.argv[2]} web-ext lint", "",
+              f"- Errors: **{summary.get('errors', 0)}**",
+              f"- Warnings: **{summary.get('warnings', 0)}**",
+              f"- Notices: **{summary.get('notices', 0)}**", ""
           ]
-
           messages = data.get("errors", []) + data.get("warnings", []) + data.get("notices", [])
           if messages:
               lines += ["### Messages", ""]
               for item in messages:
-                  message = item.get("message", "Unknown message")
-                  file_name = item.get("file", "")
-                  description = item.get("description", "")
-                  location = f" — `{file_name}`" if file_name else ""
-                  lines.append(f"- {message}{location}")
-                  if description:
-                      lines.append(f"  - {description}")
-
-          with open(pathlib.Path.home() / "summary.md", "w", encoding="utf-8") as output:
-              output.write("\n".join(lines) + "\n")
-          with open(pathlib.Path(sys.argv[1]).with_suffix(".md"), "w", encoding="utf-8") as output:
-              output.write("\n".join(lines) + "\n")
-          with open(__import__('os').environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as output:
-              output.write("\n".join(lines) + "\n")
+                  location = f" — `{item.get('file')}`" if item.get("file") else ""
+                  lines.append(f"- {item.get('message', 'Unknown message')}{location}")
+                  if item.get("description"):
+                      lines.append(f"  - {item['description']}")
+          text = "\n".join(lines) + "\n"
+          report.with_suffix(".md").write_text(text, encoding="utf-8")
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as output:
+              output.write(text)
           PY
 
-      - name: Upload lint report
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: web-ext-firefox-${{ matrix.minimum }}
           path: |
@@ -134,29 +89,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
 
+      - name: Install Firefox 115 runtime libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libdbus-glib-1-2 libgtk-3-0 libasound2t64
+
       - name: Prepare Firefox 115-compatible manifest
-        shell: bash
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/extension"
-          rsync -a --delete \
-            --exclude '.git/' \
-            --exclude '.github/' \
-            ./ "$RUNNER_TEMP/extension/"
-
+          rsync -a --delete --exclude '.git/' --exclude '.github/' ./ "$RUNNER_TEMP/extension/"
           python3 - "$RUNNER_TEMP/extension/manifest.json" <<'PY'
-          import pathlib
-          import re
-          import sys
-
+          import pathlib, re, sys
           path = pathlib.Path(sys.argv[1])
           text = path.read_text(encoding="utf-8")
           pattern = r'("gecko"\s*:\s*\{.*?"strict_min_version"\s*:\s*")[^"]+("\s*,)'
@@ -167,7 +116,6 @@ jobs:
           PY
 
       - name: Download Firefox 115 ESR
-        shell: bash
         run: |
           set -euo pipefail
           curl -fsSL \
@@ -177,7 +125,6 @@ jobs:
           "$RUNNER_TEMP/firefox/firefox" --version
 
       - name: Smoke-test extension startup
-        shell: bash
         run: |
           set -euo pipefail
           LOG="$RUNNER_TEMP/firefox-115-web-ext.log"
@@ -185,39 +132,25 @@ jobs:
           timeout 30s xvfb-run -a npx --yes web-ext@latest run \
             --source-dir "$RUNNER_TEMP/extension" \
             --firefox "$RUNNER_TEMP/firefox/firefox" \
-            --no-reload \
-            --start-url about:blank \
-            >"$LOG" 2>&1
+            --no-reload --start-url about:blank >"$LOG" 2>&1
           status=$?
           set -e
-
           cat "$LOG"
-
-          if [ "$status" -ne 0 ] && [ "$status" -ne 124 ]; then
-            echo "web-ext exited unexpectedly with status $status" >&2
-            exit "$status"
-          fi
-
-          if grep -Eqi "(ExtensionError|Error:.*extension|Failed to install|not compatible|minimum Firefox version)" "$LOG"; then
-            echo "Firefox 115 reported an extension loading error" >&2
-            exit 1
-          fi
-
-          if ! grep -Eqi "(Installed|Running web extension|The extension will reload|Launching extension)" "$LOG"; then
+          if [ "$status" -ne 0 ] && [ "$status" -ne 124 ]; then exit "$status"; fi
+          if grep -Eqi "(ExtensionError|Failed to install|not compatible|minimum Firefox version)" "$LOG"; then exit 1; fi
+          if ! grep -Eqi "(Installed|Running web extension|Launching extension)" "$LOG"; then
             echo "Could not confirm that Firefox 115 loaded the extension" >&2
             exit 1
           fi
-
           {
             echo "## Firefox 115 ESR runtime smoke test"
             echo
-            echo "The extension was accepted and launched by Firefox 115.18.0 ESR with only desktop strict_min_version changed to 115.0."
+            echo "Firefox 115.18.0 ESR accepted and launched the extension with only desktop strict_min_version changed to 115.0."
             echo
-            echo "This proves package loading and background startup, not exhaustive website-level behavior."
+            echo "This proves package loading and startup, not exhaustive website-level behavior."
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload Firefox startup log
-        if: always()
+      - if: always()
         uses: actions/upload-artifact@v4
         with:
           name: firefox-115-smoke-test
