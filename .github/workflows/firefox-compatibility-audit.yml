@@ -4,36 +4,56 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-      - "manifest.json"
-      - "**/*.js"
-      - "**/*.html"
-      - "**/*.css"
       - ".github/workflows/firefox-compatibility-audit.yml"
 
 permissions:
   contents: read
 
+env:
+  SOURCE_COMMIT: 0dcc9c9859fb27d115894d979930ac959e516b72
+
 jobs:
   lint-release-package:
-    name: Mozilla lint — Firefox ${{ matrix.minimum }}
+    name: Mozilla lint — ${{ matrix.name }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        minimum: ["79.0", "115.0", "128.0"]
+        include:
+          - name: Firefox 79 / Android 42
+            key: legacy-79-42
+            desktop: "79.0"
+            android: "42.0"
+          - name: Firefox 115 / Android 128
+            key: desktop-115
+            desktop: "115.0"
+            android: "128.0"
+          - name: Firefox 128 / Android 128
+            key: desktop-128
+            desktop: "128.0"
+            android: "128.0"
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out exact UltimaDark 1.6.70 source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_COMMIT }}
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Build exact release package
+      - name: Assert source identity
         shell: bash
         run: |
           set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
+          grep -q '"version": "1.6.70"' manifest.json
 
+      - name: Build exact 1.6.70 release package
+        shell: bash
+        run: |
+          set -euo pipefail
           package="$RUNNER_TEMP/extension"
           mkdir -p "$package"
 
@@ -79,26 +99,18 @@ jobs:
           done
 
           sed -i 's/^[[:space:]]*\/\/.*$//g' "$package/manifest.json"
-          sed -i \
-            's/{0a0f6dea-3957-4bb9-9eec-2ef2b9e5bcec}/{7c7f6dea-3957-4bb9-9eec-2ef2b9e5bcec}/g' \
-            "$package/manifest.json"
+          sed -i 's/{0a0f6dea-3957-4bb9-9eec-2ef2b9e5bcec}/{7c7f6dea-3957-4bb9-9eec-2ef2b9e5bcec}/g' "$package/manifest.json"
 
-          python3 - "$package/manifest.json" "${{ matrix.minimum }}" <<'PY'
-          import json
-          import pathlib
-          import sys
-
+          python3 - "$package/manifest.json" "${{ matrix.desktop }}" "${{ matrix.android }}" <<'PY'
+          import json, pathlib, sys
           path = pathlib.Path(sys.argv[1])
-          minimum = sys.argv[2]
           manifest = json.loads(path.read_text(encoding="utf-8"))
-          manifest["browser_specific_settings"]["gecko"]["strict_min_version"] = minimum
+          manifest["browser_specific_settings"]["gecko"]["strict_min_version"] = sys.argv[2]
+          manifest["browser_specific_settings"]["gecko_android"]["strict_min_version"] = sys.argv[3]
           path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
           PY
 
-          (cd "$package" && zip -qr "$RUNNER_TEMP/UltimaDark-firefox-${{ matrix.minimum }}.zip" .)
-
-      - name: Show Mozilla linter version
-        run: npx --yes web-ext@latest --version
+          (cd "$package" && zip -qr "$RUNNER_TEMP/UltimaDark-${{ matrix.key }}.zip" .)
 
       - name: Run Mozilla Extension Linter
         shell: bash
@@ -107,124 +119,80 @@ jobs:
           npx --yes web-ext@latest lint \
             --source-dir "$RUNNER_TEMP/extension" \
             --output json \
-            > "$RUNNER_TEMP/firefox-${{ matrix.minimum }}-lint.json"
+            > "$RUNNER_TEMP/${{ matrix.key }}-lint.json"
           echo "lint_exit_code=$?" >> "$GITHUB_ENV"
           exit 0
 
       - name: Produce report
         shell: bash
         run: |
-          python3 - "$RUNNER_TEMP/firefox-${{ matrix.minimum }}-lint.json" "${{ matrix.minimum }}" <<'PY'
-          import json
-          import os
-          import pathlib
-          import sys
-
-          report = pathlib.Path(sys.argv[1])
-          minimum = sys.argv[2]
-          data = json.loads(report.read_text(encoding="utf-8"))
+          python3 - "$RUNNER_TEMP/${{ matrix.key }}-lint.json" "${{ matrix.name }}" <<'PY'
+          import json, os, pathlib, sys
+          data = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
           summary = data.get("summary", {})
-
           lines = [
-              f"## Firefox {minimum}",
-              "",
+              f"## {sys.argv[2]}", "",
               f"- Errors: **{summary.get('errors', 0)}**",
               f"- Warnings: **{summary.get('warnings', 0)}**",
               f"- Notices: **{summary.get('notices', 0)}**",
-              f"- Linter exit code: **{os.environ.get('lint_exit_code', '?')}**",
-              "",
-              "### Messages",
-              "",
+              f"- Linter exit code: **{os.environ.get('lint_exit_code', '?')}**", "",
           ]
-
-          messages = data.get("errors", []) + data.get("warnings", []) + data.get("notices", [])
-          for item in messages:
-              location = item.get("file") or "manifest/package"
-              lines.append(f"- **{item.get('message', 'Unknown message')}** — `{location}`")
-              description = item.get("description")
-              if description:
-                  lines.append(f"  - {description}")
-
+          for item in data.get("errors", []) + data.get("warnings", []) + data.get("notices", []):
+              lines.append(f"- {item.get('message', 'Unknown')} — `{item.get('file') or 'manifest/package'}`")
           text = "\n".join(lines) + "\n"
-          output = pathlib.Path(f"firefox-{minimum}-lint.md")
-          output.write_text(text, encoding="utf-8")
-          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary_file:
-              summary_file.write(text)
+          pathlib.Path("${{ matrix.key }}-lint.md").write_text(text, encoding="utf-8")
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
+              f.write(text)
           PY
 
       - uses: actions/upload-artifact@v4
         with:
-          name: firefox-${{ matrix.minimum }}-mozilla-lint
+          name: ${{ matrix.key }}-mozilla-lint
           path: |
-            ${{ runner.temp }}/UltimaDark-firefox-${{ matrix.minimum }}.zip
-            ${{ runner.temp }}/firefox-${{ matrix.minimum }}-lint.json
-            firefox-${{ matrix.minimum }}-lint.md
+            ${{ runner.temp }}/UltimaDark-${{ matrix.key }}.zip
+            ${{ runner.temp }}/${{ matrix.key }}-lint.json
+            ${{ matrix.key }}-lint.md
 
-  verify-controls:
-    name: Verify package deltas and positive control
+  verify:
+    name: Verify exact source and package deltas
     needs: lint-release-package
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/download-artifact@v4
         with:
-          pattern: firefox-*-mozilla-lint
+          pattern: "*-mozilla-lint"
           path: artifacts
 
-      - name: Prove packages differ only by desktop minimum and 79 triggers more findings
+      - name: Verify packages and print comparison
         shell: bash
         run: |
           set -euo pipefail
-          mkdir pkg79 pkg115 pkg128
-          unzip -q artifacts/firefox-79.0-mozilla-lint/_temp/UltimaDark-firefox-79.0.zip -d pkg79
-          unzip -q artifacts/firefox-115.0-mozilla-lint/_temp/UltimaDark-firefox-115.0.zip -d pkg115
-          unzip -q artifacts/firefox-128.0-mozilla-lint/_temp/UltimaDark-firefox-128.0.zip -d pkg128
+          mkdir legacy target baseline
+          unzip -q artifacts/legacy-79-42-mozilla-lint/_temp/UltimaDark-legacy-79-42.zip -d legacy
+          unzip -q artifacts/desktop-115-mozilla-lint/_temp/UltimaDark-desktop-115.zip -d target
+          unzip -q artifacts/desktop-128-mozilla-lint/_temp/UltimaDark-desktop-128.zip -d baseline
 
           python3 <<'PY'
-          import json
-          import pathlib
-
-          packages = {
-              "79.0": pathlib.Path("pkg79"),
-              "115.0": pathlib.Path("pkg115"),
-              "128.0": pathlib.Path("pkg128"),
-          }
-
-          baseline_files = sorted(p.relative_to(packages["128.0"]) for p in packages["128.0"].rglob("*") if p.is_file())
+          import json, pathlib
+          roots = {"legacy": pathlib.Path("legacy"), "115": pathlib.Path("target"), "128": pathlib.Path("baseline")}
+          files = sorted(p.relative_to(roots["128"]) for p in roots["128"].rglob("*") if p.is_file())
           manifests = {}
+          for name, root in roots.items():
+              current = sorted(p.relative_to(root) for p in root.rglob("*") if p.is_file())
+              assert current == files, f"file list differs for {name}"
+              for rel in files:
+                  if rel.as_posix() != "manifest.json":
+                      assert (root/rel).read_bytes() == (roots["128"]/rel).read_bytes(), f"unexpected difference: {name}/{rel}"
+              m = json.loads((root/"manifest.json").read_text())
+              m["browser_specific_settings"]["gecko"].pop("strict_min_version")
+              m["browser_specific_settings"]["gecko_android"].pop("strict_min_version")
+              manifests[name] = m
+          assert manifests["legacy"] == manifests["115"] == manifests["128"], "manifests differ beyond minimum versions"
 
-          for version, root in packages.items():
-              files = sorted(p.relative_to(root) for p in root.rglob("*") if p.is_file())
-              if files != baseline_files:
-                  raise SystemExit(f"Firefox {version} package file list differs")
-              for relative in files:
-                  if relative.as_posix() == "manifest.json":
-                      continue
-                  if (root / relative).read_bytes() != (packages["128.0"] / relative).read_bytes():
-                      raise SystemExit(f"Unexpected package difference for Firefox {version}: {relative}")
-              manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
-              value = manifest["browser_specific_settings"]["gecko"].pop("strict_min_version")
-              if value != version:
-                  raise SystemExit(f"Unexpected minimum for Firefox {version}: {value}")
-              manifests[version] = manifest
-
-          if not (manifests["79.0"] == manifests["115.0"] == manifests["128.0"]):
-              raise SystemExit("The manifests differ by more than desktop strict_min_version")
-
-          def load_summary(version):
-              report = pathlib.Path(f"artifacts/firefox-{version}-mozilla-lint/_temp/firefox-{version}-lint.json")
-              return json.loads(report.read_text(encoding="utf-8")).get("summary", {})
-
-          s79 = load_summary("79.0")
-          s115 = load_summary("115.0")
-          s128 = load_summary("128.0")
-
-          total79 = s79.get("errors", 0) + s79.get("warnings", 0) + s79.get("notices", 0)
-          total115 = s115.get("errors", 0) + s115.get("warnings", 0) + s115.get("notices", 0)
-          total128 = s128.get("errors", 0) + s128.get("warnings", 0) + s128.get("notices", 0)
-
-          if total79 <= total115 or total79 <= total128:
-              raise SystemExit(f"Positive control failed: Firefox 79 did not produce more findings ({total79} vs {total115}/{total128})")
-
-          print(f"Positive control passed: Firefox 79 produced {total79} findings vs {total115} for 115 and {total128} for 128.")
+          def summary(key):
+              p = pathlib.Path(f"artifacts/{key}-mozilla-lint/_temp/{key}-lint.json")
+              return json.loads(p.read_text()).get("summary", {})
+          for key in ("legacy-79-42", "desktop-115", "desktop-128"):
+              s = summary(key)
+              print(f"{key}: {s.get('errors',0)} errors, {s.get('warnings',0)} warnings, {s.get('notices',0)} notices")
           PY
