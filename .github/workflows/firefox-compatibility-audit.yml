@@ -2,15 +2,45 @@ name: Firefox compatibility audit
 
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - ".github/workflows/firefox-compatibility-audit.yml"
+    inputs:
+      source_ref:
+        description: Branch, tag, or commit to audit
+        required: true
+        default: master
+        type: string
+      legacy_desktop:
+        description: Legacy desktop Firefox minimum
+        required: true
+        default: "79.0"
+        type: string
+      legacy_android:
+        description: Legacy Firefox for Android minimum
+        required: true
+        default: "42.0"
+        type: string
+      target_desktop:
+        description: Target desktop Firefox minimum
+        required: true
+        default: "115.0"
+        type: string
+      target_android:
+        description: Target Firefox for Android minimum
+        required: true
+        default: "115.0"
+        type: string
+      baseline_desktop:
+        description: Baseline desktop Firefox minimum
+        required: true
+        default: "128.0"
+        type: string
+      baseline_android:
+        description: Baseline Firefox for Android minimum
+        required: true
+        default: "128.0"
+        type: string
 
 permissions:
   contents: read
-
-env:
-  SOURCE_COMMIT: c5fbdcd0d716f9e74a4283708d2a25ca403b6e47
 
 jobs:
   lint-release-package:
@@ -20,38 +50,50 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: Firefox 79 / Android 42
-            key: legacy-79-42
-            desktop: "79.0"
-            android: "42.0"
-          - name: Firefox 115 / Android 128
-            key: desktop-115
-            desktop: "115.0"
-            android: "128.0"
-          - name: Firefox 128 / Android 128
-            key: desktop-128
-            desktop: "128.0"
-            android: "128.0"
+          - name: Firefox ${{ inputs.legacy_desktop }} / Android ${{ inputs.legacy_android }}
+            key: legacy
+            desktop: ${{ inputs.legacy_desktop }}
+            android: ${{ inputs.legacy_android }}
+          - name: Firefox ${{ inputs.target_desktop }} / Android ${{ inputs.target_android }}
+            key: target
+            desktop: ${{ inputs.target_desktop }}
+            android: ${{ inputs.target_android }}
+          - name: Firefox ${{ inputs.baseline_desktop }} / Android ${{ inputs.baseline_android }}
+            key: baseline
+            desktop: ${{ inputs.baseline_desktop }}
+            android: ${{ inputs.baseline_android }}
 
     steps:
-      - name: Check out exact latest UltimaDark source
+      - name: Check out selected UltimaDark source
         uses: actions/checkout@v4
         with:
-          ref: ${{ env.SOURCE_COMMIT }}
+          ref: ${{ inputs.source_ref }}
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Assert source identity
+      - name: Report audited source
         shell: bash
+        env:
+          REQUESTED_SOURCE_REF: ${{ inputs.source_ref }}
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
-          grep -q '"version": "1.6.72"' manifest.json
+          test -z "$(git status --porcelain)"
+          version=$(sed 's/^[[:space:]]*\/\/.*$//g' manifest.json | jq -r .version)
+          {
+            echo "## Audited source"
+            echo
+            echo "- Requested ref: \`$REQUESTED_SOURCE_REF\`"
+            echo "- Resolved commit: \`$(git rev-parse HEAD)\`"
+            echo "- UltimaDark version: \`$version\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Build exact latest release package
         shell: bash
+        env:
+          DESKTOP_MIN_VERSION: ${{ matrix.desktop }}
+          ANDROID_MIN_VERSION: ${{ matrix.android }}
         run: |
           set -euo pipefail
           package="$RUNNER_TEMP/extension"
@@ -101,12 +143,17 @@ jobs:
           sed -i 's/^[[:space:]]*\/\/.*$//g' "$package/manifest.json"
           sed -i 's/{0a0f6dea-3957-4bb9-9eec-2ef2b9e5bcec}/{7c7f6dea-3957-4bb9-9eec-2ef2b9e5bcec}/g' "$package/manifest.json"
 
-          python3 - "$package/manifest.json" "${{ matrix.desktop }}" "${{ matrix.android }}" <<'PY'
-          import json, pathlib, sys
+          python3 - "$package/manifest.json" <<'PY'
+          import json, os, pathlib, re, sys
           path = pathlib.Path(sys.argv[1])
           manifest = json.loads(path.read_text(encoding="utf-8"))
-          manifest["browser_specific_settings"]["gecko"]["strict_min_version"] = sys.argv[2]
-          manifest["browser_specific_settings"]["gecko_android"]["strict_min_version"] = sys.argv[3]
+          desktop = os.environ["DESKTOP_MIN_VERSION"]
+          android = os.environ["ANDROID_MIN_VERSION"]
+          for platform, version in (("desktop", desktop), ("Android", android)):
+              if not re.fullmatch(r"\d+(?:\.\d+){0,2}", version):
+                  raise SystemExit(f"Invalid {platform} Firefox version: {version}")
+          manifest["browser_specific_settings"]["gecko"]["strict_min_version"] = desktop
+          manifest["browser_specific_settings"]["gecko_android"]["strict_min_version"] = android
           path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
           PY
 
@@ -116,7 +163,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          npx --yes web-ext@latest lint \
+          npx --yes web-ext@10.5.0 lint \
             --source-dir "$RUNNER_TEMP/extension" \
             --output json \
             > "$RUNNER_TEMP/${{ matrix.key }}-lint.json"
@@ -125,13 +172,15 @@ jobs:
 
       - name: Produce report
         shell: bash
+        env:
+          MATRIX_NAME: ${{ matrix.name }}
         run: |
-          python3 - "$RUNNER_TEMP/${{ matrix.key }}-lint.json" "${{ matrix.name }}" <<'PY'
+          python3 - "$RUNNER_TEMP/${{ matrix.key }}-lint.json" <<'PY'
           import json, os, pathlib, sys
           data = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
           summary = data.get("summary", {})
           lines = [
-              f"## {sys.argv[2]}", "",
+              f"## {os.environ['MATRIX_NAME']}", "",
               f"- Errors: **{summary.get('errors', 0)}**",
               f"- Warnings: **{summary.get('warnings', 0)}**",
               f"- Notices: **{summary.get('notices', 0)}**",
@@ -168,31 +217,50 @@ jobs:
         run: |
           set -euo pipefail
           mkdir legacy target baseline
-          unzip -q artifacts/legacy-79-42-mozilla-lint/_temp/UltimaDark-legacy-79-42.zip -d legacy
-          unzip -q artifacts/desktop-115-mozilla-lint/_temp/UltimaDark-desktop-115.zip -d target
-          unzip -q artifacts/desktop-128-mozilla-lint/_temp/UltimaDark-desktop-128.zip -d baseline
+          unzip -q artifacts/legacy-mozilla-lint/_temp/UltimaDark-legacy.zip -d legacy
+          unzip -q artifacts/target-mozilla-lint/_temp/UltimaDark-target.zip -d target
+          unzip -q artifacts/baseline-mozilla-lint/_temp/UltimaDark-baseline.zip -d baseline
 
           python3 <<'PY'
-          import json, pathlib
-          roots = {"legacy": pathlib.Path("legacy"), "115": pathlib.Path("target"), "128": pathlib.Path("baseline")}
-          files = sorted(p.relative_to(roots["128"]) for p in roots["128"].rglob("*") if p.is_file())
+          import json, os, pathlib
+          roots = {"legacy": pathlib.Path("legacy"), "target": pathlib.Path("target"), "baseline": pathlib.Path("baseline")}
+          files = sorted(p.relative_to(roots["baseline"]) for p in roots["baseline"].rglob("*") if p.is_file())
           manifests = {}
           for name, root in roots.items():
               current = sorted(p.relative_to(root) for p in root.rglob("*") if p.is_file())
               assert current == files, f"file list differs for {name}"
               for rel in files:
                   if rel.as_posix() != "manifest.json":
-                      assert (root/rel).read_bytes() == (roots["128"]/rel).read_bytes(), f"unexpected difference: {name}/{rel}"
+                      assert (root/rel).read_bytes() == (roots["baseline"]/rel).read_bytes(), f"unexpected difference: {name}/{rel}"
               m = json.loads((root/"manifest.json").read_text())
               m["browser_specific_settings"]["gecko"].pop("strict_min_version")
               m["browser_specific_settings"]["gecko_android"].pop("strict_min_version")
               manifests[name] = m
-          assert manifests["legacy"] == manifests["115"] == manifests["128"], "manifests differ beyond minimum versions"
+          assert manifests["legacy"] == manifests["target"] == manifests["baseline"], "manifests differ beyond minimum versions"
 
           def summary(key):
               p = pathlib.Path(f"artifacts/{key}-mozilla-lint/_temp/{key}-lint.json")
               return json.loads(p.read_text()).get("summary", {})
-          for key in ("legacy-79-42", "desktop-115", "desktop-128"):
-              s = summary(key)
+          summaries = {key: summary(key) for key in ("legacy", "target", "baseline")}
+          for key, s in summaries.items():
               print(f"{key}: {s.get('errors',0)} errors, {s.get('warnings',0)} warnings, {s.get('notices',0)} notices")
+
+          regressions = [
+              kind for kind in ("errors", "warnings", "notices")
+              if summaries["target"].get(kind, 0) > summaries["baseline"].get(kind, 0)
+          ]
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as report:
+              report.write("## Target versus baseline\n\n")
+              report.write("| Configuration | Errors | Warnings | Notices |\n")
+              report.write("| --- | ---: | ---: | ---: |\n")
+              for key in ("legacy", "target", "baseline"):
+                  s = summaries[key]
+                  report.write(f"| {key} | {s.get('errors',0)} | {s.get('warnings',0)} | {s.get('notices',0)} |\n")
+              report.write("\n")
+              report.write(
+                  "Target has no more Mozilla findings than the baseline.\n"
+                  if not regressions else
+                  f"Target regressed in: {', '.join(regressions)}.\n"
+              )
+          assert not regressions, f"target has more findings than baseline: {', '.join(regressions)}"
           PY
