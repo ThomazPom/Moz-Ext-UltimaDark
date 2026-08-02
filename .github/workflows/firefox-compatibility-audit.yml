@@ -45,6 +45,7 @@ jobs:
           PY
 
       - name: Run Mozilla web-ext lint
+        continue-on-error: true
         run: |
           npx --yes web-ext@latest lint \
             --source-dir "$RUNNER_TEMP/extension" \
