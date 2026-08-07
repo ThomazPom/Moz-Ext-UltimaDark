@@ -4,7 +4,7 @@
     "bootstrap": "^5.3.3",
     "bootstrap-icons": "^1.13.1",
     "chart.js": "^4.5.1",
-    "esbuild": "^0.25.8"
+    "esbuild": "^0.28.1"
   },
   "scripts": {
     "watch": "npx esbuild popup.js --bundle --sourcemap --outfile=bundle.js --loader:.css=css --loader:.woff=file --loader:.woff2=file --loader:.ttf=file --loader:.eot=file --loader:.svg=file --watch",
