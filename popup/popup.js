@@ -82,15 +82,30 @@ function installFocusedPopupShortcut() {
             || target?.isContentEditable;
 
         if (event.repeat || isEditing || document.querySelector(".modal.show")) return;
-        if (!eventMatchesShortcut(event, alpineStore.toggleSiteShortcut)) return;
+        if (eventMatchesShortcut(event, alpineStore.toggleSiteShortcut)) {
+            event.preventDefault();
+            event.stopPropagation();
 
-        event.preventDefault();
-        event.stopPropagation();
+            if (alpineStore.headlessShortcutToggleEnabled) {
+                await alpineStore.applyReviewedShortcutToggle(alpineStore.getReviewedShortcutTogglePlan());
+            } else {
+                alpineStore.reviewShortcutToggle();
+            }
+            return;
+        }
 
-        if (alpineStore.headlessShortcutToggleEnabled) {
-            await alpineStore.applyReviewedShortcutToggle(alpineStore.getReviewedShortcutTogglePlan());
-        } else {
-            alpineStore.reviewShortcutToggle();
+        if (eventMatchesShortcut(event, alpineStore.toggleGlobalShortcut)) {
+            event.preventDefault();
+            event.stopPropagation();
+            let newState;
+            if (alpineStore.isEnabled === false) {
+                newState = alpineStore.lastEnabledStateBeforeDisable || true;
+            } else {
+                alpineStore.lastEnabledStateBeforeDisable = alpineStore.isEnabled;
+                newState = false;
+            }
+            alpineStore.isEnabled = newState;
+            await alpineStore.saveSettings();
         }
     }, true);
 }
@@ -159,6 +174,18 @@ async function loadPopup() {
         if (new URLSearchParams(window.location.search).get("action") === "toggleSite") {
             alpineStore.reviewShortcutToggle();
         }
+        if (new URLSearchParams(window.location.search).get("action") === "toggleGlobal") {
+            // Auto-close after about one second so the user can see the new state
+            setTimeout(async () => {
+                try {
+                    if (alpineStore.autoRefreshOnToggle) {
+                        const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+                        if (tab?.id) await browser.tabs.reload(tab.id);
+                    }
+                } catch (error) {}
+                window.close();
+            }, 1000);
+        }
         
 
         // Enable tab change listeners for real-time updates
@@ -190,6 +217,9 @@ async function loadPopup() {
                 if (changeInfo.name === "toggle-site") {
                     alpineStore.toggleSiteShortcut = changeInfo.newShortcut;
                     alpineStore.toggleSiteShortcutDraft = changeInfo.newShortcut;
+                } else if (changeInfo.name === "toggle-global") {
+                    alpineStore.toggleGlobalShortcut = changeInfo.newShortcut;
+                    alpineStore.toggleGlobalShortcutDraft = changeInfo.newShortcut;
                 }
             });
         }

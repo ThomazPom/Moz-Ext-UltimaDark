@@ -689,6 +689,33 @@
             included.
           </div>
         </div>
+
+        <div class="mb-3" x-show="$store.app.shortcutCommandsSupported === true">
+          <div class="p-3 rounded border border-warning bg-warning bg-opacity-10">
+            <div class="d-flex align-items-center justify-content-between gap-3 mb-2">
+              <span class="fw-medium">Toggle UltimaDark globally shortcut</span>
+              <kbd class="bg-dark text-light px-2 py-1 rounded"
+                x-text="$store.app.toggleGlobalShortcut || 'Not assigned'"></kbd>
+            </div>
+            <div class="input-group input-group-sm">
+              <input type="text" class="form-control font-monospace"
+                x-model="$store.app.toggleGlobalShortcutDraft"
+                placeholder="Example: Alt+Shift+D"
+                @keyup.enter="$store.app.updateToggleGlobalShortcut()">
+              <button type="button" class="btn btn-warning"
+                @click="$store.app.updateToggleGlobalShortcut()">Save</button>
+              <button type="button" class="btn btn-outline-warning"
+                @click="$store.app.resetToggleGlobalShortcut()">Reset</button>
+              <button type="button" class="btn btn-outline-secondary"
+                x-show="$store.app.shortcutSettingsSupported()"
+                @click="$store.app.openShortcutSettings()">Firefox shortcuts</button>
+            </div>
+          </div>
+          <div class="form-text mt-1" style="margin-left: 8px; color: #b5d6f8; font-size: 13px;">
+            Toggles UltimaDark globally (enabled/disabled) regardless of site-specific settings.
+            Pressing it repeatedly switches between ENABLED and DISABLED.
+          </div>
+        </div>
         <div class="mb-3" x-show="$store.app.shortcutCommandsSupported === true">
           <div class="d-flex align-items-center justify-content-between p-3 rounded border"
             :class="$store.app.headlessShortcutToggleEnabled ? 'border-warning bg-warning bg-opacity-10' : 'border-success bg-success bg-opacity-10'">
@@ -705,6 +732,24 @@
           <div class="form-text mt-1" style="margin-left: 8px; color: #b5d6f8; font-size: 13px;">
             Ask first is the default and shows the exact patterns before applying them; press Enter to confirm.
             Apply instantly changes the site immediately without opening a confirmation.
+          </div>
+        </div>
+        <div class="mb-3" x-show="$store.app.shortcutCommandsSupported === true">
+          <div class="d-flex align-items-center justify-content-between p-3 rounded border"
+            :class="$store.app.headlessGlobalShortcutToggleEnabled ? 'border-warning bg-warning bg-opacity-10' : 'border-success bg-success bg-opacity-10'">
+            <span class="fw-medium">Global shortcut behavior</span>
+            <div class="btn-group" role="group" aria-label="Global shortcut behavior">
+              <button type="button" class="btn btn-sm"
+                :class="!$store.app.headlessGlobalShortcutToggleEnabled ? 'btn-success' : 'btn-outline-secondary'"
+                @click="$store.app.headlessGlobalShortcutToggleEnabled = false; $store.app.saveSettings();">SHOW IN POPUP</button>
+              <button type="button" class="btn btn-sm"
+                :class="$store.app.headlessGlobalShortcutToggleEnabled ? 'btn-warning' : 'btn-outline-secondary'"
+                @click="$store.app.headlessGlobalShortcutToggleEnabled = true; $store.app.saveSettings();">APPLY INSTANTLY</button>
+            </div>
+          </div>
+          <div class="form-text mt-1" style="margin-left: 8px; color: #b5d6f8; font-size: 13px;">
+            Show in popup flashes a quick popup for about one second so you can see the change.
+            Apply instantly toggles silently in the background and refreshes the tab.
           </div>
         </div>
         <div class="alert alert-secondary py-2 mb-3"

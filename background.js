@@ -316,6 +316,8 @@ class uDarkC extends uDarkExtended {
     autoRefreshOnToggle: false,
     autoRefreshOnAnySettingChange: false,
     headlessShortcutToggleEnabled: false,
+    headlessGlobalShortcutToggleEnabled: false,
+    lastEnabledStateBeforeDisable: true,
     embedsInheritanceBehavior: false, // Whether to apply uDark to embeds (like iframes) based on the parent page settings
 
     //Image working model

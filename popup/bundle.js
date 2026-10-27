@@ -23224,11 +23224,14 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       version: "1.6.12",
       productionMode: "Loading...",
       isEnabled: true,
+      lastEnabledStateBeforeDisable: true,
       precisionNumber: 2,
       lastTargetHost: "",
       excludeButtonText: "Exclude",
       toggleSiteShortcut: "",
       toggleSiteShortcutDraft: "",
+      toggleGlobalShortcut: "",
+      toggleGlobalShortcutDraft: "",
       shortcutCommandsSupported: null,
       // Color settings
       min_bright_fg: 0.2,
@@ -23267,6 +23270,7 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       autoRefreshOnToggle: false,
       autoRefreshOnAnySettingChange: false,
       headlessShortcutToggleEnabled: false,
+      headlessGlobalShortcutToggleEnabled: false,
       embedsInheritanceBehavior: false,
       // Sync flags (stored in local only, never synced themselves)
       syncSettingsEnabled: false,
@@ -23969,13 +23973,18 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
         );
         if (!this.shortcutCommandsSupported) {
           this.toggleSiteShortcut = "";
+          this.toggleGlobalShortcut = "";
           this.toggleSiteShortcutDraft = "";
+          this.toggleGlobalShortcutDraft = "";
           return;
         }
         const commands = await browser.commands.getAll();
         const toggleCommand = commands.find((command) => command.name === "toggle-site");
+        const globalToggleCommand = commands.find((command) => command.name === "toggle-global");
         this.toggleSiteShortcut = toggleCommand?.shortcut || "";
+        this.toggleGlobalShortcut = globalToggleCommand?.shortcut || "";
         this.toggleSiteShortcutDraft = this.toggleSiteShortcut;
+        this.toggleGlobalShortcutDraft = this.toggleGlobalShortcut;
       },
       async updateToggleSiteShortcut() {
         if (!this.shortcutCommandsSupported) return;
@@ -23997,6 +24006,28 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       async resetToggleSiteShortcut() {
         if (!this.shortcutCommandsSupported) return;
         await browser.commands.reset("toggle-site");
+        await this.loadToggleSiteShortcut();
+      },
+      async updateToggleGlobalShortcut() {
+        if (!this.shortcutCommandsSupported) return;
+        try {
+          await browser.commands.update({
+            name: "toggle-global",
+            shortcut: this.toggleGlobalShortcutDraft.trim()
+          });
+          await this.loadToggleSiteShortcut();
+        } catch (error2) {
+          showBS5Modal({
+            title: "Invalid Keyboard Shortcut",
+            body: `Firefox could not assign this shortcut: <code>${error2.message}</code>`,
+            okText: "OK",
+            showCancel: false
+          });
+        }
+      },
+      async resetToggleGlobalShortcut() {
+        if (!this.shortcutCommandsSupported) return;
+        await browser.commands.reset("toggle-global");
         await this.loadToggleSiteShortcut();
       },
       optionalCommandMethod(methodName) {
@@ -24634,13 +24665,28 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       const target = event.target;
       const isEditing = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement || target?.isContentEditable;
       if (event.repeat || isEditing || document.querySelector(".modal.show")) return;
-      if (!eventMatchesShortcut(event, alpineStore.toggleSiteShortcut)) return;
-      event.preventDefault();
-      event.stopPropagation();
-      if (alpineStore.headlessShortcutToggleEnabled) {
-        await alpineStore.applyReviewedShortcutToggle(alpineStore.getReviewedShortcutTogglePlan());
-      } else {
-        alpineStore.reviewShortcutToggle();
+      if (eventMatchesShortcut(event, alpineStore.toggleSiteShortcut)) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (alpineStore.headlessShortcutToggleEnabled) {
+          await alpineStore.applyReviewedShortcutToggle(alpineStore.getReviewedShortcutTogglePlan());
+        } else {
+          alpineStore.reviewShortcutToggle();
+        }
+        return;
+      }
+      if (eventMatchesShortcut(event, alpineStore.toggleGlobalShortcut)) {
+        event.preventDefault();
+        event.stopPropagation();
+        let newState;
+        if (alpineStore.isEnabled === false) {
+          newState = alpineStore.lastEnabledStateBeforeDisable || true;
+        } else {
+          alpineStore.lastEnabledStateBeforeDisable = alpineStore.isEnabled;
+          newState = false;
+        }
+        alpineStore.isEnabled = newState;
+        await alpineStore.saveSettings();
       }
     }, true);
   }
@@ -24688,6 +24734,18 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       if (new URLSearchParams(window.location.search).get("action") === "toggleSite") {
         alpineStore.reviewShortcutToggle();
       }
+      if (new URLSearchParams(window.location.search).get("action") === "toggleGlobal") {
+        setTimeout(async () => {
+          try {
+            if (alpineStore.autoRefreshOnToggle) {
+              const [tab2] = await browser.tabs.query({ active: true, currentWindow: true });
+              if (tab2?.id) await browser.tabs.reload(tab2.id);
+            }
+          } catch (error2) {
+          }
+          window.close();
+        }, 1e3);
+      }
       alpineStore.enableTabChangeListeners();
       setTimeout(() => {
         alpineStore.updateExcludeButtonText();
@@ -24710,6 +24768,9 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
           if (changeInfo.name === "toggle-site") {
             alpineStore.toggleSiteShortcut = changeInfo.newShortcut;
             alpineStore.toggleSiteShortcutDraft = changeInfo.newShortcut;
+          } else if (changeInfo.name === "toggle-global") {
+            alpineStore.toggleGlobalShortcut = changeInfo.newShortcut;
+            alpineStore.toggleGlobalShortcutDraft = changeInfo.newShortcut;
           }
         });
       }

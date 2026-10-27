@@ -28,6 +28,13 @@
         "mac": "Ctrl+Shift+U"
       },
       "description": "Toggles UltimaDark on the current site"
+    },
+    "toggle-global": {
+      "suggested_key": {
+        "default": "Ctrl+Alt+G",
+        "mac": "Ctrl+Alt+G"
+      },
+      "description": "Toggles UltimaDark globally (enabled/disabled)"
     }
   },
   "browser_specific_settings": {

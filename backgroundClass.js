@@ -731,6 +731,32 @@ class uDarkExtended extends uDarkExtendedContentScript {
     }
   }
 
+  async openGlobalToggleReview() {
+    const actionApi = browser.browserAction || browser.action;
+    if (!actionApi?.setPopup || !actionApi?.openPopup) {
+      uDark.warn("Unable to open global toggle popup");
+      return;
+    }
+    const previousPopupPromise = actionApi.getPopup
+      ? actionApi.getPopup({})
+      : Promise.resolve("/popup/popup.html?mode=uDark-popup");
+    const setPopupPromise = actionApi.setPopup({
+      popup: "/popup/popup.html?mode=uDark-popup&action=toggleGlobal",
+    });
+    // Call openPopup immediately while the keyboard command still carries
+    // user activation. Awaiting extension API calls first can lose it.
+    const openPopupPromise = actionApi.openPopup();
+    try {
+      await Promise.all([setPopupPromise, openPopupPromise]);
+    } finally {
+      previousPopupPromise.then(previousPopup => {
+        setTimeout(() => {
+          actionApi.setPopup({ popup: previousPopup });
+        }, 1000);
+      });
+    }
+  }
+
   installToggleSiteCommand(resolve) {
     if (!browser.commands) {
       uDark.warn("Browser does not support commands, toggle site command will not be available");
@@ -745,9 +771,56 @@ class uDarkExtended extends uDarkExtendedContentScript {
         } else {
           await uDark.openShortcutToggleReview();
         }
+      } else if (command === "toggle-global") {
+        console.log("Shortcut triggered: toggle-global");
+        await uDark.toggleGlobalEnabled();
+        if (uDark.userSettings.headlessGlobalShortcutToggleEnabled) {
+          if (uDark.userSettings.autoRefreshOnToggle) {
+            const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+            if (tab?.id) {
+              await browser.tabs.reload(tab.id);
+            }
+          }
+        } else {
+          await uDark.openGlobalToggleReview();
+        }
       }
     });
     resolve();
+  }
+
+  async toggleGlobalEnabled() {
+    // we make the shortcut remebmber the lastState
+    // enabled -> disabled -> enabled
+    // follow system -> disabled -> follow system
+    const currentState = uDark.userSettings.isEnabled;
+    let newState;
+    let rememberedState = uDark.userSettings.lastEnabledStateBeforeDisable;
+    if (currentState === false) {
+      newState = (rememberedState !== undefined && rememberedState !== null) ? rememberedState : true;
+    } else {
+      rememberedState = currentState;
+      newState = false;
+    }
+
+    uDark.lastEnabledStateBeforeDisable = rememberedState;
+
+    const settings = { ...uDark.userSettings };
+    settings.isEnabled = newState;
+    settings.lastEnabledStateBeforeDisable = rememberedState;
+
+    await browser.storage.local.set(settings);
+    if (uDark.userSettings.syncSettingsEnabled) {
+      const syncData = {
+        isEnabled: newState,
+        lastEnabledStateBeforeDisable: rememberedState,
+      };
+      await browser.storage.sync.set(syncData);
+    }
+    Object.assign(uDark.userSettings, settings);
+    
+    const stateText = newState === 'auto' ? 'FOLLOW SYSTEM' : (newState ? 'ENABLED' : 'DISABLED');
+    uDark.success(`UltimaDark ${stateText}`);
   }
   onInstalled(details) {
 

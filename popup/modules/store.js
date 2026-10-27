@@ -47,11 +47,14 @@ document.addEventListener("alpine:init", () => {
         version: "1.6.12",
         productionMode: "Loading...",
         isEnabled: true,
+        lastEnabledStateBeforeDisable: true,
         precisionNumber: 2,
         lastTargetHost: "",
         excludeButtonText: "Exclude",
         toggleSiteShortcut: "",
         toggleSiteShortcutDraft: "",
+        toggleGlobalShortcut: "",
+        toggleGlobalShortcutDraft: "",
         shortcutCommandsSupported: null,
 
         // Color settings
@@ -92,6 +95,7 @@ document.addEventListener("alpine:init", () => {
         autoRefreshOnToggle: false,
         autoRefreshOnAnySettingChange: false,
         headlessShortcutToggleEnabled: false,
+        headlessGlobalShortcutToggleEnabled: false,
         embedsInheritanceBehavior: false,
 
         // Sync flags (stored in local only, never synced themselves)
@@ -913,13 +917,18 @@ document.addEventListener("alpine:init", () => {
             );
             if (!this.shortcutCommandsSupported) {
                 this.toggleSiteShortcut = "";
+                this.toggleGlobalShortcut = "";
                 this.toggleSiteShortcutDraft = "";
+                this.toggleGlobalShortcutDraft = "";
                 return;
             }
             const commands = await browser.commands.getAll();
             const toggleCommand = commands.find(command => command.name === "toggle-site");
+            const globalToggleCommand = commands.find(command => command.name === "toggle-global");
             this.toggleSiteShortcut = toggleCommand?.shortcut || "";
+            this.toggleGlobalShortcut = globalToggleCommand?.shortcut || "";
             this.toggleSiteShortcutDraft = this.toggleSiteShortcut;
+            this.toggleGlobalShortcutDraft = this.toggleGlobalShortcut;
         },
 
         async updateToggleSiteShortcut() {
@@ -943,6 +952,30 @@ document.addEventListener("alpine:init", () => {
         async resetToggleSiteShortcut() {
             if (!this.shortcutCommandsSupported) return;
             await browser.commands.reset("toggle-site");
+            await this.loadToggleSiteShortcut();
+        },
+
+        async updateToggleGlobalShortcut() {
+            if (!this.shortcutCommandsSupported) return;
+            try {
+                await browser.commands.update({
+                    name: "toggle-global",
+                    shortcut: this.toggleGlobalShortcutDraft.trim(),
+                });
+                await this.loadToggleSiteShortcut();
+            } catch (error) {
+                showBS5Modal({
+                    title: "Invalid Keyboard Shortcut",
+                    body: `Firefox could not assign this shortcut: <code>${error.message}</code>`,
+                    okText: "OK",
+                    showCancel: false,
+                });
+            }
+        },
+
+        async resetToggleGlobalShortcut() {
+            if (!this.shortcutCommandsSupported) return;
+            await browser.commands.reset("toggle-global");
             await this.loadToggleSiteShortcut();
         },
 
