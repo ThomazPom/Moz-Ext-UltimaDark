@@ -52,6 +52,10 @@ document.addEventListener("alpine:init", () => {
         excludeButtonText: "Exclude",
         toggleSiteShortcut: "",
         toggleSiteShortcutDraft: "",
+        exclusionSearch: "",
+        showExclusionSearch: false,
+        inclusionSearch: "",
+        showInclusionSearch: false,
         shortcutCommandsSupported: null,
 
         // Color settings

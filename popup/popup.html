@@ -280,9 +280,25 @@
         </div>
       </div>
       <div class="mb-4">
-        <h5 class="fw-semibold mb-3 text-light"><i class="fas fa-list me-2"
-            style="color: var(--dark-accent-red);"></i>Disabled websites</h5>
         <div x-data="{ editing: null, newValue: '' }">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <h5 class="fw-semibold text-light mb-0"><i class="fas fa-list me-2"
+                style="color: var(--dark-accent-red);"></i>Disabled websites</h5>
+            <button type="button" class="btn btn-sm btn-outline-light"
+              @click="$store.app.showExclusionSearch = !$store.app.showExclusionSearch; if (!$store.app.showExclusionSearch) $store.app.exclusionSearch = ''"
+              title="Toggle search">
+              <i class="bi bi-search"></i>
+            </button>
+          </div>
+          <div x-show="$store.app.showExclusionSearch" class="input-group input-group-sm mb-2">
+            <span class="input-group-text bg-secondary text-light"><i class="bi bi-search"></i></span>
+            <input x-model="$store.app.exclusionSearch" @keyup.escape="$store.app.exclusionSearch=''; $store.app.showExclusionSearch=false"
+              type="text" class="form-control form-control-sm font-monospace" placeholder="Search disabled sites" />
+            <button type="button" class="btn btn-outline-secondary" x-show="$store.app.exclusionSearch"
+              @click="$store.app.exclusionSearch = ''">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </div>
           <template x-if="editing !== null">
             <div class="d-flex align-items-center gap-2 mb-3">
               <input x-model="newValue" class="form-control form-control-sm font-monospace"
@@ -296,7 +312,7 @@
                 <option value="#ud_res">Resources only (CSS, JS, images)</option>
               </select>
               <button
-                @click="$store.app.editExclusionPattern(editing, newValue + ($store.app.editingFlag ? $store.app.editingFlag : '')); editing=null"
+                @click="$store.app.editExclusionPattern(editing, newValue + ($store.app.editingFlag ? $store.app.editingFlag : '')); $store.app.exclusionSearch = ''; editing=null"
                 class="btn btn-success btn-sm">Save</button>
               <button @click="editing=null" class="btn btn-secondary btn-sm">Cancel</button>
             </div>
@@ -306,7 +322,7 @@
               <tbody>
                 <template x-for="(pattern, idx) in $store.app.exclusionPatterns.split('\n').filter(p => p.trim())"
                   :key="idx">
-                  <tr :style="
+                  <tr x-show="$store.app.exclusionSearch.trim()==='' || $store.app.exclusionSearch.toLowerCase().trim().split(/\s+/).every(tok => tok !== '' && pattern.toLowerCase().includes(tok))" :style="
                 pattern.endsWith('#ud_img') && $store.app.sites[$store.app.activeSite].exclusionMatches.includes(pattern.split('#ud_')[0])
                 ? 'background: linear-gradient(135deg, #ffe066 20%, rgba(255, 224, 102, 0.1) 100%); border-left: 3px solid #ffe066;'
                 : $store.app.sites[$store.app.activeSite].exclusionMatches.includes(pattern.split('#ud_')[0])
@@ -347,7 +363,7 @@
                       </div>
                       <button @click="editing=idx; newValue=pattern.split('#ud_')[0]"
                         class="btn btn-outline-info btn-sm me-1">Edit</button>
-                      <button @click="$store.app.deleteExclusionPattern(idx)"
+                      <button @click="$store.app.deleteExclusionPattern(idx); $store.app.exclusionSearch = ''"
                         class="btn btn-outline-danger btn-sm">Delete</button>
                     </td>
                     <td class="font-monospace text-nowrap" style="min-width: 300px;">
@@ -573,13 +589,29 @@
       </div>
       <!-- Current Inclusions List -->
       <div class="mb-4">
-        <h5 class="text-light mb-2">Enabled websites</h5>
         <div x-data="{ editing: null, newValue: '' }">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <h5 class="text-light mb-0">Enabled websites</h5>
+            <button type="button" class="btn btn-sm btn-outline-light"
+              @click="$store.app.showInclusionSearch = !$store.app.showInclusionSearch; if (!$store.app.showInclusionSearch) $store.app.inclusionSearch = ''"
+              title="Toggle search">
+              <i class="bi bi-search"></i>
+            </button>
+          </div>
+          <div x-show="$store.app.showInclusionSearch" class="input-group input-group-sm mb-2">
+            <span class="input-group-text bg-success text-light"><i class="bi bi-search"></i></span>
+            <input x-model="$store.app.inclusionSearch" @keyup.escape="$store.app.inclusionSearch=''; $store.app.showInclusionSearch=false"
+              type="text" class="form-control form-control-sm font-monospace" placeholder="Search enabled sites" />
+            <button type="button" class="btn btn-outline-secondary" x-show="$store.app.inclusionSearch"
+              @click="$store.app.inclusionSearch = ''">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </div>
           <template x-if="editing !== null">
             <div class="d-flex align-items-center gap-2 mb-3">
               <input x-model="newValue" @keyup.enter="$store.app.editInclusionPattern(editing, newValue); editing=null"
                 class="form-control form-control-sm font-monospace" placeholder="Edit pattern..." />
-              <button @click="$store.app.editInclusionPattern(editing, newValue); editing=null"
+              <button @click="$store.app.editInclusionPattern(editing, newValue); $store.app.inclusionSearch = ''; editing=null"
                 class="btn btn-success btn-sm">Save</button>
               <button @click="editing=null" class="btn btn-secondary btn-sm">Cancel</button>
             </div>
@@ -589,12 +621,12 @@
               <tbody>
                 <template x-for="(pattern, idx) in $store.app.inclusionPatterns.split('\n').filter(p => p.trim())"
                   :key="idx">
-                  <tr
+                  <tr x-show="$store.app.inclusionSearch.trim()==='' || $store.app.inclusionSearch.toLowerCase().trim().split(/\s+/).every(tok => tok !== '' && pattern.toLowerCase().includes(tok))"
                     :style="$store.app.sites[$store.app.activeSite].inclusionMatches.includes(pattern) ? 'background-color: #2d4d2d; border-left: 3px solid #28a745;' : 'background-color: #3d3d3d;'">
                     <td class="ps-3 pe-1" style="width:1%; white-space:nowrap;">
                       <button @click="editing=idx; newValue=pattern"
                         class="btn btn-outline-info btn-sm me-1">Edit</button>
-                      <button @click="$store.app.deleteInclusionPattern(idx)"
+                      <button @click="$store.app.deleteInclusionPattern(idx); $store.app.inclusionSearch = ''"
                         class="btn btn-outline-danger btn-sm">Delete</button>
                     </td>
                     <td class="font-monospace text-nowrap text-light" style="min-width: 300px;">

@@ -23229,6 +23229,10 @@ ${expression ? 'Expression: "' + expression + '"\n\n' : ""}`, el);
       excludeButtonText: "Exclude",
       toggleSiteShortcut: "",
       toggleSiteShortcutDraft: "",
+      exclusionSearch: "",
+      showExclusionSearch: false,
+      inclusionSearch: "",
+      showInclusionSearch: false,
       shortcutCommandsSupported: null,
       // Color settings
       min_bright_fg: 0.2,
